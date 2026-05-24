@@ -33,7 +33,7 @@ const categoryOrder = [
   "Protéines",
   "Produits laitiers",
   "Fruits & légumes",
-  Boulangerie",
+  "Boulangerie",
   "Sec/Episserie",
   "Sec & épicerie",
   "Dry Goods",
@@ -46,14 +46,17 @@ const categoryOrder = [
 ];
 
 function getSubCategory(product) {
-  return product.subcategory || "Autres";
+  return product?.subcategory || "Autres";
 }
 
 function getSupplier(product) {
-  if (Array.isArray(product.supplier)) {
-    return product.supplier.length > 0 ? product.supplier.join(", ") : "À définir";
+  if (Array.isArray(product?.supplier)) {
+    return product.supplier.length > 0
+      ? product.supplier.join(", ")
+      : "À définir";
   }
-  return product.supplier || "À définir";
+
+  return product?.supplier || "À définir";
 }
 
 export default function MokaOrderPad() {
@@ -69,7 +72,14 @@ export default function MokaOrderPad() {
     fetch(PRODUCTS_URL)
       .then((res) => res.json())
       .then((data) => {
-        const cleanData = Array.isArray(data) ? data : data.products || [];
+        const cleanData = Array.isArray(data)
+          ? data
+          : Array.isArray(data.products)
+          ? data.products
+          : data.id
+          ? [data]
+          : [];
+
         setProducts(cleanData);
         setLoading(false);
       })
@@ -87,6 +97,7 @@ export default function MokaOrderPad() {
       ...found.sort((a, b) => {
         const ia = categoryOrder.indexOf(a);
         const ib = categoryOrder.indexOf(b);
+
         return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
       }),
     ];
@@ -110,7 +121,9 @@ export default function MokaOrderPad() {
       const supplier = getSupplier(p);
       const q = search.trim().toLowerCase();
 
-      const matchesCategory = activeCategory === "Tous" || cat === activeCategory;
+      const matchesCategory =
+        activeCategory === "Tous" || cat === activeCategory;
+
       const matchesSubCategory =
         activeSubCategory === "Tous" || sub === activeSubCategory;
 
@@ -132,7 +145,11 @@ export default function MokaOrderPad() {
 
     filtered.forEach((product) => {
       const sub = getSubCategory(product);
-      if (!groups[sub]) groups[sub] = [];
+
+      if (!groups[sub]) {
+        groups[sub] = [];
+      }
+
       groups[sub].push(product);
     });
 
@@ -185,7 +202,9 @@ export default function MokaOrderPad() {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Erreur webhook ${response.status}`);
+      }
 
       setCart({});
       alert("Commande envoyée vers MOKA-OS ✅");
@@ -205,6 +224,7 @@ export default function MokaOrderPad() {
             <h1 className="text-6xl font-black tracking-tight text-[#3b241b]">
               MÖKA
             </h1>
+
             <div className="text-sm tracking-[0.42em] text-[#a97862] mt-1">
               SUPPLIER ORDER PAD
             </div>
@@ -212,6 +232,7 @@ export default function MokaOrderPad() {
 
           <div className="hidden md:block bg-white/90 rounded-[1.5rem] px-6 py-4 shadow-sm border border-[#eadfd4] text-right">
             <div className="text-xs text-[#a97862]">Commande automatique</div>
+
             <div className="font-black text-xl text-[#3b241b]">17:45 SXM</div>
           </div>
         </header>
@@ -221,6 +242,7 @@ export default function MokaOrderPad() {
             <div className="bg-white/80 border border-[#eadfd4] rounded-[2rem] p-4 mb-5 shadow-sm">
               <div className="flex items-center gap-3 rounded-full bg-[#fffaf3] border border-[#d6b8a7] px-5 py-4">
                 <span className="text-xl">🔍</span>
+
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -296,7 +318,9 @@ export default function MokaOrderPad() {
                       <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
                         {subCategory}
                       </div>
+
                       <div className="flex-1 h-[1px] bg-[#dccbbb]" />
+
                       <div className="text-xs font-bold text-[#a97862]">
                         {productsInGroup.length} produits
                       </div>
@@ -354,7 +378,9 @@ export default function MokaOrderPad() {
                                 <div>
                                   <div
                                     className={`text-xs font-black mb-1 ${
-                                      selected ? "text-white/85" : "text-[#6f8f32]"
+                                      selected
+                                        ? "text-white/85"
+                                        : "text-[#6f8f32]"
                                     }`}
                                   >
                                     {categoryEmojis[cat] || "📌"} {cat}
@@ -377,7 +403,9 @@ export default function MokaOrderPad() {
 
                                 <div
                                   className={`text-xs text-right max-w-[120px] ${
-                                    selected ? "text-white/75" : "text-[#a97862]"
+                                    selected
+                                      ? "text-white/75"
+                                      : "text-[#a97862]"
                                   }`}
                                 >
                                   {supplier}
@@ -389,10 +417,15 @@ export default function MokaOrderPad() {
                                   selected ? "bg-white/20" : "bg-[#f7efe4]"
                                 }`}
                               >
-                                <div className="text-xs opacity-70">À commander</div>
-                                <div className="text-2xl font-black mt-1">
-                                  {product.suggested || 1} {product.unit || "unité"}
+                                <div className="text-xs opacity-70">
+                                  À commander
                                 </div>
+
+                                <div className="text-2xl font-black mt-1">
+                                  {product.suggested || 1}{" "}
+                                  {product.unit || "unité"}
+                                </div>
+
                                 {product.zone && (
                                   <div className="text-xs opacity-70 mt-2">
                                     Zone : {product.zone}
@@ -403,13 +436,19 @@ export default function MokaOrderPad() {
                               <div className="mt-4 flex justify-between items-center">
                                 <span
                                   className={`text-sm font-semibold ${
-                                    selected ? "text-white/80" : "text-[#a97862]"
+                                    selected
+                                      ? "text-white/80"
+                                      : "text-[#a97862]"
                                   }`}
                                 >
-                                  {selected ? "Ajouté" : "Toucher pour ajouter"}
+                                  {selected
+                                    ? "Ajouté"
+                                    : "Toucher pour ajouter"}
                                 </span>
 
-                                <span className="text-3xl">{selected ? "✅" : "＋"}</span>
+                                <span className="text-3xl">
+                                  {selected ? "✅" : "＋"}
+                                </span>
                               </div>
                             </button>
 
@@ -419,7 +458,9 @@ export default function MokaOrderPad() {
                                 target="_blank"
                                 rel="noreferrer"
                                 className={`block px-5 pb-5 text-sm font-bold underline ${
-                                  selected ? "text-white/80" : "text-[#a97862]"
+                                  selected
+                                    ? "text-white/80"
+                                    : "text-[#a97862]"
                                 }`}
                               >
                                 Ouvrir la fiche ↗️
@@ -440,6 +481,7 @@ export default function MokaOrderPad() {
               <h2 className="text-2xl font-black text-[#3b241b]">
                 🛒 Commande du jour
               </h2>
+
               <p className="text-sm text-[#a97862] mt-1">
                 Sélection staff depuis le pad
               </p>
@@ -458,6 +500,7 @@ export default function MokaOrderPad() {
                   >
                     <div>
                       <div className="font-black">{item.name}</div>
+
                       <div className="text-xs text-[#a97862]">
                         {getSupplier(item)}
                       </div>
