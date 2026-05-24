@@ -6,7 +6,7 @@ const PRODUCTS_URL =
   "https://mokacafesxm.app.n8n.cloud/webhook/moka-orderpad-products";
 
 const SEND_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook-test/moka-orderpad-send";
+  "https://mokacafesxm.app.n8n.cloud/webhook/moka-orderpad-send";
 
 const categoryEmojis = {
   Bar: "☕",
@@ -50,7 +50,11 @@ function getSubCategory(product) {
     product.sousCategorie ||
     product.sous_categorie ||
     product["Sous-categorie"] ||
-    product["Sous-catégorie"];
+    product["Sous-catégorie"] ||
+    product["Sous catégorie"] ||
+    product["Sous-catégorie "] ||
+    product["Sous-categorie "] ||
+    "Autres";
 
   if (!value || value === "Tous" || value === "Tous les produits") {
     return "Autres";
@@ -129,6 +133,22 @@ export default function MokaOrderPad() {
     });
   }, [activeCategory, activeSubCategory, products, search]);
 
+  const groupedProducts = useMemo(() => {
+    const groups = {};
+
+    filtered.forEach((product) => {
+      const sub = getSubCategory(product);
+
+      if (!groups[sub]) {
+        groups[sub] = [];
+      }
+
+      groups[sub].push(product);
+    });
+
+    return groups;
+  }, [filtered]);
+
   const addProduct = (product) => {
     setCart((prev) => ({
       ...prev,
@@ -191,7 +211,7 @@ export default function MokaOrderPad() {
 
   return (
     <main className="min-h-screen bg-[#f7efe4] text-[#332019]">
-      <div className="max-w-7xl mx-auto px-5 py-5">
+      <div className="max-w-[1500px] mx-auto px-5 py-5">
         <header className="flex items-end justify-between gap-5 mb-5">
           <div>
             <h1 className="text-6xl font-black tracking-tight text-[#3b241b]">
@@ -209,7 +229,7 @@ export default function MokaOrderPad() {
         </header>
 
         <div className="grid grid-cols-12 gap-5">
-          <section className="col-span-12 lg:col-span-8">
+          <section className="col-span-12 xl:col-span-9">
             <div className="bg-white/80 border border-[#eadfd4] rounded-[2rem] p-4 mb-5 shadow-sm">
               <div className="flex items-center gap-3 rounded-full bg-[#fffaf3] border border-[#d6b8a7] px-5 py-4">
                 <span className="text-xl">🔍</span>
@@ -281,133 +301,164 @@ export default function MokaOrderPad() {
                 Aucun produit trouvé.
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filtered.map((product) => {
-                  const selected = !!cart[product.id];
-                  const cat = product.category || "Autres";
-                  const sub = getSubCategory(product);
-                  const productUrl = product.url || product.link || null;
+              <div className="space-y-8">
+                {Object.entries(groupedProducts).map(
+                  ([subCategory, productsInGroup]) => (
+                    <div key={subCategory}>
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
+                          {subCategory}
+                        </div>
+                        <div className="flex-1 h-[1px] bg-[#dccbbb]" />
+                        <div className="text-xs font-bold text-[#a97862]">
+                          {productsInGroup.length} produits
+                        </div>
+                      </div>
 
-                  return (
-                    <div
-                      key={product.id}
-                      className={`rounded-[1.75rem] shadow-sm border transition overflow-hidden ${
-                        selected
-                          ? "bg-[#6f8f32] text-white border-[#6f8f32]"
-                          : "bg-white text-[#3b241b] border-[#eadfd4]"
-                      }`}
-                    >
-                      <button
-                        onClick={() =>
-                          selected
-                            ? removeProduct(product.id)
-                            : addProduct(product)
-                        }
-                        className={`w-full h-32 flex items-center justify-center overflow-hidden ${
-                          selected ? "bg-white/10" : "bg-[#efe4d7]"
-                        }`}
-                      >
-                        {product.photo ? (
-                          <img
-                            src={product.photo}
-                            alt={product.name || "Produit"}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-5xl">
-                            {categoryEmojis[cat] || "📌"}
-                          </span>
-                        )}
-                      </button>
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {productsInGroup.map((product) => {
+                          const selected = !!cart[product.id];
+                          const cat = product.category || "Autres";
+                          const sub = getSubCategory(product);
+                          const productUrl = product.url || product.link || null;
 
-                      <button
-                        onClick={() =>
-                          selected
-                            ? removeProduct(product.id)
-                            : addProduct(product)
-                        }
-                        className="w-full text-left p-5 active:scale-[0.99]"
-                      >
-                        <div className="flex justify-between gap-4">
-                          <div>
+                          return (
                             <div
-                              className={`text-xs font-black mb-1 ${
-                                selected ? "text-white/85" : "text-[#6f8f32]"
-                              }`}
-                            >
-                              {categoryEmojis[cat] || "📌"} {cat}
-                            </div>
-
-                            <div
-                              className={`inline-flex mb-3 px-3 py-1 rounded-full text-xs font-black ${
+                              key={product.id}
+                              className={`rounded-[1.75rem] shadow-sm border transition overflow-hidden ${
                                 selected
-                                  ? "bg-white/20 text-white"
-                                  : "bg-[#f7efe4] text-[#a97862]"
+                                  ? "bg-[#6f8f32] text-white border-[#6f8f32]"
+                                  : "bg-white text-[#3b241b] border-[#eadfd4]"
                               }`}
                             >
-                              {sub}
+                              <button
+                                onClick={() =>
+                                  selected
+                                    ? removeProduct(product.id)
+                                    : addProduct(product)
+                                }
+                                className={`w-full h-28 flex items-center justify-center overflow-hidden ${
+                                  selected ? "bg-white/10" : "bg-[#efe4d7]"
+                                }`}
+                              >
+                                {product.photo ? (
+                                  <img
+                                    src={product.photo}
+                                    alt={product.name || "Produit"}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-5xl">
+                                    {categoryEmojis[cat] || "📌"}
+                                  </span>
+                                )}
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  selected
+                                    ? removeProduct(product.id)
+                                    : addProduct(product)
+                                }
+                                className="w-full text-left p-5 active:scale-[0.99]"
+                              >
+                                <div className="flex justify-between gap-4">
+                                  <div>
+                                    <div
+                                      className={`text-xs font-black mb-1 ${
+                                        selected
+                                          ? "text-white/85"
+                                          : "text-[#6f8f32]"
+                                      }`}
+                                    >
+                                      {categoryEmojis[cat] || "📌"} {cat}
+                                    </div>
+
+                                    <div
+                                      className={`inline-flex mb-3 px-3 py-1 rounded-full text-xs font-black ${
+                                        selected
+                                          ? "bg-white/20 text-white"
+                                          : "bg-[#f7efe4] text-[#a97862]"
+                                      }`}
+                                    >
+                                      {sub}
+                                    </div>
+
+                                    <h2 className="text-2xl font-black leading-tight">
+                                      {product.name}
+                                    </h2>
+                                  </div>
+
+                                  <div
+                                    className={`text-xs text-right max-w-[120px] ${
+                                      selected
+                                        ? "text-white/75"
+                                        : "text-[#a97862]"
+                                    }`}
+                                  >
+                                    {product.supplier || "À définir"}
+                                  </div>
+                                </div>
+
+                                <div
+                                  className={`mt-5 rounded-2xl p-4 ${
+                                    selected ? "bg-white/20" : "bg-[#f7efe4]"
+                                  }`}
+                                >
+                                  <div className="text-xs opacity-70">
+                                    À commander
+                                  </div>
+                                  <div className="text-2xl font-black mt-1">
+                                    {product.suggested || 1}{" "}
+                                    {product.unit || "unité"}
+                                  </div>
+                                </div>
+
+                                <div className="mt-4 flex justify-between items-center">
+                                  <span
+                                    className={`text-sm font-semibold ${
+                                      selected
+                                        ? "text-white/80"
+                                        : "text-[#a97862]"
+                                    }`}
+                                  >
+                                    {selected
+                                      ? "Ajouté"
+                                      : "Toucher pour ajouter"}
+                                  </span>
+
+                                  <span className="text-3xl">
+                                    {selected ? "✅" : "＋"}
+                                  </span>
+                                </div>
+                              </button>
+
+                              {productUrl && (
+                                <a
+                                  href={productUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className={`block px-5 pb-5 text-sm font-bold underline ${
+                                    selected
+                                      ? "text-white/80"
+                                      : "text-[#a97862]"
+                                  }`}
+                                >
+                                  Ouvrir la fiche ↗️
+                                </a>
+                              )}
                             </div>
-
-                            <h2 className="text-2xl font-black leading-tight">
-                              {product.name}
-                            </h2>
-                          </div>
-
-                          <div
-                            className={`text-xs text-right max-w-[130px] ${
-                              selected ? "text-white/75" : "text-[#a97862]"
-                            }`}
-                          >
-                            {product.supplier || "À définir"}
-                          </div>
-                        </div>
-
-                        <div
-                          className={`mt-5 rounded-2xl p-4 ${
-                            selected ? "bg-white/20" : "bg-[#f7efe4]"
-                          }`}
-                        >
-                          <div className="text-xs opacity-70">À commander</div>
-                          <div className="text-2xl font-black mt-1">
-                            {product.suggested || 1} {product.unit || "unité"}
-                          </div>
-                        </div>
-
-                        <div className="mt-4 flex justify-between items-center">
-                          <span
-                            className={`text-sm font-semibold ${
-                              selected ? "text-white/80" : "text-[#a97862]"
-                            }`}
-                          >
-                            {selected ? "Ajouté" : "Toucher pour ajouter"}
-                          </span>
-
-                          <span className="text-3xl">
-                            {selected ? "✅" : "＋"}
-                          </span>
-                        </div>
-                      </button>
-
-                      {productUrl && (
-                        <a
-                          href={productUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={`block px-5 pb-5 text-sm font-bold underline ${
-                            selected ? "text-white/80" : "text-[#a97862]"
-                          }`}
-                        >
-                          Ouvrir la fiche ↗️
-                        </a>
-                      )}
+                          );
+                        })}
+                      </div>
                     </div>
-                  );
-                })}
+                  )
+                )}
               </div>
             )}
           </section>
 
-          <aside className="col-span-12 lg:col-span-4">
+          <aside className="col-span-12 xl:col-span-3">
             <div className="bg-white/95 rounded-[2rem] p-6 shadow-sm border border-[#eadfd4] sticky top-5">
               <h2 className="text-2xl font-black text-[#3b241b]">
                 🛒 Commande du jour
