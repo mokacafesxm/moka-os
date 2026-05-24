@@ -16,8 +16,9 @@ const categoryEmojis = {
   "Fruits & légumes": "🥑",
   Boulangerie: "🥖",
   "Sec & épicerie": "📦",
-  "Prépas cuisine": "👨‍🍳",
+  "Dry Goods": "📦",
   Prépas: "👨‍🍳",
+  "Prépas cuisine": "👨‍🍳",
   Packaging: "🛍️",
   Nettoyage: "🧽",
   Desserts: "🍰",
@@ -33,6 +34,7 @@ const categoryOrder = [
   "Fruits & légumes",
   "Boulangerie",
   "Sec & épicerie",
+  "Dry Goods",
   "Prépas cuisine",
   "Prépas",
   "Desserts",
@@ -42,15 +44,19 @@ const categoryOrder = [
 ];
 
 function getSubCategory(product) {
-  return (
+  const value =
     product.subcategory ||
     product.subCategory ||
     product.sousCategorie ||
     product.sous_categorie ||
     product["Sous-categorie"] ||
-    product["Sous-catégorie"] ||
-    "Tous"
-  );
+    product["Sous-catégorie"];
+
+  if (!value || value === "Tous" || value === "Tous les produits") {
+    return "Autres";
+  }
+
+  return value;
 }
 
 export default function MokaOrderPad() {
@@ -89,28 +95,27 @@ export default function MokaOrderPad() {
   }, [products]);
 
   const subCategories = useMemo(() => {
-    if (activeCategory === "Tous") return ["Tous"];
+    if (activeCategory === "Tous") return [];
 
     const found = products
       .filter((p) => (p.category || "Autres") === activeCategory)
       .map((p) => getSubCategory(p))
-      .filter(Boolean);
+      .filter((sub) => sub && sub !== "Autres");
 
-    return ["Tous", ...new Set(found)];
+    return [...new Set(found)];
   }, [products, activeCategory]);
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
       const cat = p.category || "Autres";
       const sub = getSubCategory(p);
+      const q = search.trim().toLowerCase();
 
       const matchesCategory =
         activeCategory === "Tous" || cat === activeCategory;
 
       const matchesSubCategory =
         activeSubCategory === "Tous" || sub === activeSubCategory;
-
-      const q = search.trim().toLowerCase();
 
       const matchesSearch =
         !q ||
@@ -150,29 +155,29 @@ export default function MokaOrderPad() {
     setSending(true);
 
     try {
+      const payload = cartItems.map((item) => ({
+        Produit: item.name,
+        Quantité: item.qty,
+        Unite: item.unit || "unité",
+        Categorie: item.category || "Autres",
+        SousCategorie: getSubCategory(item),
+        Fournisseur: item.supplier || "",
+        Source: "OrderPad",
+        Date: new Date().toISOString(),
+        URL: item.url || item.link || "",
+      }));
+
       const response = await fetch(SEND_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          source: "OrderPad",
-          createdAt: new Date().toISOString(),
-          items: cartItems.map((item) => ({
-            id: item.id,
-            produit: item.name,
-            ingredientId: item.id,
-            fournisseur: item.supplier,
-            quantite: item.qty,
-            unite: item.unit,
-            categorie: item.category,
-            sousCategorie: getSubCategory(item),
-            url: item.url || item.link || null,
-          })),
-        }),
+        body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error("Erreur webhook");
+      if (!response.ok) {
+        throw new Error(`Erreur webhook ${response.status}`);
+      }
 
       setCart({});
       alert("Commande envoyée vers MOKA-OS ✅");
@@ -237,8 +242,19 @@ export default function MokaOrderPad() {
                 ))}
               </div>
 
-              {activeCategory !== "Tous" && subCategories.length > 1 && (
+              {activeCategory !== "Tous" && subCategories.length > 0 && (
                 <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                  <button
+                    onClick={() => setActiveSubCategory("Tous")}
+                    className={`px-4 py-2 rounded-full whitespace-nowrap text-xs font-black transition ${
+                      activeSubCategory === "Tous"
+                        ? "bg-[#3b241b] text-white"
+                        : "bg-[#f7efe4] text-[#8b6f61] border border-[#eadfd4]"
+                    }`}
+                  >
+                    Tous
+                  </button>
+
                   {subCategories.map((sub) => (
                     <button
                       key={sub}
@@ -249,7 +265,7 @@ export default function MokaOrderPad() {
                           : "bg-[#f7efe4] text-[#8b6f61] border border-[#eadfd4]"
                       }`}
                     >
-                      {sub === "Tous" ? "Tous les produits" : sub}
+                      {sub}
                     </button>
                   ))}
                 </div>
