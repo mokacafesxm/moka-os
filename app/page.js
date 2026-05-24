@@ -15,6 +15,7 @@ const categoryEmojis = {
   "Produits laitiers": "🥛",
   "Fruits & légumes": "🥑",
   Boulangerie: "🥖",
+  "Sec/Episserie": "📦",
   "Sec & épicerie": "📦",
   "Dry Goods": "📦",
   Prépas: "👨‍🍳",
@@ -32,7 +33,8 @@ const categoryOrder = [
   "Protéines",
   "Produits laitiers",
   "Fruits & légumes",
-  "Boulangerie",
+  Boulangerie",
+  "Sec/Episserie",
   "Sec & épicerie",
   "Dry Goods",
   "Prépas cuisine",
@@ -44,23 +46,14 @@ const categoryOrder = [
 ];
 
 function getSubCategory(product) {
-  const value =
-    product.subcategory ||
-    product.subCategory ||
-    product.sousCategorie ||
-    product.sous_categorie ||
-    product["Sous-categorie"] ||
-    product["Sous-catégorie"] ||
-    product["Sous catégorie"] ||
-    product["Sous-catégorie "] ||
-    product["Sous-categorie "] ||
-    "Autres";
+  return product.subcategory || "Autres";
+}
 
-  if (!value || value === "Tous" || value === "Tous les produits") {
-    return "Autres";
+function getSupplier(product) {
+  if (Array.isArray(product.supplier)) {
+    return product.supplier.length > 0 ? product.supplier.join(", ") : "À définir";
   }
-
-  return value;
+  return product.supplier || "À définir";
 }
 
 export default function MokaOrderPad() {
@@ -76,7 +69,8 @@ export default function MokaOrderPad() {
     fetch(PRODUCTS_URL)
       .then((res) => res.json())
       .then((data) => {
-        setProducts(Array.isArray(data) ? data : []);
+        const cleanData = Array.isArray(data) ? data : data.products || [];
+        setProducts(cleanData);
         setLoading(false);
       })
       .catch((err) => {
@@ -106,28 +100,28 @@ export default function MokaOrderPad() {
       .map((p) => getSubCategory(p))
       .filter((sub) => sub && sub !== "Autres");
 
-    return [...new Set(found)];
+    return [...new Set(found)].sort((a, b) => a.localeCompare(b));
   }, [products, activeCategory]);
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
       const cat = p.category || "Autres";
       const sub = getSubCategory(p);
+      const supplier = getSupplier(p);
       const q = search.trim().toLowerCase();
 
-      const matchesCategory =
-        activeCategory === "Tous" || cat === activeCategory;
-
+      const matchesCategory = activeCategory === "Tous" || cat === activeCategory;
       const matchesSubCategory =
         activeSubCategory === "Tous" || sub === activeSubCategory;
 
       const matchesSearch =
         !q ||
         String(p.name || "").toLowerCase().includes(q) ||
-        String(p.supplier || "").toLowerCase().includes(q) ||
+        String(supplier || "").toLowerCase().includes(q) ||
         String(p.unit || "").toLowerCase().includes(q) ||
-        String(p.category || "").toLowerCase().includes(q) ||
-        String(sub || "").toLowerCase().includes(q);
+        String(cat || "").toLowerCase().includes(q) ||
+        String(sub || "").toLowerCase().includes(q) ||
+        String(p.zone || "").toLowerCase().includes(q);
 
       return matchesCategory && matchesSubCategory && matchesSearch;
     });
@@ -138,15 +132,11 @@ export default function MokaOrderPad() {
 
     filtered.forEach((product) => {
       const sub = getSubCategory(product);
-
-      if (!groups[sub]) {
-        groups[sub] = [];
-      }
-
+      if (!groups[sub]) groups[sub] = [];
       groups[sub].push(product);
     });
 
-    return groups;
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [filtered]);
 
   const addProduct = (product) => {
@@ -181,10 +171,10 @@ export default function MokaOrderPad() {
         Unite: item.unit || "unité",
         Categorie: item.category || "Autres",
         SousCategorie: getSubCategory(item),
-        Fournisseur: item.supplier || "",
+        Fournisseur: getSupplier(item),
         Source: "OrderPad",
         Date: new Date().toISOString(),
-        URL: item.url || item.link || "",
+        URL: item.url || "",
       }));
 
       const response = await fetch(SEND_URL, {
@@ -195,9 +185,7 @@ export default function MokaOrderPad() {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        throw new Error(`Erreur webhook ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
 
       setCart({});
       alert("Commande envoyée vers MOKA-OS ✅");
@@ -211,7 +199,7 @@ export default function MokaOrderPad() {
 
   return (
     <main className="min-h-screen bg-[#f7efe4] text-[#332019]">
-      <div className="max-w-[1500px] mx-auto px-5 py-5">
+      <div className="max-w-[1600px] mx-auto px-5 py-5">
         <header className="flex items-end justify-between gap-5 mb-5">
           <div>
             <h1 className="text-6xl font-black tracking-tight text-[#3b241b]">
@@ -236,7 +224,7 @@ export default function MokaOrderPad() {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Rechercher un produit..."
+                  placeholder="Rechercher un produit, une zone, une sous-catégorie..."
                   className="w-full bg-transparent outline-none text-[#3b241b] placeholder:text-[#b08d7b] font-semibold"
                 />
               </div>
@@ -302,158 +290,147 @@ export default function MokaOrderPad() {
               </div>
             ) : (
               <div className="space-y-8">
-                {Object.entries(groupedProducts).map(
-                  ([subCategory, productsInGroup]) => (
-                    <div key={subCategory}>
-                      <div className="flex items-center gap-4 mb-4">
-                        <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
-                          {subCategory}
-                        </div>
-                        <div className="flex-1 h-[1px] bg-[#dccbbb]" />
-                        <div className="text-xs font-bold text-[#a97862]">
-                          {productsInGroup.length} produits
-                        </div>
+                {groupedProducts.map(([subCategory, productsInGroup]) => (
+                  <div key={subCategory}>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
+                        {subCategory}
                       </div>
+                      <div className="flex-1 h-[1px] bg-[#dccbbb]" />
+                      <div className="text-xs font-bold text-[#a97862]">
+                        {productsInGroup.length} produits
+                      </div>
+                    </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {productsInGroup.map((product) => {
-                          const selected = !!cart[product.id];
-                          const cat = product.category || "Autres";
-                          const sub = getSubCategory(product);
-                          const productUrl = product.url || product.link || null;
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {productsInGroup.map((product) => {
+                        const selected = !!cart[product.id];
+                        const cat = product.category || "Autres";
+                        const sub = getSubCategory(product);
+                        const supplier = getSupplier(product);
+                        const productUrl = product.url || null;
 
-                          return (
-                            <div
-                              key={product.id}
-                              className={`rounded-[1.75rem] shadow-sm border transition overflow-hidden ${
+                        return (
+                          <div
+                            key={product.id}
+                            className={`rounded-[1.75rem] shadow-sm border transition overflow-hidden ${
+                              selected
+                                ? "bg-[#6f8f32] text-white border-[#6f8f32]"
+                                : "bg-white text-[#3b241b] border-[#eadfd4]"
+                            }`}
+                          >
+                            <button
+                              onClick={() =>
                                 selected
-                                  ? "bg-[#6f8f32] text-white border-[#6f8f32]"
-                                  : "bg-white text-[#3b241b] border-[#eadfd4]"
+                                  ? removeProduct(product.id)
+                                  : addProduct(product)
+                              }
+                              className={`w-full h-28 flex items-center justify-center overflow-hidden ${
+                                selected ? "bg-white/10" : "bg-[#efe4d7]"
                               }`}
                             >
-                              <button
-                                onClick={() =>
-                                  selected
-                                    ? removeProduct(product.id)
-                                    : addProduct(product)
-                                }
-                                className={`w-full h-28 flex items-center justify-center overflow-hidden ${
-                                  selected ? "bg-white/10" : "bg-[#efe4d7]"
-                                }`}
-                              >
-                                {product.photo ? (
-                                  <img
-                                    src={product.photo}
-                                    alt={product.name || "Produit"}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <span className="text-5xl">
-                                    {categoryEmojis[cat] || "📌"}
-                                  </span>
-                                )}
-                              </button>
+                              {product.photo ? (
+                                <img
+                                  src={product.photo}
+                                  alt={product.name || "Produit"}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-5xl">
+                                  {categoryEmojis[cat] || "📌"}
+                                </span>
+                              )}
+                            </button>
 
-                              <button
-                                onClick={() =>
-                                  selected
-                                    ? removeProduct(product.id)
-                                    : addProduct(product)
-                                }
-                                className="w-full text-left p-5 active:scale-[0.99]"
-                              >
-                                <div className="flex justify-between gap-4">
-                                  <div>
-                                    <div
-                                      className={`text-xs font-black mb-1 ${
-                                        selected
-                                          ? "text-white/85"
-                                          : "text-[#6f8f32]"
-                                      }`}
-                                    >
-                                      {categoryEmojis[cat] || "📌"} {cat}
-                                    </div>
-
-                                    <div
-                                      className={`inline-flex mb-3 px-3 py-1 rounded-full text-xs font-black ${
-                                        selected
-                                          ? "bg-white/20 text-white"
-                                          : "bg-[#f7efe4] text-[#a97862]"
-                                      }`}
-                                    >
-                                      {sub}
-                                    </div>
-
-                                    <h2 className="text-2xl font-black leading-tight">
-                                      {product.name}
-                                    </h2>
+                            <button
+                              onClick={() =>
+                                selected
+                                  ? removeProduct(product.id)
+                                  : addProduct(product)
+                              }
+                              className="w-full text-left p-5 active:scale-[0.99]"
+                            >
+                              <div className="flex justify-between gap-4">
+                                <div>
+                                  <div
+                                    className={`text-xs font-black mb-1 ${
+                                      selected ? "text-white/85" : "text-[#6f8f32]"
+                                    }`}
+                                  >
+                                    {categoryEmojis[cat] || "📌"} {cat}
                                   </div>
 
                                   <div
-                                    className={`text-xs text-right max-w-[120px] ${
+                                    className={`inline-flex mb-3 px-3 py-1 rounded-full text-xs font-black ${
                                       selected
-                                        ? "text-white/75"
-                                        : "text-[#a97862]"
+                                        ? "bg-white/20 text-white"
+                                        : "bg-[#f7efe4] text-[#a97862]"
                                     }`}
                                   >
-                                    {product.supplier || "À définir"}
+                                    {sub}
                                   </div>
+
+                                  <h2 className="text-2xl font-black leading-tight">
+                                    {product.name}
+                                  </h2>
                                 </div>
 
                                 <div
-                                  className={`mt-5 rounded-2xl p-4 ${
-                                    selected ? "bg-white/20" : "bg-[#f7efe4]"
+                                  className={`text-xs text-right max-w-[120px] ${
+                                    selected ? "text-white/75" : "text-[#a97862]"
                                   }`}
                                 >
-                                  <div className="text-xs opacity-70">
-                                    À commander
-                                  </div>
-                                  <div className="text-2xl font-black mt-1">
-                                    {product.suggested || 1}{" "}
-                                    {product.unit || "unité"}
-                                  </div>
+                                  {supplier}
                                 </div>
+                              </div>
 
-                                <div className="mt-4 flex justify-between items-center">
-                                  <span
-                                    className={`text-sm font-semibold ${
-                                      selected
-                                        ? "text-white/80"
-                                        : "text-[#a97862]"
-                                    }`}
-                                  >
-                                    {selected
-                                      ? "Ajouté"
-                                      : "Toucher pour ajouter"}
-                                  </span>
-
-                                  <span className="text-3xl">
-                                    {selected ? "✅" : "＋"}
-                                  </span>
+                              <div
+                                className={`mt-5 rounded-2xl p-4 ${
+                                  selected ? "bg-white/20" : "bg-[#f7efe4]"
+                                }`}
+                              >
+                                <div className="text-xs opacity-70">À commander</div>
+                                <div className="text-2xl font-black mt-1">
+                                  {product.suggested || 1} {product.unit || "unité"}
                                 </div>
-                              </button>
+                                {product.zone && (
+                                  <div className="text-xs opacity-70 mt-2">
+                                    Zone : {product.zone}
+                                  </div>
+                                )}
+                              </div>
 
-                              {productUrl && (
-                                <a
-                                  href={productUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className={`block px-5 pb-5 text-sm font-bold underline ${
-                                    selected
-                                      ? "text-white/80"
-                                      : "text-[#a97862]"
+                              <div className="mt-4 flex justify-between items-center">
+                                <span
+                                  className={`text-sm font-semibold ${
+                                    selected ? "text-white/80" : "text-[#a97862]"
                                   }`}
                                 >
-                                  Ouvrir la fiche ↗️
-                                </a>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
+                                  {selected ? "Ajouté" : "Toucher pour ajouter"}
+                                </span>
+
+                                <span className="text-3xl">{selected ? "✅" : "＋"}</span>
+                              </div>
+                            </button>
+
+                            {productUrl && (
+                              <a
+                                href={productUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={`block px-5 pb-5 text-sm font-bold underline ${
+                                  selected ? "text-white/80" : "text-[#a97862]"
+                                }`}
+                              >
+                                Ouvrir la fiche ↗️
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  )
-                )}
+                  </div>
+                ))}
               </div>
             )}
           </section>
@@ -482,7 +459,7 @@ export default function MokaOrderPad() {
                     <div>
                       <div className="font-black">{item.name}</div>
                       <div className="text-xs text-[#a97862]">
-                        {item.supplier || "Fournisseur à définir"}
+                        {getSupplier(item)}
                       </div>
                     </div>
 
