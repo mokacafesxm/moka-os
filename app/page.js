@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 const PRODUCTS_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook-test/moka-orderpad-products";
+  "https://mokacafesxm.app.n8n.cloud/webhook/moka-orderpad-products";
 
 const SEND_URL =
   "https://mokacafesxm.app.n8n.cloud/webhook/moka-orderpad-send";
