@@ -6,7 +6,7 @@ const PRODUCTS_URL =
   "https://mokacafesxm.app.n8n.cloud/webhook/moka-orderpad-products";
 
 const SEND_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook/moka-orderpad-send";
+  "https://mokacafesxm.app.n8n.cloud/webhook-test/moka-orderpad-send";
 
 const categoryEmojis = {
   Bar: "☕",
