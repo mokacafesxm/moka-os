@@ -8,6 +8,12 @@ const PRODUCTS_URL =
 const SEND_URL =
   "https://mokacafesxm.app.n8n.cloud/webhook/moka-orderpad-send";
 
+const PREPS_URL =
+  "https://mokacafesxm.app.n8n.cloud/webhook/moka-preps-to-do";
+
+const STAFF_URL =
+  "https://mokacafesxm.app.n8n.cloud/webhook/moka-staff-list";
+
 const categoryEmojis = {
   Bar: "☕",
   Boissons: "🥤",
@@ -45,6 +51,13 @@ const categoryOrder = [
   "Autres",
 ];
 
+function normalizeArray(data, key) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.[key])) return data[key];
+  if (data?.id) return [data];
+  return [];
+}
+
 function getSubCategory(product) {
   return product?.subcategory || "Autres";
 }
@@ -59,12 +72,59 @@ function getSupplier(product) {
   return product?.supplier || "À définir";
 }
 
+function getStaffName(member) {
+  return (
+    member?.name ||
+    member?.prenom ||
+    member?.Prénom ||
+    member?.staff ||
+    member?.email ||
+    "Staff"
+  );
+}
+
+function getPrepName(prep) {
+  return (
+    prep?.name ||
+    prep?.prep ||
+    prep?.preparation ||
+    prep?.Préparation ||
+    prep?.Besoin ||
+    "Préparation"
+  );
+}
+
+function getPrepQuantity(prep) {
+  return prep?.quantity || prep?.quantite || prep?.Quantité || prep?.qty || 1;
+}
+
+function getPrepUnit(prep) {
+  return prep?.unit || prep?.unite || prep?.Unite || prep?.Unité || "unité";
+}
+
+function getPrepStatus(prep) {
+  return prep?.status || prep?.Statut || "À faire";
+}
+
+function getPrepPriority(prep) {
+  return prep?.priority || prep?.Priorité || prep?.priorite || "Normal";
+}
+
 export default function MokaOrderPad() {
+  const [activeTab, setActiveTab] = useState("orderpad");
+
   const [products, setProducts] = useState([]);
+  const [preps, setPreps] = useState([]);
+  const [staff, setStaff] = useState([]);
+
   const [activeCategory, setActiveCategory] = useState("Tous");
   const [activeSubCategory, setActiveSubCategory] = useState("Tous");
+
   const [cart, setCart] = useState({});
+  const [selectedStaff, setSelectedStaff] = useState("");
+
   const [loading, setLoading] = useState(true);
+  const [loadingPreps, setLoadingPreps] = useState(true);
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -72,22 +132,42 @@ export default function MokaOrderPad() {
     fetch(PRODUCTS_URL)
       .then((res) => res.json())
       .then((data) => {
-        const cleanData = Array.isArray(data)
-          ? data
-          : Array.isArray(data.products)
-          ? data.products
-          : data.id
-          ? [data]
-          : [];
-
-        setProducts(cleanData);
+        setProducts(normalizeArray(data, "products"));
         setLoading(false);
       })
       .catch((err) => {
         console.error("Erreur chargement produits:", err);
         setLoading(false);
       });
+
+    fetch(PREPS_URL)
+      .then((res) => res.json())
+      .then((data) => {
+        setPreps(normalizeArray(data, "preps"));
+        setLoadingPreps(false);
+      })
+      .catch((err) => {
+        console.error("Erreur chargement prépas:", err);
+        setLoadingPreps(false);
+      });
+
+    fetch(STAFF_URL)
+      .then((res) => res.json())
+      .then((data) => {
+        setStaff(normalizeArray(data, "staff"));
+      })
+      .catch((err) => {
+        console.error("Erreur chargement staff:", err);
+      });
   }, []);
+
+  const selectedStaffName = useMemo(() => {
+    const found = staff.find(
+      (member) => String(member.id || getStaffName(member)) === selectedStaff
+    );
+
+    return found ? getStaffName(found) : "";
+  }, [staff, selectedStaff]);
 
   const categories = useMemo(() => {
     const found = [...new Set(products.map((p) => p.category || "Autres"))];
@@ -156,17 +236,53 @@ export default function MokaOrderPad() {
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [filtered]);
 
+  const groupedPreps = useMemo(() => {
+    const groups = {};
+
+    preps.forEach((prep) => {
+      const category = prep?.category || prep?.Categorie || "Prépas cuisine";
+
+      if (!groups[category]) {
+        groups[category] = [];
+      }
+
+      groups[category].push(prep);
+    });
+
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [preps]);
+
   const addProduct = (product) => {
     setCart((prev) => ({
       ...prev,
       [product.id]: {
         ...product,
+        type: "order",
         qty: Number(product.suggested) || 1,
       },
     }));
   };
 
-  const removeProduct = (id) => {
+  const addPrep = (prep) => {
+    const id = prep.id || getPrepName(prep);
+
+    setCart((prev) => ({
+      ...prev,
+      [id]: {
+        ...prep,
+        id,
+        name: getPrepName(prep),
+        type: "prep",
+        qty: Number(getPrepQuantity(prep)) || 1,
+        unit: getPrepUnit(prep),
+        category: prep?.category || prep?.Categorie || "Prépas cuisine",
+        subcategory: prep?.subcategory || prep?.SousCategorie || "Préparation",
+        supplier: "Préparation interne",
+      },
+    }));
+  };
+
+  const removeItem = (id) => {
     setCart((prev) => {
       const copy = { ...prev };
       delete copy[id];
@@ -179,10 +295,16 @@ export default function MokaOrderPad() {
   const sendToMokaOS = async () => {
     if (cartItems.length === 0) return;
 
+    if (!selectedStaff) {
+      alert("Sélectionne un membre du staff avant d’envoyer ✅");
+      return;
+    }
+
     setSending(true);
 
     try {
       const payload = cartItems.map((item) => ({
+        id: item.id,
         Produit: item.name,
         Quantité: item.qty,
         Unite: item.unit || "unité",
@@ -190,6 +312,9 @@ export default function MokaOrderPad() {
         SousCategorie: getSubCategory(item),
         Fournisseur: getSupplier(item),
         Source: "OrderPad",
+        Type: item.type || "order",
+        Staff: selectedStaff,
+        StaffName: selectedStaffName,
         Date: new Date().toISOString(),
         URL: item.url || "",
       }));
@@ -237,259 +362,453 @@ export default function MokaOrderPad() {
           </div>
         </header>
 
+        <div className="flex gap-3 mb-5 overflow-x-auto pb-1">
+          <button
+            onClick={() => setActiveTab("orderpad")}
+            className={`px-6 py-3 rounded-full text-sm font-black transition ${
+              activeTab === "orderpad"
+                ? "bg-[#3b241b] text-white shadow-md"
+                : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
+            }`}
+          >
+            🛒 OrderPad
+          </button>
+
+          <button
+            onClick={() => setActiveTab("preps")}
+            className={`px-6 py-3 rounded-full text-sm font-black transition ${
+              activeTab === "preps"
+                ? "bg-[#3b241b] text-white shadow-md"
+                : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
+            }`}
+          >
+            👨‍🍳 Préparations à faire
+          </button>
+        </div>
+
         <div className="grid grid-cols-12 gap-5">
           <section className="col-span-12 xl:col-span-9">
-            <div className="bg-white/80 border border-[#eadfd4] rounded-[2rem] p-4 mb-5 shadow-sm">
-              <div className="flex items-center gap-3 rounded-full bg-[#fffaf3] border border-[#d6b8a7] px-5 py-4">
-                <span className="text-xl">🔍</span>
+            {activeTab === "orderpad" && (
+              <>
+                <div className="bg-white/80 border border-[#eadfd4] rounded-[2rem] p-4 mb-5 shadow-sm">
+                  <div className="flex items-center gap-3 rounded-full bg-[#fffaf3] border border-[#d6b8a7] px-5 py-4">
+                    <span className="text-xl">🔍</span>
 
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Rechercher un produit, une zone, une sous-catégorie..."
-                  className="w-full bg-transparent outline-none text-[#3b241b] placeholder:text-[#b08d7b] font-semibold"
-                />
-              </div>
+                    <input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Rechercher un produit, une zone, une sous-catégorie..."
+                      className="w-full bg-transparent outline-none text-[#3b241b] placeholder:text-[#b08d7b] font-semibold"
+                    />
+                  </div>
 
-              <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => {
-                      setActiveCategory(cat);
-                      setActiveSubCategory("Tous");
-                    }}
-                    className={`px-5 py-3 rounded-full whitespace-nowrap text-sm font-black transition ${
-                      activeCategory === cat
-                        ? "bg-[#6f8f32] text-white shadow-md"
-                        : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
-                    }`}
-                  >
-                    {cat === "Tous"
-                      ? "✨ Tous"
-                      : `${categoryEmojis[cat] || "📌"} ${cat}`}
-                  </button>
-                ))}
-              </div>
+                  <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
+                    {categories.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => {
+                          setActiveCategory(cat);
+                          setActiveSubCategory("Tous");
+                        }}
+                        className={`px-5 py-3 rounded-full whitespace-nowrap text-sm font-black transition ${
+                          activeCategory === cat
+                            ? "bg-[#6f8f32] text-white shadow-md"
+                            : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
+                        }`}
+                      >
+                        {cat === "Tous"
+                          ? "✨ Tous"
+                          : `${categoryEmojis[cat] || "📌"} ${cat}`}
+                      </button>
+                    ))}
+                  </div>
 
-              {activeCategory !== "Tous" && subCategories.length > 0 && (
-                <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
-                  <button
-                    onClick={() => setActiveSubCategory("Tous")}
-                    className={`px-4 py-2 rounded-full whitespace-nowrap text-xs font-black transition ${
-                      activeSubCategory === "Tous"
-                        ? "bg-[#3b241b] text-white"
-                        : "bg-[#f7efe4] text-[#8b6f61] border border-[#eadfd4]"
-                    }`}
-                  >
-                    Tous
-                  </button>
+                  {activeCategory !== "Tous" && subCategories.length > 0 && (
+                    <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                      <button
+                        onClick={() => setActiveSubCategory("Tous")}
+                        className={`px-4 py-2 rounded-full whitespace-nowrap text-xs font-black transition ${
+                          activeSubCategory === "Tous"
+                            ? "bg-[#3b241b] text-white"
+                            : "bg-[#f7efe4] text-[#8b6f61] border border-[#eadfd4]"
+                        }`}
+                      >
+                        Tous
+                      </button>
 
-                  {subCategories.map((sub) => (
-                    <button
-                      key={sub}
-                      onClick={() => setActiveSubCategory(sub)}
-                      className={`px-4 py-2 rounded-full whitespace-nowrap text-xs font-black transition ${
-                        activeSubCategory === sub
-                          ? "bg-[#3b241b] text-white"
-                          : "bg-[#f7efe4] text-[#8b6f61] border border-[#eadfd4]"
-                      }`}
-                    >
-                      {sub}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {loading ? (
-              <div className="bg-white rounded-[2rem] p-10 text-center text-[#a97862]">
-                Chargement des produits…
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="bg-white rounded-[2rem] p-10 text-center text-[#a97862]">
-                Aucun produit trouvé.
-              </div>
-            ) : (
-              <div className="space-y-8">
-                {groupedProducts.map(([subCategory, productsInGroup]) => (
-                  <div key={subCategory}>
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
-                        {subCategory}
-                      </div>
-
-                      <div className="flex-1 h-[1px] bg-[#dccbbb]" />
-
-                      <div className="text-xs font-bold text-[#a97862]">
-                        {productsInGroup.length} produits
-                      </div>
+                      {subCategories.map((sub) => (
+                        <button
+                          key={sub}
+                          onClick={() => setActiveSubCategory(sub)}
+                          className={`px-4 py-2 rounded-full whitespace-nowrap text-xs font-black transition ${
+                            activeSubCategory === sub
+                              ? "bg-[#3b241b] text-white"
+                              : "bg-[#f7efe4] text-[#8b6f61] border border-[#eadfd4]"
+                          }`}
+                        >
+                          {sub}
+                        </button>
+                      ))}
                     </div>
+                  )}
+                </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                      {productsInGroup.map((product) => {
-                        const selected = !!cart[product.id];
-                        const cat = product.category || "Autres";
-                        const sub = getSubCategory(product);
-                        const supplier = getSupplier(product);
-                        const productUrl = product.url || null;
+                {loading ? (
+                  <div className="bg-white rounded-[2rem] p-10 text-center text-[#a97862]">
+                    Chargement des produits…
+                  </div>
+                ) : filtered.length === 0 ? (
+                  <div className="bg-white rounded-[2rem] p-10 text-center text-[#a97862]">
+                    Aucun produit trouvé.
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {groupedProducts.map(([subCategory, productsInGroup]) => (
+                      <div key={subCategory}>
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
+                            {subCategory}
+                          </div>
 
-                        return (
-                          <div
-                            key={product.id}
-                            className={`rounded-[1.75rem] shadow-sm border transition overflow-hidden ${
-                              selected
-                                ? "bg-[#6f8f32] text-white border-[#6f8f32]"
-                                : "bg-white text-[#3b241b] border-[#eadfd4]"
-                            }`}
-                          >
-                            <button
-                              onClick={() =>
-                                selected
-                                  ? removeProduct(product.id)
-                                  : addProduct(product)
-                              }
-                              className={`w-full h-28 flex items-center justify-center overflow-hidden ${
-                                selected ? "bg-white/10" : "bg-[#efe4d7]"
-                              }`}
-                            >
-                              {product.photo ? (
-                                <img
-                                  src={product.photo}
-                                  alt={product.name || "Produit"}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <span className="text-5xl">
-                                  {categoryEmojis[cat] || "📌"}
-                                </span>
-                              )}
-                            </button>
+                          <div className="flex-1 h-[1px] bg-[#dccbbb]" />
 
-                            <button
-                              onClick={() =>
-                                selected
-                                  ? removeProduct(product.id)
-                                  : addProduct(product)
-                              }
-                              className="w-full text-left p-5 active:scale-[0.99]"
-                            >
-                              <div className="flex justify-between gap-4">
-                                <div>
-                                  <div
-                                    className={`text-xs font-black mb-1 ${
-                                      selected
-                                        ? "text-white/85"
-                                        : "text-[#6f8f32]"
-                                    }`}
-                                  >
-                                    {categoryEmojis[cat] || "📌"} {cat}
-                                  </div>
+                          <div className="text-xs font-bold text-[#a97862]">
+                            {productsInGroup.length} produits
+                          </div>
+                        </div>
 
-                                  <div
-                                    className={`inline-flex mb-3 px-3 py-1 rounded-full text-xs font-black ${
-                                      selected
-                                        ? "bg-white/20 text-white"
-                                        : "bg-[#f7efe4] text-[#a97862]"
-                                    }`}
-                                  >
-                                    {sub}
-                                  </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                          {productsInGroup.map((product) => {
+                            const selected = !!cart[product.id];
+                            const cat = product.category || "Autres";
+                            const sub = getSubCategory(product);
+                            const supplier = getSupplier(product);
+                            const productUrl = product.url || null;
 
-                                  <h2 className="text-2xl font-black leading-tight">
-                                    {product.name}
-                                  </h2>
-                                </div>
-
-                                <div
-                                  className={`text-xs text-right max-w-[120px] ${
-                                    selected
-                                      ? "text-white/75"
-                                      : "text-[#a97862]"
-                                  }`}
-                                >
-                                  {supplier}
-                                </div>
-                              </div>
-
+                            return (
                               <div
-                                className={`mt-5 rounded-2xl p-4 ${
-                                  selected ? "bg-white/20" : "bg-[#f7efe4]"
+                                key={product.id}
+                                className={`rounded-[1.75rem] shadow-sm border transition overflow-hidden ${
+                                  selected
+                                    ? "bg-[#6f8f32] text-white border-[#6f8f32]"
+                                    : "bg-white text-[#3b241b] border-[#eadfd4]"
                                 }`}
                               >
-                                <div className="text-xs opacity-70">
-                                  À commander
-                                </div>
+                                <button
+                                  onClick={() =>
+                                    selected
+                                      ? removeItem(product.id)
+                                      : addProduct(product)
+                                  }
+                                  className={`w-full h-28 flex items-center justify-center overflow-hidden ${
+                                    selected ? "bg-white/10" : "bg-[#efe4d7]"
+                                  }`}
+                                >
+                                  {product.photo ? (
+                                    <img
+                                      src={product.photo}
+                                      alt={product.name || "Produit"}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="text-5xl">
+                                      {categoryEmojis[cat] || "📌"}
+                                    </span>
+                                  )}
+                                </button>
 
-                                <div className="text-2xl font-black mt-1">
-                                  {product.suggested || 1}{" "}
-                                  {product.unit || "unité"}
-                                </div>
+                                <button
+                                  onClick={() =>
+                                    selected
+                                      ? removeItem(product.id)
+                                      : addProduct(product)
+                                  }
+                                  className="w-full text-left p-5 active:scale-[0.99]"
+                                >
+                                  <div className="flex justify-between gap-4">
+                                    <div>
+                                      <div
+                                        className={`text-xs font-black mb-1 ${
+                                          selected
+                                            ? "text-white/85"
+                                            : "text-[#6f8f32]"
+                                        }`}
+                                      >
+                                        {categoryEmojis[cat] || "📌"} {cat}
+                                      </div>
 
-                                {product.zone && (
-                                  <div className="text-xs opacity-70 mt-2">
-                                    Zone : {product.zone}
+                                      <div
+                                        className={`inline-flex mb-3 px-3 py-1 rounded-full text-xs font-black ${
+                                          selected
+                                            ? "bg-white/20 text-white"
+                                            : "bg-[#f7efe4] text-[#a97862]"
+                                        }`}
+                                      >
+                                        {sub}
+                                      </div>
+
+                                      <h2 className="text-2xl font-black leading-tight">
+                                        {product.name}
+                                      </h2>
+                                    </div>
+
+                                    <div
+                                      className={`text-xs text-right max-w-[120px] ${
+                                        selected
+                                          ? "text-white/75"
+                                          : "text-[#a97862]"
+                                      }`}
+                                    >
+                                      {supplier}
+                                    </div>
                                   </div>
+
+                                  <div
+                                    className={`mt-5 rounded-2xl p-4 ${
+                                      selected ? "bg-white/20" : "bg-[#f7efe4]"
+                                    }`}
+                                  >
+                                    <div className="text-xs opacity-70">
+                                      À commander
+                                    </div>
+
+                                    <div className="text-2xl font-black mt-1">
+                                      {product.suggested || 1}{" "}
+                                      {product.unit || "unité"}
+                                    </div>
+
+                                    {product.zone && (
+                                      <div className="text-xs opacity-70 mt-2">
+                                        Zone : {product.zone}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="mt-4 flex justify-between items-center">
+                                    <span
+                                      className={`text-sm font-semibold ${
+                                        selected
+                                          ? "text-white/80"
+                                          : "text-[#a97862]"
+                                      }`}
+                                    >
+                                      {selected
+                                        ? "Ajouté"
+                                        : "Toucher pour ajouter"}
+                                    </span>
+
+                                    <span className="text-3xl">
+                                      {selected ? "✅" : "＋"}
+                                    </span>
+                                  </div>
+                                </button>
+
+                                {productUrl && (
+                                  <a
+                                    href={productUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={`block px-5 pb-5 text-sm font-bold underline ${
+                                      selected
+                                        ? "text-white/80"
+                                        : "text-[#a97862]"
+                                    }`}
+                                  >
+                                    Ouvrir la fiche ↗️
+                                  </a>
                                 )}
                               </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
 
-                              <div className="mt-4 flex justify-between items-center">
-                                <span
-                                  className={`text-sm font-semibold ${
-                                    selected
-                                      ? "text-white/80"
-                                      : "text-[#a97862]"
-                                  }`}
-                                >
-                                  {selected
-                                    ? "Ajouté"
-                                    : "Toucher pour ajouter"}
-                                </span>
+            {activeTab === "preps" && (
+              <>
+                {loadingPreps ? (
+                  <div className="bg-white rounded-[2rem] p-10 text-center text-[#a97862]">
+                    Chargement des préparations…
+                  </div>
+                ) : preps.length === 0 ? (
+                  <div className="bg-white rounded-[2rem] p-10 text-center text-[#a97862]">
+                    Aucune préparation à faire.
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {groupedPreps.map(([category, prepsInGroup]) => (
+                      <div key={category}>
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
+                            👨‍🍳 {category}
+                          </div>
 
-                                <span className="text-3xl">
-                                  {selected ? "✅" : "＋"}
-                                </span>
-                              </div>
-                            </button>
+                          <div className="flex-1 h-[1px] bg-[#dccbbb]" />
 
-                            {productUrl && (
-                              <a
-                                href={productUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className={`block px-5 pb-5 text-sm font-bold underline ${
+                          <div className="text-xs font-bold text-[#a97862]">
+                            {prepsInGroup.length} prépas
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                          {prepsInGroup.map((prep) => {
+                            const id = prep.id || getPrepName(prep);
+                            const selected = !!cart[id];
+                            const name = getPrepName(prep);
+                            const qty = getPrepQuantity(prep);
+                            const unit = getPrepUnit(prep);
+                            const status = getPrepStatus(prep);
+                            const priority = getPrepPriority(prep);
+
+                            return (
+                              <div
+                                key={id}
+                                className={`rounded-[1.75rem] shadow-sm border transition overflow-hidden ${
                                   selected
-                                    ? "text-white/80"
-                                    : "text-[#a97862]"
+                                    ? "bg-[#6f8f32] text-white border-[#6f8f32]"
+                                    : "bg-white text-[#3b241b] border-[#eadfd4]"
                                 }`}
                               >
-                                Ouvrir la fiche ↗️
-                              </a>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                                <button
+                                  onClick={() =>
+                                    selected ? removeItem(id) : addPrep(prep)
+                                  }
+                                  className={`w-full text-left p-5 active:scale-[0.99] ${
+                                    selected ? "text-white" : "text-[#3b241b]"
+                                  }`}
+                                >
+                                  <div className="flex justify-between gap-4">
+                                    <div>
+                                      <div
+                                        className={`text-xs font-black mb-2 ${
+                                          selected
+                                            ? "text-white/85"
+                                            : "text-[#6f8f32]"
+                                        }`}
+                                      >
+                                        👨‍🍳 Préparation
+                                      </div>
+
+                                      <h2 className="text-2xl font-black leading-tight">
+                                        {name}
+                                      </h2>
+                                    </div>
+
+                                    <div
+                                      className={`text-xs text-right max-w-[120px] ${
+                                        selected
+                                          ? "text-white/75"
+                                          : "text-[#a97862]"
+                                      }`}
+                                    >
+                                      {priority}
+                                    </div>
+                                  </div>
+
+                                  <div
+                                    className={`mt-5 rounded-2xl p-4 ${
+                                      selected ? "bg-white/20" : "bg-[#f7efe4]"
+                                    }`}
+                                  >
+                                    <div className="text-xs opacity-70">
+                                      Quantité à préparer
+                                    </div>
+
+                                    <div className="text-2xl font-black mt-1">
+                                      {qty} {unit}
+                                    </div>
+
+                                    <div className="text-xs opacity-70 mt-2">
+                                      Statut : {status}
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-4 flex justify-between items-center">
+                                    <span
+                                      className={`text-sm font-semibold ${
+                                        selected
+                                          ? "text-white/80"
+                                          : "text-[#a97862]"
+                                      }`}
+                                    >
+                                      {selected
+                                        ? "Ajouté à l’action"
+                                        : "Toucher pour ajouter"}
+                                    </span>
+
+                                    <span className="text-3xl">
+                                      {selected ? "✅" : "＋"}
+                                    </span>
+                                  </div>
+                                </button>
+
+                                {prep.url && (
+                                  <a
+                                    href={prep.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={`block px-5 pb-5 text-sm font-bold underline ${
+                                      selected
+                                        ? "text-white/80"
+                                        : "text-[#a97862]"
+                                    }`}
+                                  >
+                                    Ouvrir la fiche ↗️
+                                  </a>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </section>
 
           <aside className="col-span-12 xl:col-span-3">
             <div className="bg-white/95 rounded-[2rem] p-6 shadow-sm border border-[#eadfd4] sticky top-5">
               <h2 className="text-2xl font-black text-[#3b241b]">
-                🛒 Commande du jour
+                🛒 Action du jour
               </h2>
 
               <p className="text-sm text-[#a97862] mt-1">
                 Sélection staff depuis le pad
               </p>
 
+              <div className="mt-6">
+                <label className="block text-xs font-black text-[#a97862] mb-2">
+                  Membre du staff
+                </label>
+
+                <select
+                  value={selectedStaff}
+                  onChange={(e) => setSelectedStaff(e.target.value)}
+                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold text-[#3b241b] outline-none"
+                >
+                  <option value="">Sélectionner...</option>
+
+                  {staff.map((member) => (
+                    <option
+                      key={member.id || getStaffName(member)}
+                      value={member.id || getStaffName(member)}
+                    >
+                      {getStaffName(member)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="mt-6 space-y-3">
                 {cartItems.length === 0 && (
                   <div className="text-[#a97862] bg-[#f7efe4] rounded-2xl p-5 text-center">
-                    Aucun produit sélectionné
+                    Aucun élément sélectionné
                   </div>
                 )}
 
@@ -502,7 +821,9 @@ export default function MokaOrderPad() {
                       <div className="font-black">{item.name}</div>
 
                       <div className="text-xs text-[#a97862]">
-                        {getSupplier(item)}
+                        {item.type === "prep"
+                          ? "Préparation interne"
+                          : getSupplier(item)}
                       </div>
                     </div>
 
