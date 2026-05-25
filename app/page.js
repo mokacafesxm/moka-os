@@ -296,7 +296,7 @@ export default function MokaOrderPad() {
     if (cartItems.length === 0) return;
 
     if (!selectedStaff) {
-      alert("Sélectionne un membre du staff avant d’envoyer ✅");
+      alert("Sélectionne un membre du staff avant d’envoyer ❌");
       return;
     }
 
