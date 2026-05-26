@@ -465,7 +465,7 @@ export default function MokaOrderPad() {
           </div>
         </header>
 
-        <div className="flex gap-3 mb-5 overflow-x-auto pb-1">
+        <div className="flex gap-3 mt-6 mb-8 overflow-x-auto pb-3">
           <button
             onClick={() => setActiveTab("orderpad")}
             className={`px-6 py-3 rounded-full text-sm font-black transition ${
