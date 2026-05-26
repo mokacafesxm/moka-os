@@ -14,12 +14,6 @@ const PREPS_URL =
 const STAFF_URL =
   "https://mokacafesxm.app.n8n.cloud/webhook/moka-staff-list";
 
-const PRODUCT_UPDATE_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook/moka-product-update";
-
-const COMPLETE_PREP_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook/moka-prep-complete";
-
 const categoryEmojis = {
   Bar: "☕",
   Boissons: "🥤",
@@ -116,10 +110,6 @@ function getPrepPriority(prep) {
   return prep?.priority || prep?.Priorité || prep?.priorite || "Normal";
 }
 
-function getEditableId(item) {
-  return item?.ingredientId || item?.matierePremiereId || item?.productId || item?.id;
-}
-
 export default function MokaOrderPad() {
   const [activeTab, setActiveTab] = useState("orderpad");
 
@@ -138,16 +128,6 @@ export default function MokaOrderPad() {
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState("");
 
-  const [settingsItem, setSettingsItem] = useState(null);
-  const [settingsForm, setSettingsForm] = useState({});
-  const [savingSettings, setSavingSettings] = useState(false);
-
-  const loadPreps = () => {
-    setLoadingPreps(true);
-
-    loadPreps();
-  };
-
   useEffect(() => {
     fetch(PRODUCTS_URL)
       .then((res) => res.json())
@@ -160,7 +140,16 @@ export default function MokaOrderPad() {
         setLoading(false);
       });
 
-    loadPreps();
+    fetch(PREPS_URL)
+      .then((res) => res.json())
+      .then((data) => {
+        setPreps(normalizeArray(data, "preps"));
+        setLoadingPreps(false);
+      })
+      .catch((err) => {
+        console.error("Erreur chargement prépas:", err);
+        setLoadingPreps(false);
+      });
 
     fetch(STAFF_URL)
       .then((res) => res.json())
@@ -303,64 +292,6 @@ export default function MokaOrderPad() {
 
   const cartItems = Object.values(cart);
 
-  const prepCount = preps.filter(
-    (prep) => getPrepStatus(prep) !== "Terminé" && getPrepStatus(prep) !== "Fait"
-  ).length;
-
-  const openSettings = (item) => {
-    setSettingsItem(item);
-    setSettingsForm({
-      id: getEditableId(item),
-      name: item?.name || getPrepName(item),
-      fournisseurDefaut: getSupplier(item),
-      zoneStockage: item?.zone || item?.zoneStockage || item?.emplacement || "",
-      quantiteCommandee: item?.quantiteCommandee || item?.suggested || item?.quantity || "",
-      uniteStock: item?.unit || item?.uniteStock || "kg",
-      uniteCommande: item?.uniteCommande || item?.unit || "kg",
-      portion: item?.portion || item?.portionGrammes || "",
-      seuilAlerte: item?.seuilAlerte || item?.seuilAlertePortion || "",
-      seuilCritique: item?.seuilCritique || item?.seuilCritiquePortion || "",
-    });
-  };
-
-  const saveSettings = async () => {
-    if (!settingsForm.id) {
-      alert("ID produit introuvable ❌");
-      return;
-    }
-
-    setSavingSettings(true);
-
-    try {
-      const response = await fetch(PRODUCT_UPDATE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: settingsForm.id,
-          name: settingsForm.name,
-          fournisseurDefaut: settingsForm.fournisseurDefaut,
-          zoneStockage: settingsForm.zoneStockage,
-          quantiteCommandee: Number(settingsForm.quantiteCommandee) || 0,
-          uniteStock: settingsForm.uniteStock,
-          uniteCommande: settingsForm.uniteCommande,
-          portion: Number(settingsForm.portion) || 0,
-          seuilAlerte: Number(settingsForm.seuilAlerte) || 0,
-          seuilCritique: Number(settingsForm.seuilCritique) || 0,
-        }),
-      });
-
-      if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
-
-      alert("Réglages produit mis à jour ✅");
-      setSettingsItem(null);
-    } catch (error) {
-      console.error(error);
-      alert("Erreur : réglages non enregistrés ❌");
-    } finally {
-      setSavingSettings(false);
-    }
-  };
-
   const sendToMokaOS = async () => {
     if (cartItems.length === 0) return;
 
@@ -372,31 +303,6 @@ export default function MokaOrderPad() {
     setSending(true);
 
     try {
-      if (activeTab === "preps") {
-        const payload = cartItems
-          .filter((item) => item.type === "prep")
-          .map((item) => ({
-            id: item.id,
-            status: "Fait",
-            Staff: selectedStaff,
-            StaffName: selectedStaffName,
-            Date: new Date().toISOString(),
-          }));
-
-        const response = await fetch(COMPLETE_PREP_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
-
-        setCart({});
-        loadPreps();
-        alert("Préparation confirmée comme faite ✅");
-        return;
-      }
-
       const payload = cartItems.map((item) => ({
         id: item.id,
         Produit: item.name,
@@ -470,18 +376,13 @@ export default function MokaOrderPad() {
 
           <button
             onClick={() => setActiveTab("preps")}
-            className={`relative px-6 py-3 rounded-full text-sm font-black transition ${
+            className={`px-6 py-3 rounded-full text-sm font-black transition ${
               activeTab === "preps"
                 ? "bg-[#3b241b] text-white shadow-md"
                 : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
             }`}
           >
             👨‍🍳 Préparations à faire
-            {prepCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-black rounded-full min-w-6 h-6 px-2 flex items-center justify-center shadow-md">
-                {prepCount}
-              </span>
-            )}
           </button>
         </div>
 
@@ -702,16 +603,20 @@ export default function MokaOrderPad() {
                                   </div>
                                 </button>
 
-                                <button
-                                  onClick={() => openSettings(product)}
-                                  className={`block px-5 pb-5 text-sm font-bold underline ${
-                                    selected
-                                      ? "text-white/80"
-                                      : "text-[#a97862]"
-                                  }`}
-                                >
-                                  ⚙️ Réglages
-                                </button>
+                                {productUrl && (
+                                  <a
+                                    href={productUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={`block px-5 pb-5 text-sm font-bold underline ${
+                                      selected
+                                        ? "text-white/80"
+                                        : "text-[#a97862]"
+                                    }`}
+                                  >
+                                    Ouvrir la fiche ↗️
+                                  </a>
+                                )}
                               </div>
                             );
                           })}
@@ -841,16 +746,20 @@ export default function MokaOrderPad() {
                                   </div>
                                 </button>
 
-                                <button
-                                  onClick={() => openSettings(prep)}
-                                  className={`block px-5 pb-5 text-sm font-bold underline ${
-                                    selected
-                                      ? "text-white/80"
-                                      : "text-[#a97862]"
-                                  }`}
-                                >
-                                  ⚙️ Réglages
-                                </button>
+                                {prep.url && (
+                                  <a
+                                    href={prep.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={`block px-5 pb-5 text-sm font-bold underline ${
+                                      selected
+                                        ? "text-white/80"
+                                        : "text-[#a97862]"
+                                    }`}
+                                  >
+                                    Ouvrir la fiche ↗️
+                                  </a>
+                                )}
                               </div>
                             );
                           })}
@@ -866,15 +775,11 @@ export default function MokaOrderPad() {
           <aside className="col-span-12 xl:col-span-3">
             <div className="bg-white/95 rounded-[2rem] p-6 shadow-sm border border-[#eadfd4] sticky top-5">
               <h2 className="text-2xl font-black text-[#3b241b]">
-                {activeTab === "preps"
-                  ? "👨‍🍳 Confirmer la préparation"
-                  : "🛒 Action du jour"}
+                🛒 Action du jour
               </h2>
 
               <p className="text-sm text-[#a97862] mt-1">
-                {activeTab === "preps"
-                  ? "Valider une préparation terminée"
-                  : "Sélection staff depuis le pad"}
+                Sélection staff depuis le pad
               </p>
 
               <div className="mt-6">
@@ -938,88 +843,12 @@ export default function MokaOrderPad() {
                     : "bg-[#6f8f32] text-white shadow-md"
                 }`}
               >
-                {sending
-                  ? "Envoi en cours…"
-                  : activeTab === "preps"
-                  ? "Confirmer comme fait ✅"
-                  : "Envoyer vers MOKA-OS"}
+                {sending ? "Envoi en cours…" : "Envoyer vers MOKA-OS"}
               </button>
             </div>
           </aside>
         </div>
       </div>
-
-      {settingsItem && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-full max-w-2xl p-6">
-            <div className="flex justify-between gap-4 items-start mb-6">
-              <div>
-                <h2 className="text-3xl font-black text-[#3b241b]">
-                  ⚙️ Réglages produit
-                </h2>
-                <p className="text-sm text-[#a97862] mt-1">
-                  {settingsForm.name}
-                </p>
-              </div>
-
-              <button
-                onClick={() => setSettingsItem(null)}
-                className="text-2xl font-black text-[#a97862]"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                ["Fournisseur par défaut", "fournisseurDefaut"],
-                ["Zone de stockage", "zoneStockage"],
-                ["Quantité commandée", "quantiteCommandee"],
-                ["Unité stock", "uniteStock"],
-                ["Unité commande", "uniteCommande"],
-                ["Portion (g)", "portion"],
-                ["Seuil alerte (portion)", "seuilAlerte"],
-                ["Seuil critique (portion)", "seuilCritique"],
-              ].map(([label, key]) => (
-                <div key={key}>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">
-                    {label}
-                  </label>
-
-                  <input
-                    value={settingsForm[key] || ""}
-                    onChange={(e) =>
-                      setSettingsForm((prev) => ({
-                        ...prev,
-                        [key]: e.target.value,
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold text-[#3b241b] outline-none"
-                  />
-                </div>
-              ))}
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setSettingsItem(null)}
-                className="flex-1 py-4 rounded-2xl font-black bg-[#eadfd4] text-[#a97862]"
-              >
-                Annuler
-              </button>
-
-              <button
-                onClick={saveSettings}
-                disabled={savingSettings}
-                className="flex-1 py-4 rounded-2xl font-black bg-[#6f8f32] text-white"
-              >
-                {savingSettings ? "Enregistrement…" : "Enregistrer ✅"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </main>
   );
 }
