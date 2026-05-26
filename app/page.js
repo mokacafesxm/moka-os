@@ -495,7 +495,7 @@ export default function MokaOrderPad() {
         </div>
 
         <div className="grid grid-cols-12 gap-5">
-          <section className="col-span-12 xl:col-span-9">
+          <section className="col-span-12 md:col-span-8 xl:col-span-9">
             {activeTab === "orderpad" && (
               <>
                 <div className="bg-white/80 border border-[#eadfd4] rounded-[2rem] p-4 mb-5 shadow-sm">
@@ -585,7 +585,7 @@ export default function MokaOrderPad() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                           {productsInGroup.map((product) => {
                             const selected = !!cart[product.id];
                             const cat = product.category || "Autres";
@@ -758,7 +758,7 @@ export default function MokaOrderPad() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                           {prepsInGroup.map((prep) => {
                             const id = prep.id || getPrepName(prep);
                             const selected = !!cart[id];
@@ -872,7 +872,7 @@ export default function MokaOrderPad() {
             )}
           </section>
 
-          <aside className="col-span-12 xl:col-span-3">
+          <aside className="col-span-12 md:col-span-4 xl:col-span-3">
             <div className="bg-white/95 rounded-[2rem] p-6 shadow-sm border border-[#eadfd4] sticky top-5">
               <h2 className="text-2xl font-black text-[#3b241b]">
                 {activeTab === "preps"
@@ -979,7 +979,7 @@ export default function MokaOrderPad() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               {[
                 ["Fournisseur par défaut", "fournisseurDefaut"],
                 ["Zone de stockage", "zoneStockage"],
