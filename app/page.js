@@ -312,6 +312,25 @@ export default function MokaOrderPad() {
 
   const cartItems = Object.values(cart);
 
+  const uniqueValues = (values) => {
+    return [...new Set(values.filter(Boolean).map((v) => String(v).trim()).filter(Boolean))].sort();
+  };
+
+  const fournisseurOptions = uniqueValues(products.map((p) => getSupplier(p)));
+  const zoneOptions = uniqueValues(products.map((p) => p.zone || p.zoneStockage || p.emplacement));
+  const uniteOptions = uniqueValues([
+    ...products.map((p) => p.unit || p.uniteStock || p.uniteCommande),
+    "kg",
+    "g",
+    "L",
+    "ml",
+    "pièce",
+    "sceau",
+    "carton",
+    "boîte",
+    "sachet",
+  ]);
+
   const prepCount = preps.filter(
     (prep) => getPrepStatus(prep) !== "Terminé" && getPrepStatus(prep) !== "Fait"
   ).length;
@@ -979,32 +998,54 @@ export default function MokaOrderPad() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {[
-                ["Fournisseur par défaut", "fournisseurDefaut"],
-                ["Zone de stockage", "zoneStockage"],
-                ["Quantité commandée", "quantiteCommandee"],
-                ["Unité stock", "uniteStock"],
-                ["Unité commande", "uniteCommande"],
-                ["Portion (g)", "portion"],
-                ["Seuil alerte (portion)", "seuilAlerte"],
-                ["Seuil critique (portion)", "seuilCritique"],
-              ].map(([label, key]) => (
+                ["Fournisseur par défaut", "fournisseurDefaut", "select", fournisseurOptions],
+                ["Zone de stockage", "zoneStockage", "select", zoneOptions],
+                ["Quantité commandée", "quantiteCommandee", "number", []],
+                ["Unité stock", "uniteStock", "select", uniteOptions],
+                ["Unité commande", "uniteCommande", "select", uniteOptions],
+                ["Portion (g)", "portion", "number", []],
+                ["Seuil alerte (portion)", "seuilAlerte", "number", []],
+                ["Seuil critique (portion)", "seuilCritique", "number", []],
+              ].map(([label, key, type, options]) => (
                 <div key={key}>
                   <label className="block text-xs font-black text-[#a97862] mb-2">
                     {label}
                   </label>
 
-                  <input
-                    value={settingsForm[key] || ""}
-                    onChange={(e) =>
-                      setSettingsForm((prev) => ({
-                        ...prev,
-                        [key]: e.target.value,
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold text-[#3b241b] outline-none"
-                  />
+                  {type === "select" ? (
+                    <select
+                      value={settingsForm[key] || ""}
+                      onChange={(e) =>
+                        setSettingsForm((prev) => ({
+                          ...prev,
+                          [key]: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold text-[#3b241b] outline-none"
+                    >
+                      <option value="">Sélectionner...</option>
+
+                      {options.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="number"
+                      value={settingsForm[key] || ""}
+                      onChange={(e) =>
+                        setSettingsForm((prev) => ({
+                          ...prev,
+                          [key]: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold text-[#3b241b] outline-none"
+                    />
+                  )}
                 </div>
               ))}
             </div>
