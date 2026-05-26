@@ -142,6 +142,10 @@ export default function MokaOrderPad() {
   const [settingsForm, setSettingsForm] = useState({});
   const [savingSettings, setSavingSettings] = useState(false);
 
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminPin, setAdminPin] = useState("");
+
   const loadPreps = () => {
     setLoadingPreps(true);
 
@@ -335,7 +339,23 @@ export default function MokaOrderPad() {
     (prep) => getPrepStatus(prep) !== "Terminé" && getPrepStatus(prep) !== "Fait"
   ).length;
 
+  const unlockAdmin = () => {
+    if (adminPin === "1234") {
+      setIsAdmin(true);
+      setShowAdminModal(false);
+      setAdminPin("");
+      alert("Mode admin activé ✅");
+    } else {
+      alert("Code admin incorrect ❌");
+    }
+  };
+
   const openSettings = (item) => {
+    if (!isAdmin) {
+      setShowAdminModal(true);
+      return;
+    }
+
     setSettingsItem(item);
     setSettingsForm({
       id: getEditableId(item),
@@ -477,10 +497,30 @@ export default function MokaOrderPad() {
             </div>
           </div>
 
-          <div className="hidden md:block bg-white/90 rounded-[1.5rem] px-6 py-4 shadow-sm border border-[#eadfd4] text-right">
-            <div className="text-xs text-[#a97862]">Commande automatique</div>
+          <div className="hidden md:flex items-center gap-3">
+            <button
+              onClick={() => {
+                if (isAdmin) {
+                  setIsAdmin(false);
+                  alert("Mode admin désactivé");
+                } else {
+                  setShowAdminModal(true);
+                }
+              }}
+              className={`rounded-[1.5rem] px-5 py-4 shadow-sm border font-black ${
+                isAdmin
+                  ? "bg-[#6f8f32] text-white border-[#6f8f32]"
+                  : "bg-white/90 text-[#3b241b] border-[#eadfd4]"
+              }`}
+            >
+              {isAdmin ? "👤 Admin ON" : "👤 Admin"}
+            </button>
 
-            <div className="font-black text-xl text-[#3b241b]">17:45 SXM</div>
+            <div className="bg-white/90 rounded-[1.5rem] px-6 py-4 shadow-sm border border-[#eadfd4] text-right">
+              <div className="text-xs text-[#a97862]">Commande automatique</div>
+
+              <div className="font-black text-xl text-[#3b241b]">17:45 SXM</div>
+            </div>
           </div>
         </header>
 
@@ -730,16 +770,18 @@ export default function MokaOrderPad() {
                                   </div>
                                 </button>
 
-                                <button
-                                  onClick={() => openSettings(product)}
-                                  className={`block px-5 pb-5 text-sm font-bold underline ${
-                                    selected
-                                      ? "text-white/80"
-                                      : "text-[#a97862]"
-                                  }`}
-                                >
-                                  ⚙️ Réglages
-                                </button>
+                                {isAdmin && (
+                                  <button
+                                    onClick={() => openSettings(product)}
+                                    className={`block px-5 pb-5 text-sm font-bold underline ${
+                                      selected
+                                        ? "text-white/80"
+                                        : "text-[#a97862]"
+                                    }`}
+                                  >
+                                    ⚙️ Réglages
+                                  </button>
+                                )}
                               </div>
                             );
                           })}
@@ -869,16 +911,18 @@ export default function MokaOrderPad() {
                                   </div>
                                 </button>
 
-                                <button
-                                  onClick={() => openSettings(prep)}
-                                  className={`block px-5 pb-5 text-sm font-bold underline ${
-                                    selected
-                                      ? "text-white/80"
-                                      : "text-[#a97862]"
-                                  }`}
-                                >
-                                  ⚙️ Réglages
-                                </button>
+                                {isAdmin && (
+                                  <button
+                                    onClick={() => openSettings(prep)}
+                                    className={`block px-5 pb-5 text-sm font-bold underline ${
+                                      selected
+                                        ? "text-white/80"
+                                        : "text-[#a97862]"
+                                    }`}
+                                  >
+                                    ⚙️ Réglages
+                                  </button>
+                                )}
                               </div>
                             );
                           })}
@@ -976,6 +1020,50 @@ export default function MokaOrderPad() {
           </aside>
         </div>
       </div>
+
+
+      {showAdminModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-full max-w-sm p-6">
+            <h2 className="text-3xl font-black text-[#3b241b]">
+              👤 Accès admin
+            </h2>
+
+            <p className="text-sm text-[#a97862] mt-2">
+              Entrez le code à 4 chiffres pour accéder aux réglages.
+            </p>
+
+            <input
+              value={adminPin}
+              onChange={(e) => setAdminPin(e.target.value)}
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              placeholder="••••"
+              className="w-full mt-6 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-4 text-center text-3xl font-black tracking-[0.4em] text-[#3b241b] outline-none"
+            />
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowAdminModal(false);
+                  setAdminPin("");
+                }}
+                className="flex-1 py-4 rounded-2xl font-black bg-[#eadfd4] text-[#a97862]"
+              >
+                Annuler
+              </button>
+
+              <button
+                onClick={unlockAdmin}
+                className="flex-1 py-4 rounded-2xl font-black bg-[#6f8f32] text-white"
+              >
+                Entrer ✅
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {settingsItem && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
