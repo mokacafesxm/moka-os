@@ -495,7 +495,7 @@ export default function MokaOrderPad() {
         </div>
 
         <div className="grid grid-cols-12 gap-5">
-          <section className="col-span-12 md:col-span-8 xl:col-span-9">
+          <section className="col-span-9">
             {activeTab === "orderpad" && (
               <>
                 <div className="bg-white/80 border border-[#eadfd4] rounded-[2rem] p-4 mb-5 shadow-sm">
@@ -585,7 +585,7 @@ export default function MokaOrderPad() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-3 xl:grid-cols-4 gap-4">
                           {productsInGroup.map((product) => {
                             const selected = !!cart[product.id];
                             const cat = product.category || "Autres";
@@ -608,7 +608,7 @@ export default function MokaOrderPad() {
                                       ? removeItem(product.id)
                                       : addProduct(product)
                                   }
-                                  className={`w-full h-28 flex items-center justify-center overflow-hidden ${
+                                  className={`w-full h-20 flex items-center justify-center overflow-hidden ${
                                     selected ? "bg-white/10" : "bg-[#efe4d7]"
                                   }`}
                                 >
@@ -655,7 +655,7 @@ export default function MokaOrderPad() {
                                         {sub}
                                       </div>
 
-                                      <h2 className="text-2xl font-black leading-tight">
+                                      <h2 className="text-lg font-black leading-tight">
                                         {product.name}
                                       </h2>
                                     </div>
@@ -758,7 +758,7 @@ export default function MokaOrderPad() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-3 xl:grid-cols-4 gap-4">
                           {prepsInGroup.map((prep) => {
                             const id = prep.id || getPrepName(prep);
                             const selected = !!cart[id];
@@ -797,7 +797,7 @@ export default function MokaOrderPad() {
                                         👨‍🍳 Préparation
                                       </div>
 
-                                      <h2 className="text-2xl font-black leading-tight">
+                                      <h2 className="text-lg font-black leading-tight">
                                         {name}
                                       </h2>
                                     </div>
@@ -979,7 +979,7 @@ export default function MokaOrderPad() {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 xl:grid-cols-4 gap-4">
               {[
                 ["Fournisseur par défaut", "fournisseurDefaut"],
                 ["Zone de stockage", "zoneStockage"],
