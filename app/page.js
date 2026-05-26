@@ -479,7 +479,7 @@ export default function MokaOrderPad() {
 
           <button
             onClick={() => setActiveTab("preps")}
-            className={`relative px-6 py-3 rounded-full text-sm font-black transition ${
+            className={`relative min-w-[260px] px-6 py-3 rounded-full text-sm font-black transition ${
               activeTab === "preps"
                 ? "bg-[#3b241b] text-white shadow-md"
                 : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
@@ -494,8 +494,8 @@ export default function MokaOrderPad() {
           </button>
         </div>
 
-        <div className="grid grid-cols-12 gap-5">
-          <section className="col-span-9">
+        <div className="grid grid-cols-12 gap-4">
+          <section className="col-span-12 md:col-span-8 xl:col-span-9">
             {activeTab === "orderpad" && (
               <>
                 <div className="bg-white/80 border border-[#eadfd4] rounded-[2rem] p-4 mb-5 shadow-sm">
@@ -585,7 +585,7 @@ export default function MokaOrderPad() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-3 xl:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                           {productsInGroup.map((product) => {
                             const selected = !!cart[product.id];
                             const cat = product.category || "Autres";
@@ -758,7 +758,7 @@ export default function MokaOrderPad() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-3 xl:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                           {prepsInGroup.map((prep) => {
                             const id = prep.id || getPrepName(prep);
                             const selected = !!cart[id];
@@ -979,7 +979,7 @@ export default function MokaOrderPad() {
               </button>
             </div>
 
-            <div className="grid grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
               {[
                 ["Fournisseur par défaut", "fournisseurDefaut"],
                 ["Zone de stockage", "zoneStockage"],
