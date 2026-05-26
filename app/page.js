@@ -479,7 +479,7 @@ export default function MokaOrderPad() {
 
           <button
             onClick={() => setActiveTab("preps")}
-            className={`relative min-w-[260px] px-6 py-3 rounded-full text-sm font-black transition ${
+            className={`relative min-w-[340px] whitespace-nowrap px-8 py-4 rounded-full text-sm font-black transition ${
               activeTab === "preps"
                 ? "bg-[#3b241b] text-white shadow-md"
                 : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
@@ -487,7 +487,7 @@ export default function MokaOrderPad() {
           >
             👨‍🍳 Préparations à faire
             {prepCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-black rounded-full min-w-6 h-6 px-2 flex items-center justify-center shadow-md">
+              <span className="absolute -top-2 -right-4 bg-red-600 text-white text-xs font-black rounded-full min-w-6 h-6 px-2 flex items-center justify-center shadow-md">
                 {prepCount}
               </span>
             )}
