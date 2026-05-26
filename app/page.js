@@ -145,7 +145,16 @@ export default function MokaOrderPad() {
   const loadPreps = () => {
     setLoadingPreps(true);
 
-    loadPreps();
+    fetch(PREPS_URL)
+      .then((res) => res.json())
+      .then((data) => {
+        setPreps(normalizeArray(data, "preps"));
+        setLoadingPreps(false);
+      })
+      .catch((err) => {
+        console.error("Erreur chargement prépas:", err);
+        setLoadingPreps(false);
+      });
   };
 
   useEffect(() => {
