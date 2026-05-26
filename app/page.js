@@ -340,7 +340,7 @@ export default function MokaOrderPad() {
   ).length;
 
   const unlockAdmin = () => {
-    if (adminPin === "1234") {
+    if (adminPin === "3578") {
       setIsAdmin(true);
       setShowAdminModal(false);
       setAdminPin("");
