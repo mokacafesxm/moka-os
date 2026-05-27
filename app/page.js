@@ -20,6 +20,9 @@ const PRODUCT_UPDATE_URL =
 const COMPLETE_PREP_URL =
   "https://mokacafesxm.app.n8n.cloud/webhook/moka-prep-complete";
 
+const CLOCK_URL =
+  "https://mokacafesxm.app.n8n.cloud/webhook/moka-staff-clock";
+
 const categoryEmojis = {
   Bar: "☕",
   Boissons: "🥤",
@@ -145,6 +148,10 @@ export default function MokaOrderPad() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPin, setAdminPin] = useState("");
+
+  const [showClockModal, setShowClockModal] = useState(false);
+  const [clockStatuses, setClockStatuses] = useState({});
+  const [clockSending, setClockSending] = useState(false);
 
   const loadPreps = () => {
     setLoadingPreps(true);
@@ -339,6 +346,48 @@ export default function MokaOrderPad() {
     (prep) => getPrepStatus(prep) !== "Terminé" && getPrepStatus(prep) !== "Fait"
   ).length;
 
+  const sendClockAction = async (member, action) => {
+    const staffId = member.id || getStaffName(member);
+    const staffName = getStaffName(member);
+
+    setClockSending(true);
+
+    try {
+      const response = await fetch(CLOCK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          staffId,
+          staffName,
+          action,
+          timestamp: new Date().toISOString(),
+          source: "MOKA OS",
+        }),
+      });
+
+      if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
+
+      setClockStatuses((prev) => ({
+        ...prev,
+        [staffId]:
+          action === "Arrivée"
+            ? "present"
+            : action === "Départ pause"
+            ? "pause"
+            : action === "Retour pause"
+            ? "present"
+            : action === "Départ"
+            ? "done"
+            : prev[staffId],
+      }));
+    } catch (error) {
+      console.error(error);
+      alert("Erreur pointage ❌");
+    } finally {
+      setClockSending(false);
+    }
+  };
+
   const unlockAdmin = () => {
     if (adminPin === "3578") {
       setIsAdmin(true);
@@ -498,6 +547,13 @@ export default function MokaOrderPad() {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
+            <button
+              onClick={() => setShowClockModal(true)}
+              className="rounded-[1.5rem] px-5 py-4 shadow-sm border font-black bg-white/90 text-[#3b241b] border-[#eadfd4]"
+            >
+              ⏱ Pointage
+            </button>
+
             <button
               onClick={() => {
                 if (isAdmin) {
@@ -1021,6 +1077,117 @@ export default function MokaOrderPad() {
         </div>
       </div>
 
+
+
+      {showClockModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-full max-w-3xl p-6">
+            <div className="flex justify-between gap-4 items-start mb-6">
+              <div>
+                <h2 className="text-3xl font-black text-[#3b241b]">
+                  ⏱ Pointage staff
+                </h2>
+                <p className="text-sm text-[#a97862] mt-1">
+                  Arrivée, pause, retour pause et départ.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowClockModal(false)}
+                className="text-2xl font-black text-[#a97862]"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {staff.map((member) => {
+                const staffId = member.id || getStaffName(member);
+                const staffName = getStaffName(member);
+                const status = clockStatuses[staffId] || "absent";
+
+                const statusLabel =
+                  status === "present"
+                    ? "🟢 Présent"
+                    : status === "pause"
+                    ? "🟠 En pause"
+                    : status === "done"
+                    ? "⚫ Terminé"
+                    : "⚪ Pas pointé";
+
+                return (
+                  <div
+                    key={staffId}
+                    className="rounded-[1.5rem] border border-[#eadfd4] bg-[#fffaf3] p-4"
+                  >
+                    <div className="flex justify-between gap-3 items-start">
+                      <div>
+                        <div className="font-black text-xl text-[#3b241b]">
+                          {staffName}
+                        </div>
+                        <div className="text-sm font-bold text-[#a97862] mt-1">
+                          {statusLabel}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                      {status === "absent" && (
+                        <button
+                          disabled={clockSending}
+                          onClick={() => sendClockAction(member, "Arrivée")}
+                          className="col-span-2 bg-[#6f8f32] text-white py-3 rounded-xl font-black"
+                        >
+                          Arrivée ✅
+                        </button>
+                      )}
+
+                      {status === "present" && (
+                        <>
+                          <button
+                            disabled={clockSending}
+                            onClick={() => sendClockAction(member, "Départ pause")}
+                            className="bg-orange-500 text-white py-3 rounded-xl font-black"
+                          >
+                            Pause
+                          </button>
+
+                          <button
+                            disabled={clockSending}
+                            onClick={() => sendClockAction(member, "Départ")}
+                            className="bg-[#3b241b] text-white py-3 rounded-xl font-black"
+                          >
+                            Départ
+                          </button>
+                        </>
+                      )}
+
+                      {status === "pause" && (
+                        <button
+                          disabled={clockSending}
+                          onClick={() => sendClockAction(member, "Retour pause")}
+                          className="col-span-2 bg-[#6f8f32] text-white py-3 rounded-xl font-black"
+                        >
+                          Retour pause ✅
+                        </button>
+                      )}
+
+                      {status === "done" && (
+                        <button
+                          disabled
+                          className="col-span-2 bg-[#eadfd4] text-[#a97862] py-3 rounded-xl font-black"
+                        >
+                          Journée terminée
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showAdminModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
