@@ -1081,7 +1081,7 @@ export default function MokaOrderPad() {
 
       {showClockModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-full max-w-3xl p-6">
+          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-full max-w-2xl p-5">
             <div className="flex justify-between gap-4 items-start mb-6">
               <div>
                 <h2 className="text-3xl font-black text-[#3b241b]">
@@ -1094,7 +1094,7 @@ export default function MokaOrderPad() {
 
               <button
                 onClick={() => setShowClockModal(false)}
-                className="text-2xl font-black text-[#a97862]"
+                className="w-12 h-12 rounded-full bg-[#f4eee7] hover:bg-[#eadfd4] flex items-center justify-center text-3xl font-black text-[#a97862] shrink-0"
               >
                 ×
               </button>
@@ -1247,7 +1247,7 @@ export default function MokaOrderPad() {
 
               <button
                 onClick={() => setSettingsItem(null)}
-                className="text-2xl font-black text-[#a97862]"
+                className="w-12 h-12 rounded-full bg-[#f4eee7] hover:bg-[#eadfd4] flex items-center justify-center text-3xl font-black text-[#a97862] shrink-0"
               >
                 ×
               </button>
