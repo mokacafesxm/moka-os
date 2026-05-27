@@ -621,7 +621,10 @@ export default function MokaOrderPad() {
                 : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
             }`}
           >
-            📦 Stock Live
+            <span className="inline-flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-red-600"></span>
+              Stock Live
+            </span>
           </button>
 
           <button
@@ -668,7 +671,7 @@ export default function MokaOrderPad() {
                   <div className="space-y-5">
                     <div className="flex items-center gap-4">
                       <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
-                        📦 Stock Live
+                        <span className="inline-flex w-3 h-3 rounded-full bg-red-600 mr-2"></span> Stock Live
                       </div>
                       <div className="flex-1 h-[1px] bg-[#dccbbb]" />
                       <div className="text-xs font-bold text-[#a97862]">
