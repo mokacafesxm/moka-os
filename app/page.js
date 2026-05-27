@@ -14,6 +14,9 @@ const PREPS_URL =
 const STAFF_URL =
   "https://mokacafesxm.app.n8n.cloud/webhook/moka-staff-list";
 
+const STOCK_URL =
+  "https://mokacafesxm.app.n8n.cloud/webhook/moka-stock-live";
+
 const PRODUCT_UPDATE_URL =
   "https://mokacafesxm.app.n8n.cloud/webhook/moka-product-update";
 
@@ -81,6 +84,22 @@ function getSupplier(product) {
   return product?.supplier || "À définir";
 }
 
+function getStockName(item) {
+  return item?.name || item?.produit || item?.Produit || item?.ingredient || "Produit";
+}
+
+function getStockStatus(item) {
+  return item?.status || item?.statut || item?.Statut || "À configurer";
+}
+
+function getStockPortions(item) {
+  return item?.portionsRestantes || item?.portions || item?.["Portions restantes"] || 0;
+}
+
+function getStockZone(item) {
+  return item?.zone || item?.emplacement || item?.zoneStockage || "";
+}
+
 function getStaffName(member) {
   return (
     member?.name ||
@@ -129,6 +148,7 @@ export default function MokaOrderPad() {
   const [products, setProducts] = useState([]);
   const [preps, setPreps] = useState([]);
   const [staff, setStaff] = useState([]);
+  const [stockLive, setStockLive] = useState([]);
 
   const [activeCategory, setActiveCategory] = useState("Tous");
   const [activeSubCategory, setActiveSubCategory] = useState("Tous");
@@ -138,6 +158,7 @@ export default function MokaOrderPad() {
 
   const [loading, setLoading] = useState(true);
   const [loadingPreps, setLoadingPreps] = useState(true);
+  const [loadingStock, setLoadingStock] = useState(true);
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -181,6 +202,17 @@ export default function MokaOrderPad() {
       });
 
     loadPreps();
+
+    fetch(STOCK_URL)
+      .then((res) => res.json())
+      .then((data) => {
+        setStockLive(normalizeArray(data, "stock"));
+        setLoadingStock(false);
+      })
+      .catch((err) => {
+        console.error("Erreur chargement stock live:", err);
+        setLoadingStock(false);
+      });
 
     fetch(STAFF_URL)
       .then((res) => res.json())
@@ -582,6 +614,17 @@ export default function MokaOrderPad() {
 
         <div className="flex gap-3 mt-6 mb-8 overflow-x-auto pb-3">
           <button
+            onClick={() => setActiveTab("stock")}
+            className={`px-6 py-3 rounded-full text-sm font-black transition ${
+              activeTab === "stock"
+                ? "bg-[#3b241b] text-white shadow-md"
+                : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
+            }`}
+          >
+            📦 Stock Live
+          </button>
+
+          <button
             onClick={() => setActiveTab("orderpad")}
             className={`px-6 py-3 rounded-full text-sm font-black transition ${
               activeTab === "orderpad"
@@ -611,6 +654,86 @@ export default function MokaOrderPad() {
 
         <div className="grid grid-cols-12 gap-4">
           <section className="col-span-12 md:col-span-8 xl:col-span-9">
+            {activeTab === "stock" && (
+              <>
+                {loadingStock ? (
+                  <div className="bg-white rounded-[2rem] p-10 text-center text-[#a97862]">
+                    Chargement du stock live…
+                  </div>
+                ) : stockLive.length === 0 ? (
+                  <div className="bg-white rounded-[2rem] p-10 text-center text-[#a97862]">
+                    Aucun stock trouvé.
+                  </div>
+                ) : (
+                  <div className="space-y-5">
+                    <div className="flex items-center gap-4">
+                      <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
+                        📦 Stock Live
+                      </div>
+                      <div className="flex-1 h-[1px] bg-[#dccbbb]" />
+                      <div className="text-xs font-bold text-[#a97862]">
+                        {stockLive.length} produits
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {stockLive.map((item) => {
+                        const status = getStockStatus(item);
+                        const isCritical = String(status).includes("Critique");
+                        const isLow = String(status).includes("Stock bas");
+
+                        return (
+                          <div
+                            key={item.id || getStockName(item)}
+                            className="rounded-[1.75rem] shadow-sm border border-[#eadfd4] bg-white text-[#3b241b] overflow-hidden"
+                          >
+                            <div className={`h-3 ${
+                              isCritical ? "bg-red-600" : isLow ? "bg-orange-500" : "bg-[#6f8f32]"
+                            }`} />
+
+                            <div className="p-5">
+                              <div className="text-xs font-black text-[#6f8f32] mb-2">
+                                {status}
+                              </div>
+
+                              <h2 className="text-lg font-black leading-tight">
+                                {getStockName(item)}
+                              </h2>
+
+                              <div className="mt-5 rounded-2xl p-4 bg-[#f7efe4]">
+                                <div className="text-xs opacity-70">
+                                  Portions restantes
+                                </div>
+
+                                <div className="text-2xl font-black mt-1">
+                                  {getStockPortions(item)}
+                                </div>
+
+                                {getStockZone(item) && (
+                                  <div className="text-xs opacity-70 mt-2">
+                                    Zone : {getStockZone(item)}
+                                  </div>
+                                )}
+                              </div>
+
+                              {isAdmin && (
+                                <button
+                                  onClick={() => openSettings(item)}
+                                  className="block mt-4 text-sm font-bold underline text-[#a97862]"
+                                >
+                                  ⚙️ Corriger stock
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
             {activeTab === "orderpad" && (
               <>
                 <div className="bg-white/80 border border-[#eadfd4] rounded-[2rem] p-4 mb-5 shadow-sm">
