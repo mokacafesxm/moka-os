@@ -23,6 +23,9 @@ const PRODUCT_UPDATE_URL =
 const COMPLETE_PREP_URL =
   "https://mokacafesxm.app.n8n.cloud/webhook/moka-prep-complete";
 
+const CREATE_PREP_URL =
+  "https://mokacafesxm.app.n8n.cloud/webhook/moka-create-prep";
+
 const CLOCK_URL =
   "https://mokacafesxm.app.n8n.cloud/webhook/moka-staff-clock";
 
@@ -345,6 +348,25 @@ export default function MokaOrderPad() {
     }));
   };
 
+  const addStockPrep = (item) => {
+    const id = item.id || getStockName(item);
+
+    setCart((prev) => ({
+      ...prev,
+      [id]: {
+        ...item,
+        id,
+        name: getStockName(item),
+        type: "stock-prep",
+        qty: Number(item.quantitePrep || item.quantity || item.suggested || 1),
+        unit: item.unit || item.unite || "kg",
+        category: "Prépas cuisine",
+        subcategory: "Stock Live",
+        supplier: "Préparation interne",
+      },
+    }));
+  };
+
   const removeItem = (id) => {
     setCart((prev) => {
       const copy = { ...prev };
@@ -501,6 +523,36 @@ export default function MokaOrderPad() {
     setSending(true);
 
     try {
+      if (activeTab === "stock") {
+        const payload = cartItems
+          .filter((item) => item.type === "stock-prep")
+          .map((item) => ({
+            id: item.id,
+            produit: item.name,
+            quantite: item.qty,
+            unite: item.unit || "kg",
+            priorite: "Haute",
+            statut: "À faire",
+            staffId: selectedStaff,
+            staffName: selectedStaffName,
+            source: "Stock Live",
+            date: new Date().toISOString(),
+          }));
+
+        const response = await fetch(CREATE_PREP_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
+
+        setCart({});
+        loadPreps();
+        alert("Préparation ajoutée ✅");
+        return;
+      }
+
       if (activeTab === "preps") {
         const payload = cartItems
           .filter((item) => item.type === "prep")
@@ -681,14 +733,21 @@ export default function MokaOrderPad() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                       {stockLive.map((item) => {
+                        const stockId = item.id || getStockName(item);
+                        const selected = !!cart[stockId];
                         const status = getStockStatus(item);
                         const isCritical = String(status).includes("Critique");
                         const isLow = String(status).includes("Stock bas");
 
                         return (
                           <div
-                            key={item.id || getStockName(item)}
-                            className="rounded-[1.75rem] shadow-sm border border-[#eadfd4] bg-white text-[#3b241b] overflow-hidden"
+                            key={stockId}
+                            onClick={() => selected ? removeItem(stockId) : addStockPrep(item)}
+                            className={`rounded-[1.75rem] shadow-sm border transition overflow-hidden cursor-pointer ${
+                              selected
+                                ? "bg-[#6f8f32] text-white border-[#6f8f32]"
+                                : "bg-white text-[#3b241b] border-[#eadfd4]"
+                            }`}
                           >
                             <div className={`h-3 ${
                               isCritical ? "bg-red-600" : isLow ? "bg-orange-500" : "bg-[#6f8f32]"
@@ -1120,13 +1179,17 @@ export default function MokaOrderPad() {
           <aside className="col-span-12 md:col-span-4 xl:col-span-3">
             <div className="bg-white/95 rounded-[2rem] p-6 shadow-sm border border-[#eadfd4] sticky top-5">
               <h2 className="text-2xl font-black text-[#3b241b]">
-                {activeTab === "preps"
+                {activeTab === "stock"
+                  ? "👨‍🍳 Envoyer en préparation"
+                  : activeTab === "preps"
                   ? "👨‍🍳 Confirmer la préparation"
                   : "🛒 Action du jour"}
               </h2>
 
               <p className="text-sm text-[#a97862] mt-1">
-                {activeTab === "preps"
+                {activeTab === "stock"
+                  ? "Sélectionne un produit Stock Live puis un staff"
+                  : activeTab === "preps"
                   ? "Valider une préparation terminée"
                   : "Sélection staff depuis le pad"}
               </p>
@@ -1194,6 +1257,8 @@ export default function MokaOrderPad() {
               >
                 {sending
                   ? "Envoi en cours…"
+                  : activeTab === "stock"
+                  ? "Envoyer en préparation 👨‍🍳"
                   : activeTab === "preps"
                   ? "Confirmer comme fait ✅"
                   : "Envoyer vers MOKA-OS"}
