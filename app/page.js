@@ -575,7 +575,7 @@ export default function MokaOrderPad() {
             <div className="bg-white/90 rounded-[1.5rem] px-6 py-4 shadow-sm border border-[#eadfd4] text-right">
               <div className="text-xs text-[#a97862]">Commande automatique</div>
 
-              <div className="font-black text-xl text-[#3b241b]">17:45 SXM</div>
+              <div className="font-black text-base text-[#3b241b]">17:45 SXM</div>
             </div>
           </div>
         </header>
@@ -1080,8 +1080,8 @@ export default function MokaOrderPad() {
 
 
       {showClockModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-full max-w-2xl p-5">
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3">
+          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-xl max-h-[86vh] overflow-y-auto p-4">
             <div className="flex justify-between gap-4 items-start mb-6">
               <div>
                 <h2 className="text-3xl font-black text-[#3b241b]">
@@ -1100,7 +1100,7 @@ export default function MokaOrderPad() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               {staff.map((member) => {
                 const staffId = member.id || getStaffName(member);
                 const staffName = getStaffName(member);
@@ -1118,11 +1118,11 @@ export default function MokaOrderPad() {
                 return (
                   <div
                     key={staffId}
-                    className="rounded-[1.5rem] border border-[#eadfd4] bg-[#fffaf3] p-4"
+                    className="rounded-[1.25rem] border border-[#eadfd4] bg-[#fffaf3] p-3"
                   >
                     <div className="flex justify-between gap-3 items-start">
                       <div>
-                        <div className="font-black text-xl text-[#3b241b]">
+                        <div className="font-black text-base text-[#3b241b]">
                           {staffName}
                         </div>
                         <div className="text-sm font-bold text-[#a97862] mt-1">
@@ -1136,7 +1136,7 @@ export default function MokaOrderPad() {
                         <button
                           disabled={clockSending}
                           onClick={() => sendClockAction(member, "Arrivée")}
-                          className="col-span-2 bg-[#6f8f32] text-white py-3 rounded-xl font-black"
+                          className="col-span-2 bg-[#6f8f32] text-white py-2 rounded-xl font-black text-sm"
                         >
                           Arrivée ✅
                         </button>
@@ -1147,7 +1147,7 @@ export default function MokaOrderPad() {
                           <button
                             disabled={clockSending}
                             onClick={() => sendClockAction(member, "Départ pause")}
-                            className="bg-orange-500 text-white py-3 rounded-xl font-black"
+                            className="bg-orange-500 text-white py-2 rounded-xl font-black text-sm"
                           >
                             Pause
                           </button>
@@ -1155,7 +1155,7 @@ export default function MokaOrderPad() {
                           <button
                             disabled={clockSending}
                             onClick={() => sendClockAction(member, "Départ")}
-                            className="bg-[#3b241b] text-white py-3 rounded-xl font-black"
+                            className="bg-[#3b241b] text-white py-2 rounded-xl font-black text-sm"
                           >
                             Départ
                           </button>
@@ -1166,7 +1166,7 @@ export default function MokaOrderPad() {
                         <button
                           disabled={clockSending}
                           onClick={() => sendClockAction(member, "Retour pause")}
-                          className="col-span-2 bg-[#6f8f32] text-white py-3 rounded-xl font-black"
+                          className="col-span-2 bg-[#6f8f32] text-white py-2 rounded-xl font-black text-sm"
                         >
                           Retour pause ✅
                         </button>
@@ -1175,7 +1175,7 @@ export default function MokaOrderPad() {
                       {status === "done" && (
                         <button
                           disabled
-                          className="col-span-2 bg-[#eadfd4] text-[#a97862] py-3 rounded-xl font-black"
+                          className="col-span-2 bg-[#eadfd4] text-[#a97862] py-2 rounded-xl font-black text-sm"
                         >
                           Journée terminée
                         </button>
@@ -1190,7 +1190,7 @@ export default function MokaOrderPad() {
       )}
 
       {showAdminModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3">
           <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-full max-w-sm p-6">
             <h2 className="text-3xl font-black text-[#3b241b]">
               👤 Accès admin
@@ -1233,7 +1233,7 @@ export default function MokaOrderPad() {
       )}
 
       {settingsItem && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3">
           <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-full max-w-2xl p-6">
             <div className="flex justify-between gap-4 items-start mb-6">
               <div>
