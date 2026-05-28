@@ -279,6 +279,11 @@ export default function MokaOrderPad() {
       });
   }, []);
 
+  useEffect(() => {
+    setCart({});
+    setSelectedStaff("");
+  }, [activeTab, stockView]);
+
   const selectedStaffName = useMemo(() => {
     const found = staff.find(
       (member) => String(member.id || getStaffName(member)) === selectedStaff
