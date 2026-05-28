@@ -48,7 +48,7 @@ const categoryEmojis = {
 };
 
 const categoryOrder = [
-  "Tous",
+  
   "Bar",
   "Boissons",
   "Protéines",
@@ -176,8 +176,8 @@ export default function MokaOrderPad() {
   const [staff, setStaff] = useState([]);
   const [stockLive, setStockLive] = useState([]);
 
-  const [activeCategory, setActiveCategory] = useState("Tous");
-  const [activeSubCategory, setActiveSubCategory] = useState("Tous");
+  const [activeCategory, setActiveCategory] = useState("");
+  const [activeSubCategory, setActiveSubCategory] = useState("");
 
   const [cart, setCart] = useState({});
   const [selectedStaff, setSelectedStaff] = useState("");
@@ -189,7 +189,7 @@ export default function MokaOrderPad() {
   const [search, setSearch] = useState("");
   const [stockSearch, setStockSearch] = useState("");
   const [stockView, setStockView] = useState("prepa");
-  const [activeStockCategory, setActiveStockCategory] = useState("Tous");
+  const [activeStockCategory, setActiveStockCategory] = useState("");
 
   const [settingsItem, setSettingsItem] = useState(null);
   const [settingsForm, setSettingsForm] = useState({});
@@ -222,7 +222,12 @@ export default function MokaOrderPad() {
     fetch(PRODUCTS_URL)
       .then((res) => res.json())
       .then((data) => {
-        setProducts(normalizeArray(data, "products"));
+        const list = normalizeArray(data, "products");
+        setProducts(list);
+
+        const firstCategory = list.find((p) => p.category)?.category;
+        if (firstCategory) setActiveCategory(firstCategory);
+
         setLoading(false);
       })
       .catch((err) => {
@@ -262,10 +267,13 @@ export default function MokaOrderPad() {
   }, [staff, selectedStaff]);
 
   const categories = useMemo(() => {
-    const found = [...new Set(products.map((p) => p.category || "Autres"))];
+    const found = [...new Set(products.map((p) => p.category || "Autres"))]
+      .filter((cat) => {
+        const clean = String(cat || "").trim().toLowerCase();
+        return clean !== "tous" && clean !== "tout" && clean !== "all";
+      });
 
     return [
-      "Tous",
       ...found.sort((a, b) => {
         const ia = categoryOrder.indexOf(a);
         const ib = categoryOrder.indexOf(b);
@@ -276,7 +284,7 @@ export default function MokaOrderPad() {
   }, [products]);
 
   const subCategories = useMemo(() => {
-    if (activeCategory === "Tous") return [];
+    if (!activeCategory) return [];
 
     const found = products
       .filter((p) => (p.category || "Autres") === activeCategory)
@@ -294,10 +302,10 @@ export default function MokaOrderPad() {
       const q = search.trim().toLowerCase();
 
       const matchesCategory =
-        activeCategory === "Tous" || cat === activeCategory;
+        cat === activeCategory;
 
       const matchesSubCategory =
-        activeSubCategory === "Tous" || sub === activeSubCategory;
+        !activeSubCategory || sub === activeSubCategory;
 
       const matchesSearch =
         !q ||
@@ -449,10 +457,13 @@ export default function MokaOrderPad() {
   }, [filteredStockLive]);
 
   const stockCategories = useMemo(() => {
-    const found = [...new Set(stockProducts.map((item) => getStockCategory(item) || "Autres"))];
+    const found = [...new Set(stockProducts.map((item) => getStockCategory(item) || "Autres"))]
+      .filter((cat) => {
+        const clean = String(cat || "").trim().toLowerCase();
+        return clean !== "tous" && clean !== "tout" && clean !== "all";
+      });
 
     return [
-      "Tous",
       ...found.sort((a, b) => {
         const ia = categoryOrder.indexOf(a);
         const ib = categoryOrder.indexOf(b);
@@ -466,7 +477,7 @@ export default function MokaOrderPad() {
 
     return stockProducts.filter((item) => {
       const cat = getStockCategory(item);
-      return activeStockCategory === "Tous" || cat === activeStockCategory;
+      return !activeStockCategory || cat === activeStockCategory;
     });
   }, [stockView, stockPreps, stockProducts, activeStockCategory]);
 
@@ -771,7 +782,12 @@ export default function MokaOrderPad() {
           </button>
 
           <button
-            onClick={() => setActiveTab("orderpad")}
+            onClick={() => {
+                setActiveTab("orderpad");
+                if (!activeCategory && categories[0]) {
+                  setActiveCategory(categories[0]);
+                }
+              }}
             className={`px-6 py-3 rounded-full text-sm font-black transition ${
               activeTab === "orderpad"
                 ? "bg-[#3b241b] text-white shadow-md"
@@ -828,7 +844,7 @@ export default function MokaOrderPad() {
                         <button
                           onClick={() => {
                             setStockView("prepa");
-                            setActiveStockCategory("Tous");
+                            ;
                           }}
                           className={`px-5 py-3 rounded-full whitespace-nowrap text-sm font-black transition ${
                             stockView === "prepa"
@@ -842,7 +858,9 @@ export default function MokaOrderPad() {
                         <button
                           onClick={() => {
                             setStockView("stock");
-                            setActiveStockCategory("Tous");
+                            if (stockCategories[0]) {
+                              setActiveStockCategory(stockCategories[0]);
+                            }
                           }}
                           className={`px-5 py-3 rounded-full whitespace-nowrap text-sm font-black transition ${
                             stockView === "stock"
@@ -856,7 +874,7 @@ export default function MokaOrderPad() {
 
                       {stockView === "stock" && (
                         <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
-                          {stockCategories.map((cat) => (
+                          {stockCategories.filter((cat) => String(cat).trim().toLowerCase() !== "tous").map((cat) => (
                             <button
                               key={cat}
                               onClick={() => setActiveStockCategory(cat)}
@@ -866,7 +884,7 @@ export default function MokaOrderPad() {
                                   : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
                               }`}
                             >
-                              {cat === "Tous" ? "✨ Tous" : `${categoryEmojis[cat] || "📌"} ${cat}`}
+                              {`${categoryEmojis[cat] || "📌"} ${cat}`}
                             </button>
                           ))}
                         </div>
@@ -992,12 +1010,12 @@ export default function MokaOrderPad() {
                   </div>
 
                   <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
-                    {categories.map((cat) => (
+                    {categories.filter((cat) => String(cat).trim().toLowerCase() !== "tous").map((cat) => (
                       <button
                         key={cat}
                         onClick={() => {
                           setActiveCategory(cat);
-                          setActiveSubCategory("Tous");
+                          setActiveSubCategory("");
                         }}
                         className={`px-5 py-3 rounded-full whitespace-nowrap text-sm font-black transition ${
                           activeCategory === cat
@@ -1005,27 +1023,14 @@ export default function MokaOrderPad() {
                             : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
                         }`}
                       >
-                        {cat === "Tous"
-                          ? "✨ Tous"
-                          : `${categoryEmojis[cat] || "📌"} ${cat}`}
+                        {`${categoryEmojis[cat] || "📌"} ${cat}`}
                       </button>
                     ))}
                   </div>
 
-                  {activeCategory !== "Tous" && subCategories.length > 0 && (
+                  {subCategories.length > 0 && (
                     <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
-                      <button
-                        onClick={() => setActiveSubCategory("Tous")}
-                        className={`px-4 py-2 rounded-full whitespace-nowrap text-xs font-black transition ${
-                          activeSubCategory === "Tous"
-                            ? "bg-[#3b241b] text-white"
-                            : "bg-[#f7efe4] text-[#8b6f61] border border-[#eadfd4]"
-                        }`}
-                      >
-                        Tous
-                      </button>
-
-                      {subCategories.map((sub) => (
+{subCategories.map((sub) => (
                         <button
                           key={sub}
                           onClick={() => setActiveSubCategory(sub)}
