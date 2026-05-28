@@ -200,7 +200,28 @@ export default function MokaOrderPad() {
   const [adminPin, setAdminPin] = useState("");
 
   const [showClockModal, setShowClockModal] = useState(false);
-  const [clockStatuses, setClockStatuses] = useState({});
+  const [clockStatuses, setClockStatuses] = useState(() => {
+    if (typeof window === "undefined") return {};
+
+    const today = new Date().toISOString().slice(0, 10);
+    const saved = JSON.parse(localStorage.getItem("mokaClockStatuses") || "{}");
+
+    if (saved.date !== today) return {};
+
+    const now = new Date();
+    const afterReset = now.getHours() >= 18;
+
+    if (afterReset && !saved.resetDone) {
+      localStorage.setItem("mokaClockStatuses", JSON.stringify({
+        date: today,
+        resetDone: true,
+        statuses: {},
+      }));
+      return {};
+    }
+
+    return saved.statuses || {};
+  });
   const [clockSending, setClockSending] = useState(false);
 
   const loadPreps = () => {
@@ -523,19 +544,30 @@ export default function MokaOrderPad() {
 
       if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
 
-      setClockStatuses((prev) => ({
-        ...prev,
-        [staffId]:
-          action === "Arrivée"
-            ? "present"
-            : action === "Départ pause"
-            ? "pause"
-            : action === "Retour pause"
-            ? "present"
-            : action === "Départ"
-            ? "done"
-            : prev[staffId],
-      }));
+      setClockStatuses((prev) => {
+        const next = {
+          ...prev,
+          [staffId]:
+            action === "Arrivée"
+              ? "present"
+              : action === "Départ pause"
+              ? "pause"
+              : action === "Retour pause"
+              ? "present"
+              : action === "Départ"
+              ? "done"
+              : prev[staffId],
+        };
+
+        const today = new Date().toISOString().slice(0, 10);
+        localStorage.setItem("mokaClockStatuses", JSON.stringify({
+          date: today,
+          resetDone: false,
+          statuses: next,
+        }));
+
+        return next;
+      });
     } catch (error) {
       console.error(error);
       alert("Erreur pointage ❌");
