@@ -187,6 +187,9 @@ export default function MokaOrderPad() {
   const [loadingStock, setLoadingStock] = useState(true);
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState("");
+  const [stockSearch, setStockSearch] = useState("");
+  const [stockView, setStockView] = useState("prepa");
+  const [activeStockCategory, setActiveStockCategory] = useState("Tous");
 
   const [settingsItem, setSettingsItem] = useState(null);
   const [settingsForm, setSettingsForm] = useState({});
@@ -445,6 +448,70 @@ export default function MokaOrderPad() {
       return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
     });
   }, [stockLive]);
+
+  const filteredStockLive = useMemo(() => {
+    const q = stockSearch.trim().toLowerCase();
+
+    return stockLive.filter((item) => {
+      const name = getStockName(item);
+      const cat = getStockCategory(item);
+      const zone = getStockZone(item);
+
+      return (
+        !q ||
+        String(name).toLowerCase().includes(q) ||
+        String(cat).toLowerCase().includes(q) ||
+        String(zone).toLowerCase().includes(q)
+      );
+    });
+  }, [stockLive, stockSearch]);
+
+  const stockPreps = useMemo(() => {
+    return filteredStockLive.filter((item) => isPrepStock(item));
+  }, [filteredStockLive]);
+
+  const stockProducts = useMemo(() => {
+    return filteredStockLive.filter((item) => !isPrepStock(item));
+  }, [filteredStockLive]);
+
+  const stockCategories = useMemo(() => {
+    const found = [...new Set(stockProducts.map((item) => getStockCategory(item) || "Autres"))];
+
+    return [
+      "Tous",
+      ...found.sort((a, b) => {
+        const ia = categoryOrder.indexOf(a);
+        const ib = categoryOrder.indexOf(b);
+        return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+      }),
+    ];
+  }, [stockProducts]);
+
+  const stockVisibleItems = useMemo(() => {
+    if (stockView === "prepa") return stockPreps;
+
+    return stockProducts.filter((item) => {
+      const cat = getStockCategory(item);
+      return activeStockCategory === "Tous" || cat === activeStockCategory;
+    });
+  }, [stockView, stockPreps, stockProducts, activeStockCategory]);
+
+  const groupedStockItems = useMemo(() => {
+    const groups = {};
+
+    stockVisibleItems.forEach((item) => {
+      const category = stockView === "prepa" ? "Prépas" : getStockCategory(item);
+
+      if (!groups[category]) groups[category] = [];
+      groups[category].push(item);
+    });
+
+    return Object.entries(groups).sort(([a], [b]) => {
+      const ia = categoryOrder.indexOf(a);
+      const ib = categoryOrder.indexOf(b);
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    });
+  }, [stockVisibleItems, stockView]);
 
   const prepCount = preps.filter(
     (prep) => getPrepStatus(prep) !== "Terminé" && getPrepStatus(prep) !== "Fait"
@@ -770,138 +837,78 @@ export default function MokaOrderPad() {
                     Aucun stock trouvé.
                   </div>
                 ) : (
-                  <div className="space-y-5">
-                    <div className="flex items-center gap-4">
-                      <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
-                        <span className="inline-flex w-3 h-3 rounded-full bg-red-600 mr-2"></span> Stock Live
+                  <div className="space-y-6">
+                    <div className="bg-white/80 border border-[#eadfd4] rounded-[2rem] p-4 shadow-sm">
+                      <div className="flex items-center gap-3 rounded-full bg-[#fffaf3] border border-[#d6b8a7] px-5 py-4">
+                        <span className="text-xl">🔍</span>
+
+                        <input
+                          value={stockSearch}
+                          onChange={(e) => setStockSearch(e.target.value)}
+                          placeholder={stockView === "prepa" ? "Rechercher une prépa..." : "Rechercher un produit stock..."}
+                          className="w-full bg-transparent outline-none text-[#3b241b] placeholder:text-[#b08d7b] font-semibold"
+                        />
                       </div>
-                      <div className="flex-1 h-[1px] bg-[#dccbbb]" />
-                      <div className="text-xs font-bold text-[#a97862]">
-                        {stockLive.length} produits
+
+                      <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
+                        <button
+                          onClick={() => {
+                            setStockView("prepa");
+                            setActiveStockCategory("Tous");
+                          }}
+                          className={`px-5 py-3 rounded-full whitespace-nowrap text-sm font-black transition ${
+                            stockView === "prepa"
+                              ? "bg-[#6f8f32] text-white shadow-md"
+                              : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
+                          }`}
+                        >
+                          👨‍🍳 Prépas
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setStockView("stock");
+                            setActiveStockCategory("Tous");
+                          }}
+                          className={`px-5 py-3 rounded-full whitespace-nowrap text-sm font-black transition ${
+                            stockView === "stock"
+                              ? "bg-[#6f8f32] text-white shadow-md"
+                              : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
+                          }`}
+                        >
+                          📦 Stock
+                        </button>
                       </div>
+
+                      {stockView === "stock" && (
+                        <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
+                          {stockCategories.map((cat) => (
+                            <button
+                              key={cat}
+                              onClick={() => setActiveStockCategory(cat)}
+                              className={`px-5 py-3 rounded-full whitespace-nowrap text-sm font-black transition ${
+                                activeStockCategory === cat
+                                  ? "bg-[#3b241b] text-white shadow-md"
+                                  : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
+                              }`}
+                            >
+                              {cat === "Tous" ? "✨ Tous" : `${categoryEmojis[cat] || "📌"} ${cat}`}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
-                    {stockPreps.length > 0 && (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-4 mt-2">
-                          <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
-                            👨‍🍳 Prépas
-                          </div>
-                          <div className="flex-1 h-[1px] bg-[#dccbbb]" />
-                          <div className="text-xs font-bold text-[#a97862]">
-                            {stockPreps.length} produits
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                          {(() => {
-                            const items = stockPreps;
-                            return (
-                              <>
-                                {items.map((item) => {
-                              const stockId = item.id || getStockName(item);
-                              const selected = !!cart[stockId];
-                              const status = getStockStatus(item);
-                              const isCritical = String(status).includes("Critique");
-                              const isLow = String(status).includes("Stock bas");
-
-                              return (
-                                <div
-                                  key={stockId}
-                                  onClick={() => selected ? removeItem(stockId) : addStockPrep(item)}
-                                  className={`rounded-[1.75rem] shadow-sm border transition overflow-hidden cursor-pointer ${
-                                    selected
-                                      ? "bg-[#6f8f32] text-white border-[#6f8f32]"
-                                      : "bg-white text-[#3b241b] border-[#eadfd4]"
-                                  }`}
-                                >
-                                  <div className={`h-3 ${
-                                    isCritical ? "bg-red-600" : isLow ? "bg-orange-500" : "bg-[#6f8f32]"
-                                  }`} />
-
-                                  <div className="p-5">
-                                    <div className={`text-xs font-black mb-2 ${
-                                      selected ? "text-white/80" : "text-[#6f8f32]"
-                                    }`}>
-                                      {status}
-                                    </div>
-
-                                    <h2 className="text-lg font-black leading-tight">
-                                      {getStockName(item)}
-                                    </h2>
-
-                                    <div className={`mt-5 rounded-2xl p-4 ${
-                                      selected ? "bg-white/20" : "bg-[#f7efe4]"
-                                    }`}>
-                                      <div className="text-xs opacity-70">
-                                        Portions restantes
-                                      </div>
-
-                                      <div className="text-2xl font-black mt-1">
-                                        {getStockPortions(item)}
-                                      </div>
-
-                                      {getStockZone(item) && (
-                                        <div className="text-xs opacity-70 mt-2">
-                                          Zone : {getStockZone(item)}
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    <div className="mt-4 flex justify-between items-center">
-                                      <span className={`text-sm font-semibold ${
-                                        selected ? "text-white/80" : "text-[#a97862]"
-                                      }`}>
-                                        {selected ? "Sélectionné" : "Toucher pour préparer"}
-                                      </span>
-
-                                      <span className="text-3xl">
-                                        {selected ? "✅" : "＋"}
-                                      </span>
-                                    </div>
-
-                                    {isAdmin && (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          openSettings(item);
-                                        }}
-                                        className={`block mt-4 text-sm font-bold underline ${
-                                          selected ? "text-white/80" : "text-[#a97862]"
-                                        }`}
-                                      >
-                                        ⚙️ Corriger stock
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                              </>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="space-y-8 mt-8">
-                      <div className="flex items-center gap-4">
-                        <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
-                          📦 Stock
-                        </div>
-                        <div className="flex-1 h-[1px] bg-[#dccbbb]" />
-                        <div className="text-xs font-bold text-[#a97862]">
-                          {stockLive.length - stockPreps.length} produits
-                        </div>
-                      </div>
-
-                      {stockGroups.map(([category, items]) => (
+                    <div className="space-y-8">
+                      {groupedStockItems.map(([category, items]) => (
                         <div key={category}>
                           <div className="flex items-center gap-4 mb-4">
                             <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
-                              {categoryEmojis[category] || "📌"} {category}
+                              {stockView === "prepa" ? "👨‍🍳 Prépas" : `${categoryEmojis[category] || "📌"} ${category}`}
                             </div>
+
                             <div className="flex-1 h-[1px] bg-[#dccbbb]" />
+
                             <div className="text-xs font-bold text-[#a97862]">
                               {items.length} produits
                             </div>
@@ -944,7 +951,7 @@ export default function MokaOrderPad() {
                                       selected ? "bg-white/20" : "bg-[#f7efe4]"
                                     }`}>
                                       <div className="text-xs opacity-70">
-                                        Portions restantes
+                                        {stockView === "prepa" ? "Portions restantes" : "Stock actuel"}
                                       </div>
 
                                       <div className="text-2xl font-black mt-1">
