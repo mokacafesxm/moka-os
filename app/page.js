@@ -1362,7 +1362,7 @@ export default function MokaOrderPad() {
             )}
           </section>
 
-          <aside className="col-span-12 md:col-span-4 xl:col-span-3">
+          <aside className={`col-span-12 md:col-span-4 xl:col-span-3 ${activeTab === "stock" && stockView === "stock" ? "hidden" : ""}`}>
             <div className="bg-white/95 rounded-[2rem] p-6 shadow-sm border border-[#eadfd4] sticky top-5">
               <h2 className="text-2xl font-black text-[#3b241b]">
                 {activeTab === "stock"
