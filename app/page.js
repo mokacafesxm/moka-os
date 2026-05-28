@@ -103,15 +103,6 @@ function getStockZone(item) {
   return item?.zone || item?.emplacement || item?.zoneStockage || "";
 }
 
-function getStockCategory(item) {
-  return item?.category || item?.categorie || item?.Categorie || item?.catégorie || "Autres";
-}
-
-function isPrepStock(item) {
-  const cat = String(getStockCategory(item)).toUpperCase();
-  return cat.includes("PREPA") || cat.includes("PRÉPA");
-}
-
 function getStaffName(member) {
   return (
     member?.name ||
@@ -404,33 +395,6 @@ export default function MokaOrderPad() {
     "boîte",
     "sachet",
   ]);
-
-  const stockPreps = useMemo(() => {
-    return stockLive.filter((item) => isPrepStock(item));
-  }, [stockLive]);
-
-  const stockRawGroups = useMemo(() => {
-    const groups = {};
-
-    stockLive
-      .filter((item) => !isPrepStock(item))
-      .forEach((item) => {
-        const category = getStockCategory(item);
-
-        if (!groups[category]) {
-          groups[category] = [];
-        }
-
-        groups[category].push(item);
-      });
-
-    return Object.entries(groups).sort(([a], [b]) => {
-      const ia = categoryOrder.indexOf(a);
-      const ib = categoryOrder.indexOf(b);
-
-      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-    });
-  }, [stockLive]);
 
   const prepCount = preps.filter(
     (prep) => getPrepStatus(prep) !== "Terminé" && getPrepStatus(prep) !== "Fait"
