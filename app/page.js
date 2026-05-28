@@ -422,32 +422,6 @@ export default function MokaOrderPad() {
     "sachet",
   ]);
 
-  const stockPreps = useMemo(() => {
-    return stockLive.filter((item) => isPrepStock(item));
-  }, [stockLive]);
-
-  const stockGroups = useMemo(() => {
-    const groups = {};
-
-    stockLive
-      .filter((item) => !isPrepStock(item))
-      .forEach((item) => {
-        const category = getStockCategory(item);
-
-        if (!groups[category]) {
-          groups[category] = [];
-        }
-
-        groups[category].push(item);
-      });
-
-    return Object.entries(groups).sort(([a], [b]) => {
-      const ia = categoryOrder.indexOf(a);
-      const ib = categoryOrder.indexOf(b);
-
-      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-    });
-  }, [stockLive]);
 
   const filteredStockLive = useMemo(() => {
     const q = stockSearch.trim().toLowerCase();
