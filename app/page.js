@@ -762,7 +762,6 @@ export default function MokaOrderPad() {
               <div className="text-xs text-[#a97862]">Commande automatique</div>
 
               <div className="font-black text-base text-[#3b241b]">17:45 SXM</div>
-              )}
             </div>
           </div>
         </header>
