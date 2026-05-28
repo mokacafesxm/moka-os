@@ -103,6 +103,29 @@ function getStockZone(item) {
   return item?.zone || item?.emplacement || item?.zoneStockage || "";
 }
 
+function getStockCategory(item) {
+  return (
+    item?.category ||
+    item?.categorie ||
+    item?.Categorie ||
+    item?.catégorie ||
+    item?.Catégorie ||
+    item?.["Catégorie"] ||
+    item?.["Categorie"] ||
+    "Autres"
+  );
+}
+
+function isPrepStock(item) {
+  const cat = String(getStockCategory(item))
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .trim();
+
+  return cat.includes("PREPA");
+}
+
 function getStaffName(member) {
   return (
     member?.name ||
@@ -395,6 +418,33 @@ export default function MokaOrderPad() {
     "boîte",
     "sachet",
   ]);
+
+  const stockPreps = useMemo(() => {
+    return stockLive.filter((item) => isPrepStock(item));
+  }, [stockLive]);
+
+  const stockGroups = useMemo(() => {
+    const groups = {};
+
+    stockLive
+      .filter((item) => !isPrepStock(item))
+      .forEach((item) => {
+        const category = getStockCategory(item);
+
+        if (!groups[category]) {
+          groups[category] = [];
+        }
+
+        groups[category].push(item);
+      });
+
+    return Object.entries(groups).sort(([a], [b]) => {
+      const ia = categoryOrder.indexOf(a);
+      const ib = categoryOrder.indexOf(b);
+
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    });
+  }, [stockLive]);
 
   const prepCount = preps.filter(
     (prep) => getPrepStatus(prep) !== "Terminé" && getPrepStatus(prep) !== "Fait"
@@ -731,65 +781,215 @@ export default function MokaOrderPad() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {stockLive.map((item) => {
-                        const stockId = item.id || getStockName(item);
-                        const selected = !!cart[stockId];
-                        const status = getStockStatus(item);
-                        const isCritical = String(status).includes("Critique");
-                        const isLow = String(status).includes("Stock bas");
+                    {stockPreps.length > 0 && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-4 mt-2">
+                          <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
+                            👨‍🍳 Prépas
+                          </div>
+                          <div className="flex-1 h-[1px] bg-[#dccbbb]" />
+                          <div className="text-xs font-bold text-[#a97862]">
+                            {stockPreps.length} produits
+                          </div>
+                        </div>
 
-                        return (
-                          <div
-                            key={stockId}
-                            onClick={() => selected ? removeItem(stockId) : addStockPrep(item)}
-                            className={`rounded-[1.75rem] shadow-sm border transition overflow-hidden cursor-pointer ${
-                              selected
-                                ? "bg-[#6f8f32] text-white border-[#6f8f32]"
-                                : "bg-white text-[#3b241b] border-[#eadfd4]"
-                            }`}
-                          >
-                            <div className={`h-3 ${
-                              isCritical ? "bg-red-600" : isLow ? "bg-orange-500" : "bg-[#6f8f32]"
-                            }`} />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                          {(() => {
+                            const items = stockPreps;
+                            return (
+                              <>
+                                {items.map((item) => {
+                              const stockId = item.id || getStockName(item);
+                              const selected = !!cart[stockId];
+                              const status = getStockStatus(item);
+                              const isCritical = String(status).includes("Critique");
+                              const isLow = String(status).includes("Stock bas");
 
-                            <div className="p-5">
-                              <div className="text-xs font-black text-[#6f8f32] mb-2">
-                                {status}
-                              </div>
-
-                              <h2 className="text-lg font-black leading-tight">
-                                {getStockName(item)}
-                              </h2>
-
-                              <div className="mt-5 rounded-2xl p-4 bg-[#f7efe4]">
-                                <div className="text-xs opacity-70">
-                                  Portions restantes
-                                </div>
-
-                                <div className="text-2xl font-black mt-1">
-                                  {getStockPortions(item)}
-                                </div>
-
-                                {getStockZone(item) && (
-                                  <div className="text-xs opacity-70 mt-2">
-                                    Zone : {getStockZone(item)}
-                                  </div>
-                                )}
-                              </div>
-
-                              {isAdmin && (
-                                <button
-                                  onClick={() => openSettings(item)}
-                                  className="block mt-4 text-sm font-bold underline text-[#a97862]"
+                              return (
+                                <div
+                                  key={stockId}
+                                  onClick={() => selected ? removeItem(stockId) : addStockPrep(item)}
+                                  className={`rounded-[1.75rem] shadow-sm border transition overflow-hidden cursor-pointer ${
+                                    selected
+                                      ? "bg-[#6f8f32] text-white border-[#6f8f32]"
+                                      : "bg-white text-[#3b241b] border-[#eadfd4]"
+                                  }`}
                                 >
-                                  ⚙️ Corriger stock
-                                </button>
-                              )}
+                                  <div className={`h-3 ${
+                                    isCritical ? "bg-red-600" : isLow ? "bg-orange-500" : "bg-[#6f8f32]"
+                                  }`} />
+
+                                  <div className="p-5">
+                                    <div className={`text-xs font-black mb-2 ${
+                                      selected ? "text-white/80" : "text-[#6f8f32]"
+                                    }`}>
+                                      {status}
+                                    </div>
+
+                                    <h2 className="text-lg font-black leading-tight">
+                                      {getStockName(item)}
+                                    </h2>
+
+                                    <div className={`mt-5 rounded-2xl p-4 ${
+                                      selected ? "bg-white/20" : "bg-[#f7efe4]"
+                                    }`}>
+                                      <div className="text-xs opacity-70">
+                                        Portions restantes
+                                      </div>
+
+                                      <div className="text-2xl font-black mt-1">
+                                        {getStockPortions(item)}
+                                      </div>
+
+                                      {getStockZone(item) && (
+                                        <div className="text-xs opacity-70 mt-2">
+                                          Zone : {getStockZone(item)}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="mt-4 flex justify-between items-center">
+                                      <span className={`text-sm font-semibold ${
+                                        selected ? "text-white/80" : "text-[#a97862]"
+                                      }`}>
+                                        {selected ? "Sélectionné" : "Toucher pour préparer"}
+                                      </span>
+
+                                      <span className="text-3xl">
+                                        {selected ? "✅" : "＋"}
+                                      </span>
+                                    </div>
+
+                                    {isAdmin && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openSettings(item);
+                                        }}
+                                        className={`block mt-4 text-sm font-bold underline ${
+                                          selected ? "text-white/80" : "text-[#a97862]"
+                                        }`}
+                                      >
+                                        ⚙️ Corriger stock
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-8 mt-8">
+                      <div className="flex items-center gap-4">
+                        <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
+                          📦 Stock
+                        </div>
+                        <div className="flex-1 h-[1px] bg-[#dccbbb]" />
+                        <div className="text-xs font-bold text-[#a97862]">
+                          {stockLive.length - stockPreps.length} produits
+                        </div>
+                      </div>
+
+                      {stockGroups.map(([category, items]) => (
+                        <div key={category}>
+                          <div className="flex items-center gap-4 mb-4">
+                            <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
+                              {categoryEmojis[category] || "📌"} {category}
+                            </div>
+                            <div className="flex-1 h-[1px] bg-[#dccbbb]" />
+                            <div className="text-xs font-bold text-[#a97862]">
+                              {items.length} produits
                             </div>
                           </div>
-                        );
-                      })}
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {items.map((item) => {
+                              const stockId = item.id || getStockName(item);
+                              const selected = !!cart[stockId];
+                              const status = getStockStatus(item);
+                              const isCritical = String(status).includes("Critique");
+                              const isLow = String(status).includes("Stock bas");
+
+                              return (
+                                <div
+                                  key={stockId}
+                                  onClick={() => selected ? removeItem(stockId) : addStockPrep(item)}
+                                  className={`rounded-[1.75rem] shadow-sm border transition overflow-hidden cursor-pointer ${
+                                    selected
+                                      ? "bg-[#6f8f32] text-white border-[#6f8f32]"
+                                      : "bg-white text-[#3b241b] border-[#eadfd4]"
+                                  }`}
+                                >
+                                  <div className={`h-3 ${
+                                    isCritical ? "bg-red-600" : isLow ? "bg-orange-500" : "bg-[#6f8f32]"
+                                  }`} />
+
+                                  <div className="p-5">
+                                    <div className={`text-xs font-black mb-2 ${
+                                      selected ? "text-white/80" : "text-[#6f8f32]"
+                                    }`}>
+                                      {status}
+                                    </div>
+
+                                    <h2 className="text-lg font-black leading-tight">
+                                      {getStockName(item)}
+                                    </h2>
+
+                                    <div className={`mt-5 rounded-2xl p-4 ${
+                                      selected ? "bg-white/20" : "bg-[#f7efe4]"
+                                    }`}>
+                                      <div className="text-xs opacity-70">
+                                        Portions restantes
+                                      </div>
+
+                                      <div className="text-2xl font-black mt-1">
+                                        {getStockPortions(item)}
+                                      </div>
+
+                                      {getStockZone(item) && (
+                                        <div className="text-xs opacity-70 mt-2">
+                                          Zone : {getStockZone(item)}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="mt-4 flex justify-between items-center">
+                                      <span className={`text-sm font-semibold ${
+                                        selected ? "text-white/80" : "text-[#a97862]"
+                                      }`}>
+                                        {selected ? "Sélectionné" : "Toucher pour préparer"}
+                                      </span>
+
+                                      <span className="text-3xl">
+                                        {selected ? "✅" : "＋"}
+                                      </span>
+                                    </div>
+
+                                    {isAdmin && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openSettings(item);
+                                        }}
+                                        className={`block mt-4 text-sm font-bold underline ${
+                                          selected ? "text-white/80" : "text-[#a97862]"
+                                        }`}
+                                      >
+                                        ⚙️ Corriger stock
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
