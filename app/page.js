@@ -862,21 +862,7 @@ export default function MokaOrderPad() {
         </header>
 
         <div className="flex gap-3 mt-6 mb-8 overflow-x-auto pb-3">
-          <button
-            onClick={() => setActiveTab("stock")}
-            className={`px-6 py-3 rounded-full text-sm font-black transition ${
-              activeTab === "stock"
-                ? "bg-[#3b241b] text-white shadow-md"
-                : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
-            }`}
-          >
-            <span className="inline-flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-red-600"></span>
-              Stock Live
-            </span>
-          </button>
-
-          <button
+<button
             onClick={() => {
                 setActiveTab("orderpad");
                 if (!activeCategory && categories[0]) {
@@ -890,6 +876,20 @@ export default function MokaOrderPad() {
             }`}
           >
             🛒 OrderPad
+          </button>
+
+          <button
+            onClick={() => setActiveTab("stock")}
+            className={`px-6 py-3 rounded-full text-sm font-black transition ${
+              activeTab === "stock"
+                ? "bg-[#3b241b] text-white shadow-md"
+                : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
+            }`}
+          >
+            <span className="inline-flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-red-600"></span>
+              Stock Live
+            </span>
           </button>
 
           <button
@@ -907,6 +907,7 @@ export default function MokaOrderPad() {
               </span>
             )}
           </button>
+        
         </div>
 
         <div className="grid grid-cols-12 gap-4">
