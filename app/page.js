@@ -231,7 +231,7 @@ export default function MokaOrderPad() {
   const [stockSearch, setStockSearch] = useState("");
   const [stockView, setStockView] = useState("prepa");
   const [activeStockCategory, setActiveStockCategory] = useState("");
-  const [dueDateMode, setDueDateMode] = useState("today");
+  const [dueDateMode, setDueDateMode] = useState("1");
   const [customDueDate, setCustomDueDate] = useState("");
 
   const [settingsItem, setSettingsItem] = useState(null);
@@ -332,7 +332,7 @@ export default function MokaOrderPad() {
     if (dueDateMode === "1") return addDays(1);
     if (dueDateMode === "3") return addDays(3);
     if (dueDateMode === "5") return addDays(5);
-    return addDays(0);
+    return addDays(1);
   }, [dueDateMode, customDueDate]);
 
   const selectedStaffName = useMemo(() => {
@@ -1469,7 +1469,7 @@ export default function MokaOrderPad() {
             )}
           </section>
 
-          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 ${activeTab === "stock" && stockView === "stock" ? "hidden" : ""}`}>
+          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 sm:sticky sm:top-4 sm:self-start sm:max-h-[calc(100vh-2rem)] sm:overflow-y-auto ${activeTab === "stock" && stockView === "stock" ? "hidden" : ""}`}>
             <div className="bg-white/95 rounded-[2rem] p-6 shadow-sm border border-[#eadfd4] sticky top-5">
               <h2 className="text-2xl font-black text-[#3b241b]">
                 {activeTab === "stock"
@@ -1518,7 +1518,6 @@ export default function MokaOrderPad() {
 
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      ["today", "Aujourd’hui"],
                       ["1", "+1 jour"],
                       ["3", "+3 jours"],
                       ["5", "+5 jours"],
