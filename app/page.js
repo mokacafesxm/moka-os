@@ -769,10 +769,10 @@ export default function MokaOrderPad() {
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
+          <div className="flex items-center gap-2 overflow-x-auto max-w-[70vw] pb-1">
             <button
               onClick={() => setShowClockModal(true)}
-              className="rounded-[1.5rem] px-5 py-4 shadow-sm border font-black bg-white/90 text-[#3b241b] border-[#eadfd4]"
+              className="rounded-[1.5rem] px-4 py-3 shadow-sm border font-black text-sm bg-white/90 text-[#3b241b] border-[#eadfd4]"
             >
               ⏱ Pointage
             </button>
@@ -786,7 +786,7 @@ export default function MokaOrderPad() {
                   setShowAdminModal(true);
                 }
               }}
-              className={`rounded-[1.5rem] px-5 py-4 shadow-sm border font-black ${
+              className={`rounded-[1.5rem] px-4 py-3 shadow-sm border font-black text-sm ${
                 isAdmin
                   ? "bg-[#6f8f32] text-white border-[#6f8f32]"
                   : "bg-white/90 text-[#3b241b] border-[#eadfd4]"
@@ -795,7 +795,7 @@ export default function MokaOrderPad() {
               {isAdmin ? "👤 Admin ON" : "👤 Admin"}
             </button>
 
-            <div className="bg-white/90 rounded-[1.5rem] px-6 py-4 shadow-sm border border-[#eadfd4] text-right">
+            <div className="bg-white/90 rounded-[1.5rem] px-4 py-3 shadow-sm border border-[#eadfd4] text-right text-sm shrink-0">
               <div className="text-xs text-[#a97862]">Commande automatique</div>
 
               <div className="font-black text-base text-[#3b241b]">17:45 SXM</div>
@@ -852,7 +852,7 @@ export default function MokaOrderPad() {
         </div>
 
         <div className="grid grid-cols-12 gap-4">
-          <section className="col-span-12 md:col-span-8 xl:col-span-9">
+          <section className="col-span-12 sm:col-span-8 xl:col-span-9">
             {activeTab === "stock" && (
               <>
                 {loadingStock ? (
@@ -1399,7 +1399,7 @@ export default function MokaOrderPad() {
             )}
           </section>
 
-          <aside className={`col-span-12 md:col-span-4 xl:col-span-3 ${activeTab === "stock" && stockView === "stock" ? "hidden" : ""}`}>
+          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 ${activeTab === "stock" && stockView === "stock" ? "hidden" : ""}`}>
             <div className="bg-white/95 rounded-[2rem] p-6 shadow-sm border border-[#eadfd4] sticky top-5">
               <h2 className="text-2xl font-black text-[#3b241b]">
                 {activeTab === "stock"
