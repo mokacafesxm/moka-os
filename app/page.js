@@ -126,6 +126,47 @@ function isPrepStock(item) {
   return cat.includes("PREPA");
 }
 
+
+function formatLocalDate(date) {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function addDays(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return formatLocalDate(d);
+}
+
+function getPrepDueDate(prep) {
+  const raw =
+    prep?.dueDate ||
+    prep?.datePrevue ||
+    prep?.["Date prévue"] ||
+    prep?.property_date_pr_vue ||
+    prep?.property_date_prevue ||
+    "";
+
+  if (!raw) return "";
+  if (typeof raw === "object" && raw.start) return raw.start.slice(0, 10);
+  return String(raw).slice(0, 10);
+}
+
+function getPrepDateLabel(dateStr) {
+  if (!dateStr) return "🕒 Sans date prévue";
+
+  const today = formatLocalDate(new Date());
+  const tomorrow = addDays(1);
+
+  if (dateStr === today) return "🔥 À faire aujourd’hui";
+  if (dateStr === tomorrow) return "📅 À faire demain";
+
+  return `🗓 À faire le ${dateStr.split("-").reverse().join("/")}`;
+}
+
 function getStaffName(member) {
   return (
     member?.name ||
@@ -190,6 +231,8 @@ export default function MokaOrderPad() {
   const [stockSearch, setStockSearch] = useState("");
   const [stockView, setStockView] = useState("prepa");
   const [activeStockCategory, setActiveStockCategory] = useState("");
+  const [dueDateMode, setDueDateMode] = useState("today");
+  const [customDueDate, setCustomDueDate] = useState("");
 
   const [settingsItem, setSettingsItem] = useState(null);
   const [settingsForm, setSettingsForm] = useState({});
@@ -284,6 +327,14 @@ export default function MokaOrderPad() {
     setSelectedStaff("");
   }, [activeTab, stockView]);
 
+  const selectedDueDate = useMemo(() => {
+    if (dueDateMode === "custom") return customDueDate || addDays(0);
+    if (dueDateMode === "1") return addDays(1);
+    if (dueDateMode === "3") return addDays(3);
+    if (dueDateMode === "5") return addDays(5);
+    return addDays(0);
+  }, [dueDateMode, customDueDate]);
+
   const selectedStaffName = useMemo(() => {
     const found = staff.find(
       (member) => String(member.id || getStaffName(member)) === selectedStaff
@@ -366,16 +417,21 @@ export default function MokaOrderPad() {
     const groups = {};
 
     preps.forEach((prep) => {
-      const category = prep?.category || prep?.Categorie || "Prépas cuisine";
+      const dueDate = getPrepDueDate(prep);
+      const label = getPrepDateLabel(dueDate);
 
-      if (!groups[category]) {
-        groups[category] = [];
-      }
-
-      groups[category].push(prep);
+      if (!groups[label]) groups[label] = [];
+      groups[label].push(prep);
     });
 
-    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+    return Object.entries(groups).sort(([a], [b]) => {
+      const getDate = (label) => {
+        const item = groups[label]?.[0];
+        return getPrepDueDate(item) || "9999-99-99";
+      };
+
+      return getDate(a).localeCompare(getDate(b));
+    });
   }, [preps]);
 
   const addProduct = (product) => {
@@ -676,6 +732,8 @@ export default function MokaOrderPad() {
             staffName: selectedStaffName,
             source: "Stock Live",
             date: new Date().toISOString(),
+            dueDate: selectedDueDate,
+            datePrevue: selectedDueDate,
           }));
 
         const response = await fetch(CREATE_PREP_URL, {
@@ -1354,6 +1412,18 @@ export default function MokaOrderPad() {
                                     <div className="text-xs opacity-70 mt-2">
                                       Statut : {status}
                                     </div>
+
+                                    {getPrepDueDate(prep) && (
+                                      <div className="text-xs opacity-70 mt-1">
+                                        Date prévue : {getPrepDueDate(prep).split("-").reverse().join("/")}
+                                      </div>
+                                    )}
+
+                                    {prep.assignedTo && (
+                                      <div className="text-xs opacity-70 mt-1">
+                                        Assigné à : {prep.assignedTo}
+                                      </div>
+                                    )}
                                   </div>
 
                                   <div className="mt-4 flex justify-between items-center">
@@ -1439,6 +1509,50 @@ export default function MokaOrderPad() {
                   ))}
                 </select>
               </div>
+
+              {activeTab === "stock" && stockView === "prepa" && (
+                <div className="mt-6">
+                  <label className="block text-xs font-black text-[#a97862] mb-2">
+                    Date prévue
+                  </label>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      ["today", "Aujourd’hui"],
+                      ["1", "+1 jour"],
+                      ["3", "+3 jours"],
+                      ["5", "+5 jours"],
+                      ["custom", "Perso"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setDueDateMode(value)}
+                        className={`rounded-2xl px-3 py-3 text-xs font-black border ${
+                          dueDateMode === value
+                            ? "bg-[#6f8f32] text-white border-[#6f8f32]"
+                            : "bg-[#fffaf3] text-[#6b4a3d] border-[#eadfd4]"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {dueDateMode === "custom" && (
+                    <input
+                      type="date"
+                      value={customDueDate}
+                      onChange={(e) => setCustomDueDate(e.target.value)}
+                      className="w-full mt-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold text-[#3b241b] outline-none"
+                    />
+                  )}
+
+                  <div className="text-xs text-[#a97862] font-bold mt-2">
+                    Prévu le : {selectedDueDate.split("-").reverse().join("/")}
+                  </div>
+                </div>
+              )}
 
               <div className="mt-6 space-y-3">
                 {cartItems.length === 0 && (
