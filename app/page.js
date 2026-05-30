@@ -669,6 +669,27 @@ export default function MokaOrderPad() {
     });
   };
 
+  const openNewProduct = () => {
+    if (!isAdmin) {
+      setShowAdminModal(true);
+      return;
+    }
+
+    setSettingsItem({ isNew: true });
+    setSettingsForm({
+      id: "",
+      name: "",
+      fournisseurDefaut: "",
+      zoneStockage: "",
+      quantiteCommandee: "",
+      uniteStock: "kg",
+      uniteCommande: "kg",
+      portion: "",
+      seuilAlerte: "",
+      seuilCritique: "",
+    });
+  };
+
   const saveSettings = async () => {
     if (!settingsForm.id) {
       alert("ID produit introuvable ❌");
@@ -852,6 +873,15 @@ export default function MokaOrderPad() {
             >
               {isAdmin ? "👤 Admin ON" : "👤 Admin"}
             </button>
+
+            {isAdmin && (
+              <button
+                onClick={openNewProduct}
+                className="rounded-[1.5rem] px-4 py-3 shadow-sm border font-black text-sm bg-[#6f8f32] text-white border-[#6f8f32]"
+              >
+                ➕ Produit
+              </button>
+            )}
 
             <div className="bg-white/90 rounded-[1.5rem] px-4 py-3 shadow-sm border border-[#eadfd4] text-right text-sm shrink-0">
               <div className="text-xs text-[#a97862]">Commande automatique</div>
@@ -1766,7 +1796,7 @@ export default function MokaOrderPad() {
             <div className="flex justify-between gap-4 items-start mb-6">
               <div>
                 <h2 className="text-3xl font-black text-[#3b241b]">
-                  ⚙️ Réglages produit
+                  {settingsItem?.isNew ? "➕ Nouveau produit" : "⚙️ Réglages produit"}
                 </h2>
                 <p className="text-sm text-[#a97862] mt-1">
                   {settingsForm.name}
