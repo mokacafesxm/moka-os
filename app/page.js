@@ -989,7 +989,7 @@ export default function MokaOrderPad() {
                 ) : (
                   <div className="space-y-6">
                     <div className="bg-white/80 border border-[#eadfd4] rounded-[1.5rem] p-3 shadow-sm">
-                      <div className="flex items-center gap-3 rounded-[1.25rem] bg-[#fffaf3] border border-[#d6b8a7] px-4 py-2.5">
+                      <div className="flex items-center gap-3 rounded-[1.1rem] bg-[#fffaf3] border border-[#d6b8a7] px-4 py-2">
                         <span className="text-xl">🔍</span>
 
                         <input
@@ -1157,8 +1157,8 @@ export default function MokaOrderPad() {
 
             {activeTab === "orderpad" && (
               <>
-                <div className="bg-white/80 border border-[#eadfd4] rounded-[1.5rem] p-3 mb-4 shadow-sm">
-                  <div className="flex items-center gap-3 rounded-[1.25rem] bg-[#fffaf3] border border-[#d6b8a7] px-4 py-2.5">
+                <div className="bg-white/80 border border-[#eadfd4] rounded-[1.5rem] p-3 mb-3 shadow-sm">
+                  <div className="flex items-center gap-3 rounded-[1.1rem] bg-[#fffaf3] border border-[#d6b8a7] px-4 py-2">
                     <span className="text-xl">🔍</span>
 
                     <input
@@ -1534,8 +1534,8 @@ export default function MokaOrderPad() {
             )}
           </section>
 
-          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 sm:sticky sm:top-3 sm:self-start sm:max-h-[calc(100vh-1rem)] sm:overflow-y-auto sm:-mt-20"stock" && stockView === "stock" ? "hidden" : ""}`}>
-            <div className="bg-white/95 rounded-[1.5rem] p-4 shadow-sm border border-[#eadfd4] sticky top-3">
+          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 sm:sticky sm:top-3 sm:self-start sm:max-h-[calc(100vh-1rem)] sm:overflow-y-auto sm:-mt-[6.2rem]"stock" && stockView === "stock" ? "hidden" : ""}`}>
+            <div className="bg-white/95 rounded-[1.5rem] p-4 shadow-sm border border-[#eadfd4] sticky top-3 max-h-[calc(100vh-1.5rem)] overflow-y-auto">
               <h2 className="text-xl font-black text-[#3b241b]">
                 {activeTab === "stock"
                   ? "👨‍🍳 Envoyer en préparation"
