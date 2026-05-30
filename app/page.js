@@ -241,7 +241,7 @@ export default function MokaOrderPad() {
   const [settingsForm, setSettingsForm] = useState({});
   const [savingSettings, setSavingSettings] = useState(false);
 
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);\n  const [adminSection, setAdminSection] = useState("dashboard");
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPin, setAdminPin] = useState("");
 
@@ -892,6 +892,7 @@ export default function MokaOrderPad() {
               onClick={() => {
                 if (isAdmin) {
                   setIsAdmin(false);
+                  setAdminSection("dashboard");
                   alert("Mode admin désactivé");
                 } else {
                   setShowAdminModal(true);
@@ -1949,6 +1950,140 @@ export default function MokaOrderPad() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {isAdmin && adminSection !== "dashboard" && (
+        <div className="fixed inset-0 z-40 bg-[#f7efe4] text-[#332019] overflow-y-auto px-5 pt-6 pb-32">
+          <div className="max-w-[1400px] mx-auto">
+            <div className="flex items-center justify-between gap-4 mb-6">
+              <div>
+                <div className="text-xs font-black tracking-[0.35em] text-[#a97862] uppercase">
+                  MÖKA OS
+                </div>
+
+                <h1 className="text-4xl font-black text-[#3b241b] mt-2">
+                  {adminSection === "products" && "📦 Produits"}
+                  {adminSection === "inventory" && "📋 Inventaire"}
+                  {adminSection === "orders" && "🛒 Commandes"}
+                  {adminSection === "reports" && "📊 Rapports"}
+                  {adminSection === "settings" && "⚙️ Paramètres"}
+                </h1>
+              </div>
+
+              <button
+                onClick={() => setAdminSection("dashboard")}
+                className="rounded-2xl px-5 py-3 bg-white border border-[#eadfd4] font-black text-[#6b4a3d]"
+              >
+                Retour dashboard
+              </button>
+            </div>
+
+            {adminSection === "products" && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button onClick={openNewProduct} className="bg-white rounded-[2rem] p-6 border border-[#eadfd4] text-left shadow-sm">
+                  <div className="text-3xl mb-4">➕</div>
+                  <div className="text-xl font-black">Créer un produit</div>
+                  <p className="text-sm text-[#a97862] mt-2">Ajouter une matière première complète.</p>
+                </button>
+
+                <div className="bg-white rounded-[2rem] p-6 border border-[#eadfd4] shadow-sm">
+                  <div className="text-3xl mb-4">✏️</div>
+                  <div className="text-xl font-black">Modifier produits</div>
+                  <p className="text-sm text-[#a97862] mt-2">Utilise les boutons réglages sur les cartes produits.</p>
+                </div>
+
+                <div className="bg-white rounded-[2rem] p-6 border border-[#eadfd4] shadow-sm">
+                  <div className="text-3xl mb-4">🗂️</div>
+                  <div className="text-xl font-black">Archivage</div>
+                  <p className="text-sm text-[#a97862] mt-2">À connecter ensuite : désactiver / masquer produit.</p>
+                </div>
+              </div>
+            )}
+
+            {adminSection === "inventory" && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white rounded-[2rem] p-6 border border-[#eadfd4] shadow-sm">
+                  <div className="text-3xl mb-4">🚨</div>
+                  <div className="text-xl font-black">Alertes stock</div>
+                  <p className="text-sm text-[#a97862] mt-2">Seuils, ruptures, corrections.</p>
+                </div>
+
+                <div className="bg-white rounded-[2rem] p-6 border border-[#eadfd4] shadow-sm">
+                  <div className="text-3xl mb-4">📸</div>
+                  <div className="text-xl font-black">Photo facture</div>
+                  <p className="text-sm text-[#a97862] mt-2">À connecter avec IA inventaire.</p>
+                </div>
+
+                <div className="bg-white rounded-[2rem] p-6 border border-[#eadfd4] shadow-sm">
+                  <div className="text-3xl mb-4">🗄️</div>
+                  <div className="text-xl font-black">Zones</div>
+                  <p className="text-sm text-[#a97862] mt-2">Bar, dry, frigo, congélateur.</p>
+                </div>
+              </div>
+            )}
+
+            {adminSection === "orders" && (
+              <div className="bg-white rounded-[2rem] p-8 border border-[#eadfd4] shadow-sm">
+                <div className="text-3xl mb-4">🛒</div>
+                <div className="text-xl font-black">Commandes fournisseurs</div>
+                <p className="text-sm text-[#a97862] mt-2">Historique, messages envoyés, suivi réception.</p>
+              </div>
+            )}
+
+            {adminSection === "reports" && (
+              <div className="bg-white rounded-[2rem] p-8 border border-[#eadfd4] shadow-sm">
+                <div className="text-3xl mb-4">📊</div>
+                <div className="text-xl font-black">Rapports</div>
+                <p className="text-sm text-[#a97862] mt-2">À développer plus tard.</p>
+              </div>
+            )}
+
+            {adminSection === "settings" && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                  ["🏢", "Fournisseurs", "Ajouter, modifier, désactiver"],
+                  ["📦", "Catégories", "Créer / organiser"],
+                  ["📂", "Sous-catégories", "Ranger les produits"],
+                  ["📏", "Unités", "kg, pièce, carton..."],
+                  ["🗄️", "Zones", "Stockage et emplacement"],
+                  ["👥", "Staff", "Équipe et pointage"],
+                ].map(([icon, title, desc]) => (
+                  <div key={title} className="bg-white rounded-[2rem] p-6 border border-[#eadfd4] shadow-sm">
+                    <div className="text-3xl mb-4">{icon}</div>
+                    <div className="text-xl font-black">{title}</div>
+                    <p className="text-sm text-[#a97862] mt-2">{desc}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="fixed left-1/2 bottom-4 -translate-x-1/2 z-50 bg-white/95 border border-[#eadfd4] shadow-xl rounded-[2rem] px-3 py-2 flex items-center gap-1 max-w-[95vw] overflow-x-auto">
+          {[
+            ["dashboard", "🏠", "Dashboard"],
+            ["products", "📦", "Produits"],
+            ["inventory", "📋", "Inventaire"],
+            ["orders", "🛒", "Commandes"],
+            ["reports", "📊", "Rapports"],
+            ["settings", "⚙️", "Paramètres"],
+          ].map(([id, icon, label]) => (
+            <button
+              key={id}
+              onClick={() => setAdminSection(id)}
+              className={`min-w-[72px] px-3 py-2 rounded-2xl font-black text-xs flex flex-col items-center gap-1 ${
+                adminSection === id
+                  ? "bg-[#3b241b] text-white"
+                  : "text-[#6b4a3d] hover:bg-[#f7efe4]"
+              }`}
+            >
+              <span className="text-xl">{icon}</span>
+              <span>{label}</span>
+            </button>
+          ))}
         </div>
       )}
 
