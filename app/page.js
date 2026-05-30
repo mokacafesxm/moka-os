@@ -501,6 +501,13 @@ export default function MokaOrderPad() {
   };
 
   const fournisseurOptions = uniqueValues(products.map((p) => getSupplier(p)));
+  const categoryOptions = uniqueValues([
+    ...categoryOrder,
+    ...products.map((p) => p.category || p.categorie),
+  ]);
+
+  const subCategoryOptions = uniqueValues(products.map((p) => getSubCategory(p)));
+
   const zoneOptions = uniqueValues(products.map((p) => p.zone || p.zoneStockage || p.emplacement));
   const uniteOptions = uniqueValues([
     ...products.map((p) => p.unit || p.uniteStock || p.uniteCommande),
@@ -661,6 +668,9 @@ export default function MokaOrderPad() {
     setSettingsForm({
       id: getEditableId(item),
       name: item?.name || getPrepName(item),
+      categorie: item?.category || item?.categorie || "Autres",
+      sousCategorie: item?.subcategory || item?.sousCategorie || getSubCategory(item),
+      visibleOrderPad: item?.visible ?? item?.visibleOrderPad ?? true,
       fournisseurDefaut: getSupplier(item),
       zoneStockage: item?.zone || item?.zoneStockage || item?.emplacement || "",
       quantiteCommandee: item?.quantiteCommandee || item?.suggested || item?.quantity || "",
@@ -682,6 +692,9 @@ export default function MokaOrderPad() {
     setSettingsForm({
       id: "",
       name: "",
+      categorie: "Autres",
+      sousCategorie: "Autres",
+      visibleOrderPad: true,
       fournisseurDefaut: "",
       zoneStockage: "",
       quantiteCommandee: "",
@@ -717,6 +730,9 @@ export default function MokaOrderPad() {
         body: JSON.stringify({
           id: settingsForm.id || "",
           name: settingsForm.name,
+          categorie: settingsForm.categorie || "Autres",
+          sousCategorie: settingsForm.sousCategorie || "Autres",
+          visibleOrderPad: settingsForm.visibleOrderPad ?? true,
           fournisseurDefaut: settingsForm.fournisseurDefaut,
           zoneStockage: settingsForm.zoneStockage,
           quantiteCommandee: Number(settingsForm.quantiteCommandee) || 0,
@@ -1850,6 +1866,9 @@ export default function MokaOrderPad() {
               )}
 
               {[
+                ["Catégorie", "categorie", "select", categoryOptions],
+                ["Sous-catégorie", "sousCategorie", "select", subCategoryOptions],
+                ["Visible OrderPad", "visibleOrderPad", "checkbox", []],
                 ["Fournisseur par défaut", "fournisseurDefaut", "select", fournisseurOptions],
                 ["Zone de stockage", "zoneStockage", "select", zoneOptions],
                 ["Quantité commandée", "quantiteCommandee", "number", []],
@@ -1864,7 +1883,22 @@ export default function MokaOrderPad() {
                     {label}
                   </label>
 
-                  {type === "select" ? (
+                  {type === "checkbox" ? (
+                    <label className="flex items-center gap-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-3 py-2 text-sm font-bold text-[#3b241b]">
+                      <input
+                        type="checkbox"
+                        checked={!!settingsForm[key]}
+                        onChange={(e) =>
+                          setSettingsForm((prev) => ({
+                            ...prev,
+                            [key]: e.target.checked,
+                          }))
+                        }
+                        className="w-5 h-5"
+                      />
+                      Oui
+                    </label>
+                  ) : type === "select" ? (
                     <select
                       value={settingsForm[key] || ""}
                       onChange={(e) =>
