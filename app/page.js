@@ -1812,6 +1812,27 @@ export default function MokaOrderPad() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {settingsItem?.isNew && (
+                <div className="sm:col-span-2 md:col-span-3">
+                  <label className="block text-xs font-black text-[#a97862] mb-2">
+                    Nom produit
+                  </label>
+
+                  <input
+                    type="text"
+                    value={settingsForm.name || ""}
+                    onChange={(e) =>
+                      setSettingsForm((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
+                    placeholder="Ex: Mangue fraîche"
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold text-[#3b241b] outline-none"
+                  />
+                </div>
+              )}
+
               {[
                 ["Fournisseur par défaut", "fournisseurDefaut", "select", fournisseurOptions],
                 ["Zone de stockage", "zoneStockage", "select", zoneOptions],
