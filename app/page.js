@@ -694,12 +694,14 @@ export default function MokaOrderPad() {
   };
 
   const saveSettings = async () => {
-    if (!settingsItem?.isNew && !settingsForm.id) {
+    const isNewProduct = !!settingsItem?.isNew;
+
+    if (!isNewProduct && !settingsForm.id) {
       alert("ID produit introuvable ❌");
       return;
     }
 
-    if (settingsItem?.isNew && !String(settingsForm.name || "").trim()) {
+    if (isNewProduct && !String(settingsForm.name || "").trim()) {
       alert("Nom produit obligatoire ❌");
       return;
     }
@@ -707,13 +709,13 @@ export default function MokaOrderPad() {
     setSavingSettings(true);
 
     try {
-      const url = settingsItem?.isNew ? PRODUCT_CREATE_URL : PRODUCT_UPDATE_URL;
+      const url = isNewProduct ? PRODUCT_CREATE_URL : PRODUCT_UPDATE_URL;
 
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: settingsForm.id,
+          id: settingsForm.id || "",
           name: settingsForm.name,
           fournisseurDefaut: settingsForm.fournisseurDefaut,
           zoneStockage: settingsForm.zoneStockage,
@@ -728,8 +730,12 @@ export default function MokaOrderPad() {
 
       if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
 
-      alert(settingsItem?.isNew ? "Produit créé ✅" : "Réglages produit mis à jour ✅");
-      setSettingsItem(null);\n      if (settingsItem?.isNew) window.location.reload();
+      alert(isNewProduct ? "Produit créé ✅" : "Réglages produit mis à jour ✅");
+      setSettingsItem(null);
+
+      if (isNewProduct) {
+        window.location.reload();
+      }
     } catch (error) {
       console.error(error);
       alert("Erreur : réglages non enregistrés ❌");
