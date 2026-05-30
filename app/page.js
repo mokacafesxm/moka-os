@@ -241,7 +241,8 @@ export default function MokaOrderPad() {
   const [settingsForm, setSettingsForm] = useState({});
   const [savingSettings, setSavingSettings] = useState(false);
 
-  const [isAdmin, setIsAdmin] = useState(false);\n  const [adminSection, setAdminSection] = useState("dashboard");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminSection, setAdminSection] = useState("dashboard");
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPin, setAdminPin] = useState("");
 
@@ -867,11 +868,11 @@ export default function MokaOrderPad() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f7efe4] text-[#332019]">
-      <div className="max-w-[1600px] mx-auto px-5 py-5">
-        <header className="flex items-end justify-between gap-5 mb-5">
+    <main className="min-h-screen bg-[#f7efe4] text-[#332019] pb-28">
+      <div className="max-w-[1600px] mx-auto px-5 py-3">
+        <header className="flex items-end justify-between gap-5 mb-3">
           <div>
-            <h1 className="text-6xl font-black tracking-tight text-[#3b241b]">
+            <h1 className="text-5xl font-black tracking-tight text-[#3b241b]">
               MÖKA
             </h1>
 
@@ -924,7 +925,7 @@ export default function MokaOrderPad() {
           </div>
         </header>
 
-        <div className="flex gap-3 mt-4 mb-8 overflow-x-auto pb-3">
+        <div className="flex gap-3 mt-3 mb-4 overflow-x-auto pb-2">
 <button
             onClick={() => {
                 setActiveTab("orderpad");
@@ -932,7 +933,7 @@ export default function MokaOrderPad() {
                   setActiveCategory(categories[0]);
                 }
               }}
-            className={`px-6 py-3 rounded-full text-sm font-black transition ${
+            className={`px-5 py-2 rounded-full text-sm font-black transition ${
               activeTab === "orderpad"
                 ? "bg-[#3b241b] text-white shadow-md"
                 : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
@@ -943,7 +944,7 @@ export default function MokaOrderPad() {
 
           <button
             onClick={() => setActiveTab("stock")}
-            className={`px-6 py-3 rounded-full text-sm font-black transition ${
+            className={`px-5 py-2 rounded-full text-sm font-black transition ${
               activeTab === "stock"
                 ? "bg-[#3b241b] text-white shadow-md"
                 : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
@@ -957,7 +958,7 @@ export default function MokaOrderPad() {
 
           <button
             onClick={() => setActiveTab("preps")}
-            className={`relative min-w-[360px] whitespace-nowrap px-8 py-3 rounded-full text-sm font-black transition flex items-center justify-center gap-4 ${
+            className={`relative min-w-[360px] whitespace-nowrap px-6 py-2 rounded-full text-sm font-black transition flex items-center justify-center gap-4 ${
               activeTab === "preps"
                 ? "bg-[#3b241b] text-white shadow-md"
                 : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
@@ -987,8 +988,8 @@ export default function MokaOrderPad() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    <div className="bg-white/80 border border-[#eadfd4] rounded-[2rem] p-4 shadow-sm">
-                      <div className="flex items-center gap-3 rounded-full bg-[#fffaf3] border border-[#d6b8a7] px-5 py-4">
+                    <div className="bg-white/80 border border-[#eadfd4] rounded-[1.5rem] p-3 shadow-sm">
+                      <div className="flex items-center gap-3 rounded-[1.25rem] bg-[#fffaf3] border border-[#d6b8a7] px-4 py-2.5">
                         <span className="text-xl">🔍</span>
 
                         <input
@@ -1005,7 +1006,7 @@ export default function MokaOrderPad() {
                             setStockView("prepa");
                             ;
                           }}
-                          className={`px-5 py-3 rounded-full whitespace-nowrap text-sm font-black transition ${
+                          className={`px-3 py-1.5 rounded-full whitespace-nowrap text-sm font-black transition ${
                             stockView === "prepa"
                               ? "bg-[#6f8f32] text-white shadow-md"
                               : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
@@ -1021,7 +1022,7 @@ export default function MokaOrderPad() {
                               setActiveStockCategory(stockCategories[0]);
                             }
                           }}
-                          className={`px-5 py-3 rounded-full whitespace-nowrap text-sm font-black transition ${
+                          className={`px-3 py-1.5 rounded-full whitespace-nowrap text-sm font-black transition ${
                             stockView === "stock"
                               ? "bg-[#6f8f32] text-white shadow-md"
                               : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
@@ -1037,7 +1038,7 @@ export default function MokaOrderPad() {
                             <button
                               key={cat}
                               onClick={() => setActiveStockCategory(cat)}
-                              className={`px-5 py-3 rounded-full whitespace-nowrap text-sm font-black transition ${
+                              className={`px-3 py-1.5 rounded-full whitespace-nowrap text-sm font-black transition ${
                                 activeStockCategory === cat
                                   ? "bg-[#3b241b] text-white shadow-md"
                                   : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
@@ -1156,8 +1157,8 @@ export default function MokaOrderPad() {
 
             {activeTab === "orderpad" && (
               <>
-                <div className="bg-white/80 border border-[#eadfd4] rounded-[2rem] p-4 mb-5 shadow-sm">
-                  <div className="flex items-center gap-3 rounded-full bg-[#fffaf3] border border-[#d6b8a7] px-5 py-4">
+                <div className="bg-white/80 border border-[#eadfd4] rounded-[1.5rem] p-3 mb-4 shadow-sm">
+                  <div className="flex items-center gap-3 rounded-[1.25rem] bg-[#fffaf3] border border-[#d6b8a7] px-4 py-2.5">
                     <span className="text-xl">🔍</span>
 
                     <input
@@ -1176,7 +1177,7 @@ export default function MokaOrderPad() {
                           setActiveCategory(cat);
                           setActiveSubCategory("");
                         }}
-                        className={`px-5 py-3 rounded-full whitespace-nowrap text-sm font-black transition ${
+                        className={`px-3 py-1.5 rounded-full whitespace-nowrap text-sm font-black transition ${
                           activeCategory === cat
                             ? "bg-[#6f8f32] text-white shadow-md"
                             : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
@@ -1193,7 +1194,7 @@ export default function MokaOrderPad() {
                         <button
                           key={sub}
                           onClick={() => setActiveSubCategory(sub)}
-                          className={`px-4 py-2 rounded-full whitespace-nowrap text-xs font-black transition ${
+                          className={`px-3 py-1.5 rounded-full whitespace-nowrap text-xs font-black transition ${
                             activeSubCategory === sub
                               ? "bg-[#3b241b] text-white"
                               : "bg-[#f7efe4] text-[#8b6f61] border border-[#eadfd4]"
@@ -1533,9 +1534,9 @@ export default function MokaOrderPad() {
             )}
           </section>
 
-          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 sm:sticky sm:top-4 sm:self-start sm:max-h-[calc(100vh-2rem)] sm:overflow-y-auto ${activeTab === "stock" && stockView === "stock" ? "hidden" : ""}`}>
-            <div className="bg-white/95 rounded-[2rem] p-6 shadow-sm border border-[#eadfd4] sticky top-5">
-              <h2 className="text-2xl font-black text-[#3b241b]">
+          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 sm:sticky sm:top-3 sm:self-start sm:max-h-[calc(100vh-1rem)] sm:overflow-y-auto sm:-mt-20"stock" && stockView === "stock" ? "hidden" : ""}`}>
+            <div className="bg-white/95 rounded-[1.5rem] p-4 shadow-sm border border-[#eadfd4] sticky top-3">
+              <h2 className="text-xl font-black text-[#3b241b]">
                 {activeTab === "stock"
                   ? "👨‍🍳 Envoyer en préparation"
                   : activeTab === "preps"
@@ -1551,7 +1552,7 @@ export default function MokaOrderPad() {
                   : "Sélection staff depuis le pad"}
               </p>
 
-              <div className="mt-6">
+              <div className="mt-4">
                 <label className="block text-xs font-black text-[#a97862] mb-2">
                   Membre du staff
                 </label>
@@ -1575,7 +1576,7 @@ export default function MokaOrderPad() {
               </div>
 
               {activeTab === "stock" && stockView === "prepa" && (
-                <div className="mt-6">
+                <div className="mt-4">
                   <label className="block text-xs font-black text-[#a97862] mb-2">
                     Date prévue
                   </label>
@@ -1649,7 +1650,7 @@ export default function MokaOrderPad() {
               <button
                 onClick={sendToMokaOS}
                 disabled={cartItems.length === 0 || sending}
-                className={`w-full mt-6 py-4 rounded-2xl font-black transition ${
+                className={`w-full mt-4 py-3 rounded-2xl font-black transition ${
                   cartItems.length === 0
                     ? "bg-[#eadfd4] text-[#a97862]"
                     : "bg-[#6f8f32] text-white shadow-md"
@@ -2062,7 +2063,7 @@ export default function MokaOrderPad() {
       )}
 
       {isAdmin && (
-        <div className="fixed left-1/2 bottom-4 -translate-x-1/2 z-50 bg-white/95 border border-[#eadfd4] shadow-xl rounded-[2rem] px-3 py-2 flex items-center gap-1 max-w-[95vw] overflow-x-auto">
+        <div className="fixed left-1/2 bottom-5 -translate-x-1/2 z-50 bg-white/95 backdrop-blur-xl border border-[#eadfd4] shadow-2xl rounded-[2.2rem] px-4 py-3 flex items-center gap-2 max-w-[95vw] overflow-x-auto">
           {[
             ["dashboard", "🏠", "Dashboard"],
             ["products", "📦", "Produits"],
@@ -2074,14 +2075,14 @@ export default function MokaOrderPad() {
             <button
               key={id}
               onClick={() => setAdminSection(id)}
-              className={`min-w-[72px] px-3 py-2 rounded-2xl font-black text-xs flex flex-col items-center gap-1 ${
+              className={`w-14 h-14 rounded-2xl font-black text-xs flex flex-col items-center justify-center gap-1 shrink-0 ${
                 adminSection === id
                   ? "bg-[#3b241b] text-white"
                   : "text-[#6b4a3d] hover:bg-[#f7efe4]"
               }`}
             >
               <span className="text-xl">{icon}</span>
-              <span>{label}</span>
+              <span className="sr-only">{label}</span>
             </button>
           ))}
         </div>
