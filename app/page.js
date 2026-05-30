@@ -20,6 +20,9 @@ const STOCK_URL =
 const PRODUCT_UPDATE_URL =
   "https://mokacafesxm.app.n8n.cloud/webhook/moka-product-update";
 
+const PRODUCT_CREATE_URL =
+  "https://mokacafesxm.app.n8n.cloud/webhook/moka-product-create";
+
 const COMPLETE_PREP_URL =
   "https://mokacafesxm.app.n8n.cloud/webhook/moka-prep-complete";
 
@@ -691,15 +694,22 @@ export default function MokaOrderPad() {
   };
 
   const saveSettings = async () => {
-    if (!settingsForm.id) {
+    if (!settingsItem?.isNew && !settingsForm.id) {
       alert("ID produit introuvable ❌");
+      return;
+    }
+
+    if (settingsItem?.isNew && !String(settingsForm.name || "").trim()) {
+      alert("Nom produit obligatoire ❌");
       return;
     }
 
     setSavingSettings(true);
 
     try {
-      const response = await fetch(PRODUCT_UPDATE_URL, {
+      const url = settingsItem?.isNew ? PRODUCT_CREATE_URL : PRODUCT_UPDATE_URL;
+
+      const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -718,8 +728,8 @@ export default function MokaOrderPad() {
 
       if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
 
-      alert("Réglages produit mis à jour ✅");
-      setSettingsItem(null);
+      alert(settingsItem?.isNew ? "Produit créé ✅" : "Réglages produit mis à jour ✅");
+      setSettingsItem(null);\n      if (settingsItem?.isNew) window.location.reload();
     } catch (error) {
       console.error(error);
       alert("Erreur : réglages non enregistrés ❌");
