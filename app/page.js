@@ -891,7 +891,7 @@ export default function MokaOrderPad() {
           </div>
         </header>
 
-        <div className="flex gap-3 mt-6 mb-8 overflow-x-auto pb-3">
+        <div className="flex gap-3 mt-4 mb-8 overflow-x-auto pb-3">
 <button
             onClick={() => {
                 setActiveTab("orderpad");
@@ -1526,7 +1526,7 @@ export default function MokaOrderPad() {
                 <select
                   value={selectedStaff}
                   onChange={(e) => setSelectedStaff(e.target.value)}
-                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold text-[#3b241b] outline-none"
+                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-3 py-2 text-sm font-bold text-[#3b241b] outline-none"
                 >
                   <option value="">Sélectionner...</option>
 
@@ -1574,7 +1574,7 @@ export default function MokaOrderPad() {
                       type="date"
                       value={customDueDate}
                       onChange={(e) => setCustomDueDate(e.target.value)}
-                      className="w-full mt-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold text-[#3b241b] outline-none"
+                      className="w-full mt-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-3 py-2 text-sm font-bold text-[#3b241b] outline-none"
                     />
                   )}
 
@@ -1642,7 +1642,7 @@ export default function MokaOrderPad() {
           <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-xl max-h-[86vh] overflow-y-auto p-4">
             <div className="flex justify-between gap-4 items-start mb-6">
               <div>
-                <h2 className="text-3xl font-black text-[#3b241b]">
+                <h2 className="text-2xl font-black text-[#3b241b]">
                   ⏱ Pointage staff
                 </h2>
                 <p className="text-sm text-[#a97862] mt-1">
@@ -1750,7 +1750,7 @@ export default function MokaOrderPad() {
       {showAdminModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3">
           <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-full max-w-sm p-6">
-            <h2 className="text-3xl font-black text-[#3b241b]">
+            <h2 className="text-2xl font-black text-[#3b241b]">
               👤 Accès admin
             </h2>
 
@@ -1768,7 +1768,7 @@ export default function MokaOrderPad() {
               className="w-full mt-6 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-4 text-center text-3xl font-black tracking-[0.4em] text-[#3b241b] outline-none"
             />
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3 mt-4">
               <button
                 onClick={() => {
                   setShowAdminModal(false);
@@ -1792,10 +1792,10 @@ export default function MokaOrderPad() {
 
       {settingsItem && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3">
-          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-full max-w-2xl p-6">
+          <div className="bg-white rounded-[1.5rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-2xl max-h-[84vh] overflow-y-auto p-4">
             <div className="flex justify-between gap-4 items-start mb-6">
               <div>
-                <h2 className="text-3xl font-black text-[#3b241b]">
+                <h2 className="text-2xl font-black text-[#3b241b]">
                   {settingsItem?.isNew ? "➕ Nouveau produit" : "⚙️ Réglages produit"}
                 </h2>
                 <p className="text-sm text-[#a97862] mt-1">
@@ -1811,9 +1811,9 @@ export default function MokaOrderPad() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {settingsItem?.isNew && (
-                <div className="sm:col-span-2 md:col-span-3">
+                <div className="col-span-2 md:col-span-3">
                   <label className="block text-xs font-black text-[#a97862] mb-2">
                     Nom produit
                   </label>
@@ -1828,7 +1828,7 @@ export default function MokaOrderPad() {
                       }))
                     }
                     placeholder="Ex: Mangue fraîche"
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold text-[#3b241b] outline-none"
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-3 py-2 text-sm font-bold text-[#3b241b] outline-none"
                   />
                 </div>
               )}
@@ -1857,7 +1857,7 @@ export default function MokaOrderPad() {
                           [key]: e.target.value,
                         }))
                       }
-                      className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold text-[#3b241b] outline-none"
+                      className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-3 py-2 text-sm font-bold text-[#3b241b] outline-none"
                     >
                       <option value="">Sélectionner...</option>
 
@@ -1877,14 +1877,14 @@ export default function MokaOrderPad() {
                           [key]: e.target.value,
                         }))
                       }
-                      className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold text-[#3b241b] outline-none"
+                      className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-3 py-2 text-sm font-bold text-[#3b241b] outline-none"
                     />
                   )}
                 </div>
               ))}
             </div>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3 mt-4">
               <button
                 onClick={() => setSettingsItem(null)}
                 className="flex-1 py-4 rounded-2xl font-black bg-[#eadfd4] text-[#a97862]"
