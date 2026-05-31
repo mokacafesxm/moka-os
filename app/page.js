@@ -805,11 +805,25 @@ if (!settingsItem?.isNew) {
 
       if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
 
+      const productsResponse = await fetch(PRODUCTS_URL);
+      const productsData = await productsResponse.json();
+      const freshProducts = normalizeArray(productsData, "products");
+      setProducts(freshProducts);
+
+      const stockResponse = await fetch(STOCK_URL);
+      const stockData = await stockResponse.json();
+      setStockLive(normalizeArray(stockData, "stock"));
+
+      if (settingsForm.categorie) {
+        setActiveCategory(settingsForm.categorie);
+        setActiveSubCategory(settingsForm.sousCategorie || "");
+      }
+
       alert(isNewProduct ? "Produit créé ✅" : "Réglages produit mis à jour ✅");
       setSettingsItem(null);
 
       if (isNewProduct) {
-        window.location.reload();
+        setActiveTab("orderpad");
       }
     } catch (error) {
       console.error(error);
