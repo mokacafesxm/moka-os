@@ -215,10 +215,22 @@ function getEditableId(item) {
 export default function MokaOrderPad() {
   const [activeTab, setActiveTab] = useState("orderpad");
 
-  const [products, setProducts] = useState([]);
-  const [preps, setPreps] = useState([]);
+  const [products, setProducts] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem("mokaProductsCache") || "[]"); }
+    catch { return []; }
+  });
+  const [preps, setPreps] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem("mokaPrepsCache") || "[]"); }
+    catch { return []; }
+  });
   const [staff, setStaff] = useState([]);
-  const [stockLive, setStockLive] = useState([]);
+  const [stockLive, setStockLive] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem("mokaStockCache") || "[]"); }
+    catch { return []; }
+  });
 
   const [activeCategory, setActiveCategory] = useState("");
   const [activeSubCategory, setActiveSubCategory] = useState("");
@@ -226,9 +238,21 @@ export default function MokaOrderPad() {
   const [cart, setCart] = useState({});
   const [selectedStaff, setSelectedStaff] = useState("");
 
-  const [loading, setLoading] = useState(true);
-  const [loadingPreps, setLoadingPreps] = useState(true);
-  const [loadingStock, setLoadingStock] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return true;
+    try { return JSON.parse(localStorage.getItem("mokaProductsCache") || "[]").length === 0; }
+    catch { return true; }
+  });
+  const [loadingPreps, setLoadingPreps] = useState(() => {
+    if (typeof window === "undefined") return true;
+    try { return JSON.parse(localStorage.getItem("mokaPrepsCache") || "[]").length === 0; }
+    catch { return true; }
+  });
+  const [loadingStock, setLoadingStock] = useState(() => {
+    if (typeof window === "undefined") return true;
+    try { return JSON.parse(localStorage.getItem("mokaStockCache") || "[]").length === 0; }
+    catch { return true; }
+  });
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState("");
   const [stockSearch, setStockSearch] = useState("");
@@ -277,7 +301,9 @@ export default function MokaOrderPad() {
     fetch(PREPS_URL)
       .then((res) => res.json())
       .then((data) => {
-        setPreps(normalizeArray(data, "preps"));
+        const freshPreps = normalizeArray(data, "preps");
+        setPreps(freshPreps);
+        if (typeof window !== "undefined") localStorage.setItem("mokaPrepsCache", JSON.stringify(freshPreps));
         setLoadingPreps(false);
       })
       .catch((err) => {
@@ -292,6 +318,7 @@ export default function MokaOrderPad() {
       .then((data) => {
         const list = normalizeArray(data, "products");
         setProducts(list);
+        if (typeof window !== "undefined") localStorage.setItem("mokaProductsCache", JSON.stringify(list));
 
         const firstCategory = list.find((p) => p.category)?.category;
         if (firstCategory) setActiveCategory(firstCategory);
@@ -308,7 +335,9 @@ export default function MokaOrderPad() {
     fetch(STOCK_URL)
       .then((res) => res.json())
       .then((data) => {
-        setStockLive(normalizeArray(data, "stock"));
+        const freshStock = normalizeArray(data, "stock");
+        setStockLive(freshStock);
+        if (typeof window !== "undefined") localStorage.setItem("mokaStockCache", JSON.stringify(freshStock));
         setLoadingStock(false);
       })
       .catch((err) => {
@@ -636,42 +665,75 @@ export default function MokaOrderPad() {
       
 if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
 
-if (!settingsItem?.isNew) {
-  const updatedProduct = {
-    ...settingsItem,
-    name: settingsForm.name,
-    category: settingsForm.categorie,
-    categorie: settingsForm.categorie,
-    subcategory: settingsForm.sousCategorie,
-    sousCategorie: settingsForm.sousCategorie,
-    visibleOrderPad: settingsForm.visibleOrderPad,
-    supplier: settingsForm.fournisseurDefaut,
-    fournisseurDefaut: settingsForm.fournisseurDefaut,
-    zoneStockage: settingsForm.zoneStockage,
-    quantiteCommandee: Number(settingsForm.quantiteCommandee) || 0,
-    uniteStock: settingsForm.uniteStock,
-    uniteCommande: settingsForm.uniteCommande,
-    portion: Number(settingsForm.portion) || 0,
-    seuilAlerte: Number(settingsForm.seuilAlerte) || 0,
-    seuilCritique: Number(settingsForm.seuilCritique) || 0,
-  };
+      if (!isNewProduct) {
+        const editedId = String(settingsForm.id || getEditableId(settingsItem) || settingsItem?.id || "");
 
-  if (typeof setProducts === "function") {
-    setProducts(prev =>
-      prev.map(p =>
-        getEditableId(p) === settingsForm.id ? updatedProduct : p
-      )
-    );
-  }
+        const updatedProduct = {
+          ...settingsItem,
+          id: settingsItem?.id || editedId,
+          ingredientId: settingsItem?.ingredientId || editedId,
+          matierePremiereId: settingsItem?.matierePremiereId || editedId,
+          productId: settingsItem?.productId || editedId,
 
-  if (typeof setStockLive === "function") {
-    setStockLive(prev =>
-      prev.map(p =>
-        getEditableId(p) === settingsForm.id ? updatedProduct : p
-      )
-    );
-  }
-}
+          name: settingsForm.name,
+
+          category: settingsForm.categorie,
+          categorie: settingsForm.categorie,
+
+          subcategory: settingsForm.sousCategorie,
+          sousCategorie: settingsForm.sousCategorie,
+
+          visible: settingsForm.visibleOrderPad,
+          visibleOrderPad: settingsForm.visibleOrderPad,
+
+          supplier: settingsForm.fournisseurDefaut,
+          fournisseurDefaut: settingsForm.fournisseurDefaut,
+
+          zone: settingsForm.zoneStockage,
+          zoneStockage: settingsForm.zoneStockage,
+
+          suggested: Number(settingsForm.quantiteCommandee) || 0,
+          quantiteCommandee: Number(settingsForm.quantiteCommandee) || 0,
+
+          unit: settingsForm.uniteStock,
+          uniteStock: settingsForm.uniteStock,
+          uniteCommande: settingsForm.uniteCommande,
+
+          portion: Number(settingsForm.portion) || 0,
+          seuilAlerte: Number(settingsForm.seuilAlerte) || 0,
+          seuilCritique: Number(settingsForm.seuilCritique) || 0,
+        };
+
+        const sameProduct = (p) => {
+          const ids = [
+            p?.id,
+            p?.ingredientId,
+            p?.matierePremiereId,
+            p?.productId,
+            getEditableId(p),
+          ].filter(Boolean).map(String);
+
+          return ids.includes(editedId);
+        };
+
+        setProducts((prev) => {
+          const next = prev.map((p) => sameProduct(p) ? { ...p, ...updatedProduct } : p);
+          if (typeof window !== "undefined") localStorage.setItem("mokaProductsCache", JSON.stringify(next));
+          return next;
+        });
+
+        setStockLive((prev) => {
+          const next = prev.map((p) => sameProduct(p) ? { ...p, ...updatedProduct } : p);
+          if (typeof window !== "undefined") localStorage.setItem("mokaStockCache", JSON.stringify(next));
+          return next;
+        });
+
+        if (settingsForm.categorie) {
+          setActiveCategory(settingsForm.categorie);
+          setActiveSubCategory(settingsForm.sousCategorie || "");
+        }
+      }
+
 
 
       setClockStatuses((prev) => {
