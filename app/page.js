@@ -32,6 +32,9 @@ const CREATE_PREP_URL =
 const CLOCK_URL =
   "https://mokacafesxm.app.n8n.cloud/webhook/moka-staff-clock";
 
+const SETTINGS_URL =
+  "https://mokacafesxm.app.n8n.cloud/webhook/moka-settings";
+
 const categoryEmojis = {
   Bar: "☕",
   Boissons: "🥤",
@@ -267,6 +270,9 @@ export default function MokaOrderPad() {
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminSection, setAdminSection] = useState("dashboard");
+  const [settingsPanel, setSettingsPanel] = useState("");
+  const [settingsData, setSettingsData] = useState([]);
+  const [loadingSettings, setLoadingSettings] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPin, setAdminPin] = useState("");
 
@@ -699,6 +705,29 @@ export default function MokaOrderPad() {
       alert("Erreur pointage ❌");
     } finally {
       setClockSending(false);
+    }
+  };
+
+  const loadSettingsPanel = async (resource) => {
+    setSettingsPanel(resource);
+    setLoadingSettings(true);
+
+    try {
+      const response = await fetch(SETTINGS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resource, action: "list" }),
+      });
+
+      if (!response.ok) throw new Error(`Erreur settings ${response.status}`);
+
+      const data = await response.json();
+      setSettingsData(Array.isArray(data) ? data : normalizeArray(data, resource));
+    } catch (error) {
+      console.error(error);
+      alert("Erreur chargement paramètres ❌");
+    } finally {
+      setLoadingSettings(false);
     }
   };
 
@@ -2218,21 +2247,121 @@ export default function MokaOrderPad() {
             )}
 
             {adminSection === "settings" && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[
-                  ["🏢", "Fournisseurs", "Ajouter, modifier, désactiver"],
-                  ["📦", "Catégories", "Créer / organiser"],
-                  ["📂", "Sous-catégories", "Ranger les produits"],
-                  ["📏", "Unités", "kg, pièce, carton..."],
-                  ["🗄️", "Zones", "Stockage et emplacement"],
-                  ["👥", "Staff", "Équipe et pointage"],
-                ].map(([icon, title, desc]) => (
-                  <div key={title} className="bg-white rounded-[2rem] p-6 border border-[#eadfd4] shadow-sm">
-                    <div className="text-3xl mb-4">{icon}</div>
-                    <div className="text-xl font-black">{title}</div>
-                    <p className="text-sm text-[#a97862] mt-2">{desc}</p>
+              <div className="space-y-5">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+                  {[
+                    ["suppliers", "🏢", "Fournisseurs", "Base fournisseurs"],
+                    ["staff", "👥", "Staff", "Équipe et pointage"],
+                    ["categories", "📦", "Catégories", "À connecter"],
+                    ["subcategories", "📂", "Sous-catégories", "À connecter"],
+                    ["units", "📏", "Unités", "À connecter"],
+                    ["zones", "🗄️", "Zones", "À connecter"],
+                  ].map(([resource, icon, title, desc]) => (
+                    <button
+                      key={resource}
+                      onClick={() => loadSettingsPanel(resource)}
+                      className={`bg-white rounded-[1.5rem] p-4 border text-left shadow-sm transition active:scale-[0.99] ${
+                        settingsPanel === resource
+                          ? "border-[#6f8f32] ring-2 ring-[#6f8f32]/20"
+                          : "border-[#eadfd4]"
+                      }`}
+                    >
+                      <div className="text-3xl mb-3">{icon}</div>
+                      <div className="text-lg font-black">{title}</div>
+                      <p className="text-xs text-[#a97862] mt-1">{desc}</p>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden">
+                  <div className="p-5 border-b border-[#eadfd4] flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
+                        Paramètres
+                      </div>
+                      <h2 className="text-2xl font-black text-[#3b241b] mt-1">
+                        {settingsPanel === "suppliers" && "🏢 Fournisseurs"}
+                        {settingsPanel === "staff" && "👥 Staff"}
+                        {settingsPanel === "categories" && "📦 Catégories"}
+                        {settingsPanel === "subcategories" && "📂 Sous-catégories"}
+                        {settingsPanel === "units" && "📏 Unités"}
+                        {settingsPanel === "zones" && "🗄️ Zones"}
+                        {!settingsPanel && "Sélectionne une base"}
+                      </h2>
+                    </div>
+
+                    {settingsPanel && (
+                      <button
+                        onClick={() => loadSettingsPanel(settingsPanel)}
+                        className="rounded-2xl px-4 py-3 bg-[#f7efe4] text-[#6b4a3d] font-black text-sm border border-[#eadfd4]"
+                      >
+                        ↻ Actualiser
+                      </button>
+                    )}
                   </div>
-                ))}
+
+                  {loadingSettings ? (
+                    <div className="p-8 text-center text-[#a97862] font-bold">
+                      Chargement…
+                    </div>
+                  ) : !settingsPanel ? (
+                    <div className="p-8 text-center text-[#a97862] font-bold">
+                      Clique sur Fournisseurs ou Staff pour afficher la base.
+                    </div>
+                  ) : settingsData.length === 0 ? (
+                    <div className="p-8 text-center text-[#a97862] font-bold">
+                      Aucun élément trouvé.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-[#f7efe4] text-[#a97862]">
+                          <tr>
+                            <th className="text-left p-4 font-black">Nom</th>
+                            <th className="text-left p-4 font-black">Catégorie / rôle</th>
+                            <th className="text-left p-4 font-black">Contact</th>
+                            <th className="text-left p-4 font-black">Téléphone</th>
+                            <th className="text-left p-4 font-black">Email</th>
+                            <th className="text-left p-4 font-black">Actif</th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {settingsData.map((item) => (
+                            <tr key={item.id || item.nom || item.name} className="border-t border-[#eadfd4]">
+                              <td className="p-4 font-black text-[#3b241b]">
+                                {item.nom || item.name || item.prenom || "Sans nom"}
+                              </td>
+                              <td className="p-4 text-[#6b4a3d] font-bold">
+                                {item.categorie || item.category || item.role || "—"}
+                              </td>
+                              <td className="p-4 text-[#6b4a3d]">
+                                {item.contact || item.methodeContact || "—"}
+                              </td>
+                              <td className="p-4 text-[#6b4a3d]">
+                                {item.telephone || item.whatsapp || item.phone || "—"}
+                              </td>
+                              <td className="p-4 text-[#6b4a3d]">
+                                {item.email || "—"}
+                              </td>
+                              <td className="p-4">
+                                <span className={`px-3 py-1 rounded-full text-xs font-black ${
+                                  item.actif === false
+                                    ? "bg-red-100 text-red-700"
+                                    : "bg-[#eef5df] text-[#6f8f32]"
+                                }`}>
+                                  {item.actif === false ? "Inactif" : "Actif"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
               </div>
             )}
           </div>
