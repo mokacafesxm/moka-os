@@ -1028,8 +1028,6 @@ export default function MokaOrderPad() {
             <div className="text-3xl font-black text-[#3b241b] mt-2">{stockKpis.total}</div>
             <div className="text-xs font-bold text-[#a97862] mt-1">Stock Live</div>
           </div>
-            <div className="text-xs font-bold text-[#a97862] mt-1">SXM</div>
-          </div>
         </div>
         )}
 
