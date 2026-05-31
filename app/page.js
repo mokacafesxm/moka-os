@@ -393,6 +393,12 @@ export default function MokaOrderPad() {
     ];
   }, [products]);
 
+  useEffect(() => {
+    if (!activeCategory && categories.length > 0) {
+      setActiveCategory(categories[0]);
+    }
+  }, [activeCategory, categories]);
+
   const subCategories = useMemo(() => {
     if (!activeCategory) return [];
 
@@ -662,79 +668,7 @@ export default function MokaOrderPad() {
         }),
       });
 
-      
-if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
-
-      if (!isNewProduct) {
-        const editedId = String(settingsForm.id || getEditableId(settingsItem) || settingsItem?.id || "");
-
-        const updatedProduct = {
-          ...settingsItem,
-          id: settingsItem?.id || editedId,
-          ingredientId: settingsItem?.ingredientId || editedId,
-          matierePremiereId: settingsItem?.matierePremiereId || editedId,
-          productId: settingsItem?.productId || editedId,
-
-          name: settingsForm.name,
-
-          category: settingsForm.categorie,
-          categorie: settingsForm.categorie,
-
-          subcategory: settingsForm.sousCategorie,
-          sousCategorie: settingsForm.sousCategorie,
-
-          visible: settingsForm.visibleOrderPad,
-          visibleOrderPad: settingsForm.visibleOrderPad,
-
-          supplier: settingsForm.fournisseurDefaut,
-          fournisseurDefaut: settingsForm.fournisseurDefaut,
-
-          zone: settingsForm.zoneStockage,
-          zoneStockage: settingsForm.zoneStockage,
-
-          suggested: Number(settingsForm.quantiteCommandee) || 0,
-          quantiteCommandee: Number(settingsForm.quantiteCommandee) || 0,
-
-          unit: settingsForm.uniteStock,
-          uniteStock: settingsForm.uniteStock,
-          uniteCommande: settingsForm.uniteCommande,
-
-          portion: Number(settingsForm.portion) || 0,
-          seuilAlerte: Number(settingsForm.seuilAlerte) || 0,
-          seuilCritique: Number(settingsForm.seuilCritique) || 0,
-        };
-
-        const sameProduct = (p) => {
-          const ids = [
-            p?.id,
-            p?.ingredientId,
-            p?.matierePremiereId,
-            p?.productId,
-            getEditableId(p),
-          ].filter(Boolean).map(String);
-
-          return ids.includes(editedId);
-        };
-
-        setProducts((prev) => {
-          const next = prev.map((p) => sameProduct(p) ? { ...p, ...updatedProduct } : p);
-          if (typeof window !== "undefined") localStorage.setItem("mokaProductsCache", JSON.stringify(next));
-          return next;
-        });
-
-        setStockLive((prev) => {
-          const next = prev.map((p) => sameProduct(p) ? { ...p, ...updatedProduct } : p);
-          if (typeof window !== "undefined") localStorage.setItem("mokaStockCache", JSON.stringify(next));
-          return next;
-        });
-
-        if (settingsForm.categorie) {
-          setActiveCategory(settingsForm.categorie);
-          setActiveSubCategory(settingsForm.sousCategorie || "");
-        }
-      }
-
-
+      if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
 
       setClockStatuses((prev) => {
         const next = {
@@ -840,56 +774,127 @@ if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
       return;
     }
 
-    setSavingSettings(true);
+    const payload = {
+      id: settingsForm.id || "",
+      name: settingsForm.name,
+      categorie: settingsForm.categorie || "Autres",
+      sousCategorie: settingsForm.sousCategorie || "Autres",
+      visibleOrderPad: settingsForm.visibleOrderPad ?? true,
+      fournisseurDefaut: settingsForm.fournisseurDefaut,
+      zoneStockage: settingsForm.zoneStockage,
+      quantiteCommandee: Number(settingsForm.quantiteCommandee) || 0,
+      uniteStock: settingsForm.uniteStock,
+      uniteCommande: settingsForm.uniteCommande,
+      portion: Number(settingsForm.portion) || 0,
+      seuilAlerte: Number(settingsForm.seuilAlerte) || 0,
+      seuilCritique: Number(settingsForm.seuilCritique) || 0,
+    };
 
-    try {
-      const url = isNewProduct ? PRODUCT_CREATE_URL : PRODUCT_UPDATE_URL;
+    const applyLocalUpdate = () => {
+      const editedId = String(payload.id || getEditableId(settingsItem) || settingsItem?.id || "");
 
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: settingsForm.id || "",
-          name: settingsForm.name,
-          categorie: settingsForm.categorie || "Autres",
-          sousCategorie: settingsForm.sousCategorie || "Autres",
-          visibleOrderPad: settingsForm.visibleOrderPad ?? true,
-          fournisseurDefaut: settingsForm.fournisseurDefaut,
-          zoneStockage: settingsForm.zoneStockage,
-          quantiteCommandee: Number(settingsForm.quantiteCommandee) || 0,
-          uniteStock: settingsForm.uniteStock,
-          uniteCommande: settingsForm.uniteCommande,
-          portion: Number(settingsForm.portion) || 0,
-          seuilAlerte: Number(settingsForm.seuilAlerte) || 0,
-          seuilCritique: Number(settingsForm.seuilCritique) || 0,
-        }),
+      const updatedProduct = {
+        ...settingsItem,
+        id: settingsItem?.id || editedId,
+        ingredientId: settingsItem?.ingredientId || editedId,
+        matierePremiereId: settingsItem?.matierePremiereId || editedId,
+        productId: settingsItem?.productId || editedId,
+
+        name: payload.name,
+
+        category: payload.categorie,
+        categorie: payload.categorie,
+
+        subcategory: payload.sousCategorie,
+        sousCategorie: payload.sousCategorie,
+
+        visible: payload.visibleOrderPad,
+        visibleOrderPad: payload.visibleOrderPad,
+
+        supplier: payload.fournisseurDefaut,
+        fournisseurDefaut: payload.fournisseurDefaut,
+
+        zone: payload.zoneStockage,
+        zoneStockage: payload.zoneStockage,
+
+        suggested: payload.quantiteCommandee,
+        quantiteCommandee: payload.quantiteCommandee,
+
+        unit: payload.uniteStock,
+        uniteStock: payload.uniteStock,
+        uniteCommande: payload.uniteCommande,
+
+        portion: payload.portion,
+        seuilAlerte: payload.seuilAlerte,
+        seuilCritique: payload.seuilCritique,
+      };
+
+      const sameProduct = (p) => {
+        const ids = [
+          p?.id,
+          p?.ingredientId,
+          p?.matierePremiereId,
+          p?.productId,
+          getEditableId(p),
+        ].filter(Boolean).map(String);
+
+        return ids.includes(editedId);
+      };
+
+      setProducts((prev) => {
+        const next = prev.map((p) => sameProduct(p) ? { ...p, ...updatedProduct } : p);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("mokaProductsCache", JSON.stringify(next));
+        }
+        return next;
       });
 
-      if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
+      setStockLive((prev) => {
+        const next = prev.map((p) => sameProduct(p) ? { ...p, ...updatedProduct } : p);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("mokaStockCache", JSON.stringify(next));
+        }
+        return next;
+      });
 
-      const productsResponse = await fetch(PRODUCTS_URL);
-      const productsData = await productsResponse.json();
-      const freshProducts = normalizeArray(productsData, "products");
-      setProducts(freshProducts);
-
-      const stockResponse = await fetch(STOCK_URL);
-      const stockData = await stockResponse.json();
-      setStockLive(normalizeArray(stockData, "stock"));
-
-      if (settingsForm.categorie) {
-        setActiveCategory(settingsForm.categorie);
-        setActiveSubCategory(settingsForm.sousCategorie || "");
+      if (payload.categorie) {
+        setActiveCategory(payload.categorie);
+        setActiveSubCategory(payload.sousCategorie || "");
       }
+    };
+
+    setSavingSettings(true);
+
+    if (!isNewProduct) {
+      applyLocalUpdate();
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(isNewProduct ? PRODUCT_CREATE_URL : PRODUCT_UPDATE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
 
       alert(isNewProduct ? "Produit créé ✅" : "Réglages produit mis à jour ✅");
       setSettingsItem(null);
 
       if (isNewProduct) {
         setActiveTab("orderpad");
+        window.location.reload();
       }
     } catch (error) {
       console.error(error);
-      alert("Erreur : réglages non enregistrés ❌");
+      alert(!isNewProduct ? "Affichage mis à jour, mais webhook lent/erreur ⚠️" : "Erreur : produit non créé ❌");
+      if (!isNewProduct) setSettingsItem(null);
     } finally {
       setSavingSettings(false);
     }
