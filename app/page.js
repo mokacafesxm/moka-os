@@ -994,6 +994,7 @@ export default function MokaOrderPad() {
         </div>
 
 
+        {isAdmin && (
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3 mb-4">
           <button
             onClick={() => setActiveTab("stock")}
@@ -1045,6 +1046,7 @@ export default function MokaOrderPad() {
             <div className="text-xs font-bold text-[#a97862] mt-1">SXM</div>
           </div>
         </div>
+        )}
 
         <div className="grid grid-cols-12 gap-4 items-start">
           <section className="col-span-12 sm:col-span-8 xl:col-span-9">
