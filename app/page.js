@@ -595,6 +595,25 @@ export default function MokaOrderPad() {
     (prep) => getPrepStatus(prep) !== "Terminé" && getPrepStatus(prep) !== "Fait"
   ).length;
 
+
+  const stockKpis = useMemo(() => {
+    const total = stockLive.length;
+
+    const critical = stockLive.filter((item) =>
+      String(getStockStatus(item)).toLowerCase().includes("critique")
+    ).length;
+
+    const alert = stockLive.filter((item) => {
+      const s = String(getStockStatus(item)).toLowerCase();
+      return s.includes("alerte") || s.includes("stock bas") || s.includes("à commander");
+    }).length;
+
+    const ok = Math.max(total - critical - alert, 0);
+    const health = total > 0 ? Math.round((ok / total) * 100) : 0;
+
+    return { total, critical, alert, ok, health };
+  }, [stockLive]);
+
   const sendClockAction = async (member, action) => {
     const staffId = member.id || getStaffName(member);
     const staffName = getStaffName(member);
@@ -972,6 +991,59 @@ export default function MokaOrderPad() {
             )}
           </button>
         
+        </div>
+
+
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3 mb-4">
+          <button
+            onClick={() => setActiveTab("stock")}
+            className="rounded-[1.5rem] bg-white/90 border border-[#eadfd4] p-4 text-left shadow-sm active:scale-[0.99]"
+          >
+            <div className="text-xs font-black text-[#a97862]">🔴 Produits critiques</div>
+            <div className="text-3xl font-black text-red-600 mt-2">{stockKpis.critical}</div>
+            <div className="text-xs font-bold text-[#a97862] mt-1">À commander en priorité</div>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("stock")}
+            className="rounded-[1.5rem] bg-white/90 border border-[#eadfd4] p-4 text-left shadow-sm active:scale-[0.99]"
+          >
+            <div className="text-xs font-black text-[#a97862]">🟠 Alertes stock</div>
+            <div className="text-3xl font-black text-orange-500 mt-2">{stockKpis.alert}</div>
+            <div className="text-xs font-bold text-[#a97862] mt-1">Sous seuil bientôt</div>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("preps")}
+            className="rounded-[1.5rem] bg-white/90 border border-[#eadfd4] p-4 text-left shadow-sm active:scale-[0.99]"
+          >
+            <div className="text-xs font-black text-[#a97862]">👨‍🍳 Prépas à faire</div>
+            <div className="text-3xl font-black text-[#6f8f32] mt-2">{prepCount}</div>
+            <div className="text-xs font-bold text-[#a97862] mt-1">Aujourd’hui / à venir</div>
+          </button>
+
+          <div className="rounded-[1.5rem] bg-white/90 border border-[#eadfd4] p-4 shadow-sm">
+            <div className="text-xs font-black text-[#a97862]">📦 Produits suivis</div>
+            <div className="text-3xl font-black text-[#3b241b] mt-2">{stockKpis.total}</div>
+            <div className="text-xs font-bold text-[#a97862] mt-1">Stock Live</div>
+          </div>
+
+          <div className="rounded-[1.5rem] bg-white/90 border border-[#eadfd4] p-4 shadow-sm">
+            <div className="text-xs font-black text-[#a97862]">💚 Santé stock</div>
+            <div className="text-3xl font-black text-[#6f8f32] mt-2">{stockKpis.health}%</div>
+            <div className="h-2 bg-[#eadfd4] rounded-full mt-3 overflow-hidden">
+              <div
+                className="h-full bg-[#6f8f32] rounded-full"
+                style={{ width: `${stockKpis.health}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-[1.5rem] bg-white/90 border border-[#eadfd4] p-4 shadow-sm">
+            <div className="text-xs font-black text-[#a97862]">🕔 Commande auto</div>
+            <div className="text-2xl font-black text-[#3b241b] mt-2">17:45</div>
+            <div className="text-xs font-bold text-[#a97862] mt-1">SXM</div>
+          </div>
         </div>
 
         <div className="grid grid-cols-12 gap-4 items-start">
