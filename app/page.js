@@ -1065,7 +1065,7 @@ export default function MokaOrderPad() {
                             setStockView("prepa");
                             ;
                           }}
-                          className={`px-3 py-1.5 rounded-full whitespace-nowrap text-sm font-black transition ${
+                          className={`px-3 py-1.5 rounded-full whitespace-nowrap text-xs sm:text-sm font-black shrink-0 transition ${
                             stockView === "prepa"
                               ? "bg-[#6f8f32] text-white shadow-md"
                               : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
@@ -1081,7 +1081,7 @@ export default function MokaOrderPad() {
                               setActiveStockCategory(stockCategories[0]);
                             }
                           }}
-                          className={`px-3 py-1.5 rounded-full whitespace-nowrap text-sm font-black transition ${
+                          className={`px-3 py-1.5 rounded-full whitespace-nowrap text-xs sm:text-sm font-black shrink-0 transition ${
                             stockView === "stock"
                               ? "bg-[#6f8f32] text-white shadow-md"
                               : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
@@ -1097,7 +1097,7 @@ export default function MokaOrderPad() {
                             <button
                               key={cat}
                               onClick={() => setActiveStockCategory(cat)}
-                              className={`px-3 py-1.5 rounded-full whitespace-nowrap text-sm font-black transition ${
+                              className={`px-3 py-1.5 rounded-full whitespace-nowrap text-xs sm:text-sm font-black shrink-0 transition ${
                                 activeStockCategory === cat
                                   ? "bg-[#3b241b] text-white shadow-md"
                                   : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
@@ -1236,7 +1236,7 @@ export default function MokaOrderPad() {
                           setActiveCategory(cat);
                           setActiveSubCategory("");
                         }}
-                        className={`px-3 py-1.5 rounded-full whitespace-nowrap text-sm font-black transition ${
+                        className={`px-3 py-1.5 rounded-full whitespace-nowrap text-xs sm:text-sm font-black shrink-0 transition ${
                           activeCategory === cat
                             ? "bg-[#6f8f32] text-white shadow-md"
                             : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
@@ -1248,7 +1248,7 @@ export default function MokaOrderPad() {
                   </div>
 
                   {subCategories.length > 0 && (
-                    <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                    <div className="flex flex-nowrap gap-2 mt-2 overflow-x-auto pb-1 whitespace-nowrap">
 {subCategories.map((sub) => (
                         <button
                           key={sub}
