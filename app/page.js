@@ -995,7 +995,7 @@ export default function MokaOrderPad() {
 
 
         {isAdmin && (
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <button
             onClick={() => setActiveTab("stock")}
             className="rounded-[1.5rem] bg-white/90 border border-[#eadfd4] p-4 text-left shadow-sm active:scale-[0.99]"
@@ -1028,21 +1028,6 @@ export default function MokaOrderPad() {
             <div className="text-3xl font-black text-[#3b241b] mt-2">{stockKpis.total}</div>
             <div className="text-xs font-bold text-[#a97862] mt-1">Stock Live</div>
           </div>
-
-          <div className="rounded-[1.5rem] bg-white/90 border border-[#eadfd4] p-4 shadow-sm">
-            <div className="text-xs font-black text-[#a97862]">💚 Santé stock</div>
-            <div className="text-3xl font-black text-[#6f8f32] mt-2">{stockKpis.health}%</div>
-            <div className="h-2 bg-[#eadfd4] rounded-full mt-3 overflow-hidden">
-              <div
-                className="h-full bg-[#6f8f32] rounded-full"
-                style={{ width: `${stockKpis.health}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="rounded-[1.5rem] bg-white/90 border border-[#eadfd4] p-4 shadow-sm">
-            <div className="text-xs font-black text-[#a97862]">🕔 Commande auto</div>
-            <div className="text-2xl font-black text-[#3b241b] mt-2">17:45</div>
             <div className="text-xs font-bold text-[#a97862] mt-1">SXM</div>
           </div>
         </div>
