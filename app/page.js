@@ -925,7 +925,7 @@ export default function MokaOrderPad() {
           </div>
         </header>
 
-        <div className="flex gap-3 mt-3 mb-4 overflow-x-auto pb-2">
+        <div className="flex gap-3 mt-3 mb-3 overflow-x-auto pb-2">
 <button
             onClick={() => {
                 setActiveTab("orderpad");
@@ -974,7 +974,7 @@ export default function MokaOrderPad() {
         
         </div>
 
-        <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-12 gap-4 items-start">
           <section className="col-span-12 sm:col-span-8 xl:col-span-9">
             {activeTab === "stock" && (
               <>
@@ -1534,8 +1534,8 @@ export default function MokaOrderPad() {
             )}
           </section>
 
-          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 sm:sticky sm:top-3 sm:self-start sm:max-h-[calc(100vh-1rem)] sm:overflow-y-auto sm:-mt-[6.2rem]"stock" && stockView === "stock" ? "hidden" : ""}`}>
-            <div className="bg-white/95 rounded-[1.5rem] p-4 shadow-sm border border-[#eadfd4] sticky top-3 max-h-[calc(100vh-1.5rem)] overflow-y-auto">
+          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 sm:sticky sm:top-3 sm:self-start sm:max-h-[calc(100vh-1rem)] sm:overflow-y-auto"stock" && stockView === "stock" ? "hidden" : ""}`}>
+            <div className="bg-white/95 rounded-[1.5rem] p-4 shadow-sm border border-[#eadfd4] sticky top-3 max-h-[calc(100vh-1.5rem)] overflow-y-auto max-h-[calc(100vh-1.5rem)] overflow-y-auto">
               <h2 className="text-xl font-black text-[#3b241b]">
                 {activeTab === "stock"
                   ? "👨‍🍳 Envoyer en préparation"
