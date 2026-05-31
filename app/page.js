@@ -633,7 +633,46 @@ export default function MokaOrderPad() {
         }),
       });
 
-      if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
+      
+if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
+
+if (!settingsItem?.isNew) {
+  const updatedProduct = {
+    ...settingsItem,
+    name: settingsForm.name,
+    category: settingsForm.categorie,
+    categorie: settingsForm.categorie,
+    subcategory: settingsForm.sousCategorie,
+    sousCategorie: settingsForm.sousCategorie,
+    visibleOrderPad: settingsForm.visibleOrderPad,
+    supplier: settingsForm.fournisseurDefaut,
+    fournisseurDefaut: settingsForm.fournisseurDefaut,
+    zoneStockage: settingsForm.zoneStockage,
+    quantiteCommandee: Number(settingsForm.quantiteCommandee) || 0,
+    uniteStock: settingsForm.uniteStock,
+    uniteCommande: settingsForm.uniteCommande,
+    portion: Number(settingsForm.portion) || 0,
+    seuilAlerte: Number(settingsForm.seuilAlerte) || 0,
+    seuilCritique: Number(settingsForm.seuilCritique) || 0,
+  };
+
+  if (typeof setProducts === "function") {
+    setProducts(prev =>
+      prev.map(p =>
+        getEditableId(p) === settingsForm.id ? updatedProduct : p
+      )
+    );
+  }
+
+  if (typeof setStockLive === "function") {
+    setStockLive(prev =>
+      prev.map(p =>
+        getEditableId(p) === settingsForm.id ? updatedProduct : p
+      )
+    );
+  }
+}
+
 
       setClockStatuses((prev) => {
         const next = {
