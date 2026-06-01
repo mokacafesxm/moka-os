@@ -1019,6 +1019,20 @@ export default function MokaOrderPad() {
     }
 
     loadProductsDatabase(true);
+
+    if (!settingsCache.suppliers?.length) {
+      fetchSettingsResource("suppliers")
+        .then((list) => {
+          setSettingsCache((prev) => {
+            const next = { ...prev, suppliers: list };
+            if (typeof window !== "undefined") {
+              localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
+            }
+            return next;
+          });
+        })
+        .catch((error) => console.error("Préchargement fournisseurs produits:", error));
+    }
   }, [isAdmin, adminSection]);
 
   const openProductDbEdit = (item) => {
@@ -1384,6 +1398,55 @@ export default function MokaOrderPad() {
       return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
     });
   }, [filteredProductsDb]);
+
+  const productsDbSupplierMap = useMemo(() => {
+    const suppliers = settingsCache.suppliers || [];
+    const map = {};
+
+    suppliers.forEach((supplier) => {
+      const name = supplier.nom || supplier.name || supplier.fournisseur || "";
+      const ids = [
+        supplier.id,
+        supplier.pageId,
+        supplier.notionId,
+        name,
+      ].filter(Boolean);
+
+      ids.forEach((id) => {
+        map[String(id).trim()] = name;
+        map[String(id).replaceAll("-", "").trim()] = name;
+      });
+    });
+
+    return map;
+  }, [settingsCache]);
+
+  const getProductsDbSupplierName = (item) => {
+    const raw =
+      item.fournisseurDefaut ||
+      item.supplier ||
+      item.fournisseur ||
+      "";
+
+    if (!raw) return "—";
+
+    if (Array.isArray(raw)) {
+      return raw
+        .map((value) => {
+          const clean = String(value).trim();
+          return productsDbSupplierMap[clean] || productsDbSupplierMap[clean.replaceAll("-", "")] || clean;
+        })
+        .join(", ");
+    }
+
+    const clean = String(raw).trim();
+
+    return (
+      productsDbSupplierMap[clean] ||
+      productsDbSupplierMap[clean.replaceAll("-", "")] ||
+      clean
+    );
+  };
 
   const sendToMokaOS = async () => {
     if (cartItems.length === 0) return;
@@ -3145,7 +3208,7 @@ export default function MokaOrderPad() {
                             </td>
                             <td className="p-3 text-[#6b4a3d] font-bold">{item.categorie || item.category || "—"}</td>
                             <td className="p-3 text-[#6b4a3d]">{item.sousCategorie || item.subcategory || "—"}</td>
-                            <td className="p-3 text-[#6b4a3d]">{item.fournisseurDefaut || item.supplier || "—"}</td>
+                            <td className="p-3 text-[#6b4a3d]">{getProductsDbSupplierName(item)}</td>
                             <td className="p-3 text-[#6b4a3d]">{item.zoneStockage || item.zone || "—"}</td>
                             <td className="p-3 text-[#6b4a3d]">{item.methodeSuivi || "—"}</td>
                             <td className="p-3 text-[#6b4a3d]">{item.quantiteCommandeSuggeree ?? "—"}</td>
