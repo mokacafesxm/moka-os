@@ -1055,12 +1055,27 @@ export default function MokaOrderPad() {
   }, [isAdmin, adminSection]);
 
   const openProductDbCreate = () => {
+    ["suppliers", "categories", "subcategories", "units", "zones"].forEach((resource) => {
+      if (settingsCache[resource]?.length) return;
+      fetchSettingsResource(resource)
+        .then((list) => {
+          setSettingsCache((prev) => {
+            const next = { ...prev, [resource]: list };
+            if (typeof window !== "undefined") {
+              localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
+            }
+            return next;
+          });
+        })
+        .catch((error) => console.error("Préchargement option produit:", resource, error));
+    });
+
     setCreatingProductDb(true);
     setCreatingProductDbForm({
       ingredient: "",
       visibleOrderPad: true,
       photo: "",
-      categorie: "Bar",
+      categorie: "",
       sousCategorie: "",
       fournisseurDefaut: "",
       zoneStockage: "",
@@ -1485,6 +1500,34 @@ export default function MokaOrderPad() {
       return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
     });
   }, [filteredProductsDb]);
+
+  const productsDbSupplierChoices = useMemo(() => {
+    const suppliers = settingsCache.suppliers || [];
+    return suppliers
+      .map((s) => s.nom || s.name || s.fournisseur || "")
+      .filter(Boolean)
+      .sort();
+  }, [settingsCache]);
+
+  const productsDbZoneChoices = useMemo(() => {
+    const zones = settingsCache.zones || [];
+    const fromSettings = zones.map((z) => z.nom || z.name || z.zone || "").filter(Boolean);
+    const fromProducts = productsDb.map((p) => p.zoneStockage || p.zone || "").filter(Boolean);
+    return [...new Set([...fromSettings, ...fromProducts])].sort();
+  }, [settingsCache, productsDb]);
+
+  const productsDbUnitChoices = useMemo(() => {
+    const units = settingsCache.units || [];
+    const fromSettings = units.map((u) => u.nom || u.name || u.unite || "").filter(Boolean);
+    const fromProducts = productsDb.flatMap((p) => [p.uniteStock, p.uniteCommande, p.unit]).filter(Boolean);
+    return [...new Set([...fromSettings, ...fromProducts, "kg", "g", "L", "ml", "pièce", "carton", "sachet", "bouteille"])].sort();
+  }, [settingsCache, productsDb]);
+
+  const productsDbSubCategoryChoices = useMemo(() => {
+    const fromSettings = (settingsCache.subcategories || []).map((s) => s.nom || s.name || "").filter(Boolean);
+    const fromProducts = productsDb.map((p) => p.sousCategorie || p.subcategory || "").filter(Boolean);
+    return [...new Set([...fromSettings, ...fromProducts])].sort();
+  }, [settingsCache, productsDb]);
 
   const productsDbSupplierMap = useMemo(() => {
     const suppliers = settingsCache.suppliers || [];
@@ -2795,13 +2838,13 @@ export default function MokaOrderPad() {
 
       {creatingProductDb && (
         <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-3">
-          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[94vw] max-w-4xl max-h-[86vh] overflow-y-auto p-5">
+          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[94vw] max-w-5xl max-h-[86vh] overflow-y-auto p-5">
             <div className="flex justify-between items-start gap-4 mb-5">
               <div>
                 <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
                   Nouveau produit
                 </div>
-                <h2 className="text-2xl font-black text-[#3b241b]">
+                <h2 className="text-3xl font-black text-[#3b241b]">
                   ➕ Ajouter au catalogue matières premières
                 </h2>
               </div>
@@ -2814,62 +2857,192 @@ export default function MokaOrderPad() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {[
-                ["Ingrédient", "ingredient", "text"],
-                ["Photo URL", "photo", "text"],
-                ["Catégorie", "categorie", "text"],
-                ["Sous-catégorie", "sousCategorie", "text"],
-                ["Fournisseur par défaut", "fournisseurDefaut", "text"],
-                ["Zone de stockage", "zoneStockage", "text"],
-                ["Méthode de suivi", "methodeSuivi", "text"],
-                ["Quantité commande suggérée", "quantiteCommandeSuggeree", "number"],
-                ["Unité stock", "uniteStock", "text"],
-                ["Unité commande", "uniteCommande", "text"],
-                ["Seuil alerte", "seuilAlerte", "number"],
-                ["Seuil critique", "seuilCritique", "number"],
-                ["Portion grammes", "portionGrammes", "number"],
-                ["Utilisé dans", "utiliseDans", "text"],
-              ].map(([label, key, type]) => (
-                <div key={key} className={key === "utiliseDans" ? "md:col-span-3" : ""}>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">
-                    {label}
-                  </label>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-black text-[#a97862] mb-2">
+                  Nom du produit / ingrédient
+                </label>
+                <input
+                  value={creatingProductDbForm.ingredient || ""}
+                  onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, ingredient: e.target.value }))}
+                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-4 text-xl font-black outline-none"
+                  placeholder="Ex : Mangue fraîche"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Photo URL</label>
                   <input
-                    type={type}
-                    value={creatingProductDbForm[key] ?? ""}
-                    onChange={(e) => setCreatingProductDbForm((prev) => ({
-                      ...prev,
-                      [key]: type === "number" ? Number(e.target.value) : e.target.value,
-                    }))}
+                    value={creatingProductDbForm.photo || ""}
+                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, photo: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                    placeholder="Coller une URL image"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Catégorie</label>
+                  <select
+                    value={creatingProductDbForm.categorie || ""}
+                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, categorie: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
+                  >
+                    <option value="">À définir</option>
+                    {productsDbCategories.filter((cat) => cat !== "Tous").map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Sous-catégorie</label>
+                  <select
+                    value={creatingProductDbForm.sousCategorie || ""}
+                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, sousCategorie: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
+                  >
+                    <option value="">À définir</option>
+                    {productsDbSubCategoryChoices.map((sub) => (
+                      <option key={sub} value={sub}>{sub}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Fournisseur par défaut</label>
+                  <select
+                    value={creatingProductDbForm.fournisseurDefaut || ""}
+                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, fournisseurDefaut: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
+                  >
+                    <option value="">À définir</option>
+                    {productsDbSupplierChoices.map((supplier) => (
+                      <option key={supplier} value={supplier}>{supplier}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Zone de stockage</label>
+                  <select
+                    value={creatingProductDbForm.zoneStockage || ""}
+                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, zoneStockage: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
+                  >
+                    <option value="">À définir</option>
+                    {productsDbZoneChoices.map((zone) => (
+                      <option key={zone} value={zone}>{zone}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Méthode de suivi</label>
+                  <select
+                    value={creatingProductDbForm.methodeSuivi || "Manuel"}
+                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, methodeSuivi: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
+                  >
+                    <option value="Manuel">Manuel</option>
+                    <option value="Automatique">Automatique</option>
+                    <option value="Préparation">Préparation</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Quantité commande suggérée</label>
+                  <input
+                    type="number"
+                    value={creatingProductDbForm.quantiteCommandeSuggeree ?? ""}
+                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, quantiteCommandeSuggeree: Number(e.target.value) }))}
                     className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
                   />
                 </div>
-              ))}
 
-              <label className="md:col-span-3 flex items-center gap-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black">
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Portion (g)</label>
+                  <input
+                    type="number"
+                    value={creatingProductDbForm.portionGrammes ?? ""}
+                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, portionGrammes: Number(e.target.value) }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Unité stock</label>
+                  <select
+                    value={creatingProductDbForm.uniteStock || ""}
+                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, uniteStock: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
+                  >
+                    <option value="">À définir</option>
+                    {productsDbUnitChoices.map((unit) => (
+                      <option key={unit} value={unit}>{unit}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Unité commande</label>
+                  <select
+                    value={creatingProductDbForm.uniteCommande || ""}
+                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, uniteCommande: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
+                  >
+                    <option value="">À définir</option>
+                    {productsDbUnitChoices.map((unit) => (
+                      <option key={unit} value={unit}>{unit}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Seuil alerte</label>
+                  <input
+                    type="number"
+                    value={creatingProductDbForm.seuilAlerte ?? ""}
+                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, seuilAlerte: Number(e.target.value) }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Seuil critique</label>
+                  <input
+                    type="number"
+                    value={creatingProductDbForm.seuilCritique ?? ""}
+                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, seuilCritique: Number(e.target.value) }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black">
                 <input
                   type="checkbox"
                   checked={creatingProductDbForm.visibleOrderPad !== false}
-                  onChange={(e) => setCreatingProductDbForm((prev) => ({
-                    ...prev,
-                    visibleOrderPad: e.target.checked,
-                  }))}
+                  onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, visibleOrderPad: e.target.checked }))}
                 />
                 Visible sur OrderPad
               </label>
 
-              <div className="md:col-span-3">
-                <label className="block text-xs font-black text-[#a97862] mb-2">
-                  Notes
-                </label>
+              <div>
+                <label className="block text-xs font-black text-[#a97862] mb-2">Utilisé dans</label>
+                <textarea
+                  value={creatingProductDbForm.utiliseDans || ""}
+                  onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, utiliseDans: e.target.value }))}
+                  className="w-full min-h-[70px] rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-semibold outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-[#a97862] mb-2">Notes</label>
                 <textarea
                   value={creatingProductDbForm.notes || ""}
-                  onChange={(e) => setCreatingProductDbForm((prev) => ({
-                    ...prev,
-                    notes: e.target.value,
-                  }))}
-                  className="w-full min-h-[90px] rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                  onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, notes: e.target.value }))}
+                  className="w-full min-h-[70px] rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-semibold outline-none"
                 />
               </div>
             </div>
