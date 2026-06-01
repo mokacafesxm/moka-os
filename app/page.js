@@ -3178,7 +3178,8 @@ export default function MokaOrderPad() {
                               </div>
                             </td>
                           </tr>
-                        ))}
+                          ))
+                        ])}
                       </tbody>
                     </table>
                   </div>
