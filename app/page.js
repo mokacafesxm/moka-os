@@ -766,29 +766,6 @@ export default function MokaOrderPad() {
     const data = await response.json();
     return Array.isArray(data) ? data : normalizeArray(data, resource);
   };
-
-  const loadSettingsPanel = async (resource) => {
-    setSettingsPanel(resource);
-
-    if (settingsCache[resource]) {
-      setSettingsData(settingsCache[resource]);
-      return;
-    }
-
-    setLoadingSettingsPanel(true);
-
-    try {
-      const list = await fetchSettingsResource(resource);
-      setSettingsData(list);
-      setSettingsCache((prev) => ({ ...prev, [resource]: list }));
-    } catch (error) {
-      console.error(error);
-      alert("Erreur chargement paramètres ❌");
-    } finally {
-      setLoadingSettingsPanel(false);
-    }
-  };
-
   useEffect(() => {
     if (!isAdmin || adminSection !== "settings") return;
 
