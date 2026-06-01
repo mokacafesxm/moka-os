@@ -272,6 +272,10 @@ export default function MokaOrderPad() {
   const [adminSection, setAdminSection] = useState("dashboard");
   const [settingsPanel, setSettingsPanel] = useState("");
   const [settingsData, setSettingsData] = useState([]);
+  const [settingsCache, setSettingsCache] = useState({});
+  const [loadingSettingsPanel, setLoadingSettingsPanel] = useState(false);
+  const [settingsPanel, setSettingsPanel] = useState("");
+  const [settingsData, setSettingsData] = useState([]);
   const [loadingSettingsPanel, setLoadingSettingsPanel] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPin, setAdminPin] = useState("");
@@ -751,6 +755,56 @@ export default function MokaOrderPad() {
 
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);
+  }, [isAdmin, adminSection]);
+
+  const fetchSettingsResource = async (resource) => {
+    const response = await fetch(SETTINGS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resource, action: "list" }),
+    });
+
+    if (!response.ok) throw new Error(`Erreur settings ${response.status}`);
+
+    const data = await response.json();
+    return Array.isArray(data) ? data : normalizeArray(data, resource);
+  };
+
+  const loadSettingsPanel = async (resource) => {
+    setSettingsPanel(resource);
+
+    if (settingsCache[resource]) {
+      setSettingsData(settingsCache[resource]);
+      return;
+    }
+
+    setLoadingSettingsPanel(true);
+
+    try {
+      const list = await fetchSettingsResource(resource);
+      setSettingsData(list);
+      setSettingsCache((prev) => ({ ...prev, [resource]: list }));
+    } catch (error) {
+      console.error(error);
+      alert("Erreur chargement paramètres ❌");
+    } finally {
+      setLoadingSettingsPanel(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAdmin || adminSection !== "settings") return;
+
+    ["suppliers", "staff"].forEach(async (resource) => {
+      if (settingsCache[resource]) return;
+
+      try {
+        const list = await fetchSettingsResource(resource);
+        setSettingsCache((prev) => ({ ...prev, [resource]: list }));
+      } catch (error) {
+        console.error("Préchargement paramètres:", resource, error);
+      }
+    });
   }, [isAdmin, adminSection]);
 
   const unlockAdmin = () => {
