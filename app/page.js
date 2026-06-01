@@ -297,6 +297,7 @@ export default function MokaOrderPad() {
   const [savingProductDb, setSavingProductDb] = useState(false);
   const [creatingProductDb, setCreatingProductDb] = useState(false);
   const [creatingProductDbForm, setCreatingProductDbForm] = useState({});
+  const [creatingProductPhotoFile, setCreatingProductPhotoFile] = useState("");
   const [productsDbSearch, setProductsDbSearch] = useState("");
   const [productsDbCategory, setProductsDbCategory] = useState("Tous");
   const [creatingSettingsItem, setCreatingSettingsItem] = useState(false);
@@ -1726,12 +1727,6 @@ export default function MokaOrderPad() {
             </button>
 
             {isAdmin && (
-              <button
-                onClick={openNewProduct}
-                className="rounded-[1.5rem] px-4 py-3 shadow-sm border font-black text-sm bg-[#6f8f32] text-white border-[#6f8f32]"
-              >
-                ➕ Produit
-              </button>
             )}
 
             <div className="bg-white/90 rounded-[1.5rem] px-4 py-3 shadow-sm border border-[#eadfd4] text-right text-sm shrink-0">
@@ -2873,12 +2868,39 @@ export default function MokaOrderPad() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-black text-[#a97862] mb-2">Photo URL</label>
-                  <input
-                    value={creatingProductDbForm.photo || ""}
-                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, photo: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                    placeholder="Coller une URL image"
-                  />
+                  <div className="space-y-2">
+                    <input
+                      value={creatingProductDbForm.photo || ""}
+                      onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, photo: e.target.value }))}
+                      className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                      placeholder="Coller une URL image"
+                    />
+
+                    <label className="flex items-center justify-center gap-2 rounded-2xl border border-[#eadfd4] bg-[#f7efe4] px-4 py-3 font-black text-[#6b4a3d] cursor-pointer">
+                      📷 Choisir / prendre une photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setCreatingProductPhotoFile(file.name);
+                          setCreatingProductDbForm((prev) => ({
+                            ...prev,
+                            photo: file.name,
+                          }));
+                        }}
+                      />
+                    </label>
+
+                    {creatingProductPhotoFile && (
+                      <div className="text-xs font-bold text-[#a97862]">
+                        Photo sélectionnée : {creatingProductPhotoFile}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
