@@ -32,6 +32,9 @@ const CREATE_PREP_URL =
 const CLOCK_URL =
   "https://mokacafesxm.app.n8n.cloud/webhook/moka-staff-clock";
 
+const SETTINGS_URL =
+  "https://mokacafesxm.app.n8n.cloud/webhook/moka-settings";
+
 const categoryEmojis = {
   Bar: "☕",
   Boissons: "🥤",
@@ -267,6 +270,9 @@ export default function MokaOrderPad() {
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminSection, setAdminSection] = useState("dashboard");
+  const [settingsPanel, setSettingsPanel] = useState("");
+  const [settingsData, setSettingsData] = useState([]);
+  const [loadingSettingsPanel, setLoadingSettingsPanel] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPin, setAdminPin] = useState("");
 
@@ -701,6 +707,51 @@ export default function MokaOrderPad() {
       setClockSending(false);
     }
   };
+
+  const loadSettingsPanel = async (resource) => {
+    setSettingsPanel(resource);
+    setSettingsData([]);
+    setLoadingSettingsPanel(true);
+
+    try {
+      const response = await fetch(SETTINGS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resource, action: "list" }),
+      });
+
+      if (!response.ok) throw new Error(`Erreur settings ${response.status}`);
+
+      const data = await response.json();
+      setSettingsData(Array.isArray(data) ? data : normalizeArray(data, resource));
+    } catch (error) {
+      console.error(error);
+      alert("Erreur chargement paramètres ❌");
+    } finally {
+      setLoadingSettingsPanel(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAdmin || adminSection !== "settings") return;
+
+    const handler = (event) => {
+      const card = event.target.closest("button, div");
+      if (!card) return;
+
+      const text = String(card.textContent || "").toLowerCase();
+
+      if (text.includes("fournisseurs")) loadSettingsPanel("suppliers");
+      else if (text.includes("staff")) loadSettingsPanel("staff");
+      else if (text.includes("catégories") && !text.includes("sous")) loadSettingsPanel("categories");
+      else if (text.includes("sous-catégories")) loadSettingsPanel("subcategories");
+      else if (text.includes("unités")) loadSettingsPanel("units");
+      else if (text.includes("zones")) loadSettingsPanel("zones");
+    };
+
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [isAdmin, adminSection]);
 
   const unlockAdmin = () => {
     if (adminPin === "3578") {
@@ -1847,6 +1898,101 @@ export default function MokaOrderPad() {
       </div>
 
 
+
+
+      {settingsPanel && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3">
+          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[94vw] max-w-5xl max-h-[86vh] overflow-hidden">
+            <div className="p-5 border-b border-[#eadfd4] flex justify-between items-start gap-4">
+              <div>
+                <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
+                  Paramètres
+                </div>
+                <h2 className="text-2xl font-black text-[#3b241b] mt-1">
+                  {settingsPanel === "suppliers" && "🏢 Fournisseurs"}
+                  {settingsPanel === "staff" && "👥 Staff"}
+                  {settingsPanel === "categories" && "📦 Catégories"}
+                  {settingsPanel === "subcategories" && "📂 Sous-catégories"}
+                  {settingsPanel === "units" && "📏 Unités"}
+                  {settingsPanel === "zones" && "🗄️ Zones"}
+                </h2>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => loadSettingsPanel(settingsPanel)}
+                  className="rounded-2xl px-4 py-3 bg-[#f7efe4] text-[#6b4a3d] font-black text-sm border border-[#eadfd4]"
+                >
+                  ↻ Actualiser
+                </button>
+
+                <button
+                  onClick={() => setSettingsPanel("")}
+                  className="w-12 h-12 rounded-full bg-[#f4eee7] hover:bg-[#eadfd4] flex items-center justify-center text-3xl font-black text-[#a97862]"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {loadingSettingsPanel ? (
+              <div className="p-10 text-center text-[#a97862] font-black">
+                Chargement…
+              </div>
+            ) : settingsData.length === 0 ? (
+              <div className="p-10 text-center text-[#a97862] font-black">
+                Aucun élément trouvé.
+              </div>
+            ) : (
+              <div className="overflow-auto max-h-[70vh]">
+                <table className="w-full text-sm">
+                  <thead className="bg-[#f7efe4] text-[#a97862] sticky top-0">
+                    <tr>
+                      <th className="text-left p-4 font-black">Nom</th>
+                      <th className="text-left p-4 font-black">Catégorie / rôle</th>
+                      <th className="text-left p-4 font-black">Contact</th>
+                      <th className="text-left p-4 font-black">Téléphone</th>
+                      <th className="text-left p-4 font-black">Email</th>
+                      <th className="text-left p-4 font-black">Statut</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {settingsData.map((item, index) => (
+                      <tr key={item.id || item.nom || item.name || index} className="border-t border-[#eadfd4]">
+                        <td className="p-4 font-black text-[#3b241b]">
+                          {item.nom || item.name || item.fournisseur || item.prenom || "Sans nom"}
+                        </td>
+                        <td className="p-4 text-[#6b4a3d] font-bold">
+                          {item.categorie || item.category || item.role || "—"}
+                        </td>
+                        <td className="p-4 text-[#6b4a3d]">
+                          {item.contact || item.methodeContact || "—"}
+                        </td>
+                        <td className="p-4 text-[#6b4a3d]">
+                          {item.telephone || item.whatsapp || item.phone || "—"}
+                        </td>
+                        <td className="p-4 text-[#6b4a3d]">
+                          {item.email || "—"}
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-3 py-1 rounded-full text-xs font-black ${
+                            item.actif === false
+                              ? "bg-red-100 text-red-700"
+                              : "bg-[#eef5df] text-[#6f8f32]"
+                          }`}>
+                            {item.actif === false ? "Inactif" : "Actif"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {showClockModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3">
