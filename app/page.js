@@ -295,6 +295,8 @@ export default function MokaOrderPad() {
   const [editingProductDb, setEditingProductDb] = useState(null);
   const [editingProductDbForm, setEditingProductDbForm] = useState({});
   const [savingProductDb, setSavingProductDb] = useState(false);
+  const [creatingProductDb, setCreatingProductDb] = useState(false);
+  const [creatingProductDbForm, setCreatingProductDbForm] = useState({});
   const [productsDbSearch, setProductsDbSearch] = useState("");
   const [productsDbCategory, setProductsDbCategory] = useState("Tous");
   const [creatingSettingsItem, setCreatingSettingsItem] = useState(false);
@@ -1051,6 +1053,74 @@ export default function MokaOrderPad() {
         .catch((error) => console.error("Préchargement fournisseurs produits:", error));
     }
   }, [isAdmin, adminSection]);
+
+  const openProductDbCreate = () => {
+    setCreatingProductDb(true);
+    setCreatingProductDbForm({
+      ingredient: "",
+      visibleOrderPad: true,
+      photo: "",
+      categorie: "Bar",
+      sousCategorie: "",
+      fournisseurDefaut: "",
+      zoneStockage: "",
+      methodeSuivi: "Manuel",
+      quantiteCommandeSuggeree: "",
+      uniteStock: "",
+      uniteCommande: "",
+      seuilAlerte: "",
+      seuilCritique: "",
+      utiliseDans: "",
+      notes: "",
+      portionGrammes: "",
+    });
+  };
+
+  const saveProductDbCreate = async () => {
+    if (!String(creatingProductDbForm.ingredient || "").trim()) {
+      alert("Nom ingrédient obligatoire ❌");
+      return;
+    }
+
+    setSavingProductDb(true);
+
+    try {
+      const response = await fetch(SETTINGS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resource: "products",
+          action: "create",
+          data: creatingProductDbForm,
+        }),
+      });
+
+      if (!response.ok) throw new Error(`Erreur create ${response.status}`);
+
+      const result = await response.json().catch(() => ({}));
+      const created = result?.item || result?.product || result?.[0] || {
+        ...creatingProductDbForm,
+        id: `temp-${Date.now()}`,
+      };
+
+      const updated = [created, ...productsDb];
+      setProductsDb(updated);
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mokaProductsDbCache", JSON.stringify(updated));
+        localStorage.setItem("mokaProductsDbCacheUpdatedAt", String(Date.now()));
+      }
+
+      setCreatingProductDb(false);
+      loadProductsDatabase(true);
+      alert("Produit ajouté ✅");
+    } catch (error) {
+      console.error(error);
+      alert("Erreur création produit ❌");
+    } finally {
+      setSavingProductDb(false);
+    }
+  };
 
   const openProductDbEdit = (item) => {
     setEditingProductDb(item);
@@ -2722,6 +2792,99 @@ export default function MokaOrderPad() {
       )}
 
 
+
+      {creatingProductDb && (
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-3">
+          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[94vw] max-w-4xl max-h-[86vh] overflow-y-auto p-5">
+            <div className="flex justify-between items-start gap-4 mb-5">
+              <div>
+                <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
+                  Nouveau produit
+                </div>
+                <h2 className="text-2xl font-black text-[#3b241b]">
+                  ➕ Ajouter au catalogue matières premières
+                </h2>
+              </div>
+
+              <button
+                onClick={() => setCreatingProductDb(false)}
+                className="w-12 h-12 rounded-full bg-[#f4eee7] flex items-center justify-center text-3xl font-black text-[#a97862]"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {[
+                ["Ingrédient", "ingredient", "text"],
+                ["Photo URL", "photo", "text"],
+                ["Catégorie", "categorie", "text"],
+                ["Sous-catégorie", "sousCategorie", "text"],
+                ["Fournisseur par défaut", "fournisseurDefaut", "text"],
+                ["Zone de stockage", "zoneStockage", "text"],
+                ["Méthode de suivi", "methodeSuivi", "text"],
+                ["Quantité commande suggérée", "quantiteCommandeSuggeree", "number"],
+                ["Unité stock", "uniteStock", "text"],
+                ["Unité commande", "uniteCommande", "text"],
+                ["Seuil alerte", "seuilAlerte", "number"],
+                ["Seuil critique", "seuilCritique", "number"],
+                ["Portion grammes", "portionGrammes", "number"],
+                ["Utilisé dans", "utiliseDans", "text"],
+              ].map(([label, key, type]) => (
+                <div key={key} className={key === "utiliseDans" ? "md:col-span-3" : ""}>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">
+                    {label}
+                  </label>
+                  <input
+                    type={type}
+                    value={creatingProductDbForm[key] ?? ""}
+                    onChange={(e) => setCreatingProductDbForm((prev) => ({
+                      ...prev,
+                      [key]: type === "number" ? Number(e.target.value) : e.target.value,
+                    }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                  />
+                </div>
+              ))}
+
+              <label className="md:col-span-3 flex items-center gap-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black">
+                <input
+                  type="checkbox"
+                  checked={creatingProductDbForm.visibleOrderPad !== false}
+                  onChange={(e) => setCreatingProductDbForm((prev) => ({
+                    ...prev,
+                    visibleOrderPad: e.target.checked,
+                  }))}
+                />
+                Visible sur OrderPad
+              </label>
+
+              <div className="md:col-span-3">
+                <label className="block text-xs font-black text-[#a97862] mb-2">
+                  Notes
+                </label>
+                <textarea
+                  value={creatingProductDbForm.notes || ""}
+                  onChange={(e) => setCreatingProductDbForm((prev) => ({
+                    ...prev,
+                    notes: e.target.value,
+                  }))}
+                  className="w-full min-h-[90px] rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={saveProductDbCreate}
+              disabled={savingProductDb}
+              className="w-full mt-5 py-4 rounded-2xl bg-[#6f8f32] text-white font-black shadow-md"
+            >
+              {savingProductDb ? "Création…" : "Créer le produit ✅"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {editingProductDb && (
         <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-3">
           <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[94vw] max-w-4xl max-h-[86vh] overflow-y-auto p-5">
@@ -3131,15 +3294,24 @@ export default function MokaOrderPad() {
                       Base de données
                     </div>
                     <h2 className="text-2xl font-black text-[#3b241b] mt-1">
-                      📦 Matières premières
+                      Base de données produits
                     </h2>
                     <p className="text-sm text-[#a97862] mt-1">
                       Affichage complet de la database produits Notion.
                     </p>
                   </div>
 
-                  <div className="rounded-2xl px-4 py-3 bg-[#f7efe4] text-[#6b4a3d] font-black text-sm border border-[#eadfd4]">
-                    {loadingProductsDb ? "Sync…" : "À jour"}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={openProductDbCreate}
+                      className="rounded-2xl px-4 py-3 bg-[#6f8f32] text-white font-black text-sm border border-[#6f8f32] shadow-sm"
+                    >
+                      ➕ Ajouter produit
+                    </button>
+
+                    <div className="rounded-2xl px-4 py-3 bg-[#f7efe4] text-[#6b4a3d] font-black text-sm border border-[#eadfd4]">
+                      {loadingProductsDb ? "🟡 Sync…" : "🟢 À jour"}
+                    </div>
                   </div>
                 </div>
 
