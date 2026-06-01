@@ -281,6 +281,12 @@ export default function MokaOrderPad() {
   const [editingSettingsItem, setEditingSettingsItem] = useState(null);
   const [editingSettingsForm, setEditingSettingsForm] = useState({});
   const [savingSettingsPanel, setSavingSettingsPanel] = useState(false);
+
+  const [productsDb, setProductsDb] = useState([]);
+  const [loadingProductsDb, setLoadingProductsDb] = useState(false);
+  const [editingProductDb, setEditingProductDb] = useState(null);
+  const [editingProductDbForm, setEditingProductDbForm] = useState({});
+  const [savingProductDb, setSavingProductDb] = useState(false);
   const [creatingSettingsItem, setCreatingSettingsItem] = useState(false);
   const [creatingSettingsForm, setCreatingSettingsForm] = useState({});
   const [showAdminModal, setShowAdminModal] = useState(false);
@@ -960,6 +966,150 @@ export default function MokaOrderPad() {
     } catch (error) {
       console.error(error);
       alert("Erreur désactivation ❌");
+    }
+  };
+
+  const loadProductsDatabase = async () => {
+    setLoadingProductsDb(true);
+
+    try {
+      const response = await fetch(SETTINGS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resource: "products", action: "list" }),
+      });
+
+      if (!response.ok) throw new Error(`Erreur products ${response.status}`);
+
+      const data = await response.json();
+      const list = Array.isArray(data) ? data : normalizeArray(data, "products");
+
+      setProductsDb(list);
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mokaProductsDbCache", JSON.stringify(list));
+      }
+    } catch (error) {
+      console.error(error);
+
+      if (typeof window !== "undefined") {
+        try {
+          const cached = JSON.parse(localStorage.getItem("mokaProductsDbCache") || "[]");
+          if (cached.length) setProductsDb(cached);
+        } catch {}
+      }
+
+      alert("Erreur chargement base produits ❌");
+    } finally {
+      setLoadingProductsDb(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAdmin || adminSection !== "products") return;
+
+    if (productsDb.length === 0 && typeof window !== "undefined") {
+      try {
+        const cached = JSON.parse(localStorage.getItem("mokaProductsDbCache") || "[]");
+        if (cached.length) setProductsDb(cached);
+      } catch {}
+    }
+
+    loadProductsDatabase();
+  }, [isAdmin, adminSection]);
+
+  const openProductDbEdit = (item) => {
+    setEditingProductDb(item);
+    setEditingProductDbForm({
+      id: item.id || "",
+      ingredient: item.ingredient || item.name || "",
+      visibleOrderPad: item.visibleOrderPad !== false,
+      photo: item.photo || "",
+      categorie: item.categorie || item.category || "",
+      sousCategorie: item.sousCategorie || item.subcategory || "",
+      fournisseurDefaut: item.fournisseurDefaut || item.supplier || "",
+      zoneStockage: item.zoneStockage || item.zone || "",
+      methodeSuivi: item.methodeSuivi || "",
+      quantiteCommandeSuggeree: item.quantiteCommandeSuggeree || item.suggested || "",
+      uniteStock: item.uniteStock || item.unit || "",
+      uniteCommande: item.uniteCommande || "",
+      seuilAlerte: item.seuilAlerte || "",
+      seuilCritique: item.seuilCritique || "",
+      utiliseDans: item.utiliseDans || "",
+      notes: item.notes || "",
+      portionGrammes: item.portionGrammes || item.portion || "",
+    });
+  };
+
+  const saveProductDbEdit = async () => {
+    if (!editingProductDbForm.id) return;
+
+    setSavingProductDb(true);
+
+    try {
+      const response = await fetch(SETTINGS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resource: "products",
+          action: "update",
+          id: editingProductDbForm.id,
+          data: editingProductDbForm,
+        }),
+      });
+
+      if (!response.ok) throw new Error(`Erreur update ${response.status}`);
+
+      const updated = productsDb.map((item) =>
+        item.id === editingProductDbForm.id
+          ? { ...item, ...editingProductDbForm }
+          : item
+      );
+
+      setProductsDb(updated);
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mokaProductsDbCache", JSON.stringify(updated));
+      }
+
+      setEditingProductDb(null);
+      alert("Produit modifié ✅");
+    } catch (error) {
+      console.error(error);
+      alert("Erreur modification produit ❌");
+    } finally {
+      setSavingProductDb(false);
+    }
+  };
+
+  const deleteProductDb = async (item) => {
+    if (!item?.id) return;
+    if (!confirm("Supprimer ce produit de la base ?")) return;
+
+    try {
+      const response = await fetch(SETTINGS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resource: "products",
+          action: "delete",
+          id: item.id,
+        }),
+      });
+
+      if (!response.ok) throw new Error(`Erreur delete ${response.status}`);
+
+      const updated = productsDb.filter((row) => row.id !== item.id);
+      setProductsDb(updated);
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mokaProductsDbCache", JSON.stringify(updated));
+      }
+
+      alert("Produit supprimé ✅");
+    } catch (error) {
+      console.error(error);
+      alert("Erreur suppression produit ❌");
     }
   };
 
@@ -2417,6 +2567,99 @@ export default function MokaOrderPad() {
         </div>
       )}
 
+
+      {editingProductDb && (
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-3">
+          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[94vw] max-w-4xl max-h-[86vh] overflow-y-auto p-5">
+            <div className="flex justify-between items-start gap-4 mb-5">
+              <div>
+                <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
+                  Modifier matière première
+                </div>
+                <h2 className="text-2xl font-black text-[#3b241b]">
+                  {editingProductDbForm.ingredient || "Produit"}
+                </h2>
+              </div>
+
+              <button
+                onClick={() => setEditingProductDb(null)}
+                className="w-12 h-12 rounded-full bg-[#f4eee7] flex items-center justify-center text-3xl font-black text-[#a97862]"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {[
+                ["Ingrédient", "ingredient", "text"],
+                ["Photo URL", "photo", "text"],
+                ["Catégorie", "categorie", "text"],
+                ["Sous-catégorie", "sousCategorie", "text"],
+                ["Fournisseur par défaut", "fournisseurDefaut", "text"],
+                ["Zone de stockage", "zoneStockage", "text"],
+                ["Méthode de suivi", "methodeSuivi", "text"],
+                ["Quantité commande suggérée", "quantiteCommandeSuggeree", "number"],
+                ["Unité stock", "uniteStock", "text"],
+                ["Unité commande", "uniteCommande", "text"],
+                ["Seuil alerte", "seuilAlerte", "number"],
+                ["Seuil critique", "seuilCritique", "number"],
+                ["Portion grammes", "portionGrammes", "number"],
+                ["Utilisé dans", "utiliseDans", "text"],
+              ].map(([label, key, type]) => (
+                <div key={key} className={key === "utiliseDans" ? "md:col-span-3" : ""}>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">
+                    {label}
+                  </label>
+                  <input
+                    type={type}
+                    value={editingProductDbForm[key] ?? ""}
+                    onChange={(e) => setEditingProductDbForm((prev) => ({
+                      ...prev,
+                      [key]: type === "number" ? Number(e.target.value) : e.target.value,
+                    }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                  />
+                </div>
+              ))}
+
+              <label className="md:col-span-3 flex items-center gap-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black">
+                <input
+                  type="checkbox"
+                  checked={editingProductDbForm.visibleOrderPad !== false}
+                  onChange={(e) => setEditingProductDbForm((prev) => ({
+                    ...prev,
+                    visibleOrderPad: e.target.checked,
+                  }))}
+                />
+                Visible sur OrderPad
+              </label>
+
+              <div className="md:col-span-3">
+                <label className="block text-xs font-black text-[#a97862] mb-2">
+                  Notes
+                </label>
+                <textarea
+                  value={editingProductDbForm.notes || ""}
+                  onChange={(e) => setEditingProductDbForm((prev) => ({
+                    ...prev,
+                    notes: e.target.value,
+                  }))}
+                  className="w-full min-h-[90px] rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={saveProductDbEdit}
+              disabled={savingProductDb}
+              className="w-full mt-5 py-4 rounded-2xl bg-[#6f8f32] text-white font-black shadow-md"
+            >
+              {savingProductDb ? "Enregistrement…" : "Enregistrer ✅"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {showClockModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3">
           <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-xl max-h-[86vh] overflow-y-auto p-4">
@@ -2727,24 +2970,107 @@ export default function MokaOrderPad() {
             </div>
 
             {adminSection === "products" && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button onClick={openNewProduct} className="bg-white rounded-[2rem] p-6 border border-[#eadfd4] text-left shadow-sm">
-                  <div className="text-3xl mb-4">➕</div>
-                  <div className="text-xl font-black">Créer un produit</div>
-                  <p className="text-sm text-[#a97862] mt-2">Ajouter une matière première complète.</p>
-                </button>
+              <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden">
+                <div className="p-5 border-b border-[#eadfd4] flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
+                      Base de données
+                    </div>
+                    <h2 className="text-2xl font-black text-[#3b241b] mt-1">
+                      📦 Matières premières
+                    </h2>
+                    <p className="text-sm text-[#a97862] mt-1">
+                      Affichage complet de la database produits Notion.
+                    </p>
+                  </div>
 
-                <div className="bg-white rounded-[2rem] p-6 border border-[#eadfd4] shadow-sm">
-                  <div className="text-3xl mb-4">✏️</div>
-                  <div className="text-xl font-black">Modifier produits</div>
-                  <p className="text-sm text-[#a97862] mt-2">Utilise les boutons réglages sur les cartes produits.</p>
+                  <button
+                    onClick={loadProductsDatabase}
+                    className="rounded-2xl px-4 py-3 bg-[#f7efe4] text-[#6b4a3d] font-black text-sm border border-[#eadfd4]"
+                  >
+                    ↻ Actualiser
+                  </button>
                 </div>
 
-                <div className="bg-white rounded-[2rem] p-6 border border-[#eadfd4] shadow-sm">
-                  <div className="text-3xl mb-4">🗂️</div>
-                  <div className="text-xl font-black">Archivage</div>
-                  <p className="text-sm text-[#a97862] mt-2">À connecter ensuite : désactiver / masquer produit.</p>
-                </div>
+                {loadingProductsDb && productsDb.length === 0 ? (
+                  <div className="p-10 text-center text-[#a97862] font-black">
+                    Chargement produits…
+                  </div>
+                ) : productsDb.length === 0 ? (
+                  <div className="p-10 text-center text-[#a97862] font-black">
+                    Aucun produit trouvé.
+                  </div>
+                ) : (
+                  <div className="overflow-auto max-h-[70vh]">
+                    <table className="w-full text-xs">
+                      <thead className="bg-[#f7efe4] text-[#a97862] sticky top-0 z-10">
+                        <tr>
+                          <th className="text-left p-3 font-black min-w-[180px]">Ingrédient</th>
+                          <th className="text-left p-3 font-black">Visible</th>
+                          <th className="text-left p-3 font-black min-w-[130px]">Catégorie</th>
+                          <th className="text-left p-3 font-black min-w-[150px]">Sous-catégorie</th>
+                          <th className="text-left p-3 font-black min-w-[150px]">Fournisseur</th>
+                          <th className="text-left p-3 font-black min-w-[130px]">Zone</th>
+                          <th className="text-left p-3 font-black">Suivi</th>
+                          <th className="text-left p-3 font-black">Qté sugg.</th>
+                          <th className="text-left p-3 font-black">Unité stock</th>
+                          <th className="text-left p-3 font-black">Unité cmd</th>
+                          <th className="text-left p-3 font-black">Alerte</th>
+                          <th className="text-left p-3 font-black">Critique</th>
+                          <th className="text-left p-3 font-black">Portion g</th>
+                          <th className="text-left p-3 font-black min-w-[180px]">Actions</th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {productsDb.map((item, index) => (
+                          <tr key={item.id || index} className="border-t border-[#eadfd4]">
+                            <td className="p-3 font-black text-[#3b241b]">
+                              {item.ingredient || item.name || "Sans nom"}
+                            </td>
+                            <td className="p-3">
+                              <span className={`px-2 py-1 rounded-full font-black ${
+                                item.visibleOrderPad === false
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-[#eef5df] text-[#6f8f32]"
+                              }`}>
+                                {item.visibleOrderPad === false ? "Non" : "Oui"}
+                              </span>
+                            </td>
+                            <td className="p-3 text-[#6b4a3d] font-bold">{item.categorie || item.category || "—"}</td>
+                            <td className="p-3 text-[#6b4a3d]">{item.sousCategorie || item.subcategory || "—"}</td>
+                            <td className="p-3 text-[#6b4a3d]">{item.fournisseurDefaut || item.supplier || "—"}</td>
+                            <td className="p-3 text-[#6b4a3d]">{item.zoneStockage || item.zone || "—"}</td>
+                            <td className="p-3 text-[#6b4a3d]">{item.methodeSuivi || "—"}</td>
+                            <td className="p-3 text-[#6b4a3d]">{item.quantiteCommandeSuggeree ?? "—"}</td>
+                            <td className="p-3 text-[#6b4a3d]">{item.uniteStock || item.unit || "—"}</td>
+                            <td className="p-3 text-[#6b4a3d]">{item.uniteCommande || "—"}</td>
+                            <td className="p-3 text-[#6b4a3d]">{item.seuilAlerte ?? "—"}</td>
+                            <td className="p-3 text-[#6b4a3d]">{item.seuilCritique ?? "—"}</td>
+                            <td className="p-3 text-[#6b4a3d]">{item.portionGrammes ?? item.portion ?? "—"}</td>
+                            <td className="p-3">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => openProductDbEdit(item)}
+                                  className="rounded-xl px-3 py-2 bg-white border border-[#eadfd4] font-black text-[#6b4a3d]"
+                                >
+                                  ✏️ Modifier
+                                </button>
+
+                                <button
+                                  onClick={() => deleteProductDb(item)}
+                                  className="rounded-xl px-3 py-2 bg-red-50 border border-red-100 font-black text-red-700"
+                                >
+                                  Supprimer
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 
