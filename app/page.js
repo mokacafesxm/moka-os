@@ -3129,13 +3129,7 @@ export default function MokaOrderPad() {
                       </thead>
 
                       <tbody>
-                        {groupedProductsDb.flatMap(([category, items]) => [
-                          <tr key={`group-${category}`} className="bg-[#fffaf3] border-t border-[#eadfd4]">
-                            <td colSpan={14} className="p-3 font-black text-[#3b241b]">
-                              {categoryEmojis[category] || "📌"} {category} · {items.length} produits
-                            </td>
-                          </tr>,
-                          ...items.map((item, index) => (
+                        {filteredProductsDb.map((item, index) => (
                             <tr key={item.id || `${category}-${index}`} className="border-t border-[#eadfd4]">
                             <td className="p-3 font-black text-[#3b241b]">
                               {item.ingredient || item.name || "Sans nom"}
@@ -3178,8 +3172,7 @@ export default function MokaOrderPad() {
                               </div>
                             </td>
                           </tr>
-                          ))
-                        ])}
+                        ))}
                       </tbody>
                     </table>
                   </div>
