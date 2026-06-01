@@ -274,6 +274,9 @@ export default function MokaOrderPad() {
   const [settingsData, setSettingsData] = useState([]);
   const [settingsCache, setSettingsCache] = useState({});
   const [loadingSettingsPanel, setLoadingSettingsPanel] = useState(false);
+  const [editingSettingsItem, setEditingSettingsItem] = useState(null);
+  const [editingSettingsForm, setEditingSettingsForm] = useState({});
+  const [savingSettingsPanel, setSavingSettingsPanel] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPin, setAdminPin] = useState("");
 
@@ -780,6 +783,88 @@ export default function MokaOrderPad() {
       }
     });
   }, [isAdmin, adminSection]);
+
+  const openSettingsEdit = (item) => {
+    setEditingSettingsItem(item);
+    setEditingSettingsForm({
+      id: item.id || "",
+      nom: item.nom || item.name || "",
+      categorie: item.categorie || item.category || item.role || "",
+      contact: item.contact || "",
+      methodeContact: item.methodeContact || "",
+      telephone: item.telephone || item.whatsapp || item.phone || "",
+      email: item.email || "",
+      actif: item.actif !== false,
+    });
+  };
+
+  const saveSettingsDatabaseItem = async () => {
+    if (!settingsPanel || !editingSettingsForm.id) return;
+
+    setSavingSettingsPanel(true);
+
+    try {
+      const response = await fetch(SETTINGS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resource: settingsPanel,
+          action: "update",
+          id: editingSettingsForm.id,
+          data: editingSettingsForm,
+        }),
+      });
+
+      if (!response.ok) throw new Error(`Erreur update ${response.status}`);
+
+      const updated = settingsData.map((item) =>
+        item.id === editingSettingsForm.id
+          ? { ...item, ...editingSettingsForm }
+          : item
+      );
+
+      setSettingsData(updated);
+      setSettingsCache((prev) => ({ ...prev, [settingsPanel]: updated }));
+      setEditingSettingsItem(null);
+      alert("Modification enregistrée ✅");
+    } catch (error) {
+      console.error(error);
+      alert("Erreur modification database ❌");
+    } finally {
+      setSavingSettingsPanel(false);
+    }
+  };
+
+  const archiveSettingsDatabaseItem = async (item) => {
+    if (!settingsPanel || !item?.id) return;
+
+    if (!confirm("Désactiver cet élément ?")) return;
+
+    try {
+      const response = await fetch(SETTINGS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resource: settingsPanel,
+          action: "archive",
+          id: item.id,
+        }),
+      });
+
+      if (!response.ok) throw new Error(`Erreur archive ${response.status}`);
+
+      const updated = settingsData.map((row) =>
+        row.id === item.id ? { ...row, actif: false } : row
+      );
+
+      setSettingsData(updated);
+      setSettingsCache((prev) => ({ ...prev, [settingsPanel]: updated }));
+      alert("Élément désactivé ✅");
+    } catch (error) {
+      console.error(error);
+      alert("Erreur désactivation ❌");
+    }
+  };
 
   const unlockAdmin = () => {
     if (adminPin === "3578") {
@@ -2018,6 +2103,105 @@ export default function MokaOrderPad() {
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+
+      {editingSettingsItem && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-3">
+          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-xl max-h-[86vh] overflow-y-auto p-5">
+            <div className="flex justify-between items-start gap-4 mb-5">
+              <div>
+                <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
+                  Modifier
+                </div>
+                <h2 className="text-2xl font-black text-[#3b241b]">
+                  {settingsPanel === "suppliers" ? "🏢 Fournisseur" : "👥 Staff"}
+                </h2>
+              </div>
+
+              <button
+                onClick={() => setEditingSettingsItem(null)}
+                className="w-12 h-12 rounded-full bg-[#f4eee7] flex items-center justify-center text-3xl font-black text-[#a97862]"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="md:col-span-2">
+                <label className="block text-xs font-black text-[#a97862] mb-2">
+                  Nom
+                </label>
+                <input
+                  value={editingSettingsForm.nom || ""}
+                  onChange={(e) => setEditingSettingsForm((prev) => ({ ...prev, nom: e.target.value, name: e.target.value }))}
+                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-[#a97862] mb-2">
+                  Catégorie / rôle
+                </label>
+                <input
+                  value={editingSettingsForm.categorie || ""}
+                  onChange={(e) => setEditingSettingsForm((prev) => ({ ...prev, categorie: e.target.value, role: e.target.value }))}
+                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-[#a97862] mb-2">
+                  Contact
+                </label>
+                <input
+                  value={editingSettingsForm.contact || ""}
+                  onChange={(e) => setEditingSettingsForm((prev) => ({ ...prev, contact: e.target.value }))}
+                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-[#a97862] mb-2">
+                  Téléphone / WhatsApp
+                </label>
+                <input
+                  value={editingSettingsForm.telephone || ""}
+                  onChange={(e) => setEditingSettingsForm((prev) => ({ ...prev, telephone: e.target.value, whatsapp: e.target.value, phone: e.target.value }))}
+                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-[#a97862] mb-2">
+                  Email
+                </label>
+                <input
+                  value={editingSettingsForm.email || ""}
+                  onChange={(e) => setEditingSettingsForm((prev) => ({ ...prev, email: e.target.value }))}
+                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                />
+              </div>
+
+              <label className="md:col-span-2 flex items-center gap-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black">
+                <input
+                  type="checkbox"
+                  checked={editingSettingsForm.actif !== false}
+                  onChange={(e) => setEditingSettingsForm((prev) => ({ ...prev, actif: e.target.checked }))}
+                />
+                Actif
+              </label>
+            </div>
+
+            <button
+              onClick={saveSettingsDatabaseItem}
+              disabled={savingSettingsPanel}
+              className="w-full mt-5 py-4 rounded-2xl bg-[#6f8f32] text-white font-black shadow-md"
+            >
+              {savingSettingsPanel ? "Enregistrement…" : "Enregistrer ✅"}
+            </button>
           </div>
         </div>
       )}
