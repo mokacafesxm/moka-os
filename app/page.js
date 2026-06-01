@@ -272,7 +272,11 @@ export default function MokaOrderPad() {
   const [adminSection, setAdminSection] = useState("dashboard");
   const [settingsPanel, setSettingsPanel] = useState("");
   const [settingsData, setSettingsData] = useState([]);
-  const [settingsCache, setSettingsCache] = useState({});
+  const [settingsCache, setSettingsCache] = useState(() => {
+    if (typeof window === "undefined") return {};
+    try { return JSON.parse(localStorage.getItem("mokaSettingsCache") || "{}"); }
+    catch { return {}; }
+  });
   const [loadingSettingsPanel, setLoadingSettingsPanel] = useState(false);
   const [editingSettingsItem, setEditingSettingsItem] = useState(null);
   const [editingSettingsForm, setEditingSettingsForm] = useState({});
@@ -714,8 +718,15 @@ export default function MokaOrderPad() {
 
   const loadSettingsPanel = async (resource) => {
     setSettingsPanel(resource);
-    setSettingsData([]);
-    setLoadingSettingsPanel(true);
+
+    const cached = settingsCache[resource];
+
+    if (cached && cached.length) {
+      setSettingsData(cached);
+      setLoadingSettingsPanel(false);
+    } else {
+      setLoadingSettingsPanel(true);
+    }
 
     try {
       const response = await fetch(SETTINGS_URL, {
@@ -727,10 +738,19 @@ export default function MokaOrderPad() {
       if (!response.ok) throw new Error(`Erreur settings ${response.status}`);
 
       const data = await response.json();
-      setSettingsData(Array.isArray(data) ? data : normalizeArray(data, resource));
+      const list = Array.isArray(data) ? data : normalizeArray(data, resource);
+
+      setSettingsData(list);
+      setSettingsCache((prev) => {
+        const next = { ...prev, [resource]: list };
+        if (typeof window !== "undefined") {
+          localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
+        }
+        return next;
+      });
     } catch (error) {
       console.error(error);
-      alert("Erreur chargement paramètres ❌");
+      if (!cached || !cached.length) alert("Erreur chargement paramètres ❌");
     } finally {
       setLoadingSettingsPanel(false);
     }
@@ -824,7 +844,13 @@ export default function MokaOrderPad() {
       );
 
       setSettingsData(updated);
-      setSettingsCache((prev) => ({ ...prev, [settingsPanel]: updated }));
+      setSettingsCache((prev) => {
+        const next = { ...prev, [settingsPanel]: updated };
+        if (typeof window !== "undefined") {
+          localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
+        }
+        return next;
+      });
       setEditingSettingsItem(null);
       alert("Modification enregistrée ✅");
     } catch (error) {
@@ -858,7 +884,13 @@ export default function MokaOrderPad() {
       );
 
       setSettingsData(updated);
-      setSettingsCache((prev) => ({ ...prev, [settingsPanel]: updated }));
+      setSettingsCache((prev) => {
+        const next = { ...prev, [settingsPanel]: updated };
+        if (typeof window !== "undefined") {
+          localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
+        }
+        return next;
+      });
       alert("Élément désactivé ✅");
     } catch (error) {
       console.error(error);
@@ -2067,6 +2099,7 @@ export default function MokaOrderPad() {
                       <th className="text-left p-4 font-black">Téléphone</th>
                       <th className="text-left p-4 font-black">Email</th>
                       <th className="text-left p-4 font-black">Statut</th>
+                      <th className="text-left p-4 font-black">Actions</th>
                     </tr>
                   </thead>
 
@@ -2096,6 +2129,24 @@ export default function MokaOrderPad() {
                           }`}>
                             {item.actif === false ? "Inactif" : "Actif"}
                           </span>
+                        </td>
+
+                        <td className="p-4">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => openSettingsEdit(item)}
+                              className="rounded-xl px-3 py-2 bg-white border border-[#eadfd4] font-black text-[#6b4a3d]"
+                            >
+                              ✏️ Modifier
+                            </button>
+
+                            <button
+                              onClick={() => archiveSettingsDatabaseItem(item)}
+                              className="rounded-xl px-3 py-2 bg-red-50 border border-red-100 font-black text-red-700"
+                            >
+                              Désactiver
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
