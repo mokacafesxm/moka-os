@@ -282,8 +282,16 @@ export default function MokaOrderPad() {
   const [editingSettingsForm, setEditingSettingsForm] = useState({});
   const [savingSettingsPanel, setSavingSettingsPanel] = useState(false);
 
-  const [productsDb, setProductsDb] = useState([]);
-  const [loadingProductsDb, setLoadingProductsDb] = useState(false);
+  const [productsDb, setProductsDb] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem("mokaProductsDbCache") || "[]"); }
+    catch { return []; }
+  });
+  const [loadingProductsDb, setLoadingProductsDb] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try { return JSON.parse(localStorage.getItem("mokaProductsDbCache") || "[]").length === 0; }
+    catch { return false; }
+  });
   const [editingProductDb, setEditingProductDb] = useState(null);
   const [editingProductDbForm, setEditingProductDbForm] = useState({});
   const [savingProductDb, setSavingProductDb] = useState(false);
@@ -807,7 +815,13 @@ export default function MokaOrderPad() {
 
       try {
         const list = await fetchSettingsResource(resource);
-        setSettingsCache((prev) => ({ ...prev, [resource]: list }));
+        setSettingsCache((prev) => {
+          const next = { ...prev, [resource]: list };
+          if (typeof window !== "undefined") {
+            localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
+          }
+          return next;
+        });
       } catch (error) {
         console.error("Préchargement paramètres:", resource, error);
       }
@@ -971,15 +985,17 @@ export default function MokaOrderPad() {
     }
   };
 
-  const loadProductsDatabase = async (silent = false) => {
-    if (!silent) setLoadingProductsDb(true);
-
+  const loadProductsDatabase = async (silent = true) => {
     const cached = typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("mokaProductsDbCache") || "[]")
       : [];
 
     if (cached.length && productsDb.length === 0) {
       setProductsDb(cached);
+    }
+
+    if (!silent && !cached.length) {
+      setLoadingProductsDb(true);
     }
 
     try {
@@ -1027,6 +1043,7 @@ export default function MokaOrderPad() {
             const next = { ...prev, suppliers: list };
             if (typeof window !== "undefined") {
               localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
+              localStorage.setItem("mokaSettingsCacheUpdatedAt", String(Date.now()));
             }
             return next;
           });
@@ -3121,12 +3138,9 @@ export default function MokaOrderPad() {
                     </p>
                   </div>
 
-                  <button
-                    onClick={() => loadProductsDatabase(false)}
-                    className="rounded-2xl px-4 py-3 bg-[#f7efe4] text-[#6b4a3d] font-black text-sm border border-[#eadfd4]"
-                  >
-                    ↻ Actualiser
-                  </button>
+                  <div className="rounded-2xl px-4 py-3 bg-[#f7efe4] text-[#6b4a3d] font-black text-sm border border-[#eadfd4]">
+                    {loadingProductsDb ? "Sync…" : "À jour"}
+                  </div>
                 </div>
 
                 <div className="p-4 border-b border-[#eadfd4] bg-white">
