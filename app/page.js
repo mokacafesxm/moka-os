@@ -274,9 +274,6 @@ export default function MokaOrderPad() {
   const [settingsData, setSettingsData] = useState([]);
   const [settingsCache, setSettingsCache] = useState({});
   const [loadingSettingsPanel, setLoadingSettingsPanel] = useState(false);
-  const [settingsPanel, setSettingsPanel] = useState("");
-  const [settingsData, setSettingsData] = useState([]);
-  const [loadingSettingsPanel, setLoadingSettingsPanel] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPin, setAdminPin] = useState("");
 
