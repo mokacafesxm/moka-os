@@ -287,6 +287,8 @@ export default function MokaOrderPad() {
   const [editingProductDb, setEditingProductDb] = useState(null);
   const [editingProductDbForm, setEditingProductDbForm] = useState({});
   const [savingProductDb, setSavingProductDb] = useState(false);
+  const [productsDbSearch, setProductsDbSearch] = useState("");
+  const [productsDbCategory, setProductsDbCategory] = useState("Tous");
   const [creatingSettingsItem, setCreatingSettingsItem] = useState(false);
   const [creatingSettingsForm, setCreatingSettingsForm] = useState({});
   const [showAdminModal, setShowAdminModal] = useState(false);
@@ -969,8 +971,16 @@ export default function MokaOrderPad() {
     }
   };
 
-  const loadProductsDatabase = async () => {
-    setLoadingProductsDb(true);
+  const loadProductsDatabase = async (silent = false) => {
+    if (!silent) setLoadingProductsDb(true);
+
+    const cached = typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("mokaProductsDbCache") || "[]")
+      : [];
+
+    if (cached.length && productsDb.length === 0) {
+      setProductsDb(cached);
+    }
 
     try {
       const response = await fetch(SETTINGS_URL, {
@@ -988,18 +998,11 @@ export default function MokaOrderPad() {
 
       if (typeof window !== "undefined") {
         localStorage.setItem("mokaProductsDbCache", JSON.stringify(list));
+        localStorage.setItem("mokaProductsDbCacheUpdatedAt", String(Date.now()));
       }
     } catch (error) {
       console.error(error);
-
-      if (typeof window !== "undefined") {
-        try {
-          const cached = JSON.parse(localStorage.getItem("mokaProductsDbCache") || "[]");
-          if (cached.length) setProductsDb(cached);
-        } catch {}
-      }
-
-      alert("Erreur chargement base produits ❌");
+      if (!cached.length && !silent) alert("Erreur chargement base produits ❌");
     } finally {
       setLoadingProductsDb(false);
     }
@@ -1015,7 +1018,7 @@ export default function MokaOrderPad() {
       } catch {}
     }
 
-    loadProductsDatabase();
+    loadProductsDatabase(true);
   }, [isAdmin, adminSection]);
 
   const openProductDbEdit = (item) => {
@@ -1310,6 +1313,77 @@ export default function MokaOrderPad() {
       setSavingSettings(false);
     }
   };
+
+  const productsDbCategories = useMemo(() => {
+    const found = [...new Set(productsDb.map((p) => p.categorie || p.category || "Autres"))]
+      .filter(Boolean);
+
+    return ["Tous", ...found.sort((a, b) => {
+      const ia = categoryOrder.indexOf(a);
+      const ib = categoryOrder.indexOf(b);
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    })];
+  }, [productsDb]);
+
+  const filteredProductsDb = useMemo(() => {
+    const q = productsDbSearch.trim().toLowerCase();
+
+    return productsDb
+      .filter((p) => {
+        const cat = p.categorie || p.category || "Autres";
+
+        const matchesCategory =
+          productsDbCategory === "Tous" || cat === productsDbCategory;
+
+        const haystack = [
+          p.ingredient,
+          p.name,
+          p.categorie,
+          p.category,
+          p.sousCategorie,
+          p.subcategory,
+          p.fournisseurDefaut,
+          p.supplier,
+          p.zoneStockage,
+          p.zone,
+          p.uniteStock,
+          p.uniteCommande,
+          p.notes,
+        ].join(" ").toLowerCase();
+
+        return matchesCategory && (!q || haystack.includes(q));
+      })
+      .sort((a, b) => {
+        const ca = a.categorie || a.category || "Autres";
+        const cb = b.categorie || b.category || "Autres";
+        const na = a.ingredient || a.name || "";
+        const nb = b.ingredient || b.name || "";
+
+        if (ca !== cb) {
+          const ia = categoryOrder.indexOf(ca);
+          const ib = categoryOrder.indexOf(cb);
+          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+        }
+
+        return na.localeCompare(nb);
+      });
+  }, [productsDb, productsDbSearch, productsDbCategory]);
+
+  const groupedProductsDb = useMemo(() => {
+    const groups = {};
+
+    filteredProductsDb.forEach((item) => {
+      const cat = item.categorie || item.category || "Autres";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(item);
+    });
+
+    return Object.entries(groups).sort(([a], [b]) => {
+      const ia = categoryOrder.indexOf(a);
+      const ib = categoryOrder.indexOf(b);
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    });
+  }, [filteredProductsDb]);
 
   const sendToMokaOS = async () => {
     if (cartItems.length === 0) return;
@@ -2985,11 +3059,43 @@ export default function MokaOrderPad() {
                   </div>
 
                   <button
-                    onClick={loadProductsDatabase}
+                    onClick={() => loadProductsDatabase(false)}
                     className="rounded-2xl px-4 py-3 bg-[#f7efe4] text-[#6b4a3d] font-black text-sm border border-[#eadfd4]"
                   >
                     ↻ Actualiser
                   </button>
+                </div>
+
+                <div className="p-4 border-b border-[#eadfd4] bg-white">
+                  <div className="flex items-center gap-3 rounded-[1.1rem] bg-[#fffaf3] border border-[#d6b8a7] px-4 py-2">
+                    <span className="text-lg">🔍</span>
+                    <input
+                      value={productsDbSearch}
+                      onChange={(e) => setProductsDbSearch(e.target.value)}
+                      placeholder="Rechercher un ingrédient, fournisseur, zone, catégorie..."
+                      className="w-full bg-transparent outline-none text-[#3b241b] placeholder:text-[#b08d7b] font-semibold"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                    {productsDbCategories.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => setProductsDbCategory(cat)}
+                        className={`px-3 py-1.5 rounded-full whitespace-nowrap text-xs font-black shrink-0 ${
+                          productsDbCategory === cat
+                            ? "bg-[#3b241b] text-white"
+                            : "bg-[#f7efe4] text-[#6b4a3d] border border-[#eadfd4]"
+                        }`}
+                      >
+                        {cat === "Tous" ? "Tous" : `${categoryEmojis[cat] || "📌"} ${cat}`}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="text-xs font-bold text-[#a97862] mt-2">
+                    {filteredProductsDb.length} / {productsDb.length} produits affichés
+                  </div>
                 </div>
 
                 {loadingProductsDb && productsDb.length === 0 ? (
@@ -3023,8 +3129,14 @@ export default function MokaOrderPad() {
                       </thead>
 
                       <tbody>
-                        {productsDb.map((item, index) => (
-                          <tr key={item.id || index} className="border-t border-[#eadfd4]">
+                        {groupedProductsDb.flatMap(([category, items]) => [
+                          <tr key={`group-${category}`} className="bg-[#fffaf3] border-t border-[#eadfd4]">
+                            <td colSpan={14} className="p-3 font-black text-[#3b241b]">
+                              {categoryEmojis[category] || "📌"} {category} · {items.length} produits
+                            </td>
+                          </tr>,
+                          ...items.map((item, index) => (
+                            <tr key={item.id || `${category}-${index}`} className="border-t border-[#eadfd4]">
                             <td className="p-3 font-black text-[#3b241b]">
                               {item.ingredient || item.name || "Sans nom"}
                             </td>
@@ -3067,6 +3179,8 @@ export default function MokaOrderPad() {
                             </td>
                           </tr>
                         ))}
+                          ))
+                        ])}
                       </tbody>
                     </table>
                   </div>
