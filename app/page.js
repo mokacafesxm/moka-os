@@ -1726,9 +1726,6 @@ export default function MokaOrderPad() {
               {isAdmin ? "👤 Admin ON" : "👤 Admin"}
             </button>
 
-            {isAdmin && (
-            )}
-
             <div className="bg-white/90 rounded-[1.5rem] px-4 py-3 shadow-sm border border-[#eadfd4] text-right text-sm shrink-0">
               <div className="text-xs text-[#a97862]">Commande automatique</div>
 
