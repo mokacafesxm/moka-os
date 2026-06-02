@@ -1831,7 +1831,7 @@ export default function MokaOrderPad() {
       <div className="max-w-none w-full px-2 py-1">
         <header className="flex items-end justify-between gap-5 mb-2">
           <div>
-            <h1 className="text-4xl font-black tracking-tight text-[#3b241b]">
+            <h1 className="text-2xl font-black tracking-tight text-[#3b241b] hidden">
               MÖKA
             </h1>
 
@@ -1926,7 +1926,7 @@ export default function MokaOrderPad() {
 
 
         {isAdmin && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-4 gap-2 mb-4">
           <button
             onClick={() => setActiveTab("stock")}
             className="rounded-[1.1rem] bg-white/90 border border-[#eadfd4] p-4 text-left shadow-sm active:scale-[0.99]"
@@ -1956,7 +1956,7 @@ export default function MokaOrderPad() {
 
           <div className="rounded-[1.1rem] bg-white/90 border border-[#eadfd4] p-4 shadow-sm">
             <div className="text-xs font-black text-[#a97862]">📦 Catalogue matières premières suivis</div>
-            <div className="text-xl font-black text-[#3b241b] mt-1">{stockKpis.total}</div>
+            <div className="text-lg font-black text-[#3b241b] mt-0">{stockKpis.total}</div>
             <div className="text-xs font-bold text-[#a97862] mt-1">Stock Live</div>
           </div>
         </div>
@@ -2536,7 +2536,7 @@ export default function MokaOrderPad() {
                   : "🛒 Action du jour"}
               </h2>
 
-              <p className="text-xs text-[#a97862] mt-1">
+              <p className="text-[11px] text-[#a97862] mt-0">
                 {activeTab === "stock"
                   ? "Sélectionne un produit Stock Live puis un staff"
                   : activeTab === "preps"
@@ -2669,10 +2669,10 @@ export default function MokaOrderPad() {
           <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-[98vw] max-w-none max-h-[86vh] overflow-hidden">
             <div className="p-3 border-b border-[#eadfd4] flex justify-between items-start gap-4">
               <div>
-                <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
+                <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
                   Paramètres
                 </div>
-                <h2 className="text-xl font-black text-[#3b241b] mt-1">
+                <h2 className="text-lg font-black text-[#3b241b] mt-0">
                   {settingsPanel === "suppliers" && "🏢 Fournisseurs"}
                   {settingsPanel === "staff" && "👥 Staff"}
                   {settingsPanel === "categories" && "📦 Catégories"}
@@ -2692,7 +2692,7 @@ export default function MokaOrderPad() {
 
                 <button
                   onClick={() => setSettingsPanel("")}
-                  className="w-12 h-12 rounded-full bg-[#f4eee7] hover:bg-[#eadfd4] flex items-center justify-center text-xl font-black text-[#a97862]"
+                  className="w-10 h-10 rounded-full bg-[#f4eee7] hover:bg-[#eadfd4] flex items-center justify-center text-xl font-black text-[#a97862]"
                 >
                   ×
                 </button>
@@ -2784,7 +2784,7 @@ export default function MokaOrderPad() {
           <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-xl p-5">
             <div className="flex justify-between items-start gap-4 mb-5">
               <div>
-                <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
+                <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
                   Ajouter
                 </div>
                 <h2 className="text-xl font-black text-[#3b241b]">
@@ -2799,7 +2799,7 @@ export default function MokaOrderPad() {
 
               <button
                 onClick={() => setCreatingSettingsItem(false)}
-                className="w-12 h-12 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
+                className="w-10 h-10 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
               >
                 ×
               </button>
@@ -2878,7 +2878,7 @@ export default function MokaOrderPad() {
           <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-xl max-h-[86vh] overflow-y-auto p-5">
             <div className="flex justify-between items-start gap-4 mb-5">
               <div>
-                <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
+                <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
                   Modifier
                 </div>
                 <h2 className="text-xl font-black text-[#3b241b]">
@@ -2888,7 +2888,7 @@ export default function MokaOrderPad() {
 
               <button
                 onClick={() => setEditingSettingsItem(null)}
-                className="w-12 h-12 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
+                className="w-10 h-10 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
               >
                 ×
               </button>
@@ -2978,7 +2978,7 @@ export default function MokaOrderPad() {
           <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-[98vw] max-w-none max-h-[86vh] overflow-y-auto p-5">
             <div className="flex justify-between items-start gap-4 mb-5">
               <div>
-                <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
+                <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
                   Nouveau produit
                 </div>
                 <h2 className="text-xl font-black text-[#3b241b]">
@@ -2988,7 +2988,7 @@ export default function MokaOrderPad() {
 
               <button
                 onClick={() => setCreatingProductDb(false)}
-                className="w-12 h-12 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
+                className="w-10 h-10 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
               >
                 ×
               </button>
@@ -3227,7 +3227,7 @@ export default function MokaOrderPad() {
           <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-[98vw] max-w-none max-h-[86vh] overflow-y-auto p-5">
             <div className="flex justify-between items-start gap-4 mb-5">
               <div>
-                <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
+                <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
                   Modifier matière première
                 </div>
                 <h2 className="text-xl font-black text-[#3b241b]">
@@ -3237,7 +3237,7 @@ export default function MokaOrderPad() {
 
               <button
                 onClick={() => setEditingProductDb(null)}
-                className="w-12 h-12 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
+                className="w-10 h-10 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
               >
                 ×
               </button>
@@ -3320,7 +3320,7 @@ export default function MokaOrderPad() {
           <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-lg p-5">
             <div className="flex justify-between items-start gap-4 mb-5">
               <div>
-                <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
+                <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
                   Ajustement inventaire
                 </div>
                 <h2 className="text-xl font-black text-[#3b241b]">
@@ -3330,7 +3330,7 @@ export default function MokaOrderPad() {
 
               <button
                 onClick={() => setInventoryItem(null)}
-                className="w-12 h-12 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
+                className="w-10 h-10 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
               >
                 ×
               </button>
@@ -3338,10 +3338,10 @@ export default function MokaOrderPad() {
 
             <div className="rounded-2xl bg-[#fffaf3] border border-[#eadfd4] p-4 mb-4">
               <div className="text-xs font-black text-[#a97862]">Portions actuelles</div>
-              <div className="text-xl font-black text-[#3b241b] mt-1">
+              <div className="text-lg font-black text-[#3b241b] mt-0">
                 {getStockPortions(inventoryItem)}
               </div>
-              <div className="text-xs text-[#a97862] mt-1">
+              <div className="text-[11px] text-[#a97862] mt-0">
                 Statut : {getStockStatus(inventoryItem)}
               </div>
             </div>
@@ -3377,14 +3377,14 @@ export default function MokaOrderPad() {
                 <h2 className="text-xl font-black text-[#3b241b]">
                   ⏱ Pointage staff
                 </h2>
-                <p className="text-xs text-[#a97862] mt-1">
+                <p className="text-[11px] text-[#a97862] mt-0">
                   Arrivée, pause, retour pause et départ.
                 </p>
               </div>
 
               <button
                 onClick={() => setShowClockModal(false)}
-                className="w-12 h-12 rounded-full bg-[#f4eee7] hover:bg-[#eadfd4] flex items-center justify-center text-xl font-black text-[#a97862] shrink-0"
+                className="w-10 h-10 rounded-full bg-[#f4eee7] hover:bg-[#eadfd4] flex items-center justify-center text-xl font-black text-[#a97862] shrink-0"
               >
                 ×
               </button>
@@ -3486,7 +3486,7 @@ export default function MokaOrderPad() {
               👤 Accès admin
             </h2>
 
-            <p className="text-xs text-[#a97862] mt-1">
+            <p className="text-[11px] text-[#a97862] mt-0">
               Entrez le code à 4 chiffres pour accéder aux réglages.
             </p>
 
@@ -3530,14 +3530,14 @@ export default function MokaOrderPad() {
                 <h2 className="text-xl font-black text-[#3b241b]">
                   {settingsItem?.isNew ? "➕ Nouveau produit" : "⚙️ Réglages produit"}
                 </h2>
-                <p className="text-xs text-[#a97862] mt-1">
+                <p className="text-[11px] text-[#a97862] mt-0">
                   {settingsForm.name}
                 </p>
               </div>
 
               <button
                 onClick={() => setSettingsItem(null)}
-                className="w-12 h-12 rounded-full bg-[#f4eee7] hover:bg-[#eadfd4] flex items-center justify-center text-xl font-black text-[#a97862] shrink-0"
+                className="w-10 h-10 rounded-full bg-[#f4eee7] hover:bg-[#eadfd4] flex items-center justify-center text-xl font-black text-[#a97862] shrink-0"
               >
                 ×
               </button>
@@ -3669,26 +3669,19 @@ export default function MokaOrderPad() {
                   {adminSection === "settings" && "⚙️ Paramètres"}
                 </h1>
               </div>
-
-              <button
-                onClick={() => setAdminSection("dashboard")}
-                className="rounded-2xl px-5 py-3 bg-white border border-[#eadfd4] font-black text-[#6b4a3d]"
-              >
-                Retour dashboard
-              </button>
             </div>
 
             {adminSection === "products" && (
-              <div className="bg-white rounded-[1.4rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-105px)] flex flex-col">
-                <div className="p-3 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div className="bg-white rounded-[1.4rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-70px)] flex flex-col">
+                <div className="p-2 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                   <div>
-                    <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
+                    <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
                       Base de données
                     </div>
-                    <h2 className="text-xl font-black text-[#3b241b] mt-1">
+                    <h2 className="text-lg font-black text-[#3b241b] mt-0">
                       📦 Catalogue matières premières
                     </h2>
-                    <p className="text-xs text-[#a97862] mt-1">
+                    <p className="text-[11px] text-[#a97862] mt-0">
                       Affichage complet de la database produits Notion.
                     </p>
                   </div>
@@ -3823,10 +3816,10 @@ export default function MokaOrderPad() {
 
             {adminSection === "inventory" && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-4 gap-2">
                   <button
                     onClick={() => setInventoryStatusFilter("Tous")}
-                    className={`rounded-[1.1rem] p-3 border shadow-sm text-left ${
+                    className={`rounded-[0.9rem] px-3 py-2 border shadow-sm text-left ${
                       inventoryStatusFilter === "Tous"
                         ? "bg-[#3b241b] text-white border-[#3b241b]"
                         : "bg-white text-[#3b241b] border-[#eadfd4]"
@@ -3838,7 +3831,7 @@ export default function MokaOrderPad() {
 
                   <button
                     onClick={() => setInventoryStatusFilter(inventoryStatusFilter === "OK" ? "Tous" : "OK")}
-                    className={`rounded-[1.1rem] p-3 border shadow-sm text-left ${
+                    className={`rounded-[0.9rem] px-3 py-2 border shadow-sm text-left ${
                       inventoryStatusFilter === "OK"
                         ? "bg-[#6f8f32] text-white border-[#6f8f32]"
                         : "bg-white text-[#3b241b] border-[#eadfd4]"
@@ -3855,7 +3848,7 @@ export default function MokaOrderPad() {
 
                   <button
                     onClick={() => setInventoryStatusFilter(inventoryStatusFilter === "Stock bas" ? "Tous" : "Stock bas")}
-                    className={`rounded-[1.1rem] p-3 border shadow-sm text-left ${
+                    className={`rounded-[0.9rem] px-3 py-2 border shadow-sm text-left ${
                       inventoryStatusFilter === "Stock bas"
                         ? "bg-orange-500 text-white border-orange-500"
                         : "bg-white text-[#3b241b] border-[#eadfd4]"
@@ -3872,7 +3865,7 @@ export default function MokaOrderPad() {
 
                   <button
                     onClick={() => setInventoryStatusFilter(inventoryStatusFilter === "Critiques" ? "Tous" : "Critiques")}
-                    className={`rounded-[1.1rem] p-3 border shadow-sm text-left ${
+                    className={`rounded-[0.9rem] px-3 py-2 border shadow-sm text-left ${
                       inventoryStatusFilter === "Critiques"
                         ? "bg-red-600 text-white border-red-600"
                         : "bg-white text-[#3b241b] border-[#eadfd4]"
@@ -3885,16 +3878,16 @@ export default function MokaOrderPad() {
                   </button>
                 </div>
 
-                <div className="bg-white rounded-[1.4rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-145px)] flex flex-col">
-                  <div className="p-3 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div className="bg-white rounded-[1.4rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-105px)] flex flex-col">
+                  <div className="p-2 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                     <div>
-                      <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
+                      <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
                         Inventaire
                       </div>
-                      <h2 className="text-xl font-black text-[#3b241b] mt-1">
+                      <h2 className="text-lg font-black text-[#3b241b] mt-0">
                         📋 Stock & ajustements manuels
                       </h2>
-                      <p className="text-xs text-[#a97862] mt-1">
+                      <p className="text-[11px] text-[#a97862] mt-0">
                         Stock = matières premières. Prépas = productions internes.
                       </p>
                     </div>
@@ -4065,7 +4058,7 @@ export default function MokaOrderPad() {
               <div className="bg-white rounded-[1.4rem] p-8 border border-[#eadfd4] shadow-sm">
                 <div className="text-3xl mb-4">🛒</div>
                 <div className="text-xl font-black">Commandes fournisseurs</div>
-                <p className="text-xs text-[#a97862] mt-1">Historique, messages envoyés, suivi réception.</p>
+                <p className="text-[11px] text-[#a97862] mt-0">Historique, messages envoyés, suivi réception.</p>
               </div>
             )}
 
@@ -4073,7 +4066,7 @@ export default function MokaOrderPad() {
               <div className="bg-white rounded-[1.4rem] p-8 border border-[#eadfd4] shadow-sm">
                 <div className="text-3xl mb-4">📊</div>
                 <div className="text-xl font-black">Rapports</div>
-                <p className="text-xs text-[#a97862] mt-1">À développer plus tard.</p>
+                <p className="text-[11px] text-[#a97862] mt-0">À développer plus tard.</p>
               </div>
             )}
 
@@ -4090,7 +4083,7 @@ export default function MokaOrderPad() {
                   <div key={title} className="bg-white rounded-[1.4rem] p-6 border border-[#eadfd4] shadow-sm">
                     <div className="text-3xl mb-4">{icon}</div>
                     <div className="text-xl font-black">{title}</div>
-                    <p className="text-xs text-[#a97862] mt-1">{desc}</p>
+                    <p className="text-[11px] text-[#a97862] mt-0">{desc}</p>
                   </div>
                 ))}
               </div>
@@ -4112,7 +4105,7 @@ export default function MokaOrderPad() {
             <button
               key={id}
               onClick={() => setAdminSection(id)}
-              className={`w-14 h-14 rounded-2xl font-black text-xs flex flex-col items-center justify-center gap-1 shrink-0 ${
+              className={`w-11 h-11 rounded-2xl font-black text-xs flex flex-col items-center justify-center gap-1 shrink-0 ${
                 adminSection === id
                   ? "bg-[#3b241b] text-white"
                   : "text-[#6b4a3d] hover:bg-[#f7efe4]"
