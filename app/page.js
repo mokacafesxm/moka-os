@@ -264,6 +264,8 @@ export default function MokaOrderPad() {
   const [stockSearch, setStockSearch] = useState("");
   const [inventoryItem, setInventoryItem] = useState(null);
   const [inventoryWeight, setInventoryWeight] = useState("");
+  const [inventoryCategory, setInventoryCategory] = useState("Tous");
+  const [inventoryStatusFilter, setInventoryStatusFilter] = useState("Tous");
   const [savingInventory, setSavingInventory] = useState(false);
   const [stockView, setStockView] = useState("prepa");
   const [activeStockCategory, setActiveStockCategory] = useState("");
@@ -615,7 +617,7 @@ export default function MokaOrderPad() {
         String(zone).toLowerCase().includes(q)
       );
     });
-  }, [stockLive, stockSearch]);
+  }, [stockLive, stockSearch, inventoryCategory, inventoryStatusFilter]);
 
   const stockPreps = useMemo(() => {
     return filteredStockLive.filter((item) => isPrepStock(item));
@@ -1635,19 +1637,42 @@ export default function MokaOrderPad() {
     }
   };
 
+  const inventoryCategories = useMemo(() => {
+    const found = [...new Set(stockLive.map((item) => getStockCategory(item) || "Autres"))]
+      .filter(Boolean);
+
+    return ["Tous", ...found.sort((a, b) => {
+      const ia = categoryOrder.indexOf(a);
+      const ib = categoryOrder.indexOf(b);
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    })];
+  }, [stockLive]);
+
   const inventoryFilteredStock = useMemo(() => {
     const q = stockSearch.trim().toLowerCase();
 
     return stockLive
       .filter((item) => {
+        const status = String(getStockStatus(item)).toLowerCase();
+        const category = getStockCategory(item);
+
+        const matchesCategory =
+          inventoryCategory === "Tous" || category === inventoryCategory;
+
+        const matchesStatus =
+          inventoryStatusFilter === "Tous" ||
+          (inventoryStatusFilter === "OK" && !status.includes("critique") && !status.includes("stock bas") && !status.includes("alerte") && !status.includes("à commander")) ||
+          (inventoryStatusFilter === "Stock bas" && (status.includes("stock bas") || status.includes("alerte") || status.includes("à commander"))) ||
+          (inventoryStatusFilter === "Critiques" && status.includes("critique"));
+
         const haystack = [
           getStockName(item),
-          getStockCategory(item),
+          category,
           getStockZone(item),
           getStockStatus(item),
         ].join(" ").toLowerCase();
 
-        return !q || haystack.includes(q);
+        return matchesCategory && matchesStatus && (!q || haystack.includes(q));
       })
       .sort((a, b) => {
         const ca = getStockCategory(a);
@@ -3620,7 +3645,7 @@ export default function MokaOrderPad() {
             </div>
 
             {adminSection === "products" && (
-              <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden">
+              <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-160px)] flex flex-col">
                 <div className="p-5 border-b border-[#eadfd4] flex items-center justify-between gap-3">
                   <div>
                     <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
@@ -3689,7 +3714,7 @@ export default function MokaOrderPad() {
                     Aucun produit trouvé.
                   </div>
                 ) : (
-                  <div className="overflow-auto max-h-[70vh]">
+                  <div className="overflow-auto flex-1">
                     <table className="w-full text-xs">
                       <thead className="bg-[#f7efe4] text-[#a97862] sticky top-0 z-10">
                         <tr>
@@ -3770,20 +3795,41 @@ export default function MokaOrderPad() {
                     <div className="text-3xl font-black text-[#3b241b] mt-2">{stockKpis.total}</div>
                   </div>
 
-                  <div className="bg-white rounded-[1.5rem] p-4 border border-[#eadfd4] shadow-sm">
-                    <div className="text-xs font-black text-[#a97862]">🟢 OK</div>
-                    <div className="text-3xl font-black text-[#6f8f32] mt-2">{stockKpis.ok}</div>
-                  </div>
+                  <button
+                    onClick={() => setInventoryStatusFilter(inventoryStatusFilter === "OK" ? "Tous" : "OK")}
+                    className={`rounded-[1.5rem] p-4 border shadow-sm text-left ${
+                      inventoryStatusFilter === "OK"
+                        ? "bg-[#6f8f32] text-white border-[#6f8f32]"
+                        : "bg-white text-[#3b241b] border-[#eadfd4]"
+                    }`}
+                  >
+                    <div className="text-xs font-black">🟢 OK</div>
+                    <div className="text-3xl font-black mt-2">{stockKpis.ok}</div>
+                  </button>
 
-                  <div className="bg-white rounded-[1.5rem] p-4 border border-[#eadfd4] shadow-sm">
-                    <div className="text-xs font-black text-[#a97862]">🟠 Stock bas</div>
-                    <div className="text-3xl font-black text-orange-500 mt-2">{stockKpis.alert}</div>
-                  </div>
+                  <button
+                    onClick={() => setInventoryStatusFilter(inventoryStatusFilter === "Stock bas" ? "Tous" : "Stock bas")}
+                    className={`rounded-[1.5rem] p-4 border shadow-sm text-left ${
+                      inventoryStatusFilter === "Stock bas"
+                        ? "bg-orange-500 text-white border-orange-500"
+                        : "bg-white text-[#3b241b] border-[#eadfd4]"
+                    }`}
+                  >
+                    <div className="text-xs font-black">🟠 Stock bas</div>
+                    <div className="text-3xl font-black mt-2">{stockKpis.alert}</div>
+                  </button>
 
-                  <div className="bg-white rounded-[1.5rem] p-4 border border-[#eadfd4] shadow-sm">
-                    <div className="text-xs font-black text-[#a97862]">🔴 Critiques</div>
-                    <div className="text-3xl font-black text-red-600 mt-2">{stockKpis.critical}</div>
-                  </div>
+                  <button
+                    onClick={() => setInventoryStatusFilter(inventoryStatusFilter === "Critiques" ? "Tous" : "Critiques")}
+                    className={`rounded-[1.5rem] p-4 border shadow-sm text-left ${
+                      inventoryStatusFilter === "Critiques"
+                        ? "bg-red-600 text-white border-red-600"
+                        : "bg-white text-[#3b241b] border-[#eadfd4]"
+                    }`}
+                  >
+                    <div className="text-xs font-black">🔴 Critiques</div>
+                    <div className="text-3xl font-black mt-2">{stockKpis.critical}</div>
+                  </button>
                 </div>
 
                 <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden">
@@ -3817,6 +3863,27 @@ export default function MokaOrderPad() {
                         placeholder="Rechercher un produit, une zone, un statut..."
                         className="w-full bg-transparent outline-none text-[#3b241b] placeholder:text-[#b08d7b] font-semibold"
                       />
+                    </div>
+
+                    <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                      {inventoryCategories.map((cat) => (
+                        <button
+                          key={cat}
+                          onClick={() => setInventoryCategory(cat)}
+                          className={`px-3 py-1.5 rounded-full whitespace-nowrap text-xs font-black shrink-0 ${
+                            inventoryCategory === cat
+                              ? "bg-[#3b241b] text-white"
+                              : "bg-[#f7efe4] text-[#6b4a3d] border border-[#eadfd4]"
+                          }`}
+                        >
+                          {cat === "Tous" ? "Tous" : `${categoryEmojis[cat] || "📌"} ${cat}`}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="text-xs font-bold text-[#a97862] mt-2">
+                      {inventoryFilteredStock.length} / {stockLive.length} produits affichés
+                      {inventoryStatusFilter !== "Tous" ? ` · Statut : ${inventoryStatusFilter}` : ""}
                     </div>
                   </div>
 
