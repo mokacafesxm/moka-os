@@ -1631,6 +1631,8 @@ export default function MokaOrderPad() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          id: inventoryItem.id,
+          ingredientId: inventoryItem.ingredientId || "",
           Produit: getStockName(inventoryItem),
           PoidsTotal: Number(inventoryWeight),
           Utilisateur: selectedStaffName || "MOKA OS",
