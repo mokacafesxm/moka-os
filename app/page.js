@@ -101,7 +101,14 @@ function getStockName(item) {
 }
 
 function getStockStatus(item) {
-  return item?.status || item?.statut || item?.Statut || "À configurer";
+  return (
+    item?.status ||
+    item?.statut ||
+    item?.Statut ||
+    item?.property_statut ||
+    item?.["Statut"] ||
+    "À configurer"
+  );
 }
 
 function getStockPortions(item) {
@@ -1661,9 +1668,25 @@ export default function MokaOrderPad() {
 
         const matchesStatus =
           inventoryStatusFilter === "Tous" ||
-          (inventoryStatusFilter === "OK" && !status.includes("critique") && !status.includes("stock bas") && !status.includes("alerte") && !status.includes("à commander")) ||
-          (inventoryStatusFilter === "Stock bas" && (status.includes("stock bas") || status.includes("alerte") || status.includes("à commander"))) ||
-          (inventoryStatusFilter === "Critiques" && status.includes("critique"));
+          (
+            inventoryStatusFilter === "OK" &&
+            !status.includes("critique") &&
+            !status.includes("stock bas") &&
+            !status.includes("alerte") &&
+            !status.includes("à commander")
+          ) ||
+          (
+            inventoryStatusFilter === "Stock bas" &&
+            (
+              status.includes("stock bas") ||
+              status.includes("alerte") ||
+              status.includes("à commander")
+            )
+          ) ||
+          (
+            inventoryStatusFilter === "Critiques" &&
+            status.includes("critique")
+          );
 
         const haystack = [
           getStockName(item),
@@ -1925,7 +1948,7 @@ export default function MokaOrderPad() {
           </button>
 
           <div className="rounded-[1.5rem] bg-white/90 border border-[#eadfd4] p-4 shadow-sm">
-            <div className="text-xs font-black text-[#a97862]">📦 Produits suivis</div>
+            <div className="text-xs font-black text-[#a97862]">📦 Catalogue matières premières suivis</div>
             <div className="text-3xl font-black text-[#3b241b] mt-2">{stockKpis.total}</div>
             <div className="text-xs font-bold text-[#a97862] mt-1">Stock Live</div>
           </div>
@@ -2674,7 +2697,7 @@ export default function MokaOrderPad() {
                 Aucun élément trouvé.
               </div>
             ) : (
-              <div className="overflow-auto max-h-[70vh]">
+              <div className="overflow-auto flex-1">
                 <table className="w-full text-sm">
                   <thead className="bg-[#f7efe4] text-[#a97862] sticky top-0">
                     <tr>
@@ -2722,7 +2745,7 @@ export default function MokaOrderPad() {
                               onClick={() => openSettingsEdit(item)}
                               className="rounded-xl px-3 py-2 bg-white border border-[#eadfd4] font-black text-[#6b4a3d]"
                             >
-                              ✏️ Modifier
+                              ✏️ Ajuster
                             </button>
 
                             <button
@@ -3652,7 +3675,7 @@ export default function MokaOrderPad() {
                       Base de données
                     </div>
                     <h2 className="text-2xl font-black text-[#3b241b] mt-1">
-                      Base de données produits
+                      Catalogue matières premières
                     </h2>
                     <p className="text-sm text-[#a97862] mt-1">
                       Affichage complet de la database produits Notion.
@@ -3767,7 +3790,7 @@ export default function MokaOrderPad() {
                                   onClick={() => openProductDbEdit(item)}
                                   className="rounded-xl px-3 py-2 bg-white border border-[#eadfd4] font-black text-[#6b4a3d]"
                                 >
-                                  ✏️ Modifier
+                                  ✏️ Ajuster
                                 </button>
 
                                 <button
@@ -3832,7 +3855,7 @@ export default function MokaOrderPad() {
                   </button>
                 </div>
 
-                <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden">
+                <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-160px)] flex flex-col">
                   <div className="p-5 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>
                       <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
@@ -3882,7 +3905,7 @@ export default function MokaOrderPad() {
                     </div>
 
                     <div className="text-xs font-bold text-[#a97862] mt-2">
-                      {inventoryFilteredStock.length} / {stockLive.length} produits affichés
+                      {inventoryFilteredStock.length} produits affichés
                       {inventoryStatusFilter !== "Tous" ? ` · Statut : ${inventoryStatusFilter}` : ""}
                     </div>
                   </div>
@@ -3937,12 +3960,21 @@ export default function MokaOrderPad() {
                               </td>
 
                               <td className="p-4">
-                                <button
-                                  onClick={() => openInventoryAdjust(item)}
-                                  className="rounded-xl px-3 py-2 bg-[#6f8f32] text-white font-black"
-                                >
-                                  ✏️ Ajuster poids
-                                </button>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => openInventoryAdjust(item)}
+                                    className="rounded-xl px-3 py-2 bg-[#6f8f32] text-white font-black"
+                                  >
+                                    ✏️ Ajuster
+                                  </button>
+
+                                  <button
+                                    onClick={() => deleteProductDb(item)}
+                                    className="rounded-xl px-3 py-2 bg-red-50 border border-red-100 text-red-700 font-black"
+                                  >
+                                    Supprimer
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
