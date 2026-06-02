@@ -1828,7 +1828,7 @@ export default function MokaOrderPad() {
 
   return (
     <main className="min-h-screen bg-[#f7efe4] text-[#332019] pb-28">
-      <div className="max-w-[1600px] mx-auto px-5 py-3">
+      <div className="max-w-none w-full px-3 py-3">
         <header className="flex items-end justify-between gap-5 mb-3">
           <div>
             <h1 className="text-5xl font-black tracking-tight text-[#3b241b]">
@@ -2662,7 +2662,7 @@ export default function MokaOrderPad() {
 
       {settingsPanel && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3">
-          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[94vw] max-w-5xl max-h-[86vh] overflow-hidden">
+          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[98vw] max-w-none max-h-[86vh] overflow-hidden">
             <div className="p-5 border-b border-[#eadfd4] flex justify-between items-start gap-4">
               <div>
                 <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
@@ -2971,7 +2971,7 @@ export default function MokaOrderPad() {
 
       {creatingProductDb && (
         <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-3">
-          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[94vw] max-w-5xl max-h-[86vh] overflow-y-auto p-5">
+          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[98vw] max-w-none max-h-[86vh] overflow-y-auto p-5">
             <div className="flex justify-between items-start gap-4 mb-5">
               <div>
                 <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
@@ -3220,7 +3220,7 @@ export default function MokaOrderPad() {
 
       {editingProductDb && (
         <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-3">
-          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[94vw] max-w-4xl max-h-[86vh] overflow-y-auto p-5">
+          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[98vw] max-w-none max-h-[86vh] overflow-y-auto p-5">
             <div className="flex justify-between items-start gap-4 mb-5">
               <div>
                 <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
@@ -3675,7 +3675,7 @@ export default function MokaOrderPad() {
             </div>
 
             {adminSection === "products" && (
-              <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-160px)] flex flex-col">
+              <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-145px)] flex flex-col">
                 <div className="p-5 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div>
                     <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
@@ -3881,7 +3881,7 @@ export default function MokaOrderPad() {
                   </button>
                 </div>
 
-                <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-250px)] flex flex-col">
+                <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-225px)] flex flex-col">
                   <div className="p-5 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>
                       <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
