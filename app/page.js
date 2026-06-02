@@ -2046,7 +2046,7 @@ export default function MokaOrderPad() {
                 ? "col-span-12"
                 : "col-span-12 sm:col-span-8 xl:col-span-9"
             }>
-            {activeTab === "stock" && stockView === "prepa" && (
+            {activeTab === "stock" {activeTab === "stock" && stockView === "prepa" && ({activeTab === "stock" && stockView === "prepa" && ( (
               <>
                 {loadingStock ? (
                   <div className="bg-white rounded-[1.4rem] p-10 text-center text-[#a97862]">
@@ -2652,7 +2652,7 @@ export default function MokaOrderPad() {
                 </select>
               </div>
 
-              {activeTab === "stock" && stockView === "prepa" && (
+              {activeTab === "stock" {activeTab === "stock" && stockView === "prepa" && ({activeTab === "stock" && stockView === "prepa" && ( (
                 <div className="mt-4">
                   <label className="block text-xs font-black text-[#a97862] mb-2">
                     Date prévue
