@@ -273,6 +273,7 @@ export default function MokaOrderPad() {
   const [inventoryWeight, setInventoryWeight] = useState("");
   const [inventoryCategory, setInventoryCategory] = useState("Tous");
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("Tous");
+  const [inventoryView, setInventoryView] = useState("stock");
   const [savingInventory, setSavingInventory] = useState(false);
   const [stockView, setStockView] = useState("prepa");
   const [activeStockCategory, setActiveStockCategory] = useState("");
@@ -1644,8 +1645,14 @@ export default function MokaOrderPad() {
     }
   };
 
+  const inventoryBaseItems = useMemo(() => {
+    return stockLive.filter((item) =>
+      inventoryView === "prepa" ? isPrepStock(item) : !isPrepStock(item)
+    );
+  }, [stockLive, inventoryView]);
+
   const inventoryCategories = useMemo(() => {
-    const found = [...new Set(stockLive.map((item) => getStockCategory(item) || "Autres"))]
+    const found = [...new Set(inventoryBaseItems.map((item) => getStockCategory(item) || "Autres"))]
       .filter(Boolean);
 
     return ["Tous", ...found.sort((a, b) => {
@@ -1653,12 +1660,12 @@ export default function MokaOrderPad() {
       const ib = categoryOrder.indexOf(b);
       return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
     })];
-  }, [stockLive]);
+  }, [inventoryBaseItems]);
 
   const inventoryFilteredStock = useMemo(() => {
     const q = stockSearch.trim().toLowerCase();
 
-    return stockLive
+    return inventoryBaseItems
       .filter((item) => {
         const status = String(getStockStatus(item)).toLowerCase();
         const category = getStockCategory(item);
@@ -1711,7 +1718,7 @@ export default function MokaOrderPad() {
 
         return na.localeCompare(nb);
       });
-  }, [stockLive, stockSearch]);
+  }, [inventoryBaseItems, stockSearch, inventoryCategory, inventoryStatusFilter]);
 
   const sendToMokaOS = async () => {
     if (cartItems.length === 0) return;
@@ -3669,13 +3676,13 @@ export default function MokaOrderPad() {
 
             {adminSection === "products" && (
               <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-160px)] flex flex-col">
-                <div className="p-5 border-b border-[#eadfd4] flex items-center justify-between gap-3">
+                <div className="p-5 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div>
                     <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
                       Base de données
                     </div>
                     <h2 className="text-2xl font-black text-[#3b241b] mt-1">
-                      Catalogue matières premières
+                      📦 Catalogue matières premières
                     </h2>
                     <p className="text-sm text-[#a97862] mt-1">
                       Affichage complet de la database produits Notion.
@@ -3687,7 +3694,7 @@ export default function MokaOrderPad() {
                       onClick={openProductDbCreate}
                       className="rounded-2xl px-4 py-3 bg-[#6f8f32] text-white font-black text-sm border border-[#6f8f32] shadow-sm"
                     >
-                      ➕ Ajouter produit
+                      + Ajouter produit
                     </button>
 
                     <div className="rounded-2xl px-4 py-3 bg-[#f7efe4] text-[#6b4a3d] font-black text-sm border border-[#eadfd4]">
@@ -3696,7 +3703,7 @@ export default function MokaOrderPad() {
                   </div>
                 </div>
 
-                <div className="p-4 border-b border-[#eadfd4] bg-white">
+                <div className="p-4 border-b border-[#eadfd4]">
                   <div className="flex items-center gap-3 rounded-[1.1rem] bg-[#fffaf3] border border-[#d6b8a7] px-4 py-2">
                     <span className="text-lg">🔍</span>
                     <input
@@ -3728,95 +3735,102 @@ export default function MokaOrderPad() {
                   </div>
                 </div>
 
-                {loadingProductsDb && productsDb.length === 0 ? (
-                  <div className="p-10 text-center text-[#a97862] font-black">
-                    Chargement produits…
-                  </div>
-                ) : productsDb.length === 0 ? (
-                  <div className="p-10 text-center text-[#a97862] font-black">
-                    Aucun produit trouvé.
-                  </div>
-                ) : (
-                  <div className="overflow-auto flex-1">
-                    <table className="w-full text-xs">
-                      <thead className="bg-[#f7efe4] text-[#a97862] sticky top-0 z-10">
-                        <tr>
-                          <th className="text-left p-3 font-black min-w-[180px]">Ingrédient</th>
-                          <th className="text-left p-3 font-black">Visible</th>
-                          <th className="text-left p-3 font-black min-w-[130px]">Catégorie</th>
-                          <th className="text-left p-3 font-black min-w-[150px]">Sous-catégorie</th>
-                          <th className="text-left p-3 font-black min-w-[150px]">Fournisseur</th>
-                          <th className="text-left p-3 font-black min-w-[130px]">Zone</th>
-                          <th className="text-left p-3 font-black">Suivi</th>
-                          <th className="text-left p-3 font-black">Qté sugg.</th>
-                          <th className="text-left p-3 font-black">Unité stock</th>
-                          <th className="text-left p-3 font-black">Unité cmd</th>
-                          <th className="text-left p-3 font-black">Alerte</th>
-                          <th className="text-left p-3 font-black">Critique</th>
-                          <th className="text-left p-3 font-black">Portion g</th>
-                          <th className="text-left p-3 font-black min-w-[180px]">Actions</th>
+                <div className="overflow-auto flex-1">
+                  <table className="w-full text-sm">
+                    <thead className="bg-[#f7efe4] text-[#a97862] sticky top-0 z-10">
+                      <tr>
+                        <th className="text-left p-4 font-black min-w-[180px]">Produit</th>
+                        <th className="text-left p-4 font-black">Visible</th>
+                        <th className="text-left p-4 font-black">Catégorie</th>
+                        <th className="text-left p-4 font-black">Sous-catégorie</th>
+                        <th className="text-left p-4 font-black">Fournisseur</th>
+                        <th className="text-left p-4 font-black">Zone</th>
+                        <th className="text-left p-4 font-black">Unité</th>
+                        <th className="text-left p-4 font-black">Portion</th>
+                        <th className="text-left p-4 font-black">Actions</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {filteredProductsDb.map((item, index) => (
+                        <tr key={item.id || index} className="border-t border-[#eadfd4]">
+                          <td className="p-4 font-black text-[#3b241b]">
+                            {item.ingredient || item.name || "—"}
+                          </td>
+
+                          <td className="p-4">
+                            <span className={`px-3 py-1 rounded-full text-xs font-black ${
+                              item.visibleOrderPad !== false
+                                ? "bg-[#eef5df] text-[#6f8f32]"
+                                : "bg-red-50 text-red-700"
+                            }`}>
+                              {item.visibleOrderPad !== false ? "Oui" : "Non"}
+                            </span>
+                          </td>
+
+                          <td className="p-4 text-[#6b4a3d]">
+                            {categoryEmojis[item.categorie || item.category] || "📌"} {item.categorie || item.category || "Autres"}
+                          </td>
+
+                          <td className="p-4 text-[#6b4a3d]">
+                            {item.sousCategorie || item.subcategory || "—"}
+                          </td>
+
+                          <td className="p-4 text-[#6b4a3d]">
+                            {getProductsDbSupplierName(item)}
+                          </td>
+
+                          <td className="p-4 text-[#6b4a3d]">
+                            {item.zoneStockage || item.zone || "—"}
+                          </td>
+
+                          <td className="p-4 text-[#6b4a3d]">
+                            {item.uniteStock || item.unit || "—"}
+                          </td>
+
+                          <td className="p-4 font-black text-[#3b241b]">
+                            {item.portionGrammes || item.portion || 0}
+                          </td>
+
+                          <td className="p-4">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => openProductDbEdit(item)}
+                                className="rounded-xl px-3 py-2 bg-[#6f8f32] text-white font-black"
+                              >
+                                ✏️ Ajuster
+                              </button>
+
+                              <button
+                                onClick={() => deleteProductDb(item)}
+                                className="rounded-xl px-3 py-2 bg-red-50 border border-red-100 text-red-700 font-black"
+                              >
+                                Supprimer
+                              </button>
+                            </div>
+                          </td>
                         </tr>
-                      </thead>
-
-                      <tbody>
-                        {filteredProductsDb.map((item, index) => (
-                            <tr key={item.id || `${category}-${index}`} className="border-t border-[#eadfd4]">
-                            <td className="p-3 font-black text-[#3b241b]">
-                              {item.ingredient || item.name || "Sans nom"}
-                            </td>
-                            <td className="p-3">
-                              <span className={`px-2 py-1 rounded-full font-black ${
-                                item.visibleOrderPad === false
-                                  ? "bg-red-100 text-red-700"
-                                  : "bg-[#eef5df] text-[#6f8f32]"
-                              }`}>
-                                {item.visibleOrderPad === false ? "Non" : "Oui"}
-                              </span>
-                            </td>
-                            <td className="p-3 text-[#6b4a3d] font-bold">{item.categorie || item.category || "—"}</td>
-                            <td className="p-3 text-[#6b4a3d]">{item.sousCategorie || item.subcategory || "—"}</td>
-                            <td className="p-3 text-[#6b4a3d]">{getProductsDbSupplierName(item)}</td>
-                            <td className="p-3 text-[#6b4a3d]">{item.zoneStockage || item.zone || "—"}</td>
-                            <td className="p-3 text-[#6b4a3d]">{item.methodeSuivi || "—"}</td>
-                            <td className="p-3 text-[#6b4a3d]">{item.quantiteCommandeSuggeree ?? "—"}</td>
-                            <td className="p-3 text-[#6b4a3d]">{item.uniteStock || item.unit || "—"}</td>
-                            <td className="p-3 text-[#6b4a3d]">{item.uniteCommande || "—"}</td>
-                            <td className="p-3 text-[#6b4a3d]">{item.seuilAlerte ?? "—"}</td>
-                            <td className="p-3 text-[#6b4a3d]">{item.seuilCritique ?? "—"}</td>
-                            <td className="p-3 text-[#6b4a3d]">{item.portionGrammes ?? item.portion ?? "—"}</td>
-                            <td className="p-3">
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => openProductDbEdit(item)}
-                                  className="rounded-xl px-3 py-2 bg-white border border-[#eadfd4] font-black text-[#6b4a3d]"
-                                >
-                                  ✏️ Ajuster
-                                </button>
-
-                                <button
-                                  onClick={() => deleteProductDb(item)}
-                                  className="rounded-xl px-3 py-2 bg-red-50 border border-red-100 font-black text-red-700"
-                                >
-                                  Supprimer
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 
             {adminSection === "inventory" && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="bg-white rounded-[1.5rem] p-4 border border-[#eadfd4] shadow-sm">
-                    <div className="text-xs font-black text-[#a97862]">📦 Produits suivis</div>
-                    <div className="text-3xl font-black text-[#3b241b] mt-2">{stockKpis.total}</div>
-                  </div>
+                  <button
+                    onClick={() => setInventoryStatusFilter("Tous")}
+                    className={`rounded-[1.5rem] p-4 border shadow-sm text-left ${
+                      inventoryStatusFilter === "Tous"
+                        ? "bg-[#3b241b] text-white border-[#3b241b]"
+                        : "bg-white text-[#3b241b] border-[#eadfd4]"
+                    }`}
+                  >
+                    <div className="text-xs font-black">📦 Produits suivis</div>
+                    <div className="text-3xl font-black mt-2">{inventoryBaseItems.length}</div>
+                  </button>
 
                   <button
                     onClick={() => setInventoryStatusFilter(inventoryStatusFilter === "OK" ? "Tous" : "OK")}
@@ -3827,7 +3841,12 @@ export default function MokaOrderPad() {
                     }`}
                   >
                     <div className="text-xs font-black">🟢 OK</div>
-                    <div className="text-3xl font-black mt-2">{stockKpis.ok}</div>
+                    <div className="text-3xl font-black mt-2">
+                      {inventoryBaseItems.filter((item) => {
+                        const s = String(getStockStatus(item)).toLowerCase();
+                        return !s.includes("critique") && !s.includes("stock bas") && !s.includes("alerte") && !s.includes("à commander");
+                      }).length}
+                    </div>
                   </button>
 
                   <button
@@ -3839,7 +3858,12 @@ export default function MokaOrderPad() {
                     }`}
                   >
                     <div className="text-xs font-black">🟠 Stock bas</div>
-                    <div className="text-3xl font-black mt-2">{stockKpis.alert}</div>
+                    <div className="text-3xl font-black mt-2">
+                      {inventoryBaseItems.filter((item) => {
+                        const s = String(getStockStatus(item)).toLowerCase();
+                        return s.includes("stock bas") || s.includes("alerte") || s.includes("à commander");
+                      }).length}
+                    </div>
                   </button>
 
                   <button
@@ -3851,11 +3875,13 @@ export default function MokaOrderPad() {
                     }`}
                   >
                     <div className="text-xs font-black">🔴 Critiques</div>
-                    <div className="text-3xl font-black mt-2">{stockKpis.critical}</div>
+                    <div className="text-3xl font-black mt-2">
+                      {inventoryBaseItems.filter((item) => String(getStockStatus(item)).toLowerCase().includes("critique")).length}
+                    </div>
                   </button>
                 </div>
 
-                <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-160px)] flex flex-col">
+                <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-250px)] flex flex-col">
                   <div className="p-5 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>
                       <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
@@ -3865,25 +3891,66 @@ export default function MokaOrderPad() {
                         📋 Stock & ajustements manuels
                       </h2>
                       <p className="text-sm text-[#a97862] mt-1">
-                        Corriger le poids total mesuré pour recalculer les portions restantes.
+                        Stock = matières premières. Prépas = productions internes.
                       </p>
                     </div>
 
-                    <button
-                      className="rounded-2xl px-4 py-3 bg-[#f7efe4] text-[#6b4a3d] font-black text-sm border border-[#eadfd4]"
-                      onClick={() => alert("Bientôt : photo facture + IA de réception stock")}
-                    >
-                      📸 Scanner facture
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="rounded-2xl px-4 py-3 bg-[#f7efe4] text-[#6b4a3d] font-black text-sm border border-[#eadfd4]"
+                        onClick={() => alert("Bientôt : photo facture + IA réception stock")}
+                      >
+                        📸 Scanner facture
+                      </button>
+
+                      <button
+                        className="rounded-2xl px-4 py-3 bg-[#f7efe4] text-[#6b4a3d] font-black text-sm border border-[#eadfd4]"
+                        onClick={() => alert("Bientôt : photo Z de caisse + IA décompte ventes")}
+                      >
+                        🧾 Scanner Z
+                      </button>
+                    </div>
                   </div>
 
                   <div className="p-4 border-b border-[#eadfd4]">
+                    <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+                      <button
+                        onClick={() => {
+                          setInventoryView("stock");
+                          setInventoryCategory("Tous");
+                          setInventoryStatusFilter("Tous");
+                        }}
+                        className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-black ${
+                          inventoryView === "stock"
+                            ? "bg-[#3b241b] text-white"
+                            : "bg-[#f7efe4] text-[#6b4a3d] border border-[#eadfd4]"
+                        }`}
+                      >
+                        📦 Stock
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setInventoryView("prepa");
+                          setInventoryCategory("Tous");
+                          setInventoryStatusFilter("Tous");
+                        }}
+                        className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-black ${
+                          inventoryView === "prepa"
+                            ? "bg-[#3b241b] text-white"
+                            : "bg-[#f7efe4] text-[#6b4a3d] border border-[#eadfd4]"
+                        }`}
+                      >
+                        👨‍🍳 Prépas
+                      </button>
+                    </div>
+
                     <div className="flex items-center gap-3 rounded-[1.1rem] bg-[#fffaf3] border border-[#d6b8a7] px-4 py-2">
                       <span className="text-lg">🔍</span>
                       <input
                         value={stockSearch}
                         onChange={(e) => setStockSearch(e.target.value)}
-                        placeholder="Rechercher un produit, une zone, un statut..."
+                        placeholder={inventoryView === "stock" ? "Rechercher un produit, une zone, un statut..." : "Rechercher une prépa, une zone, un statut..."}
                         className="w-full bg-transparent outline-none text-[#3b241b] placeholder:text-[#b08d7b] font-semibold"
                       />
                     </div>
@@ -3905,16 +3972,19 @@ export default function MokaOrderPad() {
                     </div>
 
                     <div className="text-xs font-bold text-[#a97862] mt-2">
-                      {inventoryFilteredStock.length} produits affichés
+                      {inventoryFilteredStock.length} éléments affichés
                       {inventoryStatusFilter !== "Tous" ? ` · Statut : ${inventoryStatusFilter}` : ""}
+                      {inventoryCategory !== "Tous" ? ` · Catégorie : ${inventoryCategory}` : ""}
                     </div>
                   </div>
 
-                  <div className="overflow-auto max-h-[68vh]">
+                  <div className="overflow-auto flex-1">
                     <table className="w-full text-sm">
                       <thead className="bg-[#f7efe4] text-[#a97862] sticky top-0 z-10">
                         <tr>
-                          <th className="text-left p-4 font-black min-w-[180px]">Produit</th>
+                          <th className="text-left p-4 font-black min-w-[180px]">
+                            {inventoryView === "stock" ? "Produit" : "Prépa"}
+                          </th>
                           <th className="text-left p-4 font-black">Catégorie</th>
                           <th className="text-left p-4 font-black">Zone</th>
                           <th className="text-left p-4 font-black">Portions</th>
@@ -3926,8 +3996,9 @@ export default function MokaOrderPad() {
                       <tbody>
                         {inventoryFilteredStock.map((item, index) => {
                           const status = getStockStatus(item);
-                          const isCritical = String(status).includes("Critique");
-                          const isLow = String(status).includes("Stock bas");
+                          const statusLower = String(status).toLowerCase();
+                          const isCritical = statusLower.includes("critique");
+                          const isLow = statusLower.includes("stock bas") || statusLower.includes("alerte") || statusLower.includes("à commander");
 
                           return (
                             <tr key={item.id || index} className="border-t border-[#eadfd4]">
@@ -3982,14 +4053,6 @@ export default function MokaOrderPad() {
                       </tbody>
                     </table>
                   </div>
-                </div>
-
-                <div className="bg-white rounded-[2rem] border border-[#eadfd4] p-5 shadow-sm">
-                  <div className="text-xl font-black text-[#3b241b]">🧠 IA inventaire — à venir</div>
-                  <p className="text-sm text-[#a97862] mt-2">
-                    Facture fournisseur : photo → extraction produits/quantités → validation.
-                    Z de caisse : photo → analyse ventes → décompte automatique des grammes/portions.
-                  </p>
                 </div>
               </div>
             )}
