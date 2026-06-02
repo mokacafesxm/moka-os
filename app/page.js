@@ -1828,7 +1828,7 @@ export default function MokaOrderPad() {
 
   return (
     <main className="min-h-screen bg-[#f7efe4] text-[#332019] pb-28">
-      <div className="max-w-none w-full px-3 py-3">
+      <div className="max-w-none w-full px-2 py-2">
         <header className="flex items-end justify-between gap-5 mb-3">
           <div>
             <h1 className="text-5xl font-black tracking-tight text-[#3b241b]">
@@ -1962,8 +1962,12 @@ export default function MokaOrderPad() {
         </div>
         )}
 
-        <div className="grid grid-cols-12 gap-4 items-start">
-          <section className="col-span-12 sm:col-span-8 xl:col-span-9">
+        <div className="grid grid-cols-12 gap-2 items-start">
+          <section className={
+              isAdmin && ["dashboard", "products", "inventory", "settings"].includes(adminSection)
+                ? "col-span-12"
+                : "col-span-12 sm:col-span-8 xl:col-span-9"
+            }>
             {activeTab === "stock" && (
               <>
                 {loadingStock ? (
@@ -3675,7 +3679,7 @@ export default function MokaOrderPad() {
             </div>
 
             {adminSection === "products" && (
-              <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-145px)] flex flex-col">
+              <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-120px)] flex flex-col">
                 <div className="p-5 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div>
                     <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
@@ -3881,7 +3885,7 @@ export default function MokaOrderPad() {
                   </button>
                 </div>
 
-                <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-225px)] flex flex-col">
+                <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-170px)] flex flex-col">
                   <div className="p-5 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>
                       <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
