@@ -17,6 +17,9 @@ const STAFF_URL =
 const STOCK_URL =
   "https://mokacafesxm.app.n8n.cloud/webhook/moka-stock-live";
 
+const STOCK_UPDATE_URL =
+  "https://mokacafesxm.app.n8n.cloud/webhook/moka-stock-update";
+
 const PRODUCT_UPDATE_URL =
   "https://mokacafesxm.app.n8n.cloud/webhook/moka-product-update";
 
@@ -259,6 +262,9 @@ export default function MokaOrderPad() {
   const [sending, setSending] = useState(false);
   const [search, setSearch] = useState("");
   const [stockSearch, setStockSearch] = useState("");
+  const [inventoryItem, setInventoryItem] = useState(null);
+  const [inventoryWeight, setInventoryWeight] = useState("");
+  const [savingInventory, setSavingInventory] = useState(false);
   const [stockView, setStockView] = useState("prepa");
   const [activeStockCategory, setActiveStockCategory] = useState("");
   const [dueDateMode, setDueDateMode] = useState("1");
@@ -1578,6 +1584,86 @@ export default function MokaOrderPad() {
       clean
     );
   };
+
+  const openInventoryAdjust = (item) => {
+    setInventoryItem(item);
+    setInventoryWeight("");
+  };
+
+  const saveInventoryAdjust = async () => {
+    if (!inventoryItem) return;
+
+    if (!inventoryWeight) {
+      alert("Entre un poids total mesuré ❌");
+      return;
+    }
+
+    setSavingInventory(true);
+
+    try {
+      const response = await fetch(STOCK_UPDATE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          Produit: getStockName(inventoryItem),
+          PoidsTotal: Number(inventoryWeight),
+          Utilisateur: selectedStaffName || "MOKA OS",
+          Source: "Inventaire manuel",
+        }),
+      });
+
+      if (!response.ok) throw new Error(`Erreur stock update ${response.status}`);
+
+      setInventoryItem(null);
+      setInventoryWeight("");
+      alert("Stock mis à jour ✅");
+
+      fetch(STOCK_URL)
+        .then((res) => res.json())
+        .then((data) => {
+          const freshStock = normalizeArray(data, "stock");
+          setStockLive(freshStock);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("mokaStockCache", JSON.stringify(freshStock));
+          }
+        });
+    } catch (error) {
+      console.error(error);
+      alert("Erreur mise à jour stock ❌");
+    } finally {
+      setSavingInventory(false);
+    }
+  };
+
+  const inventoryFilteredStock = useMemo(() => {
+    const q = stockSearch.trim().toLowerCase();
+
+    return stockLive
+      .filter((item) => {
+        const haystack = [
+          getStockName(item),
+          getStockCategory(item),
+          getStockZone(item),
+          getStockStatus(item),
+        ].join(" ").toLowerCase();
+
+        return !q || haystack.includes(q);
+      })
+      .sort((a, b) => {
+        const ca = getStockCategory(a);
+        const cb = getStockCategory(b);
+        const na = getStockName(a);
+        const nb = getStockName(b);
+
+        if (ca !== cb) {
+          const ia = categoryOrder.indexOf(ca);
+          const ib = categoryOrder.indexOf(cb);
+          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+        }
+
+        return na.localeCompare(nb);
+      });
+  }, [stockLive, stockSearch]);
 
   const sendToMokaOS = async () => {
     if (cartItems.length === 0) return;
@@ -3169,6 +3255,61 @@ export default function MokaOrderPad() {
         </div>
       )}
 
+
+      {inventoryItem && (
+        <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center p-3">
+          <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-lg p-5">
+            <div className="flex justify-between items-start gap-4 mb-5">
+              <div>
+                <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
+                  Ajustement inventaire
+                </div>
+                <h2 className="text-2xl font-black text-[#3b241b]">
+                  {getStockName(inventoryItem)}
+                </h2>
+              </div>
+
+              <button
+                onClick={() => setInventoryItem(null)}
+                className="w-12 h-12 rounded-full bg-[#f4eee7] flex items-center justify-center text-3xl font-black text-[#a97862]"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="rounded-2xl bg-[#fffaf3] border border-[#eadfd4] p-4 mb-4">
+              <div className="text-xs font-black text-[#a97862]">Portions actuelles</div>
+              <div className="text-3xl font-black text-[#3b241b] mt-1">
+                {getStockPortions(inventoryItem)}
+              </div>
+              <div className="text-sm text-[#a97862] mt-2">
+                Statut : {getStockStatus(inventoryItem)}
+              </div>
+            </div>
+
+            <label className="block text-xs font-black text-[#a97862] mb-2">
+              Nouveau poids total mesuré en kg
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={inventoryWeight}
+              onChange={(e) => setInventoryWeight(e.target.value)}
+              placeholder="Ex : 4.25"
+              className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-4 text-xl font-black outline-none"
+            />
+
+            <button
+              onClick={saveInventoryAdjust}
+              disabled={savingInventory}
+              className="w-full mt-5 py-4 rounded-2xl bg-[#6f8f32] text-white font-black shadow-md"
+            >
+              {savingInventory ? "Mise à jour…" : "Mettre à jour le stock ✅"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {showClockModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3">
           <div className="bg-white rounded-[2rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-xl max-h-[86vh] overflow-y-auto p-4">
@@ -3622,23 +3763,134 @@ export default function MokaOrderPad() {
             )}
 
             {adminSection === "inventory" && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white rounded-[2rem] p-6 border border-[#eadfd4] shadow-sm">
-                  <div className="text-3xl mb-4">🚨</div>
-                  <div className="text-xl font-black">Alertes stock</div>
-                  <p className="text-sm text-[#a97862] mt-2">Seuils, ruptures, corrections.</p>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-white rounded-[1.5rem] p-4 border border-[#eadfd4] shadow-sm">
+                    <div className="text-xs font-black text-[#a97862]">📦 Produits suivis</div>
+                    <div className="text-3xl font-black text-[#3b241b] mt-2">{stockKpis.total}</div>
+                  </div>
+
+                  <div className="bg-white rounded-[1.5rem] p-4 border border-[#eadfd4] shadow-sm">
+                    <div className="text-xs font-black text-[#a97862]">🟢 OK</div>
+                    <div className="text-3xl font-black text-[#6f8f32] mt-2">{stockKpis.ok}</div>
+                  </div>
+
+                  <div className="bg-white rounded-[1.5rem] p-4 border border-[#eadfd4] shadow-sm">
+                    <div className="text-xs font-black text-[#a97862]">🟠 Stock bas</div>
+                    <div className="text-3xl font-black text-orange-500 mt-2">{stockKpis.alert}</div>
+                  </div>
+
+                  <div className="bg-white rounded-[1.5rem] p-4 border border-[#eadfd4] shadow-sm">
+                    <div className="text-xs font-black text-[#a97862]">🔴 Critiques</div>
+                    <div className="text-3xl font-black text-red-600 mt-2">{stockKpis.critical}</div>
+                  </div>
                 </div>
 
-                <div className="bg-white rounded-[2rem] p-6 border border-[#eadfd4] shadow-sm">
-                  <div className="text-3xl mb-4">📸</div>
-                  <div className="text-xl font-black">Photo facture</div>
-                  <p className="text-sm text-[#a97862] mt-2">À connecter avec IA inventaire.</p>
+                <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm overflow-hidden">
+                  <div className="p-5 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-black tracking-[0.25em] text-[#a97862] uppercase">
+                        Inventaire
+                      </div>
+                      <h2 className="text-2xl font-black text-[#3b241b] mt-1">
+                        📋 Stock & ajustements manuels
+                      </h2>
+                      <p className="text-sm text-[#a97862] mt-1">
+                        Corriger le poids total mesuré pour recalculer les portions restantes.
+                      </p>
+                    </div>
+
+                    <button
+                      className="rounded-2xl px-4 py-3 bg-[#f7efe4] text-[#6b4a3d] font-black text-sm border border-[#eadfd4]"
+                      onClick={() => alert("Bientôt : photo facture + IA de réception stock")}
+                    >
+                      📸 Scanner facture
+                    </button>
+                  </div>
+
+                  <div className="p-4 border-b border-[#eadfd4]">
+                    <div className="flex items-center gap-3 rounded-[1.1rem] bg-[#fffaf3] border border-[#d6b8a7] px-4 py-2">
+                      <span className="text-lg">🔍</span>
+                      <input
+                        value={stockSearch}
+                        onChange={(e) => setStockSearch(e.target.value)}
+                        placeholder="Rechercher un produit, une zone, un statut..."
+                        className="w-full bg-transparent outline-none text-[#3b241b] placeholder:text-[#b08d7b] font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="overflow-auto max-h-[68vh]">
+                    <table className="w-full text-sm">
+                      <thead className="bg-[#f7efe4] text-[#a97862] sticky top-0 z-10">
+                        <tr>
+                          <th className="text-left p-4 font-black min-w-[180px]">Produit</th>
+                          <th className="text-left p-4 font-black">Catégorie</th>
+                          <th className="text-left p-4 font-black">Zone</th>
+                          <th className="text-left p-4 font-black">Portions</th>
+                          <th className="text-left p-4 font-black">Statut</th>
+                          <th className="text-left p-4 font-black">Actions</th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {inventoryFilteredStock.map((item, index) => {
+                          const status = getStockStatus(item);
+                          const isCritical = String(status).includes("Critique");
+                          const isLow = String(status).includes("Stock bas");
+
+                          return (
+                            <tr key={item.id || index} className="border-t border-[#eadfd4]">
+                              <td className="p-4 font-black text-[#3b241b]">
+                                {getStockName(item)}
+                              </td>
+
+                              <td className="p-4 text-[#6b4a3d]">
+                                {categoryEmojis[getStockCategory(item)] || "📌"} {getStockCategory(item)}
+                              </td>
+
+                              <td className="p-4 text-[#6b4a3d]">
+                                {getStockZone(item) || "—"}
+                              </td>
+
+                              <td className="p-4 text-[#3b241b] font-black">
+                                {getStockPortions(item)}
+                              </td>
+
+                              <td className="p-4">
+                                <span className={`px-3 py-1 rounded-full text-xs font-black ${
+                                  isCritical
+                                    ? "bg-red-100 text-red-700"
+                                    : isLow
+                                    ? "bg-orange-100 text-orange-700"
+                                    : "bg-[#eef5df] text-[#6f8f32]"
+                                }`}>
+                                  {status}
+                                </span>
+                              </td>
+
+                              <td className="p-4">
+                                <button
+                                  onClick={() => openInventoryAdjust(item)}
+                                  className="rounded-xl px-3 py-2 bg-[#6f8f32] text-white font-black"
+                                >
+                                  ✏️ Ajuster poids
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
-                <div className="bg-white rounded-[2rem] p-6 border border-[#eadfd4] shadow-sm">
-                  <div className="text-3xl mb-4">🗄️</div>
-                  <div className="text-xl font-black">Zones</div>
-                  <p className="text-sm text-[#a97862] mt-2">Bar, dry, frigo, congélateur.</p>
+                <div className="bg-white rounded-[2rem] border border-[#eadfd4] p-5 shadow-sm">
+                  <div className="text-xl font-black text-[#3b241b]">🧠 IA inventaire — à venir</div>
+                  <p className="text-sm text-[#a97862] mt-2">
+                    Facture fournisseur : photo → extraction produits/quantités → validation.
+                    Z de caisse : photo → analyse ventes → décompte automatique des grammes/portions.
+                  </p>
                 </div>
               </div>
             )}
