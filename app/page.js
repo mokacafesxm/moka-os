@@ -1155,6 +1155,22 @@ export default function MokaOrderPad() {
   };
 
   const openProductDbEdit = (item) => {
+    ["suppliers", "categories", "subcategories", "units", "zones"].forEach((resource) => {
+      if (settingsCache[resource]?.length) return;
+
+      fetchSettingsResource(resource)
+        .then((list) => {
+          setSettingsCache((prev) => {
+            const next = { ...prev, [resource]: list };
+            if (typeof window !== "undefined") {
+              localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
+            }
+            return next;
+          });
+        })
+        .catch((error) => console.error("Préchargement option produit edit:", resource, error));
+    });
+
     setEditingProductDb(item);
     setEditingProductDbForm({
       id: item.id || "",
@@ -3231,7 +3247,7 @@ export default function MokaOrderPad() {
                   Modifier matière première
                 </div>
                 <h2 className="text-xl font-black text-[#3b241b]">
-                  {editingProductDbForm.ingredient || "Produit"}
+                  ✏️ {editingProductDbForm.ingredient || "Produit"}
                 </h2>
               </div>
 
@@ -3243,62 +3259,193 @@ export default function MokaOrderPad() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {[
-                ["Ingrédient", "ingredient", "text"],
-                ["Photo URL", "photo", "text"],
-                ["Catégorie", "categorie", "text"],
-                ["Sous-catégorie", "sousCategorie", "text"],
-                ["Fournisseur par défaut", "fournisseurDefaut", "text"],
-                ["Zone de stockage", "zoneStockage", "text"],
-                ["Méthode de suivi", "methodeSuivi", "text"],
-                ["Quantité commande suggérée", "quantiteCommandeSuggeree", "number"],
-                ["Unité stock", "uniteStock", "text"],
-                ["Unité commande", "uniteCommande", "text"],
-                ["Seuil alerte", "seuilAlerte", "number"],
-                ["Seuil critique", "seuilCritique", "number"],
-                ["Portion grammes", "portionGrammes", "number"],
-                ["Utilisé dans", "utiliseDans", "text"],
-              ].map(([label, key, type]) => (
-                <div key={key} className={key === "utiliseDans" ? "md:col-span-3" : ""}>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">
-                    {label}
-                  </label>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-black text-[#a97862] mb-2">
+                  Nom du produit / ingrédient
+                </label>
+                <input
+                  value={editingProductDbForm.ingredient || ""}
+                  onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, ingredient: e.target.value }))}
+                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-4 text-xl font-black outline-none"
+                  placeholder="Ex : Mangue fraîche"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Photo URL</label>
                   <input
-                    type={type}
-                    value={editingProductDbForm[key] ?? ""}
-                    onChange={(e) => setEditingProductDbForm((prev) => ({
-                      ...prev,
-                      [key]: type === "number" ? Number(e.target.value) : e.target.value,
-                    }))}
+                    value={editingProductDbForm.photo || ""}
+                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, photo: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                    placeholder="Coller une URL image"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Catégorie</label>
+                  <select
+                    value={editingProductDbForm.categorie || ""}
+                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, categorie: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
+                  >
+                    <option value="">À définir</option>
+                    {productsDbCategories.filter((cat) => cat !== "Tous").map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Sous-catégorie</label>
+                  <select
+                    value={editingProductDbForm.sousCategorie || ""}
+                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, sousCategorie: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
+                  >
+                    <option value="">À définir</option>
+                    {productsDbSubCategoryChoices.map((sub) => (
+                      <option key={sub} value={sub}>{sub}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Fournisseur par défaut</label>
+                  <select
+                    value={editingProductDbForm.fournisseurDefaut || ""}
+                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, fournisseurDefaut: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
+                  >
+                    <option value="">À définir</option>
+                    {productsDbSupplierChoices.map((supplier) => (
+                      <option key={supplier} value={supplier}>{supplier}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Zone de stockage</label>
+                  <select
+                    value={editingProductDbForm.zoneStockage || ""}
+                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, zoneStockage: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
+                  >
+                    <option value="">À définir</option>
+                    {productsDbZoneChoices.map((zone) => (
+                      <option key={zone} value={zone}>{zone}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Méthode de suivi</label>
+                  <select
+                    value={editingProductDbForm.methodeSuivi || "Manuel"}
+                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, methodeSuivi: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
+                  >
+                    <option value="">À définir</option>
+                    <option value="Manuel">Manuel</option>
+                    <option value="Automatique">Automatique</option>
+                    <option value="Préparation">Préparation</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Quantité commande suggérée</label>
+                  <input
+                    type="number"
+                    value={editingProductDbForm.quantiteCommandeSuggeree ?? ""}
+                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, quantiteCommandeSuggeree: e.target.value }))}
                     className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
                   />
                 </div>
-              ))}
 
-              <label className="md:col-span-3 flex items-center gap-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black">
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Portion (g)</label>
+                  <input
+                    type="number"
+                    value={editingProductDbForm.portionGrammes ?? ""}
+                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, portionGrammes: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Unité stock</label>
+                  <select
+                    value={editingProductDbForm.uniteStock || ""}
+                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, uniteStock: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
+                  >
+                    <option value="">À définir</option>
+                    {productsDbUnitChoices.map((unit) => (
+                      <option key={unit} value={unit}>{unit}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Unité commande</label>
+                  <select
+                    value={editingProductDbForm.uniteCommande || ""}
+                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, uniteCommande: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
+                  >
+                    <option value="">À définir</option>
+                    {productsDbUnitChoices.map((unit) => (
+                      <option key={unit} value={unit}>{unit}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Seuil alerte</label>
+                  <input
+                    type="number"
+                    value={editingProductDbForm.seuilAlerte ?? ""}
+                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, seuilAlerte: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-[#a97862] mb-2">Seuil critique</label>
+                  <input
+                    type="number"
+                    value={editingProductDbForm.seuilCritique ?? ""}
+                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, seuilCritique: e.target.value }))}
+                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black">
                 <input
                   type="checkbox"
                   checked={editingProductDbForm.visibleOrderPad !== false}
-                  onChange={(e) => setEditingProductDbForm((prev) => ({
-                    ...prev,
-                    visibleOrderPad: e.target.checked,
-                  }))}
+                  onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, visibleOrderPad: e.target.checked }))}
                 />
                 Visible sur OrderPad
               </label>
 
-              <div className="md:col-span-3">
-                <label className="block text-xs font-black text-[#a97862] mb-2">
-                  Notes
-                </label>
+              <div>
+                <label className="block text-xs font-black text-[#a97862] mb-2">Utilisé dans</label>
+                <textarea
+                  value={editingProductDbForm.utiliseDans || ""}
+                  onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, utiliseDans: e.target.value }))}
+                  className="w-full min-h-[70px] rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-semibold outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-[#a97862] mb-2">Notes</label>
                 <textarea
                   value={editingProductDbForm.notes || ""}
-                  onChange={(e) => setEditingProductDbForm((prev) => ({
-                    ...prev,
-                    notes: e.target.value,
-                  }))}
-                  className="w-full min-h-[90px] rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
+                  onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, notes: e.target.value }))}
+                  className="w-full min-h-[70px] rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-semibold outline-none"
                 />
               </div>
             </div>
@@ -3308,12 +3455,11 @@ export default function MokaOrderPad() {
               disabled={savingProductDb}
               className="w-full mt-5 py-4 rounded-2xl bg-[#6f8f32] text-white font-black shadow-md"
             >
-              {savingProductDb ? "Enregistrement…" : "Enregistrer ✅"}
+              {savingProductDb ? "Enregistrement…" : "Enregistrer les modifications ✅"}
             </button>
           </div>
         </div>
       )}
-
 
       {inventoryItem && (
         <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center p-3">
