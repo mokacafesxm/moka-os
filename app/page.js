@@ -1831,7 +1831,7 @@ export default function MokaOrderPad() {
       <div className="max-w-none w-full px-2 py-1">
         <header className="flex items-end justify-between gap-5 mb-1">
           <div>
-            <h1 className="text-xl font-black tracking-tight text-[#3b241b] hidden">
+            <h1 className="text-xl font-black tracking-tight text-[#3b241b]">
               MÖKA
             </h1>
 
@@ -3653,26 +3653,25 @@ export default function MokaOrderPad() {
       )}
 
       {isAdmin && adminSection !== "dashboard" && (
-        <div className="fixed inset-0 z-40 bg-[#f7efe4] text-[#332019] overflow-y-auto px-5 pt-6 pb-32">
-          <div className="max-w-[1400px] mx-auto">
-            <div className="flex items-center justify-between gap-4 mb-6">
+        <div className="fixed inset-0 z-40 bg-[#f7efe4] text-[#332019] overflow-y-auto px-3 pt-3 pb-20">
+          <div className="max-w-none w-full">
+            <div className={["products", "inventory"].includes(adminSection) ? "hidden" : "flex items-center justify-between gap-4 mb-3"}>
               <div>
                 <div className="text-xs font-black tracking-[0.35em] text-[#a97862] uppercase">
                   MÖKA OS
                 </div>
 
-                <h1 className="text-4xl font-black text-[#3b241b] mt-1">
-                  {adminSection === "products" && "📦 Produits"}
-                  {adminSection === "inventory" && "📋 Inventaire"}
+                <h1 className="text-3xl font-black text-[#3b241b] mt-1">
                   {adminSection === "orders" && "🛒 Commandes"}
                   {adminSection === "reports" && "📊 Rapports"}
                   {adminSection === "settings" && "⚙️ Paramètres"}
+                  {adminSection === "dashboard" && "Dashboard"}
                 </h1>
               </div>
             </div>
 
             {adminSection === "products" && (
-              <div className="bg-white rounded-[1.4rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-60px)] flex flex-col">
+              <div className="bg-white rounded-[1.4rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-95px)] flex flex-col">
                 <div className="p-2 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                   <div>
                     <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
@@ -3878,7 +3877,7 @@ export default function MokaOrderPad() {
                   </button>
                 </div>
 
-                <div className="bg-white rounded-[1.4rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-60px)] flex flex-col">
+                <div className="bg-white rounded-[1.4rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-95px)] flex flex-col">
                   <div className="p-2 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                     <div>
                       <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
@@ -4093,7 +4092,7 @@ export default function MokaOrderPad() {
       )}
 
       {isAdmin && (
-        <div className="fixed left-1/2 bottom-5 -translate-x-1/2 z-50 bg-white/95 backdrop-blur-xl border border-[#eadfd4] shadow-2xl rounded-[2.2rem] px-4 py-3 flex items-center gap-2 max-w-[95vw] overflow-x-auto">
+        <div className="fixed left-1/2 bottom-2 -translate-x-1/2 z-50 bg-white/75 backdrop-blur-xl border border-[#eadfd4] shadow-md rounded-[1.5rem] px-3 py-1.5 flex items-center gap-1 max-w-[92vw] overflow-x-auto">
           {[
             ["dashboard", "🏠", "Dashboard"],
             ["products", "📦", "Produits"],
@@ -4105,13 +4104,13 @@ export default function MokaOrderPad() {
             <button
               key={id}
               onClick={() => setAdminSection(id)}
-              className={`w-11 h-11 rounded-2xl font-black text-xs flex flex-col items-center justify-center gap-1 shrink-0 ${
+              className={`w-9 h-9 rounded-xl font-black text-[10px] flex flex-col items-center justify-center gap-0 shrink-0 ${
                 adminSection === id
                   ? "bg-[#3b241b] text-white"
                   : "text-[#6b4a3d] hover:bg-[#f7efe4]"
               }`}
             >
-              <span className="text-xl">{icon}</span>
+              <span className="text-base">{icon}</span>
               <span className="sr-only">{label}</span>
             </button>
           ))}
