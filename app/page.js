@@ -2046,7 +2046,7 @@ export default function MokaOrderPad() {
                 ? "col-span-12"
                 : "col-span-12 sm:col-span-8 xl:col-span-9"
             }>
-            {activeTab === "stock" && (
+            {activeTab === "stock" && stockView === "prepa" && (
               <>
                 {loadingStock ? (
                   <div className="bg-white rounded-[1.4rem] p-10 text-center text-[#a97862]">
