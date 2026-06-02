@@ -271,6 +271,10 @@ export default function MokaOrderPad() {
   const [stockSearch, setStockSearch] = useState("");
   const [inventoryItem, setInventoryItem] = useState(null);
   const [inventoryWeight, setInventoryWeight] = useState("");
+  const [stockReceiveItem, setStockReceiveItem] = useState(null);
+  const [stockReceiveWeight, setStockReceiveWeight] = useState("");
+  const [stockReceiveUnit, setStockReceiveUnit] = useState("kg");
+  const [savingStockReceive, setSavingStockReceive] = useState(false);
   const [inventoryCategory, setInventoryCategory] = useState("Tous");
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("Tous");
   const [inventoryView, setInventoryView] = useState("stock");
@@ -1616,6 +1620,61 @@ export default function MokaOrderPad() {
     setInventoryWeight("");
   };
 
+  const openStockReceive = (item) => {
+    setStockReceiveItem(item);
+    setStockReceiveWeight("");
+    setStockReceiveUnit(item?.unit || item?.unite || "kg");
+  };
+
+  const saveStockReceive = async () => {
+    if (!stockReceiveItem) return;
+
+    if (!stockReceiveWeight) {
+      alert("Entre la quantité reçue ❌");
+      return;
+    }
+
+    setSavingStockReceive(true);
+
+    try {
+      const response = await fetch(STOCK_UPDATE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: stockReceiveItem.id,
+          ingredientId: stockReceiveItem.ingredientId || "",
+          Produit: getStockName(stockReceiveItem),
+          PoidsTotal: Number(stockReceiveWeight),
+          mode: "add",
+          Unite: stockReceiveUnit || stockReceiveItem.unit || "kg",
+          Utilisateur: selectedStaffName || "MOKA OS",
+          Source: "Réception fournisseur",
+        }),
+      });
+
+      if (!response.ok) throw new Error(`Erreur réception stock ${response.status}`);
+
+      setStockReceiveItem(null);
+      setStockReceiveWeight("");
+      alert("Stock reçu ajouté ✅");
+
+      fetch(STOCK_URL)
+        .then((res) => res.json())
+        .then((data) => {
+          const freshStock = normalizeArray(data, "stock");
+          setStockLive(freshStock);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("mokaStockCache", JSON.stringify(freshStock));
+          }
+        });
+    } catch (error) {
+      console.error(error);
+      alert("Erreur ajout réception stock ❌");
+    } finally {
+      setSavingStockReceive(false);
+    }
+  };
+
   const saveInventoryAdjust = async () => {
     if (!inventoryItem) return;
 
@@ -1635,8 +1694,9 @@ export default function MokaOrderPad() {
           ingredientId: inventoryItem.ingredientId || "",
           Produit: getStockName(inventoryItem),
           PoidsTotal: Number(inventoryWeight),
+          mode: "replace",
           Utilisateur: selectedStaffName || "MOKA OS",
-          Source: "Inventaire manuel",
+          Source: "Inventaire admin",
         }),
       });
 
@@ -2079,7 +2139,7 @@ export default function MokaOrderPad() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                             {items.map((item) => {
                               const stockId = item.id || getStockName(item);
-                              const selected = !!cart[stockId];
+                              const selected = stockView === "prepa" && !!cart[stockId];
                               const status = getStockStatus(item);
                               const isCritical = String(status).includes("Critique");
                               const isLow = String(status).includes("Stock bas");
@@ -2087,7 +2147,14 @@ export default function MokaOrderPad() {
                               return (
                                 <div
                                   key={stockId}
-                                  onClick={() => selected ? removeItem(stockId) : addStockPrep(item)}
+                                  onClick={() => {
+                                    if (stockView === "stock") {
+                                      openStockReceive(item);
+                                      return;
+                                    }
+
+                                    selected ? removeItem(stockId) : addStockPrep(item);
+                                  }}
                                   className={`rounded-[1.75rem] shadow-sm border transition overflow-hidden cursor-pointer ${
                                     selected
                                       ? "bg-[#6f8f32] text-white border-[#6f8f32]"
@@ -2113,7 +2180,7 @@ export default function MokaOrderPad() {
                                       selected ? "bg-white/20" : "bg-[#f7efe4]"
                                     }`}>
                                       <div className="text-xs opacity-70">
-                                        {stockView === "prepa" ? "Portions restantes" : "Stock actuel"}
+                                        Portions restantes
                                       </div>
 
                                       <div className="text-xl font-black mt-1">
@@ -2131,11 +2198,11 @@ export default function MokaOrderPad() {
                                       <span className={`text-xs font-semibold ${
                                         selected ? "text-white/80" : "text-[#a97862]"
                                       }`}>
-                                        {selected ? "Sélectionné" : "Toucher pour préparer"}
+                                        {stockView === "stock" ? "Ajouter réception" : selected ? "Sélectionné" : "Toucher pour préparer"}
                                       </span>
 
                                       <span className="text-3xl">
-                                        {selected ? "✅" : "＋"}
+                                        {stockView === "stock" ? "＋" : selected ? "✅" : "＋"}
                                       </span>
                                     </div>
 
@@ -3458,6 +3525,73 @@ export default function MokaOrderPad() {
               className="w-full mt-5 py-4 rounded-2xl bg-[#6f8f32] text-white font-black shadow-md"
             >
               {savingProductDb ? "Enregistrement…" : "Enregistrer les modifications ✅"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {stockReceiveItem && (
+        <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-3">
+          <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-md p-4">
+            <div className="flex justify-between gap-4 items-start mb-5">
+              <div>
+                <div className="text-[10px] font-black tracking-[0.28em] text-[#a97862] uppercase">
+                  Réception stock
+                </div>
+                <h2 className="text-xl font-black text-[#3b241b]">
+                  📦 {getStockName(stockReceiveItem)}
+                </h2>
+              </div>
+
+              <button
+                onClick={() => setStockReceiveItem(null)}
+                className="w-10 h-10 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="rounded-2xl bg-[#fffaf3] border border-[#eadfd4] p-4 mb-4">
+              <div className="text-xs font-black text-[#a97862]">Portions actuelles</div>
+              <div className="text-lg font-black text-[#3b241b] mt-0">
+                {getStockPortions(stockReceiveItem)}
+              </div>
+              <div className="text-[11px] text-[#a97862] mt-0">
+                Statut : {getStockStatus(stockReceiveItem)}
+              </div>
+            </div>
+
+            <label className="block text-xs font-black text-[#a97862] mb-2">
+              Quantité reçue à ajouter
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={stockReceiveWeight}
+              onChange={(e) => setStockReceiveWeight(e.target.value)}
+              placeholder="Ex : 5"
+              className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-4 text-xl font-black outline-none"
+            />
+
+            <label className="block text-xs font-black text-[#a97862] mt-4 mb-2">
+              Unité
+            </label>
+            <select
+              value={stockReceiveUnit}
+              onChange={(e) => setStockReceiveUnit(e.target.value)}
+              className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-4 text-lg font-black outline-none"
+            >
+              {["kg", "g", "L", "ml", "pièce", "carton", "sachet", "bouteille"].map((unit) => (
+                <option key={unit} value={unit}>{unit}</option>
+              ))}
+            </select>
+
+            <button
+              onClick={saveStockReceive}
+              disabled={savingStockReceive}
+              className="w-full mt-5 py-4 rounded-2xl bg-[#6f8f32] text-white font-black shadow-md"
+            >
+              {savingStockReceive ? "Ajout en cours…" : "Ajouter au stock existant ✅"}
             </button>
           </div>
         </div>
