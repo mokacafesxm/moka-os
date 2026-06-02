@@ -1831,7 +1831,7 @@ export default function MokaOrderPad() {
       <div className="max-w-none w-full px-2 py-1">
         <header className="flex items-end justify-between gap-5 mb-2">
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-[#3b241b] hidden">
+            <h1 className="text-xl font-black tracking-tight text-[#3b241b] hidden">
               MÖKA
             </h1>
 
@@ -3878,7 +3878,7 @@ export default function MokaOrderPad() {
                   </button>
                 </div>
 
-                <div className="bg-white rounded-[1.4rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-105px)] flex flex-col">
+                <div className="bg-white rounded-[1.4rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-70px)] flex flex-col">
                   <div className="p-2 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                     <div>
                       <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
