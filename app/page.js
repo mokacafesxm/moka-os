@@ -1175,27 +1175,24 @@ export default function MokaOrderPad() {
         .catch((error) => console.error("Préchargement option produit edit:", resource, error));
     });
 
-    setEditingProductDb(item);
-    setEditingProductDbForm({
-      id: item.id || "",
-      ingredient: item.ingredient || item.name || "",
-      visibleOrderPad: item.visibleOrderPad !== false,
+    setEditingProductDb(null);
+    openSettings({
+      ...item,
+      name: item.ingredient || item.name || "",
+      category: item.categorie || item.category || "",
+      subcategory: item.sousCategorie || item.subcategory || "",
+      supplier: item.fournisseurDefaut || item.supplier || "",
+      zone: item.zoneStockage || item.zone || "",
+      unit: item.uniteStock || item.unit || "",
+      portion: item.portionGrammes || item.portion || "",
+      suggested: item.quantiteCommandeSuggeree || item.suggested || "",
       photo: item.photo || "",
-      categorie: item.categorie || item.category || "",
-      sousCategorie: item.sousCategorie || item.subcategory || "",
-      fournisseurDefaut: item.fournisseurDefaut || item.supplier || "",
-      zoneStockage: item.zoneStockage || item.zone || "",
-      methodeSuivi: item.methodeSuivi || "",
-      quantiteCommandeSuggeree: item.quantiteCommandeSuggeree || item.suggested || "",
-      uniteStock: item.uniteStock || item.unit || "",
-      uniteCommande: item.uniteCommande || "",
-      seuilAlerte: item.seuilAlerte || "",
-      seuilCritique: item.seuilCritique || "",
       utiliseDans: item.utiliseDans || "",
       notes: item.notes || "",
-      portionGrammes: item.portionGrammes || item.portion || "",
+      sourceFromProductsDb: true,
     });
   };
+
 
   const saveProductDbEdit = async () => {
     if (!editingProductDbForm.id) return;
@@ -1301,6 +1298,9 @@ export default function MokaOrderPad() {
       portion: item?.portion || item?.portionGrammes || "",
       seuilAlerte: item?.seuilAlerte || item?.seuilAlertePortion || "",
       seuilCritique: item?.seuilCritique || item?.seuilCritiquePortion || "",
+      photo: item?.photo || "",
+      utiliseDans: item?.utiliseDans || "",
+      notes: item?.notes || "",
     });
   };
 
@@ -1355,6 +1355,10 @@ export default function MokaOrderPad() {
       portion: Number(settingsForm.portion) || 0,
       seuilAlerte: Number(settingsForm.seuilAlerte) || 0,
       seuilCritique: Number(settingsForm.seuilCritique) || 0,
+      photo: settingsForm.photo || "",
+      utiliseDans: settingsForm.utiliseDans || "",
+      notes: settingsForm.notes || "",
+      portionGrammes: Number(settingsForm.portion) || 0,
     };
 
     const applyLocalUpdate = () => {
@@ -1453,6 +1457,48 @@ export default function MokaOrderPad() {
 
       alert(isNewProduct ? "Produit créé ✅" : "Réglages produit mis à jour ✅");
       setSettingsItem(null);
+
+      setProductsDb((prev) => {
+        const updated = prev.map((item) => {
+          const sameId = String(item.id || "") === String(payload.id || "");
+          if (!sameId) return item;
+
+          return {
+            ...item,
+            ingredient: payload.name,
+            name: payload.name,
+            categorie: payload.categorie,
+            category: payload.categorie,
+            sousCategorie: payload.sousCategorie,
+            subcategory: payload.sousCategorie,
+            visibleOrderPad: payload.visibleOrderPad,
+            fournisseurDefaut: payload.fournisseurDefaut,
+            supplier: payload.fournisseurDefaut,
+            zoneStockage: payload.zoneStockage,
+            zone: payload.zoneStockage,
+            quantiteCommandeSuggeree: payload.quantiteCommandee,
+            suggested: payload.quantiteCommandee,
+            uniteStock: payload.uniteStock,
+            unit: payload.uniteStock,
+            uniteCommande: payload.uniteCommande,
+            seuilAlerte: payload.seuilAlerte,
+            seuilCritique: payload.seuilCritique,
+            portionGrammes: payload.portionGrammes,
+            portion: payload.portionGrammes,
+            photo: payload.photo,
+            utiliseDans: payload.utiliseDans,
+            notes: payload.notes,
+          };
+        });
+
+        if (typeof window !== "undefined") {
+          localStorage.setItem("mokaProductsDbCache", JSON.stringify(updated));
+        }
+
+        return updated;
+      });
+
+      loadProductsDatabase(true);
 
       if (isNewProduct) {
         setActiveTab("orderpad");
