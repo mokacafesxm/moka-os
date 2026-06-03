@@ -2194,17 +2194,35 @@ export default function MokaOrderPad() {
                                       )}
                                     </div>
 
-                                    <div className="mt-4 flex justify-between items-center">
-                                      <span className={`text-xs font-semibold ${
-                                        selected ? "text-white/80" : "text-[#a97862]"
-                                      }`}>
-                                        {stockView === "stock" ? "Ajouter réception" : selected ? "Sélectionné" : "Toucher pour préparer"}
-                                      </span>
+                                    {stockView === "stock" ? (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openStockReceive(item);
+                                        }}
+                                        className="mt-4 w-full rounded-2xl bg-[#eef7e9] border border-[#b9d6a6] px-4 py-3 text-left shadow-sm active:scale-[0.98]"
+                                      >
+                                        <div className="text-xs font-black tracking-[0.22em] text-[#6f8f32] uppercase">
+                                          📦 RÉCEPTION
+                                        </div>
+                                        <div className="text-sm font-black text-[#3b241b] mt-1">
+                                          + Ajouter du stock
+                                        </div>
+                                      </button>
+                                    ) : (
+                                      <div className="mt-4 flex justify-between items-center">
+                                        <span className={`text-xs font-semibold ${
+                                          selected ? "text-white/80" : "text-[#a97862]"
+                                        }`}>
+                                          {selected ? "Sélectionné" : "Toucher pour préparer"}
+                                        </span>
 
-                                      <span className="text-3xl">
-                                        {stockView === "stock" ? "＋" : selected ? "✅" : "＋"}
-                                      </span>
-                                    </div>
+                                        <span className="text-3xl">
+                                          {selected ? "✅" : "＋"}
+                                        </span>
+                                      </div>
+                                    )}
 
                                     {isAdmin && (
                                       <button
