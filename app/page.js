@@ -1076,10 +1076,23 @@ export default function MokaOrderPad() {
   }, [isAdmin, adminSection]);
 
   const refreshOrderPadProducts = async () => {
+    console.log("[refreshOrderPadProducts] Début refresh…");
     try {
       const productsResponse = await fetch(PRODUCTS_URL);
       const productsData = await productsResponse.json();
       const freshProducts = normalizeArray(productsData, "products");
+
+      console.log("[refreshOrderPadProducts] Produits chargés:", freshProducts.length, "produits");
+      freshProducts.slice(0, 3).forEach((p) => {
+        console.log("[refreshOrderPadProducts] Produit exemple:", {
+          id: p.id,
+          name: p.name || p.ingredient,
+          portion: p.portion,
+          portionGrammes: p.portionGrammes,
+          seuilAlerte: p.seuilAlerte,
+          seuilCritique: p.seuilCritique,
+        });
+      });
 
       setProducts(freshProducts);
 
@@ -1097,13 +1110,17 @@ export default function MokaOrderPad() {
       const stockData = await stockResponse.json();
       const freshStock = normalizeArray(stockData, "stock");
 
+      console.log("[refreshOrderPadProducts] Stock live chargé:", freshStock.length, "éléments");
+
       setStockLive(freshStock);
 
       if (typeof window !== "undefined") {
         localStorage.setItem("mokaStockCache", JSON.stringify(freshStock));
       }
+
+      console.log("[refreshOrderPadProducts] Terminé ✅");
     } catch (error) {
-      console.error("Erreur refresh OrderPad produits:", error);
+      console.error("[refreshOrderPadProducts] Erreur:", error);
     }
   };
 
@@ -1180,7 +1197,7 @@ export default function MokaOrderPad() {
       }
 
       setCreatingProductDb(false);
-      loadProductsDatabase(true);
+      await loadProductsDatabase(true);
       await refreshOrderPadProducts();
       setActiveTab("orderpad");
       alert("Produit ajouté ✅");
@@ -1218,7 +1235,7 @@ export default function MokaOrderPad() {
       supplier: item.fournisseurDefaut || item.supplier || "",
       zone: item.zoneStockage || item.zone || "",
       unit: item.uniteStock || item.unit || "",
-      portion: item.portionGrammes || item.portion || "",
+      portion: item.portionGrammes ?? item.portion ?? "",
       suggested: item.quantiteCommandeSuggeree || item.suggested || "",
       photo: item.photo || "",
       utiliseDans: item.utiliseDans || "",
@@ -1318,6 +1335,16 @@ export default function MokaOrderPad() {
       return;
     }
 
+    console.log("[openSettings] Item reçu:", {
+      id: getEditableId(item),
+      name: item?.name,
+      portion: item?.portion,
+      portionGrammes: item?.portionGrammes,
+      seuilAlerte: item?.seuilAlerte,
+      seuilCritique: item?.seuilCritique,
+      quantiteCommandee: item?.quantiteCommandee,
+    });
+
     setSettingsItem(item);
     setSettingsForm({
       id: getEditableId(item),
@@ -1327,38 +1354,45 @@ export default function MokaOrderPad() {
       visibleOrderPad: item?.visible ?? item?.visibleOrderPad ?? true,
       fournisseurDefaut: getSupplier(item),
       zoneStockage: item?.zone || item?.zoneStockage || item?.emplacement || "",
-      quantiteCommandee: item?.quantiteCommandee || item?.suggested || item?.quantity || "",
+      quantiteCommandee: item?.quantiteCommandee ?? item?.suggested ?? item?.quantity ?? "",
       uniteStock: item?.unit || item?.uniteStock || "kg",
       uniteCommande: item?.uniteCommande || item?.unit || "kg",
       portion:
-        item?.portion ||
-        item?.portionGrammes ||
-        item?.portionGramme ||
-        item?.["Portion (g)"] ||
-        item?.["Portion g"] ||
-        item?.["portion g"] ||
+        item?.portion ??
+        item?.portionGrammes ??
+        item?.portionGramme ??
+        item?.["Portion (g)"] ??
+        item?.["Portion g"] ??
+        item?.["portion g"] ??
         "",
       seuilAlerte:
-        item?.seuilAlerte ||
-        item?.seuilAlertePortion ||
-        item?.alerte ||
-        item?.alert ||
-        item?.["Seuil alerte"] ||
-        item?.["Seuil alerte (portion)"] ||
-        item?.["seuil alerte"] ||
+        item?.seuilAlerte ??
+        item?.seuilAlertePortion ??
+        item?.alerte ??
+        item?.alert ??
+        item?.["Seuil alerte"] ??
+        item?.["Seuil alerte (portion)"] ??
+        item?.["seuil alerte"] ??
         "",
       seuilCritique:
-        item?.seuilCritique ||
-        item?.seuilCritiquePortion ||
-        item?.critique ||
-        item?.critical ||
-        item?.["Seuil critique"] ||
-        item?.["Seuil critique (portion)"] ||
-        item?.["seuil critique"] ||
+        item?.seuilCritique ??
+        item?.seuilCritiquePortion ??
+        item?.critique ??
+        item?.critical ??
+        item?.["Seuil critique"] ??
+        item?.["Seuil critique (portion)"] ??
+        item?.["seuil critique"] ??
         "",
       photo: item?.photo || "",
       utiliseDans: item?.utiliseDans || "",
       notes: item?.notes || "",
+    });
+
+    console.log("[openSettings] Form initialisé:", {
+      portion: item?.portion ?? item?.portionGrammes ?? item?.portionGramme ?? "",
+      seuilAlerte: item?.seuilAlerte ?? item?.seuilAlertePortion ?? "",
+      seuilCritique: item?.seuilCritique ?? item?.seuilCritiquePortion ?? "",
+      quantiteCommandee: item?.quantiteCommandee ?? item?.suggested ?? "",
     });
   };
 
@@ -1418,6 +1452,17 @@ export default function MokaOrderPad() {
       notes: settingsForm.notes || "",
       portionGrammes: Number(settingsForm.portion) || 0,
     };
+
+    console.log("[saveSettings] Payload AVANT envoi:", {
+      id: payload.id,
+      name: payload.name,
+      portion: payload.portion,
+      portionGrammes: payload.portionGrammes,
+      seuilAlerte: payload.seuilAlerte,
+      seuilCritique: payload.seuilCritique,
+      quantiteCommandee: payload.quantiteCommandee,
+      isNewProduct,
+    });
 
     const applyLocalUpdate = () => {
       const editedId = String(payload.id || getEditableId(settingsItem) || settingsItem?.id || "");
@@ -1494,27 +1539,44 @@ export default function MokaOrderPad() {
 
     setSavingSettings(true);
 
-    if (!isNewProduct) {
-      applyLocalUpdate();
-    }
-
     try {
+      if (!isNewProduct) {
+        try {
+          applyLocalUpdate();
+        } catch (localErr) {
+          console.error("[saveSettings] Erreur applyLocalUpdate:", localErr);
+        }
+      }
+
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
 
-      const response = await fetch(isNewProduct ? PRODUCT_CREATE_URL : PRODUCT_UPDATE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeout);
+      let response;
+      try {
+        response = await fetch(isNewProduct ? PRODUCT_CREATE_URL : PRODUCT_UPDATE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
 
       if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
 
+      // Lire la réponse JSON de façon défensive (webhook peut renvoyer vide)
+      const responseText = await response.text().catch(() => "");
+      let responseData = {};
+      if (responseText) {
+        try { responseData = JSON.parse(responseText); } catch {}
+      }
+      console.log("[saveSettings] Webhook réponse:", responseData);
+
       alert(isNewProduct ? "Produit créé ✅" : "Réglages produit mis à jour ✅");
       setSettingsItem(null);
+
+      console.log("[saveSettings] Sync post-sauvegarde: mise à jour productsDb + OrderPad + stockLive…");
 
       setProductsDb((prev) => {
         const updated = prev.map((item) => {
@@ -1556,7 +1618,7 @@ export default function MokaOrderPad() {
         return updated;
       });
 
-      loadProductsDatabase(true);
+      await loadProductsDatabase(true);
       await refreshOrderPadProducts();
 
       if (isNewProduct) {
@@ -4023,14 +4085,15 @@ export default function MokaOrderPad() {
                   ) : (
                     <input
                       type="number"
-                      value={settingsForm[key] || ""}
+                      value={settingsForm[key] ?? ""}
                       onChange={(e) =>
                         setSettingsForm((prev) => ({
                           ...prev,
                           [key]: e.target.value,
                         }))
                       }
-                      className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-2 py-1.5 text-xs font-bold text-[#3b241b] outline-none"
+                      placeholder="Non défini"
+                      className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-2 py-1.5 text-xs font-bold text-[#3b241b] outline-none placeholder:text-[#c8b4a8]"
                     />
                   )}
                 </div>
