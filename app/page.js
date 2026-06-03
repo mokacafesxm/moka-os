@@ -3536,10 +3536,10 @@ export default function MokaOrderPad() {
             <div className="flex justify-between gap-4 items-start mb-5">
               <div>
                 <div className="text-[10px] font-black tracking-[0.28em] text-[#a97862] uppercase">
-                  Réception stock
+                  📦 RÉCEPTION — + Ajouter du stock
                 </div>
                 <h2 className="text-xl font-black text-[#3b241b]">
-                  📦 {getStockName(stockReceiveItem)}
+                  {getStockName(stockReceiveItem)}
                 </h2>
               </div>
 
