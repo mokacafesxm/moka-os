@@ -2652,7 +2652,7 @@ export default function MokaOrderPad() {
                 </select>
               </div>
 
-              {{activeTab === "stock" && ({activeTab === "stock" && stockView === "prepa" && ( (
+              {activeTab === "stock" && (
                 <div className="mt-4">
                   <label className="block text-xs font-black text-[#a97862] mb-2">
                     Date prévue
