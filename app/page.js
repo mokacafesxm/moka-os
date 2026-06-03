@@ -1075,6 +1075,38 @@ export default function MokaOrderPad() {
     }
   }, [isAdmin, adminSection]);
 
+  const refreshOrderPadProducts = async () => {
+    try {
+      const productsResponse = await fetch(PRODUCTS_URL);
+      const productsData = await productsResponse.json();
+      const freshProducts = normalizeArray(productsData, "products");
+
+      setProducts(freshProducts);
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mokaProductsCache", JSON.stringify(freshProducts));
+      }
+
+      const firstCategory = freshProducts.find((p) => p.category)?.category;
+      if (firstCategory) {
+        setActiveCategory(firstCategory);
+        setActiveSubCategory("");
+      }
+
+      const stockResponse = await fetch(STOCK_URL);
+      const stockData = await stockResponse.json();
+      const freshStock = normalizeArray(stockData, "stock");
+
+      setStockLive(freshStock);
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mokaStockCache", JSON.stringify(freshStock));
+      }
+    } catch (error) {
+      console.error("Erreur refresh OrderPad produits:", error);
+    }
+  };
+
   const openProductDbCreate = () => {
     ["suppliers", "categories", "subcategories", "units", "zones"].forEach((resource) => {
       if (settingsCache[resource]?.length) return;
@@ -1149,6 +1181,8 @@ export default function MokaOrderPad() {
 
       setCreatingProductDb(false);
       loadProductsDatabase(true);
+      await refreshOrderPadProducts();
+      setActiveTab("orderpad");
       alert("Produit ajouté ✅");
     } catch (error) {
       console.error(error);
@@ -1226,6 +1260,7 @@ export default function MokaOrderPad() {
       }
 
       setEditingProductDb(null);
+      await refreshOrderPadProducts();
       alert("Produit modifié ✅");
     } catch (error) {
       console.error(error);
@@ -1295,9 +1330,32 @@ export default function MokaOrderPad() {
       quantiteCommandee: item?.quantiteCommandee || item?.suggested || item?.quantity || "",
       uniteStock: item?.unit || item?.uniteStock || "kg",
       uniteCommande: item?.uniteCommande || item?.unit || "kg",
-      portion: item?.portion || item?.portionGrammes || "",
-      seuilAlerte: item?.seuilAlerte || item?.seuilAlertePortion || "",
-      seuilCritique: item?.seuilCritique || item?.seuilCritiquePortion || "",
+      portion:
+        item?.portion ||
+        item?.portionGrammes ||
+        item?.portionGramme ||
+        item?.["Portion (g)"] ||
+        item?.["Portion g"] ||
+        item?.["portion g"] ||
+        "",
+      seuilAlerte:
+        item?.seuilAlerte ||
+        item?.seuilAlertePortion ||
+        item?.alerte ||
+        item?.alert ||
+        item?.["Seuil alerte"] ||
+        item?.["Seuil alerte (portion)"] ||
+        item?.["seuil alerte"] ||
+        "",
+      seuilCritique:
+        item?.seuilCritique ||
+        item?.seuilCritiquePortion ||
+        item?.critique ||
+        item?.critical ||
+        item?.["Seuil critique"] ||
+        item?.["Seuil critique (portion)"] ||
+        item?.["seuil critique"] ||
+        "",
       photo: item?.photo || "",
       utiliseDans: item?.utiliseDans || "",
       notes: item?.notes || "",
@@ -1499,6 +1557,7 @@ export default function MokaOrderPad() {
       });
 
       loadProductsDatabase(true);
+      await refreshOrderPadProducts();
 
       if (isNewProduct) {
         setActiveTab("orderpad");
