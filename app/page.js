@@ -1776,14 +1776,27 @@ export default function MokaOrderPad() {
     });
   }, [filteredProductsDb]);
 
+
+  const isNotionId = (value) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || "").trim());
+
+  const cleanSupplierOption = (value) => {
+    const clean = String(value || "").trim();
+    if (!clean || clean === "À définir" || clean === "—") return "";
+    if (isNotionId(clean)) return "";
+    return clean;
+  };
+
   const productsDbSupplierChoices = useMemo(() => {
     const suppliers = settingsCache.suppliers || [];
-    return uniqueValues([
-      ...suppliers.map((s) => s.nom || s.name || s.fournisseur || s.title || ""),
-      ...productsDb.map((p) => getSupplier(p)),
-      ...products.map((p) => getSupplier(p)),
-    ]).filter((name) => name !== "À définir");
-  }, [settingsCache, productsDb, products]);
+
+    return uniqueValues(
+      suppliers
+        .map((s) => s.nom || s.name || s.fournisseur || s.title || "")
+        .map(cleanSupplierOption)
+        .filter(Boolean)
+    );
+  }, [settingsCache]);
 
   const productsDbZoneChoices = useMemo(() => {
     const zones = settingsCache.zones || [];
