@@ -521,7 +521,7 @@ export default function MokaOrderPad() {
         String(sub || "").toLowerCase().includes(q) ||
         String(p.zone || "").toLowerCase().includes(q);
 
-      return matchesCategory && matchesSubCategory && matchesSearch;
+      return q ? matchesSearch : matchesCategory && matchesSubCategory && matchesSearch;
     });
   }, [activeCategory, activeSubCategory, products, search]);
 
@@ -628,11 +628,14 @@ export default function MokaOrderPad() {
   const supplierNameFromRow = (supplier) =>
     supplier?.nom || supplier?.name || supplier?.fournisseur || supplier?.title || "";
 
+  const isUuidLikeSupplier = (value) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || "").trim());
+
   const fournisseurOptions = uniqueValues([
     ...(settingsCache.suppliers || []).map(supplierNameFromRow),
-    ...products.map((p) => getSupplier(p)),
-    ...productsDb.map((p) => getSupplier(p)),
-  ]).filter((name) => name !== "À définir");
+  ])
+    .filter((name) => name && name !== "À définir" && name !== "—")
+    .filter((name) => !isUuidLikeSupplier(name));
   const categoryOptions = uniqueValues([
     ...categoryOrder,
     ...products.map((p) => p.category || p.categorie),
@@ -699,11 +702,14 @@ export default function MokaOrderPad() {
   const stockVisibleItems = useMemo(() => {
     if (stockView === "prepa") return stockPreps;
 
+    const q = stockSearch.trim().toLowerCase();
+    if (q) return stockProducts;
+
     return stockProducts.filter((item) => {
       const cat = getStockCategory(item);
       return !activeStockCategory || cat === activeStockCategory;
     });
-  }, [stockView, stockPreps, stockProducts, activeStockCategory]);
+  }, [stockView, stockPreps, stockProducts, activeStockCategory, stockSearch]);
 
   const groupedStockItems = useMemo(() => {
     const groups = {};
@@ -1421,7 +1427,31 @@ export default function MokaOrderPad() {
       categorie: item?.category || item?.categorie || "Autres",
       sousCategorie: item?.subcategory || item?.sousCategorie || getSubCategory(item),
       visibleOrderPad: item?.visible ?? item?.visibleOrderPad ?? true,
-      fournisseurDefaut: getSupplier(item),
+      fournisseurDefaut: (() => {
+        const raw = String(getSupplier(item) || "").trim();
+        if (!raw || raw === "À définir" || raw === "—") return "";
+
+        const compact = raw.replaceAll("-", "");
+        const found = (settingsCache.suppliers || []).find((supplier) => {
+          const name = String(supplier.nom || supplier.name || supplier.fournisseur || supplier.title || "").trim();
+          const ids = [
+            supplier.id,
+            supplier.pageId,
+            supplier.notionId,
+            supplier.notionPageId,
+          ].filter(Boolean).map((value) => String(value).trim());
+
+          return (
+            name === raw ||
+            ids.includes(raw) ||
+            ids.map((id) => id.replaceAll("-", "")).includes(compact)
+          );
+        });
+
+        if (found) return found.nom || found.name || found.fournisseur || found.title || "";
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) return "";
+        return raw;
+      })(),
       zoneStockage: item?.zone || item?.zoneStockage || item?.emplacement || "",
       quantiteCommandee: item?.quantiteCommandee ?? item?.suggested ?? item?.quantity ?? "",
       uniteStock: item?.unit || item?.uniteStock || "kg",
@@ -1742,7 +1772,7 @@ export default function MokaOrderPad() {
           p.notes,
         ].join(" ").toLowerCase();
 
-        return matchesCategory && (!q || haystack.includes(q));
+        return q ? haystack.includes(q) : matchesCategory;
       })
       .sort((a, b) => {
         const ca = a.categorie || a.category || "Autres";
@@ -2032,7 +2062,7 @@ export default function MokaOrderPad() {
           getStockStatus(item),
         ].join(" ").toLowerCase();
 
-        return matchesCategory && matchesStatus && (!q || haystack.includes(q));
+        return (q ? haystack.includes(q) : matchesCategory) && matchesStatus;
       })
       .sort((a, b) => {
         const ca = getStockCategory(a);
