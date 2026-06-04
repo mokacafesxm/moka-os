@@ -87,13 +87,47 @@ function getSubCategory(product) {
 }
 
 function getSupplier(product) {
-  if (Array.isArray(product?.supplier)) {
-    return product.supplier.length > 0
-      ? product.supplier.join(", ")
-      : "À définir";
+  const raw =
+    product?.fournisseurDefautName ??
+    product?.fournisseurName ??
+    product?.supplierName ??
+    product?.fournisseurDefaut ??
+    product?.fournisseur ??
+    product?.supplier ??
+    product?.["Fournisseur par défaut"] ??
+    product?.["Fournisseur"] ??
+    "";
+
+  if (Array.isArray(raw)) {
+    return raw
+      .map((value) => {
+        if (typeof value === "string") return value;
+        return value?.name || value?.nom || value?.title || value?.id || "";
+      })
+      .filter(Boolean)
+      .join(", ") || "À définir";
   }
 
-  return product?.supplier || "À définir";
+  if (typeof raw === "object" && raw) {
+    return raw.name || raw.nom || raw.title || raw.id || "À définir";
+  }
+
+  return raw || "À définir";
+}
+
+function getSupplierIdFromName(name, suppliers = []) {
+  const clean = String(name || "").trim().toLowerCase();
+  if (!clean) return "";
+
+  const found = suppliers.find((supplier) => {
+    const supplierName = String(
+      supplier?.nom || supplier?.name || supplier?.fournisseur || supplier?.title || ""
+    ).trim().toLowerCase();
+
+    return supplierName === clean;
+  });
+
+  return found?.id || found?.pageId || found?.notionId || "";
 }
 
 function getStockName(item) {
@@ -591,7 +625,14 @@ export default function MokaOrderPad() {
     return [...new Set(values.filter(Boolean).map((v) => String(v).trim()).filter(Boolean))].sort();
   };
 
-  const fournisseurOptions = uniqueValues(products.map((p) => getSupplier(p)));
+  const supplierNameFromRow = (supplier) =>
+    supplier?.nom || supplier?.name || supplier?.fournisseur || supplier?.title || "";
+
+  const fournisseurOptions = uniqueValues([
+    ...(settingsCache.suppliers || []).map(supplierNameFromRow),
+    ...products.map((p) => getSupplier(p)),
+    ...productsDb.map((p) => getSupplier(p)),
+  ]).filter((name) => name !== "À définir");
   const categoryOptions = uniqueValues([
     ...categoryOrder,
     ...products.map((p) => p.category || p.categorie),
@@ -798,6 +839,20 @@ export default function MokaOrderPad() {
   };
 
   useEffect(() => {
+    if (isAdmin && !settingsCache.suppliers?.length) {
+      fetchSettingsResource("suppliers")
+        .then((list) => {
+          setSettingsCache((prev) => {
+            const next = { ...prev, suppliers: list };
+            if (typeof window !== "undefined") {
+              localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
+            }
+            return next;
+          });
+        })
+        .catch((error) => console.error("Préchargement fournisseurs global:", error));
+    }
+
     if (!isAdmin || adminSection !== "settings") return;
 
     const handler = (event) => {
@@ -1176,7 +1231,14 @@ export default function MokaOrderPad() {
         body: JSON.stringify({
           resource: "products",
           action: "create",
-          data: creatingProductDbForm,
+          data: {
+            ...creatingProductDbForm,
+            fournisseurDefautName: creatingProductDbForm.fournisseurDefaut || "",
+            fournisseurDefautId: getSupplierIdFromName(
+              creatingProductDbForm.fournisseurDefaut,
+              settingsCache.suppliers || []
+            ),
+          },
         }),
       });
 
@@ -1258,7 +1320,14 @@ export default function MokaOrderPad() {
           resource: "products",
           action: "update",
           id: editingProductDbForm.id,
-          data: editingProductDbForm,
+          data: {
+            ...editingProductDbForm,
+            fournisseurDefautName: editingProductDbForm.fournisseurDefaut || "",
+            fournisseurDefautId: getSupplierIdFromName(
+              editingProductDbForm.fournisseurDefaut,
+              settingsCache.suppliers || []
+            ),
+          },
         }),
       });
 
@@ -1440,6 +1509,8 @@ export default function MokaOrderPad() {
       sousCategorie: settingsForm.sousCategorie || "Autres",
       visibleOrderPad: settingsForm.visibleOrderPad ?? true,
       fournisseurDefaut: settingsForm.fournisseurDefaut,
+      fournisseurDefautName: settingsForm.fournisseurDefaut,
+      fournisseurDefautId: getSupplierIdFromName(settingsForm.fournisseurDefaut, settingsCache.suppliers || []),
       zoneStockage: settingsForm.zoneStockage,
       quantiteCommandee: Number(settingsForm.quantiteCommandee) || 0,
       uniteStock: settingsForm.uniteStock,
@@ -1707,11 +1778,12 @@ export default function MokaOrderPad() {
 
   const productsDbSupplierChoices = useMemo(() => {
     const suppliers = settingsCache.suppliers || [];
-    return suppliers
-      .map((s) => s.nom || s.name || s.fournisseur || "")
-      .filter(Boolean)
-      .sort();
-  }, [settingsCache]);
+    return uniqueValues([
+      ...suppliers.map((s) => s.nom || s.name || s.fournisseur || s.title || ""),
+      ...productsDb.map((p) => getSupplier(p)),
+      ...products.map((p) => getSupplier(p)),
+    ]).filter((name) => name !== "À définir");
+  }, [settingsCache, productsDb, products]);
 
   const productsDbZoneChoices = useMemo(() => {
     const zones = settingsCache.zones || [];
