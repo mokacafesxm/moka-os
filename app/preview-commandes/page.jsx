@@ -204,7 +204,7 @@ function Stepper({ value, onChange, min = 0, unit = "" }) {
     <div className="flex items-center gap-1">
       <button onClick={() => onChange(Math.max(min, value - 1))} className="w-7 h-7 rounded-lg bg-[#f4eee7] border border-[#eadfd4] text-[#3b241b] font-black text-sm flex items-center justify-center active:scale-95 transition">−</button>
       <div className="w-12 text-center font-black text-sm text-[#3b241b]">{value}</div>
-      <button onClick={() => onChange(value + 1)} className="w-7 h-7 rounded-lg bg-[#3b241b] text-white font-black text-sm flex items-center justify-center active:scale-95 transition">+</button>
+      <button onClick={() => onChange(value + 1)} className="w-7 h-7 rounded-lg bg-[#6f8f32] text-white font-black text-sm flex items-center justify-center active:scale-95 transition">+</button>
       {unit && <span className="text-[11px] text-[#a97862] font-bold ml-1">{unit}</span>}
     </div>
   );
@@ -367,7 +367,7 @@ export default function CommandesPreview() {
 
   return (
     <div className="min-h-screen bg-[#f7efe4] text-[#332019] pb-10">
-      <div className="max-w-5xl mx-auto px-3 pt-2">
+      <div className="max-w-6xl mx-auto px-3 pt-0">
         <div className="flex items-center justify-between mb-3">
           <div>
             <div className="text-[10px] font-black tracking-[0.35em] text-[#a97862] uppercase">MÖKA OS</div>
@@ -387,7 +387,7 @@ export default function CommandesPreview() {
 
         <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
           {TABS.map((tab) => (
-            <button key={tab.id} onClick={() => setOrderView(tab.id)} className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition ${orderView === tab.id ? "bg-[#3b241b] text-white shadow-md" : "bg-white text-[#6b4a3d] border border-[#eadfd4]"}`}>
+            <button key={tab.id} onClick={() => setOrderView(tab.id)} className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition ${orderView === tab.id ? "bg-[#6f8f32] text-white shadow-md" : "bg-white text-[#6b4a3d] border border-[#eadfd4]"}`}>
               {tab.icon} {tab.label}
               {tab.count !== null && <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${orderView === tab.id ? "bg-white/20 text-white" : "bg-[#f4eee7] text-[#a97862]"}`}>{tab.count}</span>}
             </button>
@@ -397,21 +397,21 @@ export default function CommandesPreview() {
         {orderView === "urgent" && (
           <div className="space-y-5">
             {cartItems.length > 0 && (
-              <div className="bg-[#3b241b] rounded-[1.1rem] p-4 text-white shadow-md">
+              <div className="bg-[#fffaf3] rounded-[1.1rem] p-4 text-[#3b241b] border border-[#eadfd4] shadow-sm">
                 <div className="flex justify-between items-center mb-3">
                   <div className="font-black text-sm">Panier commande</div>
-                  <span className="text-xs text-white/70">{cartItems.length} produit{cartItems.length > 1 ? "s" : ""}</span>
+                  <span className="text-xs text-[#a97862]">{cartItems.length} produit{cartItems.length > 1 ? "s" : ""}</span>
                 </div>
 
                 <div className="space-y-2">
                   {cartItems.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between gap-3 bg-white/10 rounded-xl px-3 py-2">
+                    <div key={item.id} className="flex items-center justify-between gap-3 bg-[#f7efe4] rounded-xl px-3 py-2">
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-black truncate">{item.name}</div>
-                        <div className="text-[10px] text-white/60">{item.fournisseur}</div>
+                        <div className="text-[10px] text-[#a97862]">{item.fournisseur}</div>
                       </div>
                       <Stepper value={item.qty} onChange={(v) => updateCartQty(item.id, v)} min={1} unit={item.unit} />
-                      <button onClick={() => removeFromCart(item.id)} className="text-white/50 hover:text-white text-lg font-black leading-none">×</button>
+                      <button onClick={() => removeFromCart(item.id)} className="text-[#a97862] hover:text-[#3b241b] text-lg font-black leading-none">×</button>
                     </div>
                   ))}
                 </div>
@@ -438,16 +438,16 @@ export default function CommandesPreview() {
                     const isCrit = String(item.status).toLowerCase().includes("critique");
 
                     return (
-                      <div key={item.id} className={`rounded-[1.25rem] border overflow-hidden transition ${inCart ? "bg-[#6f8f32] border-[#6f8f32]" : "bg-white border-[#eadfd4]"}`}>
+                      <div key={item.id} className={`rounded-[1.25rem] border overflow-hidden transition ${inCart ? "bg-[#eef5df] border-[#6f8f32]" : "bg-white border-[#eadfd4]"}`}>
                         <div className={`h-1.5 ${isCrit ? "bg-red-500" : "bg-orange-400"}`} />
                         <div className="p-4">
                           <div className="flex justify-between items-start gap-2">
                             <div>
-                              <div className={`text-[11px] font-black mb-0.5 ${inCart ? "text-white/70" : isCrit ? "text-red-600" : "text-orange-500"}`}>
+                              <div className={`text-[11px] font-black mb-0.5 ${inCart ? "text-[#a97862]" : isCrit ? "text-red-600" : "text-orange-500"}`}>
                                 {isCrit ? "🔴 Critique" : "🟠 Stock bas"}
                               </div>
-                              <div className={`font-black ${inCart ? "text-white" : "text-[#3b241b]"}`}>{item.name}</div>
-                              <div className={`text-[11px] mt-0.5 ${inCart ? "text-white/70" : "text-[#a97862]"}`}>
+                              <div className={`font-black ${inCart ? "text-[#3b241b]" : "text-[#3b241b]"}`}>{item.name}</div>
+                              <div className={`text-[11px] mt-0.5 ${inCart ? "text-[#a97862]" : "text-[#a97862]"}`}>
                                 {item.portionsRestantes} portions restantes · seuil {item.seuilCritique || "—"}
                               </div>
                             </div>
@@ -456,11 +456,11 @@ export default function CommandesPreview() {
                           </div>
 
                           {!inCart ? (
-                            <button onClick={() => addToCart(item)} className="mt-3 w-full py-2 rounded-xl border-2 border-[#3b241b] text-[#3b241b] font-black text-xs">
+                            <button onClick={() => addToCart(item)} className="mt-3 w-full py-2 rounded-xl border-2 border-[#6f8f32] text-[#6f8f32] font-black text-xs">
                               + Ajouter ({item.suggested} {item.unit})
                             </button>
                           ) : (
-                            <button onClick={() => removeFromCart(item.id)} className="mt-2 w-full py-1.5 rounded-xl bg-white/20 text-white font-black text-xs">
+                            <button onClick={() => removeFromCart(item.id)} className="mt-2 w-full py-1.5 rounded-xl bg-white text-[#6f8f32] border border-[#6f8f32] font-black text-xs">
                               ✓ Dans le panier · Retirer
                             </button>
                           )}
@@ -488,7 +488,7 @@ export default function CommandesPreview() {
                 {suppliers.map((s) => {
                   const name = getSupplierName(s);
                   return (
-                    <button key={s.id || name} onClick={() => setSelectedSupplier(name)} className={`px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition ${selectedSupplier === name ? "bg-[#3b241b] text-white" : "bg-white border border-[#eadfd4] text-[#6b4a3d]"}`}>
+                    <button key={s.id || name} onClick={() => setSelectedSupplier(name)} className={`px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition ${selectedSupplier === name ? "bg-[#6f8f32] text-white" : "bg-white border border-[#eadfd4] text-[#6b4a3d]"}`}>
                       {name}
                     </button>
                   );
@@ -547,7 +547,7 @@ export default function CommandesPreview() {
           <div className="space-y-3">
             <div className="flex gap-2 overflow-x-auto pb-1">
               {["Tous", "À commander", "Envoyé", "Reçu", "Annulé"].map((s) => (
-                <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap transition ${statusFilter === s ? "bg-[#3b241b] text-white" : "bg-white border border-[#eadfd4] text-[#6b4a3d]"}`}>
+                <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap transition ${statusFilter === s ? "bg-[#6f8f32] text-white" : "bg-white border border-[#eadfd4] text-[#6b4a3d]"}`}>
                   {s}
                 </button>
               ))}
@@ -612,7 +612,7 @@ export default function CommandesPreview() {
                     </div>
                   )}
 
-                  <button onClick={() => { setSelectedSupplier(name); setOrderView("compose"); }} className="w-full mt-3 py-2 rounded-xl bg-[#3b241b] text-white font-black text-xs">
+                  <button onClick={() => { setSelectedSupplier(name); setOrderView("compose"); }} className="w-full mt-3 py-2 rounded-xl bg-[#6f8f32] text-white font-black text-xs">
                     Commander
                   </button>
                 </div>
