@@ -326,6 +326,11 @@ export default function MokaOrderPad() {
   const [adminSection, setAdminSection] = useState("dashboard");
   const [settingsPanel, setSettingsPanel] = useState("");
   const [settingsData, setSettingsData] = useState([]);
+  const [supplierOrders, setSupplierOrders] = useState([]);
+  const [loadingSupplierOrders, setLoadingSupplierOrders] = useState(false);
+  const [supplierOrdersFilter, setSupplierOrdersFilter] = useState("À commander");
+  const [selectedSupplierOrder, setSelectedSupplierOrder] = useState("");
+
   const [settingsCache, setSettingsCache] = useState(() => {
     if (typeof window === "undefined") return {};
     try { return JSON.parse(localStorage.getItem("mokaSettingsCache") || "{}"); }
@@ -1068,6 +1073,98 @@ export default function MokaOrderPad() {
       alert("Erreur désactivation ❌");
     }
   };
+
+  const orderValue = (order, keys, fallback = "—") => {
+    for (const key of keys) {
+      const value = order?.[key];
+      if (Array.isArray(value)) {
+        if (value.length) return value.map((v) => v?.name || v?.title || v?.plain_text || v?.id || v).join(", ");
+      } else if (value && typeof value === "object") {
+        if (value.start) return value.start;
+        if (value.name || value.title || value.id) return value.name || value.title || value.id;
+      } else if (value !== undefined && value !== null && value !== "") {
+        return value;
+      }
+    }
+    return fallback;
+  };
+
+  const normalizeSupplierOrder = (order) => ({
+    id: orderValue(order, ["id"], `order-${Math.random()}`),
+    produit: orderValue(order, ["produit", "Produit", "property_produit", "name", "ingredient"], "Produit"),
+    fournisseur: orderValue(order, ["fournisseur", "Fournisseur", "property_fournisseur", "supplier"], "Sans fournisseur"),
+    quantite: orderValue(order, ["quantite", "quantité", "Quantité", "quantiteCommandee", "property_quantit_sugg_r_e", "property_quantite_suggeree"], 0),
+    unite: orderValue(order, ["unite", "Unité", "unit", "property_unit"], ""),
+    statut: orderValue(order, ["statut", "Statut", "property_statut"], "À commander"),
+    source: orderValue(order, ["source", "Source", "property_source"], "OrderPad"),
+    staff: orderValue(order, ["staff", "Staff", "property_staff"], "—"),
+    dateCreation: orderValue(order, ["dateCreation", "Date création", "property_date_cr_ation", "property_date_creation"], ""),
+    dateEnvoi: orderValue(order, ["dateEnvoi", "Envoyé le", "property_date_envoi", "property_envoy_le"], ""),
+    message: orderValue(order, ["message", "Message envoyé", "property_message_envoy", "property_message_envoye", "commentaire"], ""),
+  });
+
+  const loadSupplierOrders = async () => {
+    setLoadingSupplierOrders(true);
+    try {
+      const response = await fetch(SETTINGS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resource: "supplierOrders", action: "list" }),
+      });
+
+      if (!response.ok) throw new Error(`Erreur supplierOrders ${response.status}`);
+
+      const data = await response.json();
+      const raw = Array.isArray(data) ? data : normalizeArray(data, "orders");
+      const list = raw.map(normalizeSupplierOrder);
+
+      setSupplierOrders(list);
+
+      const firstSupplier = list.find((o) => o.fournisseur)?.fournisseur || "";
+      if (firstSupplier && !selectedSupplierOrder) setSelectedSupplierOrder(firstSupplier);
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mokaSupplierOrdersCache", JSON.stringify(list));
+      }
+    } catch (error) {
+      console.error("Erreur commandes fournisseurs:", error);
+      if (typeof window !== "undefined") {
+        try {
+          const cached = JSON.parse(localStorage.getItem("mokaSupplierOrdersCache") || "[]");
+          if (cached.length) setSupplierOrders(cached);
+        } catch {}
+      }
+    } finally {
+      setLoadingSupplierOrders(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAdmin || adminSection !== "orders") return;
+    loadSupplierOrders();
+  }, [isAdmin, adminSection]);
+
+  const supplierOrdersVisible = supplierOrders.filter((order) => {
+    if (supplierOrdersFilter === "Tous") return true;
+    return String(order.statut || "À commander") === supplierOrdersFilter;
+  });
+
+  const supplierOrdersGrouped = supplierOrdersVisible.reduce((acc, order) => {
+    const supplier = order.fournisseur || "Sans fournisseur";
+    if (!acc[supplier]) acc[supplier] = [];
+    acc[supplier].push(order);
+    return acc;
+  }, {});
+
+  const selectedSupplierLines =
+    supplierOrdersGrouped[selectedSupplierOrder] ||
+    Object.values(supplierOrdersGrouped)[0] ||
+    [];
+
+  const selectedSupplierName =
+    selectedSupplierOrder ||
+    Object.keys(supplierOrdersGrouped)[0] ||
+    "";
 
   const loadProductsDatabase = async (silent = true) => {
     const cached = typeof window !== "undefined"
@@ -4637,10 +4734,167 @@ export default function MokaOrderPad() {
             )}
 
             {adminSection === "orders" && (
-              <div className="bg-white rounded-[1.4rem] p-8 border border-[#eadfd4] shadow-sm">
-                <div className="text-3xl mb-4">🛒</div>
-                <div className="text-xl font-black">Commandes fournisseurs</div>
-                <p className="text-[11px] text-[#a97862] mt-0">Historique, messages envoyés, suivi réception.</p>
+              <div className="space-y-5">
+                <div className="bg-white rounded-[1.8rem] border border-[#eadfd4] shadow-sm p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] font-black tracking-[0.28em] text-[#a97862] uppercase">
+                        MOKA_Besoins_Fournisseurs
+                      </div>
+                      <h2 className="text-2xl font-black text-[#3b241b] mt-1">
+                        📦 Commandes fournisseurs
+                      </h2>
+                      <p className="text-xs text-[#a97862] mt-1">
+                        Besoins générés depuis l’OrderPad, regroupés par fournisseur.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={loadSupplierOrders}
+                      className="rounded-2xl bg-[#f7efe4] border border-[#eadfd4] px-4 py-3 text-xs font-black text-[#6b4a3d]"
+                    >
+                      {loadingSupplierOrders ? "Chargement…" : "↻ Rafraîchir"}
+                    </button>
+                  </div>
+
+                  <div className="flex gap-2 overflow-x-auto mt-4 pb-1">
+                    {["À commander", "Envoyé", "Tous"].map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => setSupplierOrdersFilter(status)}
+                        className={`shrink-0 rounded-full px-4 py-2 text-xs font-black border ${
+                          supplierOrdersFilter === status
+                            ? "bg-[#3b241b] text-white border-[#3b241b]"
+                            : "bg-white text-[#6b4a3d] border-[#eadfd4]"
+                        }`}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-4 overflow-x-auto pb-2">
+                  {Object.entries(supplierOrdersGrouped).map(([supplier, lines]) => {
+                    const sent = lines.filter((line) => line.statut === "Envoyé").length;
+                    const pending = lines.length - sent;
+                    const lastSent = lines.find((line) => line.dateEnvoi)?.dateEnvoi || "Jamais";
+
+                    return (
+                      <button
+                        key={supplier}
+                        onClick={() => setSelectedSupplierOrder(supplier)}
+                        className={`min-w-[260px] text-left rounded-[1.8rem] border p-5 shadow-sm transition active:scale-[0.99] ${
+                          selectedSupplierName === supplier
+                            ? "bg-[#3b241b] text-white border-[#3b241b]"
+                            : "bg-white text-[#3b241b] border-[#eadfd4]"
+                        }`}
+                      >
+                        <div className="text-[10px] font-black tracking-[0.22em] uppercase opacity-70">
+                          Fournisseur
+                        </div>
+                        <div className="text-xl font-black mt-1 truncate">{supplier}</div>
+
+                        <div className={`mt-4 rounded-2xl p-4 ${
+                          selectedSupplierName === supplier ? "bg-white/15" : "bg-[#f7efe4]"
+                        }`}>
+                          <div className="text-3xl font-black">{lines.length}</div>
+                          <div className="text-xs opacity-75">produit(s) dans le lot</div>
+                        </div>
+
+                        <div className="mt-4 flex items-center justify-between text-xs font-bold opacity-80">
+                          <span>{pending} à commander</span>
+                          <span>{sent} envoyé(s)</span>
+                        </div>
+
+                        <div className="text-xs opacity-70 mt-2">
+                          Dernier envoi : {String(lastSent).slice(0, 10)}
+                        </div>
+                      </button>
+                    );
+                  })}
+
+                  {!loadingSupplierOrders && Object.keys(supplierOrdersGrouped).length === 0 && (
+                    <div className="bg-white rounded-[1.8rem] border border-[#eadfd4] p-8 text-[#a97862] font-bold">
+                      Aucune commande fournisseur à afficher.
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-[2rem] border border-[#eadfd4] shadow-sm p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-[10px] font-black tracking-[0.24em] text-[#a97862] uppercase">
+                        Détail fournisseur
+                      </div>
+                      <h3 className="text-2xl font-black text-[#3b241b] mt-1">
+                        {selectedSupplierName || "Aucun fournisseur sélectionné"}
+                      </h3>
+                      <p className="text-xs text-[#a97862] mt-1">
+                        {selectedSupplierLines.length} ligne(s) de commande.
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => alert("Connexion envoi fournisseur à brancher ensuite")}
+                        className="rounded-2xl bg-[#6f8f32] text-white px-4 py-3 text-xs font-black"
+                      >
+                        Envoyer commande
+                      </button>
+                      <button
+                        onClick={() => alert("Marquer comme envoyé à connecter ensuite")}
+                        className="rounded-2xl bg-[#f7efe4] border border-[#eadfd4] text-[#6b4a3d] px-4 py-3 text-xs font-black"
+                      >
+                        Marquer envoyé
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-5">
+                    {selectedSupplierLines.map((line) => (
+                      <div
+                        key={line.id}
+                        className="rounded-[1.4rem] bg-[#f7efe4] border border-[#eadfd4] p-4"
+                      >
+                        <div className="flex justify-between gap-3">
+                          <div>
+                            <div className="font-black text-[#3b241b]">{line.produit}</div>
+                            <div className="text-xs text-[#a97862] mt-1">
+                              Source : {line.source} · Staff : {line.staff}
+                            </div>
+                          </div>
+
+                          <span className={`h-fit rounded-full px-3 py-1 text-[10px] font-black ${
+                            line.statut === "Envoyé"
+                              ? "bg-[#eef5df] text-[#6f8f32]"
+                              : "bg-orange-100 text-orange-700"
+                          }`}>
+                            {line.statut}
+                          </span>
+                        </div>
+
+                        <div className="mt-4 rounded-2xl bg-white p-3">
+                          <div className="text-xs text-[#a97862]">Quantité commandée</div>
+                          <div className="text-xl font-black text-[#3b241b]">
+                            {line.quantite} {line.unite}
+                          </div>
+                        </div>
+
+                        <div className="text-xs text-[#a97862] mt-3">
+                          Créé le : {String(line.dateCreation || "—").slice(0, 10)}
+                          {line.dateEnvoi ? ` · Envoyé le : ${String(line.dateEnvoi).slice(0, 10)}` : ""}
+                        </div>
+
+                        {line.message && line.message !== "—" && (
+                          <div className="mt-3 text-xs bg-white rounded-2xl p-3 text-[#6b4a3d]">
+                            {line.message}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
