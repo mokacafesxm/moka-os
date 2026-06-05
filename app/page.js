@@ -4733,7 +4733,7 @@ export default function MokaOrderPad() {
               </div>
             )}
             {adminSection === "orders" && (
-              <div className="w-full h-[calc(100vh-120px)] rounded-[2rem] overflow-hidden border border-[#eadfd4] bg-[#f7efe4] shadow-sm">
+              <div className="w-full h-[calc(100vh-40px)] -mt-8 rounded-[2rem] overflow-hidden border border-[#eadfd4] bg-[#f7efe4] shadow-sm">
                 <iframe
                   src="/preview-commandes"
                   title="Commandes fournisseurs preview"
