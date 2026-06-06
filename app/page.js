@@ -259,6 +259,47 @@ function getEditableId(item) {
   return item?.ingredientId || item?.matierePremiereId || item?.productId || item?.id;
 }
 
+// ── Orders section helpers ─────────────────────────────────────────
+function ordFirstValue(obj, keys, fallback = "") {
+  for (const key of keys) {
+    const value = obj?.[key];
+    if (Array.isArray(value)) {
+      if (!value.length) continue;
+      return value.map((v) => typeof v === "string" || typeof v === "number" ? v : v?.name || v?.nom || v?.title || v?.plain_text || v?.id || "").filter(Boolean).join(", ");
+    }
+    if (value && typeof value === "object") {
+      if (value.start) return value.start;
+      if (value.name || value.nom || value.title || value.id) return value.name || value.nom || value.title || value.id;
+    }
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return fallback;
+}
+function ordGetSupplierName(s) { return ordFirstValue(s, ["nom","name","fournisseur","supplier","title","Nom","Fournisseur"], "Sans nom"); }
+function ordGetSupplierPhone(s) { return ordFirstValue(s, ["telephone","téléphone","phone","whatsapp","WhatsApp","Téléphone"], ""); }
+function ordGetSupplierWhatsapp(s) { return ordFirstValue(s, ["whatsapp","WhatsApp","telephone","téléphone","phone","Téléphone"], ""); }
+function ordGetSupplierEmail(s) { return ordFirstValue(s, ["email","Email","mail","Mail"], ""); }
+function ordGetStockSupplier(item) { return ordFirstValue(item, ["fournisseur","fournisseurDefaut","fournisseurDefautName","supplier","supplierName","Fournisseur","Fournisseur par défaut"], "Sans fournisseur"); }
+function ordGetStockUnit(item) { return ordFirstValue(item, ["unit","unite","Unité","uniteCommande","uniteStock"], "kg"); }
+function ordGetStockSuggested(item) { return Number(ordFirstValue(item, ["suggested","quantiteCommandee","quantiteCommandeSuggeree","quantiteSuggeree","Quantité suggérée"], 1)) || 1; }
+function ordGetStockCriticalLimit(item) { return Number(ordFirstValue(item, ["seuilCritique","seuilCritiquePortion","Seuil critique","Seuil critique (portion)"], 0)) || 0; }
+function ordNormalizeStock(item) {
+  return {
+    id: item?.id || item?.ingredientId || getStockName(item),
+    name: getStockName(item),
+    status: String(getStockStatus(item)),
+    portionsRestantes: getStockPortions(item),
+    fournisseur: ordGetStockSupplier(item),
+    unit: ordGetStockUnit(item),
+    suggested: ordGetStockSuggested(item),
+    seuilCritique: ordGetStockCriticalLimit(item),
+  };
+}
+function isUrgentStock(item) {
+  const s = String(item.status || item.statut || "").toLowerCase();
+  return s.includes("critique") || s.includes("stock bas") || s.includes("alerte") || s.includes("commander");
+}
+
 export default function MokaOrderPad() {
   const [activeTab, setActiveTab] = useState("orderpad");
 
@@ -388,6 +429,15 @@ export default function MokaOrderPad() {
     return saved.statuses || {};
   });
   const [clockSending, setClockSending] = useState(false);
+
+  const [orderView, setOrderView] = useState("urgent");
+  const [orderCart, setOrderCart] = useState({});
+  const [ordSelectedSupplier, setOrdSelectedSupplier] = useState("");
+  const [orderDetail, setOrderDetail] = useState(null);
+  const [showOrderPreview, setShowOrderPreview] = useState(false);
+  const [orderNotes, setOrderNotes] = useState("");
+  const [ordStatusFilter, setOrdStatusFilter] = useState("Tous");
+  const [composeCart, setComposeCart] = useState({});
 
   const loadPreps = () => {
     setLoadingPreps(true);
@@ -755,6 +805,46 @@ export default function MokaOrderPad() {
 
     return { total, critical, alert, ok, health };
   }, [stockLive]);
+
+  // ── Orders section computed ──────────────────────────────────────
+  const ordNormalizedStock = useMemo(
+    () => isAdmin && adminSection === "orders" ? stockLive.map(ordNormalizeStock) : [],
+    [stockLive, isAdmin, adminSection]
+  );
+  const ordUrgentItems = useMemo(() => ordNormalizedStock.filter(isUrgentStock), [ordNormalizedStock]);
+  const ordUrgentBySupplier = useMemo(() => {
+    const map = {};
+    ordUrgentItems.forEach((item) => {
+      const sup = item.fournisseur || "Sans fournisseur";
+      if (!map[sup]) map[sup] = [];
+      map[sup].push(item);
+    });
+    return Object.entries(map);
+  }, [ordUrgentItems]);
+  const ordSupplierProducts = useMemo(
+    () => ordNormalizedStock.filter((item) => (item.fournisseur || "Sans fournisseur") === ordSelectedSupplier),
+    [ordNormalizedStock, ordSelectedSupplier]
+  );
+  const ordFilteredOrders = useMemo(() => {
+    const list = ordStatusFilter === "Tous" ? supplierOrders : supplierOrders.filter((o) => o.statut === ordStatusFilter);
+    return [...list].sort((a, b) => String(b.dateCreation || "").localeCompare(String(a.dateCreation || "")));
+  }, [supplierOrders, ordStatusFilter]);
+  const ordCriticalCount = ordNormalizedStock.filter((i) => String(i.status).toLowerCase().includes("critique")).length;
+  const ordAlertCount = ordNormalizedStock.filter((i) => { const s = String(i.status).toLowerCase(); return s.includes("stock bas") || s.includes("alerte") || s.includes("commander"); }).length;
+  const ordSupplierContact = (settingsCache.suppliers || []).find((s) => ordGetSupplierName(s) === ordSelectedSupplier);
+  const ordIncludedItems = ordSupplierProducts.filter((p) => composeCart[p.id]?.included);
+  const ordCartItems = Object.values(orderCart);
+  const addToOrderCart = (item) => {
+    setOrderCart((prev) => ({ ...prev, [item.id]: { ...item, qty: item.suggested || 1 } }));
+    setOrdSelectedSupplier(item.fournisseur || ordSelectedSupplier);
+  };
+  const updateOrderCartQty = (id, qty) => setOrderCart((prev) => ({ ...prev, [id]: { ...prev[id], qty } }));
+  const removeFromOrderCart = (id) => setOrderCart((prev) => { const n = { ...prev }; delete n[id]; return n; });
+  const buildOrderMessage = () => {
+    const date = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const lines = ordIncludedItems.map((p) => `- ${p.name} — ${composeCart[p.id]?.qty || p.suggested} ${p.unit}`).join("\n");
+    return `Bonjour ${ordSelectedSupplier} 👋\n\nCommande du ${date} :\n\n${lines}${orderNotes ? `\n\nNotes : ${orderNotes}` : ""}\n\nMerci 🙏\n— Équipe MÖKA`;
+  };
 
   const sendClockAction = async (member, action) => {
     const staffId = member.id || getStaffName(member);
@@ -1163,6 +1253,22 @@ export default function MokaOrderPad() {
     if (!isAdmin || adminSection !== "orders") return;
     loadSupplierOrders();
   }, [isAdmin, adminSection]);
+
+  useEffect(() => {
+    if (!isAdmin || adminSection !== "orders" || !stockLive.length) return;
+    const normalizedStock = stockLive.map(ordNormalizeStock);
+    const init = {};
+    normalizedStock.forEach((item) => {
+      init[item.id] = { ...item, qty: item.suggested, included: isUrgentStock(item) };
+    });
+    setComposeCart(init);
+  }, [isAdmin, adminSection, stockLive]);
+
+  useEffect(() => {
+    if (!isAdmin || adminSection !== "orders" || ordSelectedSupplier) return;
+    const suppliers = settingsCache.suppliers || [];
+    if (suppliers.length) setOrdSelectedSupplier(ordGetSupplierName(suppliers[0]));
+  }, [isAdmin, adminSection, settingsCache.suppliers]);
 
   const supplierOrdersVisible = supplierOrders.filter((order) => {
     if (supplierOrdersFilter === "Tous") return true;
@@ -3429,8 +3535,252 @@ export default function MokaOrderPad() {
 
             {/* ORDERS PANEL */}
             {adminSection === "orders" && (
-              <div className="rounded-2xl overflow-hidden border border-[#e5d5c5] bg-white shadow-sm" style={{height: "calc(100vh - 100px)"}}>
-                <iframe src="/preview-commandes" title="Commandes fournisseurs" className="w-full h-full border-0" />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] font-black tracking-[0.35em] text-[#a97862] uppercase">MÖKA OS</div>
+                    <h2 className="text-xl font-black text-[#3b241b]">Commandes fournisseurs</h2>
+                  </div>
+                  <button onClick={loadSupplierOrders} className="rounded-full bg-white border border-[#eadfd4] px-3 py-2 text-xs font-black text-[#6b4a3d]">
+                    {loadingSupplierOrders ? "Chargement…" : "↻"}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <OrdKpi title="🔴 Critiques" value={ordCriticalCount} desc="À commander maintenant" color="text-red-600" />
+                  <OrdKpi title="🟠 Alertes" value={ordAlertCount} desc="Stock bas bientôt" color="text-orange-500" />
+                  <OrdKpi title="📦 Historique" value={supplierOrders.length} desc="Commandes enregistrées" color="text-[#6f8f32]" />
+                </div>
+
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {[
+                    { id: "urgent", icon: "🚨", label: "Urgences", count: ordUrgentItems.length },
+                    { id: "compose", icon: "📝", label: "Composer", count: null },
+                    { id: "history", icon: "📜", label: "Historique", count: supplierOrders.length },
+                    { id: "suppliers", icon: "🏢", label: "Fournisseurs", count: (settingsCache.suppliers || []).length },
+                  ].map((tab) => (
+                    <button key={tab.id} onClick={() => setOrderView(tab.id)} className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition ${orderView === tab.id ? "bg-[#6f8f32] text-white shadow-md" : "bg-white text-[#6b4a3d] border border-[#eadfd4]"}`}>
+                      {tab.icon} {tab.label}
+                      {tab.count !== null && <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${orderView === tab.id ? "bg-white/20 text-white" : "bg-[#f4eee7] text-[#a97862]"}`}>{tab.count}</span>}
+                    </button>
+                  ))}
+                </div>
+
+                {orderView === "urgent" && (
+                  <div className="space-y-5">
+                    {ordCartItems.length > 0 && (
+                      <div className="bg-[#fffaf3] rounded-[1.1rem] p-4 text-[#3b241b] border border-[#eadfd4] shadow-sm">
+                        <div className="flex justify-between items-center mb-3">
+                          <div className="font-black text-sm">Panier commande</div>
+                          <span className="text-xs text-[#a97862]">{ordCartItems.length} produit{ordCartItems.length > 1 ? "s" : ""}</span>
+                        </div>
+                        <div className="space-y-2">
+                          {ordCartItems.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between gap-3 bg-[#f7efe4] rounded-xl px-3 py-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-black truncate">{item.name}</div>
+                                <div className="text-[10px] text-[#a97862]">{item.fournisseur}</div>
+                              </div>
+                              <OrdStepper value={item.qty} onChange={(v) => updateOrderCartQty(item.id, v)} min={1} unit={item.unit} />
+                              <button onClick={() => removeFromOrderCart(item.id)} className="text-[#a97862] hover:text-[#3b241b] text-lg font-black leading-none">×</button>
+                            </div>
+                          ))}
+                        </div>
+                        <button onClick={() => setOrderView("compose")} className="mt-3 w-full py-3 rounded-xl bg-[#6f8f32] text-white font-black text-sm">
+                          Composer et envoyer →
+                        </button>
+                      </div>
+                    )}
+                    {ordUrgentBySupplier.map(([supplier, items]) => (
+                      <div key={supplier}>
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="text-sm font-black text-[#3b241b]">🏢 {supplier}</div>
+                          <div className="flex-1 h-px bg-[#dccbbb]" />
+                          <button onClick={() => items.forEach((i) => addToOrderCart(i))} className="text-xs font-black text-[#6f8f32] border border-[#6f8f32] px-3 py-1 rounded-full">
+                            Tout ajouter
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {items.map((item) => {
+                            const inCart = !!orderCart[item.id];
+                            const isCrit = String(item.status).toLowerCase().includes("critique");
+                            return (
+                              <div key={item.id} className={`rounded-[1.25rem] border overflow-hidden transition ${inCart ? "bg-[#eef5df] border-[#6f8f32]" : "bg-white border-[#eadfd4]"}`}>
+                                <div className={`h-1.5 ${isCrit ? "bg-red-500" : "bg-orange-400"}`} />
+                                <div className="p-4">
+                                  <div className="flex justify-between items-start gap-2">
+                                    <div>
+                                      <div className={`text-[11px] font-black mb-0.5 ${inCart ? "text-[#a97862]" : isCrit ? "text-red-600" : "text-orange-500"}`}>
+                                        {isCrit ? "🔴 Critique" : "🟠 Stock bas"}
+                                      </div>
+                                      <div className="font-black text-[#3b241b]">{item.name}</div>
+                                      <div className="text-[11px] mt-0.5 text-[#a97862]">
+                                        {item.portionsRestantes} portions restantes · seuil {item.seuilCritique || "—"}
+                                      </div>
+                                    </div>
+                                    {inCart && <OrdStepper value={orderCart[item.id].qty} onChange={(v) => updateOrderCartQty(item.id, v)} min={1} unit={item.unit} />}
+                                  </div>
+                                  {!inCart ? (
+                                    <button onClick={() => addToOrderCart(item)} className="mt-3 w-full py-2 rounded-xl border-2 border-[#6f8f32] text-[#6f8f32] font-black text-xs">
+                                      + Ajouter ({item.suggested} {item.unit})
+                                    </button>
+                                  ) : (
+                                    <button onClick={() => removeFromOrderCart(item.id)} className="mt-2 w-full py-1.5 rounded-xl bg-white text-[#6f8f32] border border-[#6f8f32] font-black text-xs">
+                                      ✓ Dans le panier · Retirer
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    {!loadingStock && ordUrgentItems.length === 0 && (
+                      <div className="bg-white border border-[#eadfd4] rounded-[1.2rem] p-6 text-sm font-bold text-[#a97862]">
+                        Aucun stock critique ou bas pour le moment.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {orderView === "compose" && (
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-xs font-black text-[#a97862] mb-2">Sélectionner un fournisseur</div>
+                      <div className="flex gap-2 overflow-x-auto pb-1">
+                        {(settingsCache.suppliers || []).map((s) => {
+                          const name = ordGetSupplierName(s);
+                          return (
+                            <button key={s.id || name} onClick={() => setOrdSelectedSupplier(name)} className={`px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition ${ordSelectedSupplier === name ? "bg-[#6f8f32] text-white" : "bg-white border border-[#eadfd4] text-[#6b4a3d]"}`}>
+                              {name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {ordSupplierContact && <OrdSupplierContactCard supplier={ordSupplierContact} />}
+                    <div className="bg-white rounded-[1.1rem] border border-[#eadfd4] shadow-sm overflow-hidden">
+                      <div className="px-4 py-3 border-b border-[#eadfd4] flex justify-between items-center">
+                        <div className="text-sm font-black text-[#3b241b]">Produits à commander</div>
+                        <div className="text-xs text-[#a97862] font-bold">{ordIncludedItems.length} sélectionnés</div>
+                      </div>
+                      <div className="divide-y divide-[#eadfd4]">
+                        {ordSupplierProducts.map((p) => {
+                          const item = composeCart[p.id] || { ...p, qty: p.suggested, included: false };
+                          const isCrit = String(p.status).toLowerCase().includes("critique");
+                          const isLow = isUrgentStock(p) && !isCrit;
+                          return (
+                            <div key={p.id} className={`px-4 py-3 flex items-center gap-3 transition ${!item.included ? "opacity-50" : ""}`}>
+                              <OrdToggle checked={item.included} onChange={(v) => setComposeCart((prev) => ({ ...prev, [p.id]: { ...item, included: v } }))} />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-black text-[#3b241b] truncate">{p.name}</div>
+                                {(isCrit || isLow) && <div className={`text-[11px] font-bold ${isCrit ? "text-red-600" : "text-orange-500"}`}>{isCrit ? "🔴 Critique" : "🟠 Stock bas"}</div>}
+                              </div>
+                              <OrdStepper value={item.qty} onChange={(v) => setComposeCart((prev) => ({ ...prev, [p.id]: { ...item, qty: v } }))} min={0} unit={p.unit} />
+                            </div>
+                          );
+                        })}
+                        {!loadingStock && ordSupplierProducts.length === 0 && (
+                          <div className="p-5 text-sm font-bold text-[#a97862]">Aucun produit relié à ce fournisseur dans le stock live.</div>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black text-[#a97862] mb-1.5">Notes (optionnel)</label>
+                      <textarea value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder="Ex : livraison matin SVP, emballage sous-vide..." className="w-full rounded-[1rem] border border-[#eadfd4] bg-white px-4 py-3 text-sm text-[#3b241b] outline-none resize-none placeholder:text-[#c8b4a8]" rows={2} />
+                    </div>
+                    <button onClick={() => setShowOrderPreview(true)} disabled={ordIncludedItems.length === 0} className="w-full py-4 rounded-[1rem] bg-[#6f8f32] text-white font-black shadow-md disabled:opacity-40 disabled:cursor-not-allowed">
+                      👁 Prévisualiser et envoyer ({ordIncludedItems.length} produits)
+                    </button>
+                  </div>
+                )}
+
+                {orderView === "history" && (
+                  <div className="space-y-3">
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {["Tous", "À commander", "Envoyé", "Reçu", "Annulé"].map((s) => (
+                        <button key={s} onClick={() => setOrdStatusFilter(s)} className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap transition ${ordStatusFilter === s ? "bg-[#6f8f32] text-white" : "bg-white border border-[#eadfd4] text-[#6b4a3d]"}`}>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="text-xs text-[#a97862] font-bold">{ordFilteredOrders.length} commandes</div>
+                    {ordFilteredOrders.map((order) => (
+                      <div key={order.id} className="bg-white rounded-[1.1rem] border border-[#eadfd4] shadow-sm overflow-hidden">
+                        <div className="px-4 py-3 flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <OrdStatusBadge status={order.statut} />
+                              <span className="text-[11px] text-[#a97862]">{String(order.dateCreation || "").slice(0, 10) || "Sans date"} · {order.staff}</span>
+                            </div>
+                            <div className="font-black text-sm text-[#3b241b]">{order.fournisseur}</div>
+                            <div className="text-[11px] text-[#a97862] mt-1 truncate">{order.produit} × {order.quantite} {order.unite}</div>
+                          </div>
+                          <button onClick={() => setOrderDetail(order)} className="shrink-0 text-xs font-black text-[#6f8f32] border border-[#6f8f32] px-3 py-1.5 rounded-xl">
+                            Détail →
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {orderView === "suppliers" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(settingsCache.suppliers || []).map((supplier) => {
+                      const name = ordGetSupplierName(supplier);
+                      const supplierUrgents = ordUrgentItems.filter((p) => p.fournisseur === name);
+                      return (
+                        <div key={supplier.id || name} className="bg-white rounded-[1.25rem] border border-[#eadfd4] shadow-sm p-4">
+                          <div className="flex justify-between items-start gap-2 mb-3">
+                            <div>
+                              <div className="font-black text-[#3b241b]">{name}</div>
+                              <div className="text-[11px] text-[#a97862] mt-0.5">{supplierUrgents.length} produit(s) à commander</div>
+                            </div>
+                            {supplierUrgents.length > 0 && (
+                              <span className="text-xs bg-red-100 text-red-700 font-black px-2 py-0.5 rounded-full">Urgent</span>
+                            )}
+                          </div>
+                          <OrdSupplierContactCard supplier={supplier} compact />
+                          {supplierUrgents.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-[#eadfd4]">
+                              <div className="text-[10px] font-black text-[#a97862] mb-1.5">PRODUITS À COMMANDER</div>
+                              <div className="space-y-1">
+                                {supplierUrgents.slice(0, 4).map((p) => (
+                                  <div key={p.id} className="flex items-center gap-2 text-[11px]">
+                                    <OrdStatusBadge status={p.status} />
+                                    <span className="font-bold text-[#3b241b]">{p.name}</span>
+                                    <span className="text-[#a97862]">→ {p.suggested} {p.unit}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <button onClick={() => { setOrdSelectedSupplier(name); setOrderView("compose"); }} className="w-full mt-3 py-2 rounded-xl bg-[#6f8f32] text-white font-black text-xs">
+                            Commander
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {showOrderPreview && (
+                  <OrdPreviewModal
+                    buildMessage={buildOrderMessage}
+                    selectedSupplier={ordSelectedSupplier}
+                    supplier={ordSupplierContact}
+                    setShowPreview={setShowOrderPreview}
+                  />
+                )}
+                {orderDetail && (
+                  <OrdDetailModal
+                    orderDetail={orderDetail}
+                    setOrderDetail={setOrderDetail}
+                    supplier={(settingsCache.suppliers || []).find((s) => ordGetSupplierName(s) === orderDetail.fournisseur)}
+                  />
+                )}
               </div>
             )}
 
@@ -4177,5 +4527,138 @@ export default function MokaOrderPad() {
       )}
 
     </main>
+  );
+}
+
+function OrdStatusBadge({ status }) {
+  const s = String(status).toLowerCase();
+  const isCrit = s.includes("critique");
+  const isLow = s.includes("stock bas") || s.includes("alerte") || s.includes("envoyé") || s.includes("attente") || s.includes("commander");
+  const isGood = s.includes("reçu") || s.includes("ok");
+  const isCancel = s.includes("annulé");
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black ${isCrit ? "bg-red-100 text-red-700" : isLow ? "bg-orange-100 text-orange-700" : isGood ? "bg-green-100 text-green-700" : isCancel ? "bg-gray-100 text-gray-500" : "bg-blue-50 text-blue-700"}`}>
+      {isCrit ? "🔴" : isLow ? "🟠" : isGood ? "✅" : isCancel ? "✖️" : "🔵"} {status}
+    </span>
+  );
+}
+
+function OrdStepper({ value, onChange, min = 0, unit = "" }) {
+  return (
+    <div className="flex items-center gap-1">
+      <button onClick={() => onChange(Math.max(min, value - 1))} className="w-7 h-7 rounded-lg bg-[#f4eee7] border border-[#eadfd4] text-[#3b241b] font-black text-sm flex items-center justify-center active:scale-95 transition">−</button>
+      <div className="w-12 text-center font-black text-sm text-[#3b241b]">{value}</div>
+      <button onClick={() => onChange(value + 1)} className="w-7 h-7 rounded-lg bg-[#6f8f32] text-white font-black text-sm flex items-center justify-center active:scale-95 transition">+</button>
+      {unit && <span className="text-[11px] text-[#a97862] font-bold ml-1">{unit}</span>}
+    </div>
+  );
+}
+
+function OrdToggle({ checked, onChange }) {
+  return (
+    <button onClick={() => onChange(!checked)} className={`relative w-10 h-5 rounded-full transition-colors ${checked ? "bg-[#6f8f32]" : "bg-[#dccbbb]"}`}>
+      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
+    </button>
+  );
+}
+
+function OrdKpi({ title, value, desc, color }) {
+  return (
+    <div className="rounded-[1.1rem] bg-white border border-[#eadfd4] p-3 shadow-sm">
+      <div className="text-[11px] font-black text-[#a97862]">{title}</div>
+      <div className={`text-2xl font-black ${color}`}>{value}</div>
+      <div className="text-[10px] text-[#a97862] mt-0.5">{desc}</div>
+    </div>
+  );
+}
+
+function OrdSupplierContactCard({ supplier, compact = false }) {
+  const phone = ordGetSupplierPhone(supplier);
+  const whatsapp = ordGetSupplierWhatsapp(supplier);
+  const email = ordGetSupplierEmail(supplier);
+  return (
+    <div className={compact ? "flex gap-2" : "bg-white rounded-[1.1rem] border border-[#eadfd4] p-3 shadow-sm flex items-center justify-between gap-3"}>
+      {!compact && (
+        <div>
+          <div className="text-xs font-black text-[#3b241b]">{ordGetSupplierName(supplier)}</div>
+          <div className="text-[11px] text-[#a97862]">{email || phone || "Contact à compléter"}</div>
+        </div>
+      )}
+      <div className="flex gap-2">
+        {phone && <a href={`tel:${phone}`} className="w-9 h-9 rounded-xl bg-[#f4eee7] flex items-center justify-center text-base">📞</a>}
+        {whatsapp && <a href={`https://wa.me/${String(whatsapp).replace(/\D/g, "")}`} className="w-9 h-9 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center text-base">💬</a>}
+        {email && <a href={`mailto:${email}`} className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-base">📧</a>}
+      </div>
+    </div>
+  );
+}
+
+function OrdPreviewModal({ buildMessage, selectedSupplier, supplier, setShowPreview }) {
+  const message = buildMessage();
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-3">
+      <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-full max-w-lg max-h-[85vh] overflow-y-auto p-5">
+        <div className="flex justify-between items-start gap-4 mb-4">
+          <div>
+            <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">Prévisualisation</div>
+            <h2 className="text-lg font-black text-[#3b241b]">Message à envoyer</h2>
+          </div>
+          <button onClick={() => setShowPreview(false)} className="w-9 h-9 rounded-full bg-[#f4eee7] flex items-center justify-center font-black text-[#a97862]">×</button>
+        </div>
+        <div className="bg-[#e8f5e1] rounded-[1rem] p-4 mb-4 font-mono text-sm text-[#2d5a1b] whitespace-pre-wrap leading-relaxed">{message}</div>
+        <div className="flex gap-2">
+          <button onClick={() => {
+            const wa = ordGetSupplierWhatsapp(supplier);
+            if (wa) window.open(`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`);
+          }} className="flex-1 py-3 rounded-[1rem] bg-green-500 text-white font-black text-sm">💬 WhatsApp</button>
+          <button onClick={() => {
+            const em = ordGetSupplierEmail(supplier);
+            if (em) window.open(`mailto:${em}?subject=Commande MÖKA&body=${encodeURIComponent(message)}`);
+          }} className="flex-1 py-3 rounded-[1rem] bg-blue-500 text-white font-black text-sm">📧 Email</button>
+        </div>
+        <button onClick={() => { alert("Prochaine étape : sauvegarde/envoi dans Notion ✅"); setShowPreview(false); }} className="w-full mt-2 py-3 rounded-[1rem] bg-[#6f8f32] text-white font-black text-sm">
+          ✅ Marquer comme préparée
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function OrdDetailModal({ orderDetail, supplier, setOrderDetail }) {
+  const dateStr = String(orderDetail.dateCreation || "").slice(0, 10);
+  const orderDate = dateStr
+    ? new Date(dateStr + "T00:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    : "";
+  const message = orderDetail.message ||
+    `Bonjour ${orderDetail.fournisseur} 👋\n\nCommande du ${orderDate} :\n\n- ${orderDetail.produit} — ${orderDetail.quantite} ${orderDetail.unite}\n\nMerci 🙏\n— Équipe MÖKA`;
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-3">
+      <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-full max-w-lg max-h-[85vh] overflow-y-auto p-5">
+        <div className="flex justify-between items-start gap-4 mb-4">
+          <div>
+            <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">Détail commande</div>
+            <h2 className="text-lg font-black text-[#3b241b]">{orderDetail.fournisseur}</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <OrdStatusBadge status={orderDetail.statut} />
+              <span className="text-xs text-[#a97862]">{dateStr || "Sans date"} · {orderDetail.staff}</span>
+            </div>
+          </div>
+          <button onClick={() => setOrderDetail(null)} className="w-9 h-9 rounded-full bg-[#f4eee7] flex items-center justify-center font-black text-[#a97862]">×</button>
+        </div>
+        <div className="bg-[#f7efe4] rounded-[1rem] p-3 mb-4">
+          <div className="text-xs font-black text-[#a97862] mb-2">PRODUIT COMMANDÉ</div>
+          <div className="text-sm font-bold text-[#3b241b]">{orderDetail.produit} × {orderDetail.quantite} {orderDetail.unite}</div>
+        </div>
+        <div className="text-xs font-black text-[#a97862] mb-2">MESSAGE</div>
+        <div className="bg-[#e8f5e1] rounded-[1rem] p-4 font-mono text-xs text-[#2d5a1b] whitespace-pre-wrap leading-relaxed mb-4">{message}</div>
+        <div className="flex gap-2">
+          <button onClick={() => {
+            const wa = ordGetSupplierWhatsapp(supplier);
+            if (wa) window.open(`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`);
+          }} className="flex-1 py-3 rounded-[1rem] bg-green-50 border border-green-200 text-green-700 font-black text-xs">💬 WhatsApp</button>
+          <button onClick={() => navigator.clipboard?.writeText(message).then(() => alert("Copié !"))} className="flex-1 py-3 rounded-[1rem] bg-[#f4eee7] text-[#3b241b] font-black text-xs">📋 Copier</button>
+        </div>
+      </div>
+    </div>
   );
 }
