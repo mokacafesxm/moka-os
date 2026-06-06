@@ -893,7 +893,14 @@ export default function MokaOrderPad() {
 
     if (!response.ok) throw new Error(`Erreur settings ${response.status}`);
 
-    const data = await response.json();
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      console.warn("fetchSettingsResource: réponse non-JSON pour", resource);
+      return [];
+    }
     return Array.isArray(data) ? data : normalizeArray(data, resource);
   };
   useEffect(() => {
@@ -912,7 +919,7 @@ export default function MokaOrderPad() {
           return next;
         });
       } catch (error) {
-        console.error("Préchargement paramètres:", resource, error);
+        console.warn("Préchargement paramètres:", resource, error.message);
       }
     });
   }, [isAdmin, adminSection]);
@@ -2287,33 +2294,42 @@ export default function MokaOrderPad() {
     <main className="min-h-screen bg-[#f5ede0] text-[#1a1008]" style={{fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"}}>
 
       {/* ── HEADER ─────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 bg-[#f5ede0]/95 backdrop-blur border-b border-[#e5d5c5] px-4 py-3">
+      <header className="sticky top-0 z-30 bg-[#f5ede0]/96 backdrop-blur-md border-b border-[#ddc9b5] px-4 py-2.5 shadow-sm">
         <div className="max-w-screen-2xl mx-auto flex items-center justify-between gap-3">
 
           {/* Brand */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-[#2c1a10] flex items-center justify-center">
-              <span className="text-white font-black text-sm">M</span>
+            <div className="w-10 h-10 rounded-2xl bg-[#2c1a10] flex items-center justify-center shadow-md">
+              <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-[#f5ede0]" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 8h1a4 4 0 0 1 0 8h-1"/>
+                <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/>
+                <line x1="6" x2="6" y1="2" y2="4"/>
+                <line x1="10" x2="10" y1="2" y2="4"/>
+                <line x1="14" x2="14" y1="2" y2="4"/>
+              </svg>
             </div>
             <div>
               <div className="font-black text-[#2c1a10] text-base leading-none tracking-tight">MÖKA</div>
-              <div className="text-[10px] text-[#9a7060] tracking-[0.3em] uppercase mt-0.5">Order Pad</div>
+              <div className="text-[10px] text-[#9a7060] tracking-[0.25em] uppercase mt-0.5">Order Pad</div>
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex items-center gap-2">
             {/* Commande auto time */}
-            <div className="hidden sm:block bg-white rounded-xl px-3 py-2 border border-[#e5d5c5] text-right shadow-sm">
-              <div className="text-[10px] text-[#9a7060] leading-none">Commande auto</div>
-              <div className="font-black text-[#2c1a10] text-sm leading-none mt-0.5">17:45 SXM</div>
+            <div className="hidden sm:flex items-center gap-2 bg-white/80 rounded-xl px-3 py-2 border border-[#e5d5c5] shadow-sm">
+              <svg className="w-3.5 h-3.5 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <div>
+                <div className="text-[9px] text-[#9a7060] leading-none font-medium">Commande auto</div>
+                <div className="font-black text-[#2c1a10] text-sm leading-none mt-0.5">17:45 SXM</div>
+              </div>
             </div>
 
             <button
               onClick={() => setShowClockModal(true)}
-              className="h-9 px-3 rounded-xl bg-white border border-[#e5d5c5] font-bold text-xs text-[#2c1a10] shadow-sm hover:bg-[#f0e4d4] transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="h-10 px-3.5 rounded-xl bg-white border border-[#e5d5c5] font-bold text-xs text-[#2c1a10] shadow-sm hover:bg-[#f0e4d4] active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
             >
-              <span>⏱</span>
+              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               <span className="hidden sm:inline">Pointage</span>
             </button>
 
@@ -2327,13 +2343,17 @@ export default function MokaOrderPad() {
                   setShowAdminModal(true);
                 }
               }}
-              className={`h-9 px-3 rounded-xl font-bold text-xs border shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer ${
+              className={`h-10 px-3.5 rounded-xl font-bold text-xs border shadow-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer ${
                 isAdmin
                   ? "bg-[#5a7828] text-white border-[#5a7828] hover:bg-[#4e6a22]"
                   : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:bg-[#f0e4d4]"
               }`}
             >
-              <span>👤</span>
+              {isAdmin ? (
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              ) : (
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+              )}
               <span>{isAdmin ? "Admin ON" : "Admin"}</span>
             </button>
           </div>
@@ -2343,44 +2363,47 @@ export default function MokaOrderPad() {
       <div className="max-w-screen-2xl mx-auto px-3 py-3">
 
         {/* ── TABS ────────────────────────────────────── */}
-        <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide">
+        <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 scrollbar-hide bg-white/60 rounded-2xl p-1.5 border border-[#e5d5c5] shadow-sm w-fit">
           <button
             onClick={() => {
               setActiveTab("orderpad");
               if (!activeCategory && categories[0]) setActiveCategory(categories[0]);
             }}
-            className={`h-9 px-4 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+            className={`h-10 px-4 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === "orderpad"
                 ? "bg-[#2c1a10] text-white shadow-md"
-                : "bg-white text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
+                : "text-[#6b4a3d] hover:bg-[#f0e4d4]"
             }`}
           >
-            🛒 OrderPad
+            <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+            OrderPad
           </button>
 
           <button
             onClick={() => setActiveTab("stock")}
-            className={`h-9 px-4 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-2 cursor-pointer ${
+            className={`h-10 px-4 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === "stock"
                 ? "bg-[#2c1a10] text-white shadow-md"
-                : "bg-white text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
+                : "text-[#6b4a3d] hover:bg-[#f0e4d4]"
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+            <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
             Stock Live
+            {(() => { const critCount = stockLive.filter(i => String(getStockStatus(i)).toLowerCase().includes("critique")).length; return critCount > 0 ? <span className="bg-red-500 text-white text-[10px] font-black rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">{critCount}</span> : null; })()}
           </button>
 
           <button
             onClick={() => setActiveTab("preps")}
-            className={`h-9 px-4 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-2 cursor-pointer ${
+            className={`h-10 px-4 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === "preps"
                 ? "bg-[#2c1a10] text-white shadow-md"
-                : "bg-white text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
+                : "text-[#6b4a3d] hover:bg-[#f0e4d4]"
             }`}
           >
-            👨‍🍳 Préparations
+            <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" x2="18" y1="17" y2="17"/></svg>
+            Prépas
             {prepCount > 0 && (
-              <span className="bg-red-500 text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+              <span className="bg-orange-500 text-white text-[10px] font-black rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">
                 {prepCount}
               </span>
             )}
@@ -2391,21 +2414,33 @@ export default function MokaOrderPad() {
         {isAdmin && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             {[
-              { label: "Critiques", value: stockKpis.critical, color: "text-red-600", bg: "bg-red-50 border-red-100", dot: "bg-red-500", onClick: () => setActiveTab("stock") },
-              { label: "Alertes stock", value: stockKpis.alert, color: "text-orange-500", bg: "bg-orange-50 border-orange-100", dot: "bg-orange-400", onClick: () => setActiveTab("stock") },
-              { label: "Prépas à faire", value: prepCount, color: "text-[#5a7828]", bg: "bg-[#f0f7e5] border-[#c8dfa0]", dot: "bg-[#5a7828]", onClick: () => setActiveTab("preps") },
-              { label: "Produits suivis", value: stockKpis.total, color: "text-[#2c1a10]", bg: "bg-white border-[#e5d5c5]", dot: null, onClick: null },
-            ].map(({ label, value, color, bg, dot, onClick }) => (
+              {
+                label: "Critiques", value: stockKpis.critical, color: "text-red-600", bg: "bg-red-50 border-red-200", onClick: () => setActiveTab("stock"),
+                icon: <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+              },
+              {
+                label: "Alertes stock", value: stockKpis.alert, color: "text-orange-600", bg: "bg-orange-50 border-orange-200", onClick: () => setActiveTab("stock"),
+                icon: <svg className="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" x2="21" y1="6" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              },
+              {
+                label: "Prépas à faire", value: prepCount, color: "text-[#4a6620]", bg: "bg-[#f0f7e5] border-[#c8dfa0]", onClick: () => setActiveTab("preps"),
+                icon: <svg className="w-4 h-4 text-[#5a7828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" x2="18" y1="17" y2="17"/></svg>
+              },
+              {
+                label: "Produits suivis", value: stockKpis.total, color: "text-[#2c1a10]", bg: "bg-white border-[#e5d5c5]", onClick: null,
+                icon: <svg className="w-4 h-4 text-[#9a7060]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
+              },
+            ].map(({ label, value, color, bg, onClick, icon }) => (
               <button
                 key={label}
                 onClick={onClick || undefined}
-                className={`rounded-xl p-3 border text-left shadow-sm transition-all ${bg} ${onClick ? "cursor-pointer hover:shadow-md active:scale-[0.98]" : "cursor-default"}`}
+                className={`rounded-2xl p-4 border text-left shadow-sm transition-all ${bg} ${onClick ? "cursor-pointer hover:shadow-md active:scale-[0.98]" : "cursor-default"}`}
               >
-                <div className="flex items-center gap-1.5 mb-2">
-                  {dot && <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`}></span>}
+                <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">{label}</span>
+                  {icon}
                 </div>
-                <div className={`text-2xl font-black ${color}`}>{value}</div>
+                <div className={`text-3xl font-black ${color}`}>{value}</div>
               </button>
             ))}
           </div>
@@ -2425,14 +2460,18 @@ export default function MokaOrderPad() {
             {activeTab === "stock" && (
               <>
                 {loadingStock ? (
-                  <div className="bg-white rounded-2xl p-10 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
-                    <div className="text-2xl mb-2">⏳</div>
-                    <div className="font-semibold">Chargement du stock live…</div>
+                  <div className="bg-white rounded-2xl p-12 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
+                    <div className="flex justify-center mb-3">
+                      <svg className="w-8 h-8 text-[#c8a882] animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    </div>
+                    <div className="font-semibold text-sm">Chargement du stock live…</div>
                   </div>
                 ) : stockLive.length === 0 ? (
-                  <div className="bg-white rounded-2xl p-10 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
-                    <div className="text-2xl mb-2">📭</div>
-                    <div className="font-semibold">Aucun stock trouvé.</div>
+                  <div className="bg-white rounded-2xl p-12 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
+                    <div className="flex justify-center mb-3">
+                      <svg className="w-8 h-8 text-[#c8a882]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
+                    </div>
+                    <div className="font-semibold text-sm">Aucun stock trouvé.</div>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -2457,8 +2496,8 @@ export default function MokaOrderPad() {
                       {/* View toggle */}
                       <div className="flex gap-2">
                         {[
-                          { key: "prepa", label: "👨‍🍳 Prépas", onSelect: () => setStockView("prepa") },
-                          { key: "stock", label: "📦 Stock", onSelect: () => { setStockView("stock"); if (stockCategories[0]) setActiveStockCategory(stockCategories[0]); } },
+                          { key: "prepa", label: "Prépas", onSelect: () => setStockView("prepa") },
+                          { key: "stock", label: "Stock", onSelect: () => { setStockView("stock"); if (stockCategories[0]) setActiveStockCategory(stockCategories[0]); } },
                         ].map(({ key, label, onSelect }) => (
                           <button
                             key={key}
@@ -2521,35 +2560,39 @@ export default function MokaOrderPad() {
                                     if (stockView === "stock") { openStockReceive(item); return; }
                                     selected ? removeItem(stockId) : addStockPrep(item);
                                   }}
-                                  className={`rounded-2xl border transition-all overflow-hidden cursor-pointer active:scale-[0.98] ${
+                                  className={`rounded-2xl border transition-all duration-200 overflow-hidden cursor-pointer active:scale-[0.98] ${
                                     selected
-                                      ? "bg-[#5a7828] text-white border-[#5a7828] shadow-lg"
-                                      : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:shadow-md hover:border-[#d0c0b0]"
+                                      ? "bg-[#4a6620] text-white border-[#4a6620] shadow-xl ring-2 ring-[#5a7828]/40"
+                                      : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:shadow-lg hover:border-[#c8b8a8]"
                                   }`}
                                 >
                                   {/* Status bar */}
-                                  <div className={`h-1 ${isCritical ? "bg-red-500" : isLow ? "bg-orange-400" : "bg-[#5a7828]"}`} />
+                                  <div className={`h-1.5 ${isCritical ? "bg-gradient-to-r from-red-600 to-red-400" : isLow ? "bg-gradient-to-r from-orange-500 to-amber-400" : selected ? "bg-white/30" : "bg-gradient-to-r from-[#5a7828] to-[#7aa830]"}`} />
 
                                   <div className="p-4">
                                     {/* Status badge */}
-                                    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold mb-2 ${
+                                    <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold mb-2.5 ${
                                       isCritical
-                                        ? selected ? "bg-white/20 text-white" : "bg-red-50 text-red-600"
+                                        ? selected ? "bg-white/20 text-white" : "bg-red-50 text-red-700 border border-red-200"
                                         : isLow
-                                        ? selected ? "bg-white/20 text-white" : "bg-orange-50 text-orange-600"
-                                        : selected ? "bg-white/20 text-white" : "bg-[#f0f7e5] text-[#5a7828]"
+                                        ? selected ? "bg-white/20 text-white" : "bg-orange-50 text-orange-700 border border-orange-200"
+                                        : selected ? "bg-white/20 text-white" : "bg-[#f0f7e5] text-[#4a6620] border border-[#c8dfa0]"
                                     }`}>
-                                      {isCritical ? "●" : isLow ? "●" : "●"} {status}
+                                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isCritical ? "bg-red-500" : isLow ? "bg-orange-500" : selected ? "bg-white" : "bg-[#5a7828]"}`}></span>
+                                      {status}
                                     </div>
 
                                     <h3 className="text-sm font-black leading-tight mb-3">{getStockName(item)}</h3>
 
                                     {/* Portions info */}
-                                    <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/15" : "bg-[#faf5ef]"}`}>
-                                      <div className={`text-[10px] font-medium mb-1 ${selected ? "text-white/70" : "text-[#9a7060]"}`}>Portions restantes</div>
+                                    <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/10 border border-white/20" : "bg-[#faf5ef] border border-[#ede0d0]"}`}>
+                                      <div className={`text-[10px] font-semibold mb-1 uppercase tracking-wide ${selected ? "text-white/60" : "text-[#9a7060]"}`}>Portions restantes</div>
                                       <div className="text-xl font-black">{getStockPortions(item)}</div>
                                       {getStockZone(item) && (
-                                        <div className={`text-[10px] mt-1 ${selected ? "text-white/60" : "text-[#9a7060]"}`}>📍 {getStockZone(item)}</div>
+                                        <div className={`text-[10px] mt-1 flex items-center gap-1 ${selected ? "text-white/50" : "text-[#9a7060]"}`}>
+                                          <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                                          {getStockZone(item)}
+                                        </div>
                                       )}
                                     </div>
 
@@ -2557,16 +2600,27 @@ export default function MokaOrderPad() {
                                       <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); openStockReceive(item); }}
-                                        className="w-full rounded-xl bg-[#f0f7e5] border border-[#c8dfa0] px-3 py-2.5 text-left hover:bg-[#e5f0d5] transition-colors cursor-pointer"
+                                        className="w-full rounded-xl bg-[#f0f7e5] border border-[#c8dfa0] px-3 py-2.5 text-left hover:bg-[#e5f0d5] transition-colors cursor-pointer flex items-center gap-2"
                                       >
-                                        <div className="text-[10px] font-bold text-[#5a7828] uppercase tracking-wide">📦 Réception</div>
-                                        <div className="text-xs font-black text-[#2c1a10] mt-0.5">+ Ajouter du stock</div>
+                                        <svg className="w-3.5 h-3.5 text-[#5a7828] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/><circle cx="18.5" cy="15.5" r="2.5"/><path d="M20.27 17.27 22 19"/></svg>
+                                        <div>
+                                          <div className="text-[10px] font-bold text-[#5a7828] uppercase tracking-wide">Réception</div>
+                                          <div className="text-xs font-black text-[#2c1a10]">Ajouter du stock</div>
+                                        </div>
                                       </button>
                                     ) : (
-                                      <div className={`flex items-center justify-between text-xs font-semibold ${selected ? "text-white/80" : "text-[#9a7060]"}`}>
-                                        <span>{selected ? "✓ Sélectionné" : "Toucher pour préparer"}</span>
-                                        <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-base ${selected ? "bg-white/20" : "bg-[#f0f7e5] text-[#5a7828]"}`}>
-                                          {selected ? "✓" : "+"}
+                                      <div className={`flex items-center justify-between text-xs font-semibold ${selected ? "text-white/70" : "text-[#9a7060]"}`}>
+                                        <span className="flex items-center gap-1">
+                                          {selected ? (
+                                            <><svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Sélectionné</>
+                                          ) : "Toucher pour préparer"}
+                                        </span>
+                                        <span className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-sm ${selected ? "bg-white/20" : "bg-[#f0f7e5] border border-[#c8dfa0]"}`}>
+                                          {selected ? (
+                                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                          ) : (
+                                            <svg className="w-4 h-4 text-[#5a7828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+                                          )}
                                         </span>
                                       </div>
                                     )}
@@ -2574,9 +2628,10 @@ export default function MokaOrderPad() {
                                     {isAdmin && (
                                       <button
                                         onClick={(e) => { e.stopPropagation(); openSettings(item); }}
-                                        className={`mt-3 text-[10px] font-bold underline cursor-pointer ${selected ? "text-white/70" : "text-[#9a7060] hover:text-[#2c1a10]"}`}
+                                        className={`mt-3 flex items-center gap-1 text-[10px] font-bold cursor-pointer transition-colors ${selected ? "text-white/60 hover:text-white" : "text-[#9a7060] hover:text-[#2c1a10]"}`}
                                       >
-                                        ⚙️ Corriger stock
+                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                                        Corriger stock
                                       </button>
                                     )}
                                   </div>
@@ -2660,14 +2715,18 @@ export default function MokaOrderPad() {
                 </div>
 
                 {loading ? (
-                  <div className="bg-white rounded-2xl p-10 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
-                    <div className="text-2xl mb-2">⏳</div>
-                    <div className="font-semibold">Chargement des produits…</div>
+                  <div className="bg-white rounded-2xl p-12 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
+                    <div className="flex justify-center mb-3">
+                      <svg className="w-8 h-8 text-[#c8a882] animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    </div>
+                    <div className="font-semibold text-sm">Chargement des produits…</div>
                   </div>
                 ) : filtered.length === 0 ? (
-                  <div className="bg-white rounded-2xl p-10 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
-                    <div className="text-2xl mb-2">🔍</div>
-                    <div className="font-semibold">Aucun produit trouvé.</div>
+                  <div className="bg-white rounded-2xl p-12 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
+                    <div className="flex justify-center mb-3">
+                      <svg className="w-8 h-8 text-[#c8a882]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    </div>
+                    <div className="font-semibold text-sm">Aucun produit trouvé.</div>
                   </div>
                 ) : (
                   <div className="space-y-6">
@@ -2689,23 +2748,28 @@ export default function MokaOrderPad() {
                             return (
                               <div
                                 key={product.id}
-                                className={`rounded-2xl border overflow-hidden transition-all ${
+                                className={`rounded-2xl border overflow-hidden transition-all duration-200 ${
                                   selected
-                                    ? "bg-[#5a7828] text-white border-[#5a7828] shadow-lg"
-                                    : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:shadow-md hover:border-[#d0c0b0]"
+                                    ? "bg-[#4a6620] text-white border-[#4a6620] shadow-xl ring-2 ring-[#5a7828]/40"
+                                    : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:shadow-lg hover:border-[#c8b8a8] active:scale-[0.98]"
                                 }`}
                               >
                                 {/* Photo / icon zone */}
                                 <button
                                   onClick={() => selected ? removeItem(product.id) : addProduct(product)}
-                                  className={`w-full h-16 flex items-center justify-center overflow-hidden cursor-pointer ${
-                                    selected ? "bg-white/10" : "bg-[#f0e8dc]"
+                                  className={`w-full h-20 flex items-center justify-center overflow-hidden cursor-pointer relative ${
+                                    selected ? "bg-[#3d5518]" : "bg-[#f0e8dc]"
                                   }`}
                                 >
                                   {product.photo ? (
                                     <img src={product.photo} alt={product.name || "Produit"} className="w-full h-full object-cover" />
                                   ) : (
                                     <span className="text-4xl">{categoryEmojis[cat] || "📌"}</span>
+                                  )}
+                                  {selected && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-[#3d5518]/60">
+                                      <svg className="w-8 h-8 text-white drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </div>
                                   )}
                                 </button>
 
@@ -2714,37 +2778,51 @@ export default function MokaOrderPad() {
                                   onClick={() => selected ? removeItem(product.id) : addProduct(product)}
                                   className="w-full text-left p-4 cursor-pointer"
                                 >
-                                  <div className="flex justify-between gap-2 mb-2">
+                                  <div className="flex justify-between gap-2 mb-2.5">
                                     <div className="flex-1 min-w-0">
-                                      <div className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold mb-1.5 ${
-                                        selected ? "bg-white/20 text-white" : "bg-[#faf5ef] text-[#9a7060]"
+                                      <div className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold mb-1.5 tracking-wide ${
+                                        selected ? "bg-white/20 text-white/90" : "bg-[#f0e8dc] text-[#7a5a4a]"
                                       }`}>
                                         {sub}
                                       </div>
                                       <h3 className="text-sm font-black leading-tight truncate">{product.name}</h3>
                                     </div>
-                                    <div className={`text-[10px] text-right shrink-0 max-w-[80px] leading-tight ${
-                                      selected ? "text-white/70" : "text-[#9a7060]"
+                                    <div className={`text-[10px] text-right shrink-0 max-w-[80px] leading-tight font-medium ${
+                                      selected ? "text-white/60" : "text-[#9a7060]"
                                     }`}>
                                       {supplier}
                                     </div>
                                   </div>
 
                                   {/* Quantity box */}
-                                  <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/15" : "bg-[#faf5ef]"}`}>
-                                    <div className={`text-[10px] font-medium mb-0.5 ${selected ? "text-white/70" : "text-[#9a7060]"}`}>À commander</div>
-                                    <div className="text-lg font-black">{product.suggested || 1} <span className={`text-sm font-semibold ${selected ? "text-white/80" : "text-[#6b4a3d]"}`}>{product.unit || "unité"}</span></div>
+                                  <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/10 border border-white/20" : "bg-[#faf5ef] border border-[#ede0d0]"}`}>
+                                    <div className={`text-[10px] font-semibold mb-0.5 uppercase tracking-wide ${selected ? "text-white/60" : "text-[#9a7060]"}`}>À commander</div>
+                                    <div className="text-xl font-black">{product.suggested || 1} <span className={`text-sm font-semibold ${selected ? "text-white/70" : "text-[#6b4a3d]"}`}>{product.unit || "unité"}</span></div>
                                     {product.zone && (
-                                      <div className={`text-[10px] mt-0.5 ${selected ? "text-white/60" : "text-[#9a7060]"}`}>📍 {product.zone}</div>
+                                      <div className={`text-[10px] mt-1 flex items-center gap-1 ${selected ? "text-white/50" : "text-[#9a7060]"}`}>
+                                        <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                                        {product.zone}
+                                      </div>
                                     )}
                                   </div>
 
-                                  <div className={`flex items-center justify-between text-xs font-semibold ${selected ? "text-white/80" : "text-[#9a7060]"}`}>
-                                    <span>{selected ? "✓ Ajouté" : "Toucher pour ajouter"}</span>
-                                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-base ${
-                                      selected ? "bg-white/20" : "bg-[#f0f7e5] text-[#5a7828]"
+                                  <div className={`flex items-center justify-between text-xs font-semibold ${selected ? "text-white/70" : "text-[#9a7060]"}`}>
+                                    <span className="flex items-center gap-1">
+                                      {selected ? (
+                                        <>
+                                          <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                          Ajouté
+                                        </>
+                                      ) : "Toucher pour ajouter"}
+                                    </span>
+                                    <span className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-lg shadow-sm ${
+                                      selected ? "bg-white/20" : "bg-[#f0f7e5] text-[#5a7828] border border-[#c8dfa0]"
                                     }`}>
-                                      {selected ? "✓" : "+"}
+                                      {selected ? (
+                                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                      ) : (
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+                                      )}
                                     </span>
                                   </div>
                                 </button>
@@ -2752,11 +2830,12 @@ export default function MokaOrderPad() {
                                 {isAdmin && (
                                   <button
                                     onClick={() => openSettings(product)}
-                                    className={`block w-full px-4 pb-3 text-[10px] font-bold underline text-left cursor-pointer ${
-                                      selected ? "text-white/70" : "text-[#9a7060] hover:text-[#2c1a10]"
+                                    className={`flex w-full items-center gap-1.5 px-4 pb-3 text-[10px] font-bold text-left cursor-pointer transition-colors ${
+                                      selected ? "text-white/60 hover:text-white" : "text-[#9a7060] hover:text-[#2c1a10]"
                                     }`}
                                   >
-                                    ⚙️ Réglages
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    Réglages
                                   </button>
                                 )}
                               </div>
@@ -2774,14 +2853,18 @@ export default function MokaOrderPad() {
             {activeTab === "preps" && (
               <>
                 {loadingPreps ? (
-                  <div className="bg-white rounded-2xl p-10 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
-                    <div className="text-2xl mb-2">⏳</div>
-                    <div className="font-semibold">Chargement des préparations…</div>
+                  <div className="bg-white rounded-2xl p-12 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
+                    <div className="flex justify-center mb-3">
+                      <svg className="w-8 h-8 text-[#c8a882] animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    </div>
+                    <div className="font-semibold text-sm">Chargement des préparations…</div>
                   </div>
                 ) : preps.length === 0 ? (
-                  <div className="bg-white rounded-2xl p-10 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
-                    <div className="text-2xl mb-2">✅</div>
-                    <div className="font-semibold">Aucune préparation à faire.</div>
+                  <div className="bg-white rounded-2xl p-12 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
+                    <div className="flex justify-center mb-3">
+                      <svg className="w-8 h-8 text-[#5a7828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    </div>
+                    <div className="font-semibold text-sm">Aucune préparation à faire.</div>
                   </div>
                 ) : (
                   <div className="space-y-6">
@@ -2809,59 +2892,72 @@ export default function MokaOrderPad() {
                             return (
                               <div
                                 key={id}
-                                className={`rounded-2xl border overflow-hidden transition-all cursor-pointer active:scale-[0.98] ${
+                                className={`rounded-2xl border overflow-hidden transition-all duration-200 cursor-pointer active:scale-[0.98] ${
                                   selected
-                                    ? "bg-[#5a7828] text-white border-[#5a7828] shadow-lg"
-                                    : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:shadow-md"
+                                    ? "bg-[#4a6620] text-white border-[#4a6620] shadow-xl ring-2 ring-[#5a7828]/40"
+                                    : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:shadow-lg hover:border-[#c8b8a8]"
                                 }`}
                               >
-                                {isUrgent && <div className="h-1 bg-orange-400" />}
+                                {isUrgent && <div className="h-1.5 bg-gradient-to-r from-orange-500 to-amber-400" />}
 
                                 <button
                                   onClick={() => selected ? removeItem(id) : addPrep(prep)}
                                   className="w-full text-left p-4 cursor-pointer"
                                 >
-                                  <div className="flex items-start justify-between gap-2 mb-2">
-                                    <div>
+                                  <div className="flex items-start justify-between gap-2 mb-2.5">
+                                    <div className="flex-1 min-w-0">
                                       {isUrgent && (
-                                        <div className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold mb-1.5 ${
-                                          selected ? "bg-white/20 text-white" : "bg-orange-50 text-orange-600"
+                                        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold mb-1.5 ${
+                                          selected ? "bg-white/20 text-white" : "bg-orange-50 text-orange-700 border border-orange-200"
                                         }`}>
-                                          ⚡ {priority}
+                                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                                          {priority}
                                         </div>
                                       )}
                                       <h3 className="text-sm font-black leading-tight">{getPrepName(prep)}</h3>
                                     </div>
-                                    <div className={`text-[10px] text-right ${selected ? "text-white/70" : "text-[#9a7060]"}`}>{priority}</div>
+                                    {!isUrgent && <div className={`text-[10px] text-right shrink-0 ${selected ? "text-white/60" : "text-[#9a7060]"}`}>{priority}</div>}
                                   </div>
 
-                                  <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/15" : "bg-[#faf5ef]"}`}>
-                                    <div className={`text-[10px] font-medium mb-0.5 ${selected ? "text-white/70" : "text-[#9a7060]"}`}>Quantité</div>
-                                    <div className="text-lg font-black">{qty} <span className={`text-sm ${selected ? "text-white/80" : "text-[#6b4a3d]"}`}>{unit}</span></div>
-                                    <div className={`text-[10px] mt-1 ${selected ? "text-white/60" : "text-[#9a7060]"}`}>Statut : {status}</div>
+                                  <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/10 border border-white/20" : "bg-[#faf5ef] border border-[#ede0d0]"}`}>
+                                    <div className={`text-[10px] font-semibold mb-0.5 uppercase tracking-wide ${selected ? "text-white/60" : "text-[#9a7060]"}`}>Quantité</div>
+                                    <div className="text-xl font-black">{qty} <span className={`text-sm font-semibold ${selected ? "text-white/70" : "text-[#6b4a3d]"}`}>{unit}</span></div>
+                                    <div className={`text-[10px] mt-1 font-medium ${selected ? "text-white/50" : "text-[#9a7060]"}`}>{status}</div>
                                     {getPrepDueDate(prep) && (
-                                      <div className={`text-[10px] mt-0.5 ${selected ? "text-white/60" : "text-[#9a7060]"}`}>
-                                        📅 {getPrepDueDate(prep).split("-").reverse().join("/")}
+                                      <div className={`text-[10px] mt-0.5 flex items-center gap-1 ${selected ? "text-white/50" : "text-[#9a7060]"}`}>
+                                        <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                                        {getPrepDueDate(prep).split("-").reverse().join("/")}
                                       </div>
                                     )}
                                   </div>
 
-                                  <div className={`flex items-center justify-between text-xs font-semibold ${selected ? "text-white/80" : "text-[#9a7060]"}`}>
-                                    <span>{selected ? "✓ Ajouté" : "Toucher pour ajouter"}</span>
-                                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center font-black ${
-                                      selected ? "bg-white/20" : "bg-[#f0f7e5] text-[#5a7828]"
-                                    }`}>{selected ? "✓" : "+"}</span>
+                                  <div className={`flex items-center justify-between text-xs font-semibold ${selected ? "text-white/70" : "text-[#9a7060]"}`}>
+                                    <span className="flex items-center gap-1">
+                                      {selected ? (
+                                        <><svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Ajouté</>
+                                      ) : "Toucher pour ajouter"}
+                                    </span>
+                                    <span className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-sm ${
+                                      selected ? "bg-white/20" : "bg-[#f0f7e5] text-[#5a7828] border border-[#c8dfa0]"
+                                    }`}>
+                                      {selected ? (
+                                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                      ) : (
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+                                      )}
+                                    </span>
                                   </div>
                                 </button>
 
                                 {isAdmin && (
                                   <button
                                     onClick={() => openSettings(prep)}
-                                    className={`block w-full px-4 pb-3 text-[10px] font-bold underline text-left cursor-pointer ${
-                                      selected ? "text-white/70" : "text-[#9a7060] hover:text-[#2c1a10]"
+                                    className={`flex w-full items-center gap-1.5 px-4 pb-3 text-[10px] font-bold text-left cursor-pointer transition-colors ${
+                                      selected ? "text-white/60 hover:text-white" : "text-[#9a7060] hover:text-[#2c1a10]"
                                     }`}
                                   >
-                                    ⚙️ Réglages
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    Réglages
                                   </button>
                                 )}
                               </div>
@@ -2878,105 +2974,149 @@ export default function MokaOrderPad() {
 
           {/* ── CART / ASIDE ─────────────────────────── */}
           <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 ${activeTab === "stock" && stockView === "stock" ? "hidden" : ""}`}>
-            <div className="bg-white rounded-2xl p-4 border border-[#e5d5c5] shadow-sm sm:sticky sm:top-[72px]">
+            <div className="bg-white rounded-2xl border border-[#ddc9b5] shadow-md sm:sticky sm:top-[72px] overflow-hidden">
               {/* Cart header */}
-              <div className="mb-4">
-                <h2 className="text-base font-black text-[#2c1a10]">
-                  {activeTab === "stock" ? "👨‍🍳 Envoyer en prépa" : activeTab === "preps" ? "✅ Confirmer la prépa" : "🛒 Action du jour"}
-                </h2>
-                <p className="text-[11px] text-[#9a7060] mt-0.5">
-                  {activeTab === "stock" ? "Sélectionne un produit puis un staff" : activeTab === "preps" ? "Valider une préparation terminée" : "Sélection staff depuis le pad"}
-                </p>
-              </div>
-
-              {/* Staff selector */}
-              <div className="mb-3">
-                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Membre du staff</label>
-                <select
-                  value={selectedStaff}
-                  onChange={(e) => setSelectedStaff(e.target.value)}
-                  className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-3 py-2 text-sm font-semibold text-[#2c1a10] outline-none cursor-pointer"
-                >
-                  <option value="">Sélectionner…</option>
-                  {staff.map((member) => (
-                    <option key={member.id || getStaffName(member)} value={member.id || getStaffName(member)}>
-                      {getStaffName(member)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Due date (stock mode) */}
-              {activeTab === "stock" && (
-                <div className="mb-4">
-                  <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Date prévue</label>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {[["1", "+1 jour"], ["3", "+3 jours"], ["5", "+5 jours"], ["custom", "Perso"]].map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setDueDateMode(value)}
-                        className={`rounded-lg px-2 py-2 text-xs font-bold border transition-all cursor-pointer ${
-                          dueDateMode === value
-                            ? "bg-[#5a7828] text-white border-[#5a7828]"
-                            : "bg-[#faf5ef] text-[#6b4a3d] border-[#e5d5c5] hover:bg-[#f0e4d4]"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
+              <div className="px-4 py-3.5 border-b border-[#f0e8dc] bg-[#faf5ef]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#2c1a10] flex items-center justify-center shrink-0">
+                    {activeTab === "stock" ? (
+                      <svg className="w-4 h-4 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" x2="18" y1="17" y2="17"/></svg>
+                    ) : activeTab === "preps" ? (
+                      <svg className="w-4 h-4 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+                    )}
                   </div>
-                  {dueDateMode === "custom" && (
-                    <input
-                      type="date"
-                      value={customDueDate}
-                      onChange={(e) => setCustomDueDate(e.target.value)}
-                      className="w-full mt-2 rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-3 py-2 text-sm font-semibold text-[#2c1a10] outline-none"
-                    />
-                  )}
-                  <div className="text-[11px] text-[#9a7060] font-semibold mt-1.5">
-                    Prévu le : {selectedDueDate.split("-").reverse().join("/")}
+                  <div>
+                    <h2 className="text-sm font-black text-[#2c1a10] leading-tight">
+                      {activeTab === "stock" ? "Envoyer en prépa" : activeTab === "preps" ? "Confirmer la prépa" : "Action du jour"}
+                    </h2>
+                    <p className="text-[10px] text-[#9a7060] mt-0.5">
+                      {activeTab === "stock" ? "Sélectionne un produit puis un staff" : activeTab === "preps" ? "Valider une préparation terminée" : "Sélection staff depuis le pad"}
+                    </p>
                   </div>
                 </div>
-              )}
-
-              {/* Cart items */}
-              <div className="space-y-2 mb-4 max-h-[30vh] overflow-y-auto">
-                {cartItems.length === 0 ? (
-                  <div className="text-[#9a7060] bg-[#faf5ef] rounded-xl p-4 text-center text-xs font-medium">
-                    Aucun élément sélectionné
-                  </div>
-                ) : (
-                  cartItems.map((item) => (
-                    <div key={item.id} className="flex justify-between gap-2 items-start py-2 border-b border-[#f0e8dc] last:border-0">
-                      <div className="min-w-0">
-                        <div className="text-xs font-black text-[#2c1a10] truncate">{item.name}</div>
-                        <div className="text-[10px] text-[#9a7060]">{item.type === "prep" ? "Préparation interne" : getSupplier(item)}</div>
-                      </div>
-                      <div className="text-xs font-black text-[#5a7828] whitespace-nowrap shrink-0">{item.qty} {item.unit}</div>
-                    </div>
-                  ))
-                )}
               </div>
 
-              {/* Send button */}
-              <button
-                onClick={sendToMokaOS}
-                disabled={cartItems.length === 0 || sending}
-                className={`w-full py-3 rounded-xl text-sm font-black transition-all cursor-pointer ${
-                  cartItems.length === 0
-                    ? "bg-[#ede0d4] text-[#b09080] cursor-not-allowed"
-                    : "bg-[#5a7828] text-white shadow-md hover:bg-[#4e6a22] active:scale-[0.98]"
-                }`}
-              >
-                {sending
-                  ? "Envoi en cours…"
-                  : activeTab === "stock"
-                  ? "Envoyer en préparation 👨‍🍳"
-                  : activeTab === "preps"
-                  ? "Confirmer comme fait ✅"
-                  : "Envoyer vers MOKA-OS"}
-              </button>
+              <div className="p-4 space-y-4">
+                {/* Staff selector */}
+                <div>
+                  <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                    Membre du staff
+                  </label>
+                  <select
+                    value={selectedStaff}
+                    onChange={(e) => setSelectedStaff(e.target.value)}
+                    className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-3 py-2.5 text-sm font-semibold text-[#2c1a10] outline-none cursor-pointer focus:border-[#5a7828] transition-colors"
+                  >
+                    <option value="">Sélectionner…</option>
+                    {staff.map((member) => (
+                      <option key={member.id || getStaffName(member)} value={member.id || getStaffName(member)}>
+                        {getStaffName(member)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Due date (stock mode) */}
+                {activeTab === "stock" && (
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5 flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                      Date prévue
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {[["1", "+1 jour"], ["3", "+3 jours"], ["5", "+5 jours"], ["custom", "Perso"]].map(([value, label]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setDueDateMode(value)}
+                          className={`rounded-lg px-2 py-2 text-xs font-bold border transition-all cursor-pointer ${
+                            dueDateMode === value
+                              ? "bg-[#5a7828] text-white border-[#5a7828] shadow-sm"
+                              : "bg-[#faf5ef] text-[#6b4a3d] border-[#e5d5c5] hover:bg-[#f0e4d4]"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    {dueDateMode === "custom" && (
+                      <input
+                        type="date"
+                        value={customDueDate}
+                        onChange={(e) => setCustomDueDate(e.target.value)}
+                        className="w-full mt-2 rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-3 py-2 text-sm font-semibold text-[#2c1a10] outline-none"
+                      />
+                    )}
+                    <div className="text-[11px] text-[#9a7060] font-semibold mt-1.5 flex items-center gap-1">
+                      <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      Prévu le : {selectedDueDate.split("-").reverse().join("/")}
+                    </div>
+                  </div>
+                )}
+
+                {/* Cart items */}
+                <div>
+                  {cartItems.length > 0 && (
+                    <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-2 flex items-center justify-between">
+                      <span>Sélection</span>
+                      <span className="bg-[#2c1a10] text-[#f5ede0] rounded-full w-5 h-5 flex items-center justify-center text-[9px] font-black">{cartItems.length}</span>
+                    </div>
+                  )}
+                  <div className="space-y-1.5 max-h-[28vh] overflow-y-auto">
+                    {cartItems.length === 0 ? (
+                      <div className="text-[#b09080] bg-[#faf5ef] rounded-xl p-4 text-center text-xs font-medium border border-dashed border-[#e5d5c5]">
+                        Toucher un produit pour l'ajouter
+                      </div>
+                    ) : (
+                      cartItems.map((item) => (
+                        <div key={item.id} className="flex justify-between gap-2 items-center px-3 py-2.5 rounded-xl bg-[#faf5ef] border border-[#ede0d0]">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-black text-[#2c1a10] truncate">{item.name}</div>
+                            <div className="text-[10px] text-[#9a7060]">{item.type === "prep" ? "Préparation interne" : getSupplier(item)}</div>
+                          </div>
+                          <div className="text-xs font-black text-[#4a6620] whitespace-nowrap shrink-0 bg-[#f0f7e5] px-2 py-0.5 rounded-md border border-[#c8dfa0]">{item.qty} {item.unit}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Send button */}
+                <button
+                  onClick={sendToMokaOS}
+                  disabled={cartItems.length === 0 || sending}
+                  className={`w-full py-3.5 rounded-xl text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                    cartItems.length === 0
+                      ? "bg-[#ede0d4] text-[#b09080] cursor-not-allowed"
+                      : "bg-[#2c1a10] text-[#f5ede0] shadow-lg hover:bg-[#1e100a] active:scale-[0.98]"
+                  }`}
+                >
+                  {sending ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                      Envoi en cours…
+                    </>
+                  ) : activeTab === "stock" ? (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" x2="18" y1="17" y2="17"/></svg>
+                      Envoyer en préparation
+                    </>
+                  ) : activeTab === "preps" ? (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      Confirmer comme fait
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                      Envoyer vers MOKA-OS
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </aside>
         </div>
@@ -2988,15 +3128,24 @@ export default function MokaOrderPad() {
           {/* Admin panel header */}
           <div className={`sticky top-0 z-10 bg-[#f5ede0]/95 backdrop-blur border-b border-[#e5d5c5] px-4 py-3 ${["products", "inventory"].includes(adminSection) ? "" : ""}`}>
             <div className="max-w-screen-2xl mx-auto flex items-center justify-between">
-              <div>
-                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-[0.3em]">MÖKA OS · Admin</div>
-                <h1 className="text-xl font-black text-[#2c1a10] mt-0.5">
-                  {adminSection === "orders" && "🛒 Commandes"}
-                  {adminSection === "reports" && "📊 Rapports"}
-                  {adminSection === "settings" && "⚙️ Paramètres"}
-                  {adminSection === "products" && "📦 Catalogue"}
-                  {adminSection === "inventory" && "📋 Inventaire"}
-                </h1>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#2c1a10] flex items-center justify-center shrink-0">
+                  {adminSection === "orders" && <svg className="w-4 h-4 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>}
+                  {adminSection === "reports" && <svg className="w-4 h-4 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>}
+                  {adminSection === "settings" && <svg className="w-4 h-4 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>}
+                  {adminSection === "products" && <svg className="w-4 h-4 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>}
+                  {adminSection === "inventory" && <svg className="w-4 h-4 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect width="6" height="4" x="9" y="3" rx="1"/><path d="m9 14 2 2 4-4"/></svg>}
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-[0.25em]">MÖKA OS · Admin</div>
+                  <h1 className="text-xl font-black text-[#2c1a10] leading-tight">
+                    {adminSection === "orders" && "Commandes fournisseurs"}
+                    {adminSection === "reports" && "Rapports"}
+                    {adminSection === "settings" && "Paramètres"}
+                    {adminSection === "products" && "Catalogue produits"}
+                    {adminSection === "inventory" && "Inventaire"}
+                  </h1>
+                </div>
               </div>
             </div>
           </div>
@@ -3009,21 +3158,23 @@ export default function MokaOrderPad() {
                 <div className="p-3 border-b border-[#e5d5c5] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div>
                     <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Base de données</div>
-                    <h2 className="text-base font-black text-[#2c1a10]">📦 Catalogue matières premières</h2>
+                    <h2 className="text-base font-black text-[#2c1a10]">Catalogue matières premières</h2>
                     <p className="text-[11px] text-[#9a7060]">Affichage complet de la database produits Notion.</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => loadProductsDatabase(false)}
-                      className="h-9 px-3 rounded-xl bg-[#faf5ef] border border-[#e5d5c5] text-xs font-bold text-[#6b4a3d] hover:bg-[#f0e4d4] transition-colors cursor-pointer"
+                      className="h-9 px-3 rounded-xl bg-[#faf5ef] border border-[#e5d5c5] text-xs font-bold text-[#6b4a3d] hover:bg-[#f0e4d4] transition-colors cursor-pointer flex items-center gap-1.5"
                     >
-                      🔄 Actualiser
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                      Actualiser
                     </button>
                     <button
                       onClick={openProductDbCreate}
-                      className="h-9 px-3 rounded-xl bg-[#5a7828] text-white text-xs font-bold hover:bg-[#4e6a22] transition-colors cursor-pointer"
+                      className="h-9 px-3 rounded-xl bg-[#2c1a10] text-[#f5ede0] text-xs font-bold hover:bg-[#1e100a] transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
                     >
-                      ➕ Nouveau produit
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+                      Nouveau produit
                     </button>
                   </div>
                 </div>
@@ -3098,7 +3249,7 @@ export default function MokaOrderPad() {
                                 onClick={() => openProductDbEdit(item)}
                                 className="h-7 px-2.5 rounded-lg bg-[#5a7828] text-white text-[11px] font-bold hover:bg-[#4e6a22] transition-colors cursor-pointer"
                               >
-                                ✏️ Modifier
+                                Modifier
                               </button>
                               <button
                                 onClick={() => deleteProductDb(item)}
@@ -3143,7 +3294,7 @@ export default function MokaOrderPad() {
                   <div className="p-3 border-b border-[#e5d5c5]">
                     <div className="flex flex-wrap gap-2 mb-3">
                       {/* View toggle */}
-                      {[{ key: "stock", label: "📦 Stock" }, { key: "prepa", label: "👨‍🍳 Prépas" }].map(({ key, label }) => (
+                      {[{ key: "stock", label: "Stock" }, { key: "prepa", label: "Prépas" }].map(({ key, label }) => (
                         <button
                           key={key}
                           onClick={() => { setInventoryView(key); setInventoryCategory("Tous"); setInventoryStatusFilter("Tous"); }}
@@ -3243,7 +3394,7 @@ export default function MokaOrderPad() {
                                     onClick={() => openInventoryAdjust(item)}
                                     className="h-7 px-2.5 rounded-lg bg-[#5a7828] text-white text-[11px] font-bold hover:bg-[#4e6a22] transition-colors cursor-pointer"
                                   >
-                                    ✏️ Ajuster
+                                    Ajuster
                                   </button>
                                   <button
                                     onClick={() => deleteProductDb(item)}
@@ -3272,8 +3423,12 @@ export default function MokaOrderPad() {
 
             {/* REPORTS PANEL */}
             {adminSection === "reports" && (
-              <div className="bg-white rounded-2xl p-8 border border-[#e5d5c5] shadow-sm text-center">
-                <div className="text-4xl mb-3">📊</div>
+              <div className="bg-white rounded-2xl p-12 border border-[#e5d5c5] shadow-sm text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="w-16 h-16 rounded-2xl bg-[#f0e8dc] flex items-center justify-center">
+                    <svg className="w-8 h-8 text-[#9a7060]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
+                  </div>
+                </div>
                 <div className="text-lg font-black text-[#2c1a10]">Rapports</div>
                 <p className="text-xs text-[#9a7060] mt-1">À développer plus tard.</p>
               </div>
@@ -3283,19 +3438,19 @@ export default function MokaOrderPad() {
             {adminSection === "settings" && (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {[
-                  ["🏢", "Fournisseurs", "Ajouter, modifier, désactiver", "suppliers"],
-                  ["📦", "Catégories", "Créer / organiser", "categories"],
-                  ["📂", "Sous-catégories", "Ranger les produits", "subcategories"],
-                  ["📏", "Unités", "kg, pièce, carton...", "units"],
-                  ["🗄️", "Zones", "Stockage et emplacement", "zones"],
-                  ["👥", "Staff", "Équipe et pointage", "staff"],
-                ].map(([icon, title, desc, panelKey]) => (
+                  { key: "suppliers", title: "Fournisseurs", desc: "Ajouter, modifier, désactiver", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+                  { key: "categories", title: "Catégories", desc: "Créer / organiser", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg> },
+                  { key: "subcategories", title: "Sous-catégories", desc: "Ranger les produits", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg> },
+                  { key: "units", title: "Unités", desc: "kg, pièce, carton…", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></svg> },
+                  { key: "zones", title: "Zones", desc: "Stockage et emplacement", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> },
+                  { key: "staff", title: "Staff", desc: "Équipe et pointage", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+                ].map(({ key, title, desc, icon }) => (
                   <button
-                    key={title}
-                    onClick={() => loadSettingsPanel(panelKey)}
-                    className="bg-white rounded-2xl p-5 border border-[#e5d5c5] shadow-sm text-left hover:shadow-md hover:border-[#d0c0b0] transition-all cursor-pointer active:scale-[0.98]"
+                    key={key}
+                    onClick={() => loadSettingsPanel(key)}
+                    className="bg-white rounded-2xl p-5 border border-[#e5d5c5] shadow-sm text-left hover:shadow-md hover:border-[#d0c0b0] transition-all cursor-pointer active:scale-[0.98] group"
                   >
-                    <div className="text-3xl mb-3">{icon}</div>
+                    <div className="w-12 h-12 rounded-2xl bg-[#f0e8dc] flex items-center justify-center text-[#6b4a3d] mb-3 group-hover:bg-[#2c1a10] group-hover:text-[#f5ede0] transition-all">{icon}</div>
                     <div className="text-base font-black text-[#2c1a10]">{title}</div>
                     <p className="text-[11px] text-[#9a7060] mt-1">{desc}</p>
                   </button>
@@ -3308,27 +3463,27 @@ export default function MokaOrderPad() {
 
       {/* ── ADMIN BOTTOM NAV ─────────────────────────── */}
       {isAdmin && (
-        <div className="fixed left-1/2 bottom-3 -translate-x-1/2 z-50 bg-white/90 backdrop-blur border border-white/80 shadow-lg rounded-2xl px-2 py-1.5 flex items-center gap-1 max-w-[92vw]">
+        <div className="fixed left-1/2 bottom-4 -translate-x-1/2 z-50 bg-[#2c1a10]/95 backdrop-blur-md border border-[#3d2518] shadow-2xl rounded-2xl px-2 py-2 flex items-center gap-1 max-w-[96vw]">
           {[
-            ["dashboard", "🏠", "Dashboard"],
-            ["products", "📦", "Produits"],
-            ["inventory", "📋", "Inventaire"],
-            ["orders", "🛒", "Commandes"],
-            ["reports", "📊", "Rapports"],
-            ["settings", "⚙️", "Paramètres"],
-          ].map(([id, icon, label]) => (
+            { id: "dashboard", label: "Dashboard", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg> },
+            { id: "products", label: "Produits", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg> },
+            { id: "inventory", label: "Inventaire", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect width="6" height="4" x="9" y="3" rx="1"/><path d="m9 14 2 2 4-4"/></svg> },
+            { id: "orders", label: "Commandes", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg> },
+            { id: "reports", label: "Rapports", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg> },
+            { id: "settings", label: "Paramètres", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> },
+          ].map(({ id, icon, label }) => (
             <button
               key={id}
               onClick={() => setAdminSection(id)}
               title={label}
-              className={`flex flex-col items-center justify-center w-10 h-10 rounded-xl text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl text-[9px] font-bold shrink-0 transition-all cursor-pointer min-w-[48px] ${
                 adminSection === id
-                  ? "bg-[#2c1a10] text-white"
-                  : "text-[#6b4a3d] hover:bg-[#f0e4d4]"
+                  ? "bg-[#f5ede0] text-[#2c1a10]"
+                  : "text-[#a08070] hover:text-[#f5ede0] hover:bg-white/10"
               }`}
             >
-              <span className="text-base leading-none">{icon}</span>
-              <span className="hidden sm:block mt-0.5 leading-none">{label}</span>
+              {icon}
+              <span className="leading-none">{label}</span>
             </button>
           ))}
         </div>
@@ -3397,7 +3552,7 @@ export default function MokaOrderPad() {
                         </td>
                         <td className="px-3 py-2.5">
                           <div className="flex gap-1.5">
-                            <button onClick={() => openSettingsEdit(item)} className="h-7 px-2.5 rounded-lg bg-white border border-[#e5d5c5] text-[11px] font-bold text-[#6b4a3d] hover:bg-[#faf5ef] transition-colors cursor-pointer">✏️ Modifier</button>
+                            <button onClick={() => openSettingsEdit(item)} className="h-7 px-2.5 rounded-lg bg-white border border-[#e5d5c5] text-[11px] font-bold text-[#6b4a3d] hover:bg-[#faf5ef] transition-colors cursor-pointer">Modifier</button>
                             <button onClick={() => archiveSettingsDatabaseItem(item)} className="h-7 px-2.5 rounded-lg bg-red-50 border border-red-100 text-[11px] font-bold text-red-600 hover:bg-red-100 transition-colors cursor-pointer">Désactiver</button>
                           </div>
                         </td>
@@ -3427,7 +3582,7 @@ export default function MokaOrderPad() {
                   {settingsPanel === "zones" && "🗄️ Nouvelle zone"}
                 </h2>
               </div>
-              <button onClick={() => setCreatingSettingsItem(false)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] transition-colors cursor-pointer">×</button>
+              <button onClick={() => setCreatingSettingsItem(false)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] hover:text-[#2c1a10] transition-all cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -3507,7 +3662,7 @@ export default function MokaOrderPad() {
                   {settingsPanel === "suppliers" ? "🏢 Fournisseur" : "👥 Staff"}
                 </h2>
               </div>
-              <button onClick={() => setEditingSettingsItem(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer">×</button>
+              <button onClick={() => setEditingSettingsItem(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] hover:text-[#2c1a10] transition-all cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -3555,10 +3710,10 @@ export default function MokaOrderPad() {
           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-md p-5">
             <div className="flex justify-between gap-4 items-start mb-5">
               <div>
-                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">📦 Réception · + Stock</div>
+                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Réception · Ajouter stock</div>
                 <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">{getStockName(stockReceiveItem)}</h2>
               </div>
-              <button onClick={() => setStockReceiveItem(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer">×</button>
+              <button onClick={() => setStockReceiveItem(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] hover:text-[#2c1a10] transition-all cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
             </div>
 
             <div className="rounded-xl bg-[#faf5ef] border border-[#e5d5c5] p-4 mb-4">
@@ -3612,7 +3767,7 @@ export default function MokaOrderPad() {
                 <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">📋 Ajuster le stock</div>
                 <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">{getStockName(inventoryItem)}</h2>
               </div>
-              <button onClick={() => setInventoryItem(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer">×</button>
+              <button onClick={() => setInventoryItem(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] hover:text-[#2c1a10] transition-all cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
             </div>
 
             <div className="rounded-xl bg-[#faf5ef] border border-[#e5d5c5] p-4 mb-4">
@@ -3653,7 +3808,7 @@ export default function MokaOrderPad() {
                 <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">{settingsItem?.isNew ? "Nouveau produit" : "Réglages produit"}</div>
                 <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">{settingsForm.name || "Sans nom"}</h2>
               </div>
-              <button onClick={() => setSettingsItem(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer">×</button>
+              <button onClick={() => setSettingsItem(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] hover:text-[#2c1a10] transition-all cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -3732,9 +3887,9 @@ export default function MokaOrderPad() {
             <div className="flex justify-between items-start gap-4 mb-5">
               <div>
                 <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Nouveau produit</div>
-                <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">➕ Ajouter au catalogue</h2>
+                <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">Ajouter au catalogue</h2>
               </div>
-              <button onClick={() => setCreatingProductDb(false)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer">×</button>
+              <button onClick={() => setCreatingProductDb(false)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] hover:text-[#2c1a10] transition-all cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
             </div>
 
             <div className="space-y-4">
@@ -3825,7 +3980,7 @@ export default function MokaOrderPad() {
                 <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Modifier le produit</div>
                 <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">{editingProductDb?.ingredient || editingProductDb?.name || "Produit"}</h2>
               </div>
-              <button onClick={() => setEditingProductDb(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer">×</button>
+              <button onClick={() => setEditingProductDb(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] hover:text-[#2c1a10] transition-all cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
             </div>
 
             <div className="space-y-4">
@@ -3912,10 +4067,10 @@ export default function MokaOrderPad() {
           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-xl max-h-[90vh] overflow-y-auto p-5">
             <div className="flex justify-between gap-4 items-start mb-5">
               <div>
-                <h2 className="text-lg font-black text-[#2c1a10]">⏱ Pointage staff</h2>
+                <h2 className="text-lg font-black text-[#2c1a10] flex items-center gap-2"><svg className="w-5 h-5 text-[#9a7060]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Pointage staff</h2>
                 <p className="text-[11px] text-[#9a7060] mt-0.5">Arrivée, pause, retour et départ.</p>
               </div>
-              <button onClick={() => setShowClockModal(false)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer">×</button>
+              <button onClick={() => setShowClockModal(false)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] hover:text-[#2c1a10] transition-all cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3965,10 +4120,18 @@ export default function MokaOrderPad() {
 
       {/* ── ADMIN PIN MODAL ───────────────────────────── */}
       {showAdminModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-[#e5d5c5] w-full max-w-sm p-6">
-            <h2 className="text-lg font-black text-[#2c1a10]">👤 Accès admin</h2>
-            <p className="text-[11px] text-[#9a7060] mt-1 mb-5">Entrez le code à 4 chiffres pour accéder aux réglages.</p>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl border border-[#e5d5c5] w-full max-w-sm p-6 overflow-hidden relative">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#92400E] via-[#B45309] to-[#5a7828]" />
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-11 h-11 rounded-2xl bg-[#2c1a10] flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <div>
+                <h2 className="text-base font-black text-[#2c1a10]">Accès admin</h2>
+                <p className="text-[11px] text-[#9a7060]">Code à 4 chiffres requis</p>
+              </div>
+            </div>
 
             <input
               value={adminPin}
@@ -3977,21 +4140,23 @@ export default function MokaOrderPad() {
               inputMode="numeric"
               maxLength={4}
               placeholder="••••"
-              className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-4 text-center text-2xl font-black tracking-[0.5em] text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors mb-4"
+              autoFocus
+              className="w-full rounded-2xl border-2 border-[#e5d5c5] bg-[#faf5ef] px-4 py-4 text-center text-3xl font-black tracking-[0.6em] text-[#2c1a10] outline-none focus:border-[#2c1a10] transition-colors mb-4"
             />
 
             <div className="flex gap-3">
               <button
                 onClick={() => { setShowAdminModal(false); setAdminPin(""); }}
-                className="flex-1 py-3 rounded-xl font-black bg-[#ede0d4] text-[#9a7060] hover:bg-[#e5d5c5] transition-colors cursor-pointer"
+                className="flex-1 py-3 rounded-xl font-bold text-sm bg-[#ede0d4] text-[#9a7060] hover:bg-[#e5d5c5] active:scale-95 transition-all cursor-pointer"
               >
                 Annuler
               </button>
               <button
                 onClick={unlockAdmin}
-                className="flex-1 py-3 rounded-xl font-black bg-[#5a7828] text-white hover:bg-[#4e6a22] transition-colors cursor-pointer"
+                className="flex-1 py-3 rounded-xl font-black text-sm bg-[#2c1a10] text-[#f5ede0] hover:bg-[#1e100a] active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md"
               >
-                Entrer ✅
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="11" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Entrer
               </button>
             </div>
           </div>
