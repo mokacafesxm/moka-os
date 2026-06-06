@@ -235,8 +235,13 @@ export default function CommandesPreview() {
   const loadAll = async () => {
     setLoading(true);
 
+    const safeJson = async (res) => {
+      const text = await res.text();
+      try { return JSON.parse(text); } catch { return []; }
+    };
+
     try {
-      const [stockRes, suppliersRes, ordersRes] = await Promise.all([
+      const [stockRes, suppliersRes, ordersRes, productsRes, staffRes] = await Promise.all([
         fetch(STOCK_URL),
         fetch(SETTINGS_URL, {
           method: "POST",
@@ -248,25 +253,51 @@ export default function CommandesPreview() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ resource: "supplierOrders", action: "list" }),
         }),
+        fetch(SETTINGS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resource: "products", action: "list" }),
+        }),
+        fetch(SETTINGS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resource: "staff", action: "list" }),
+        }),
       ]);
 
-      const stockData = await stockRes.json();
-      const suppliersData = await suppliersRes.json();
-      const ordersData = await ordersRes.json();
+      const stockData = await safeJson(stockRes);
+      const suppliersData = await safeJson(suppliersRes);
+      const ordersData = await safeJson(ordersRes);
+      const productsData = await safeJson(productsRes);
+      const staffData = await safeJson(staffRes);
 
       const stockList = normalizeArray(stockData, "stock").map(normalizeStock);
       const suppliersList = normalizeArray(suppliersData, "suppliers");
       const ordersList = normalizeArray(ordersData, "orders").map(normalizeOrder);
+      const productsList = normalizeArray(productsData, "products");
+      const staffList = normalizeArray(staffData, "staff");
 
       const UUID_RE = /^[0-9a-f-]{36}$/i;
       const supplierIdMap = {};
       suppliersList.forEach((s) => { if (s.id) supplierIdMap[s.id] = getSupplierName(s); });
       const stockIdMap = {};
       stockList.forEach((item) => { if (item.id) stockIdMap[item.id] = item.name; });
+      const productsIdMap = {};
+      productsList.forEach((p) => { if (p.id) productsIdMap[p.id] = p.ingredient || p.name || p.nom || p.title || ""; });
+      const staffIdMap = {};
+      staffList.forEach((s) => { if (s.id) staffIdMap[s.id] = s.prenom || s.firstName || s.name || s.nom || ""; });
+
+      const resolveUUID = (val, ...maps) => {
+        if (!UUID_RE.test(String(val))) return val;
+        for (const map of maps) { if (map[val]) return map[val]; }
+        return val;
+      };
+
       const resolvedOrders = ordersList.map((o) => ({
         ...o,
-        fournisseur: UUID_RE.test(String(o.fournisseur)) ? (supplierIdMap[o.fournisseur] || o.fournisseur) : o.fournisseur,
-        produit: UUID_RE.test(String(o.produit)) ? (stockIdMap[o.produit] || o.produit) : o.produit,
+        fournisseur: resolveUUID(o.fournisseur, supplierIdMap),
+        produit: resolveUUID(o.produit, stockIdMap, productsIdMap),
+        staff: resolveUUID(o.staff, staffIdMap),
       }));
 
       setStock(stockList);
@@ -359,11 +390,11 @@ export default function CommandesPreview() {
   const cartItems = Object.values(orderCart);
 
   const buildMessage = () => {
-    const date = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    const date = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     const lines = includedItems
       .map((p) => `- ${p.name} — ${composeCart[p.id]?.qty || p.suggested} ${p.unit}`)
       .join("\n");
-    return `Bonjour ${selectedSupplier} 👋\n\nVoici notre commande du ${date} :\n\n${lines}${notes ? `\n\nNotes : ${notes}` : ""}\n\nMerci 🙏\n— Équipe MÖKA`;
+    return `Bonjour ${selectedSupplier} 👋\n\nCommande du ${date} :\n\n${lines}${notes ? `\n\nNotes : ${notes}` : ""}\n\nMerci 🙏\n— Équipe MÖKA`;
   };
 
   const supplierContact = suppliers.find((s) => getSupplierName(s) === selectedSupplier);
@@ -718,7 +749,11 @@ function PreviewModal({ buildMessage, selectedSupplier, supplier, setShowPreview
 }
 
 function OrderDetailModal({ orderDetail, supplier, setOrderDetail }) {
-  const message = orderDetail.message || `${orderDetail.produit} × ${orderDetail.quantite} ${orderDetail.unite}`;
+  const orderDate = orderDetail.date
+    ? new Date(orderDetail.date + "T00:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    : "";
+  const message = orderDetail.message ||
+    `Bonjour ${orderDetail.fournisseur} 👋\n\nCommande du ${orderDate} :\n\n- ${orderDetail.produit} — ${orderDetail.quantite} ${orderDetail.unite}\n\nMerci 🙏\n— Équipe MÖKA`;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-3">
