@@ -1096,19 +1096,32 @@ export default function MokaOrderPad() {
     return fallback;
   };
 
-  const normalizeSupplierOrder = (order) => ({
-    id: orderValue(order, ["id"], `order-${Math.random()}`),
-    produit: orderValue(order, ["produit", "Produit", "property_produit", "name", "ingredient"], "Produit"),
-    fournisseur: orderValue(order, ["fournisseur", "Fournisseur", "property_fournisseur", "supplier"], "Sans fournisseur"),
-    quantite: orderValue(order, ["quantite", "quantité", "Quantité", "quantiteCommandee", "property_quantit_sugg_r_e", "property_quantite_suggeree"], 0),
-    unite: orderValue(order, ["unite", "Unité", "unit", "property_unit"], ""),
-    statut: orderValue(order, ["statut", "Statut", "property_statut"], "À commander"),
-    source: orderValue(order, ["source", "Source", "property_source"], "OrderPad"),
-    staff: orderValue(order, ["staff", "Staff", "property_staff"], "—"),
-    dateCreation: orderValue(order, ["dateCreation", "Date création", "property_date_cr_ation", "property_date_creation"], ""),
-    dateEnvoi: orderValue(order, ["dateEnvoi", "Envoyé le", "property_date_envoi", "property_envoy_le"], ""),
-    message: orderValue(order, ["message", "Message envoyé", "property_message_envoy", "property_message_envoye", "commentaire"], ""),
-  });
+  const normalizeSupplierOrder = (order) => {
+    const UUID_RE = /^[0-9a-f-]{36}$/i;
+    const resolveProduit = (val) => {
+      if (!UUID_RE.test(String(val))) return val;
+      const found = productsDb.find((p) => p.id === val);
+      return found ? (found.ingredient || found.name || val) : val;
+    };
+    const resolveFournisseur = (val) => {
+      if (!UUID_RE.test(String(val))) return val;
+      const found = (settingsCache?.suppliers || []).find((s) => s.id === val);
+      return found ? (found.nom || found.name || val) : val;
+    };
+    return {
+      id: orderValue(order, ["id"], `order-${Math.random()}`),
+      produit: resolveProduit(orderValue(order, ["produit", "Produit", "property_produit", "name", "ingredient"], "Produit")),
+      fournisseur: resolveFournisseur(orderValue(order, ["fournisseur", "Fournisseur", "property_fournisseur", "supplier"], "Sans fournisseur")),
+      quantite: orderValue(order, ["quantite", "quantité", "Quantité", "quantiteCommandee", "property_quantit_sugg_r_e", "property_quantite_suggeree"], 0),
+      unite: orderValue(order, ["unite", "Unité", "unit", "property_unit"], ""),
+      statut: orderValue(order, ["statut", "Statut", "property_statut"], "À commander"),
+      source: orderValue(order, ["source", "Source", "property_source"], "OrderPad"),
+      staff: orderValue(order, ["staff", "Staff", "property_staff"], "—"),
+      dateCreation: orderValue(order, ["dateCreation", "Date création", "property_date_cr_ation", "property_date_creation"], ""),
+      dateEnvoi: orderValue(order, ["dateEnvoi", "Envoyé le", "property_date_envoi", "property_envoy_le"], ""),
+      message: orderValue(order, ["message", "Message envoyé", "property_message_envoy", "property_message_envoye", "commentaire"], ""),
+    };
+  };
 
   const loadSupplierOrders = async () => {
     setLoadingSupplierOrders(true);

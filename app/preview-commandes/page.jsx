@@ -258,9 +258,20 @@ export default function CommandesPreview() {
       const suppliersList = normalizeArray(suppliersData, "suppliers");
       const ordersList = normalizeArray(ordersData, "orders").map(normalizeOrder);
 
+      const UUID_RE = /^[0-9a-f-]{36}$/i;
+      const supplierIdMap = {};
+      suppliersList.forEach((s) => { if (s.id) supplierIdMap[s.id] = getSupplierName(s); });
+      const stockIdMap = {};
+      stockList.forEach((item) => { if (item.id) stockIdMap[item.id] = item.name; });
+      const resolvedOrders = ordersList.map((o) => ({
+        ...o,
+        fournisseur: UUID_RE.test(String(o.fournisseur)) ? (supplierIdMap[o.fournisseur] || o.fournisseur) : o.fournisseur,
+        produit: UUID_RE.test(String(o.produit)) ? (stockIdMap[o.produit] || o.produit) : o.produit,
+      }));
+
       setStock(stockList);
       setSuppliers(suppliersList);
-      setOrders(ordersList);
+      setOrders(resolvedOrders);
 
       const firstSupplier =
         suppliersList[0] ? getSupplierName(suppliersList[0]) :
@@ -348,12 +359,11 @@ export default function CommandesPreview() {
   const cartItems = Object.values(orderCart);
 
   const buildMessage = () => {
-    const date = new Date().toLocaleDateString("fr-FR");
+    const date = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
     const lines = includedItems
-      .map((p) => `• ${p.name} × ${composeCart[p.id]?.qty || p.suggested} ${p.unit}`)
+      .map((p) => `- ${p.name} — ${composeCart[p.id]?.qty || p.suggested} ${p.unit}`)
       .join("\n");
-
-    return `Bonjour ${selectedSupplier},\n\nCommande MÖKA CAFÉ – ${date}\nPar : Staff\n\n${lines}${notes ? `\n\nNotes : ${notes}` : ""}\n\nMerci de confirmer.\n\nMÖKA CAFÉ SXM 🌴`;
+    return `Bonjour ${selectedSupplier} 👋\n\nVoici notre commande du ${date} :\n\n${lines}${notes ? `\n\nNotes : ${notes}` : ""}\n\nMerci 🙏\n— Équipe MÖKA`;
   };
 
   const supplierContact = suppliers.find((s) => getSupplierName(s) === selectedSupplier);
