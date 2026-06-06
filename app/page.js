@@ -2451,7 +2451,7 @@ export default function MokaOrderPad() {
 
           {/* ── MAIN SECTION ─────────────────────────── */}
           <section className={
-            isAdmin && ["dashboard", "products", "inventory", "settings"].includes(adminSection)
+            isAdmin && adminSection !== "dashboard" && ["products", "inventory", "settings", "orders", "reports"].includes(adminSection)
               ? "col-span-12"
               : "col-span-12 sm:col-span-8 xl:col-span-9"
           }>
@@ -2973,7 +2973,7 @@ export default function MokaOrderPad() {
           </section>
 
           {/* ── CART / ASIDE ─────────────────────────── */}
-          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 ${activeTab === "stock" && stockView === "stock" ? "hidden" : ""}`}>
+          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 ${(activeTab === "stock" && stockView === "stock") || (isAdmin && adminSection !== "dashboard" && ["products", "inventory", "settings", "orders", "reports"].includes(adminSection)) ? "hidden" : ""}`}>
             <div className="bg-white rounded-2xl border border-[#ddc9b5] shadow-md sm:sticky sm:top-[72px] overflow-hidden">
               {/* Cart header */}
               <div className="px-4 py-3.5 border-b border-[#f0e8dc] bg-[#faf5ef]">
