@@ -2284,25 +2284,37 @@ export default function MokaOrderPad() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f7efe4] text-[#332019] pb-28">
-      <div className="max-w-none w-full px-2 py-1">
-        <header className="flex items-end justify-between gap-5 mb-1">
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-[#3b241b]">
-              MÖKA
-            </h1>
+    <main className="min-h-screen bg-[#f5ede0] text-[#1a1008]" style={{fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"}}>
 
-            <div className="text-xs tracking-[0.42em] text-[#a97862] mt-1">
-              SUPPLIER ORDER PAD
+      {/* ── HEADER ─────────────────────────────────────── */}
+      <header className="sticky top-0 z-30 bg-[#f5ede0]/95 backdrop-blur border-b border-[#e5d5c5] px-4 py-3">
+        <div className="max-w-screen-2xl mx-auto flex items-center justify-between gap-3">
+
+          {/* Brand */}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-[#2c1a10] flex items-center justify-center">
+              <span className="text-white font-black text-sm">M</span>
+            </div>
+            <div>
+              <div className="font-black text-[#2c1a10] text-base leading-none tracking-tight">MÖKA</div>
+              <div className="text-[10px] text-[#9a7060] tracking-[0.3em] uppercase mt-0.5">Order Pad</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto max-w-[70vw] pb-1">
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            {/* Commande auto time */}
+            <div className="hidden sm:block bg-white rounded-xl px-3 py-2 border border-[#e5d5c5] text-right shadow-sm">
+              <div className="text-[10px] text-[#9a7060] leading-none">Commande auto</div>
+              <div className="font-black text-[#2c1a10] text-sm leading-none mt-0.5">17:45 SXM</div>
+            </div>
+
             <button
               onClick={() => setShowClockModal(true)}
-              className="rounded-[1.1rem] px-4 py-3 shadow-sm border font-black text-xs bg-white/90 text-[#3b241b] border-[#eadfd4]"
+              className="h-9 px-3 rounded-xl bg-white border border-[#e5d5c5] font-bold text-xs text-[#2c1a10] shadow-sm hover:bg-[#f0e4d4] transition-colors flex items-center gap-1.5 cursor-pointer"
             >
-              ⏱ Pointage
+              <span>⏱</span>
+              <span className="hidden sm:inline">Pointage</span>
             </button>
 
             <button
@@ -2315,35 +2327,32 @@ export default function MokaOrderPad() {
                   setShowAdminModal(true);
                 }
               }}
-              className={`rounded-[1.1rem] px-4 py-3 shadow-sm border font-black text-xs ${
+              className={`h-9 px-3 rounded-xl font-bold text-xs border shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer ${
                 isAdmin
-                  ? "bg-[#6f8f32] text-white border-[#6f8f32]"
-                  : "bg-white/90 text-[#3b241b] border-[#eadfd4]"
+                  ? "bg-[#5a7828] text-white border-[#5a7828] hover:bg-[#4e6a22]"
+                  : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:bg-[#f0e4d4]"
               }`}
             >
-              {isAdmin ? "👤 Admin ON" : "👤 Admin"}
+              <span>👤</span>
+              <span>{isAdmin ? "Admin ON" : "Admin"}</span>
             </button>
-
-            <div className="bg-white/90 rounded-[1.1rem] px-4 py-3 shadow-sm border border-[#eadfd4] text-right text-xs shrink-0">
-              <div className="text-xs text-[#a97862]">Commande automatique</div>
-
-              <div className="font-black text-base text-[#3b241b]">17:45 SXM</div>
-            </div>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <div className="flex gap-3 mt-3 mb-2 overflow-x-auto pb-2">
-<button
+      <div className="max-w-screen-2xl mx-auto px-3 py-3">
+
+        {/* ── TABS ────────────────────────────────────── */}
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide">
+          <button
             onClick={() => {
-                setActiveTab("orderpad");
-                if (!activeCategory && categories[0]) {
-                  setActiveCategory(categories[0]);
-                }
-              }}
-            className={`px-5 py-2 rounded-full text-xs font-black transition ${
+              setActiveTab("orderpad");
+              if (!activeCategory && categories[0]) setActiveCategory(categories[0]);
+            }}
+            className={`h-9 px-4 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
               activeTab === "orderpad"
-                ? "bg-[#3b241b] text-white shadow-md"
-                : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
+                ? "bg-[#2c1a10] text-white shadow-md"
+                : "bg-white text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
             }`}
           >
             🛒 OrderPad
@@ -2351,267 +2360,221 @@ export default function MokaOrderPad() {
 
           <button
             onClick={() => setActiveTab("stock")}
-            className={`px-5 py-2 rounded-full text-xs font-black transition ${
+            className={`h-9 px-4 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === "stock"
-                ? "bg-[#3b241b] text-white shadow-md"
-                : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
+                ? "bg-[#2c1a10] text-white shadow-md"
+                : "bg-white text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
             }`}
           >
-            <span className="inline-flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-red-600"></span>
-              Stock Live
-            </span>
+            <span className="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+            Stock Live
           </button>
 
           <button
             onClick={() => setActiveTab("preps")}
-            className={`relative min-w-[360px] whitespace-nowrap px-6 py-2 rounded-full text-xs font-black transition flex items-center justify-center gap-4 ${
+            className={`h-9 px-4 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === "preps"
-                ? "bg-[#3b241b] text-white shadow-md"
-                : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
+                ? "bg-[#2c1a10] text-white shadow-md"
+                : "bg-white text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
             }`}
           >
-            👨‍🍳 Préparations à faire
+            👨‍🍳 Préparations
             {prepCount > 0 && (
-              <span className="static bg-red-600 text-white text-xs font-black rounded-full min-w-6 h-6 px-2 flex items-center justify-center shadow-md">
+              <span className="bg-red-500 text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
                 {prepCount}
               </span>
             )}
           </button>
-        
         </div>
 
-
+        {/* ── ADMIN KPI CARDS ──────────────────────────── */}
         {isAdmin && (
-        <div className="grid grid-cols-4 gap-2 mb-4">
-          <button
-            onClick={() => setActiveTab("stock")}
-            className="rounded-[1.1rem] bg-white/90 border border-[#eadfd4] p-4 text-left shadow-sm active:scale-[0.99]"
-          >
-            <div className="text-xs font-black text-[#a97862]">🔴 Produits critiques</div>
-            <div className="text-xl font-black text-red-600 mt-1">{stockKpis.critical}</div>
-            <div className="text-xs font-bold text-[#a97862] mt-1">À commander en priorité</div>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("stock")}
-            className="rounded-[1.1rem] bg-white/90 border border-[#eadfd4] p-4 text-left shadow-sm active:scale-[0.99]"
-          >
-            <div className="text-xs font-black text-[#a97862]">🟠 Alertes stock</div>
-            <div className="text-xl font-black text-orange-500 mt-1">{stockKpis.alert}</div>
-            <div className="text-xs font-bold text-[#a97862] mt-1">Sous seuil bientôt</div>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("preps")}
-            className="rounded-[1.1rem] bg-white/90 border border-[#eadfd4] p-4 text-left shadow-sm active:scale-[0.99]"
-          >
-            <div className="text-xs font-black text-[#a97862]">👨‍🍳 Prépas à faire</div>
-            <div className="text-xl font-black text-[#6f8f32] mt-1">{prepCount}</div>
-            <div className="text-xs font-bold text-[#a97862] mt-1">Aujourd’hui / à venir</div>
-          </button>
-
-          <div className="rounded-[1.1rem] bg-white/90 border border-[#eadfd4] p-4 shadow-sm">
-            <div className="text-xs font-black text-[#a97862]">📦 Catalogue matières premières suivis</div>
-            <div className="text-lg font-black text-[#3b241b] mt-0">{stockKpis.total}</div>
-            <div className="text-xs font-bold text-[#a97862] mt-1">Stock Live</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            {[
+              { label: "Critiques", value: stockKpis.critical, color: "text-red-600", bg: "bg-red-50 border-red-100", dot: "bg-red-500", onClick: () => setActiveTab("stock") },
+              { label: "Alertes stock", value: stockKpis.alert, color: "text-orange-500", bg: "bg-orange-50 border-orange-100", dot: "bg-orange-400", onClick: () => setActiveTab("stock") },
+              { label: "Prépas à faire", value: prepCount, color: "text-[#5a7828]", bg: "bg-[#f0f7e5] border-[#c8dfa0]", dot: "bg-[#5a7828]", onClick: () => setActiveTab("preps") },
+              { label: "Produits suivis", value: stockKpis.total, color: "text-[#2c1a10]", bg: "bg-white border-[#e5d5c5]", dot: null, onClick: null },
+            ].map(({ label, value, color, bg, dot, onClick }) => (
+              <button
+                key={label}
+                onClick={onClick || undefined}
+                className={`rounded-xl p-3 border text-left shadow-sm transition-all ${bg} ${onClick ? "cursor-pointer hover:shadow-md active:scale-[0.98]" : "cursor-default"}`}
+              >
+                <div className="flex items-center gap-1.5 mb-2">
+                  {dot && <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`}></span>}
+                  <span className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">{label}</span>
+                </div>
+                <div className={`text-2xl font-black ${color}`}>{value}</div>
+              </button>
+            ))}
           </div>
-        </div>
         )}
 
-        <div className="grid grid-cols-12 gap-2 items-start">
+        {/* ── MAIN GRID ────────────────────────────────── */}
+        <div className="grid grid-cols-12 gap-3 items-start">
+
+          {/* ── MAIN SECTION ─────────────────────────── */}
           <section className={
-              isAdmin && ["dashboard", "products", "inventory", "settings"].includes(adminSection)
-                ? "col-span-12"
-                : "col-span-12 sm:col-span-8 xl:col-span-9"
-            }>
+            isAdmin && ["dashboard", "products", "inventory", "settings"].includes(adminSection)
+              ? "col-span-12"
+              : "col-span-12 sm:col-span-8 xl:col-span-9"
+          }>
+
+            {/* ── STOCK TAB ──── */}
             {activeTab === "stock" && (
               <>
                 {loadingStock ? (
-                  <div className="bg-white rounded-[1.4rem] p-10 text-center text-[#a97862]">
-                    Chargement du stock live…
+                  <div className="bg-white rounded-2xl p-10 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
+                    <div className="text-2xl mb-2">⏳</div>
+                    <div className="font-semibold">Chargement du stock live…</div>
                   </div>
                 ) : stockLive.length === 0 ? (
-                  <div className="bg-white rounded-[1.4rem] p-10 text-center text-[#a97862]">
-                    Aucun stock trouvé.
+                  <div className="bg-white rounded-2xl p-10 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
+                    <div className="text-2xl mb-2">📭</div>
+                    <div className="font-semibold">Aucun stock trouvé.</div>
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    <div className="bg-white/80 border border-[#eadfd4] rounded-[1.1rem] p-3 shadow-sm">
-                      <div className="flex items-center gap-3 rounded-[1.1rem] bg-[#fffaf3] border border-[#d6b8a7] px-2 py-1">
-                        <span className="text-xl">🔍</span>
-
+                  <div className="space-y-4">
+                    {/* Search + filters bar */}
+                    <div className="bg-white rounded-2xl p-3 border border-[#e5d5c5] shadow-sm space-y-3">
+                      {/* Search input */}
+                      <div className="flex items-center gap-2 bg-[#faf5ef] border border-[#d8c8b8] rounded-xl px-3 py-2">
+                        <svg className="w-4 h-4 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                         <input
                           value={stockSearch}
                           onChange={(e) => setStockSearch(e.target.value)}
                           placeholder={stockView === "prepa" ? "Rechercher une prépa..." : "Rechercher un produit stock..."}
-                          className="w-full bg-transparent outline-none text-[#3b241b] placeholder:text-[#b08d7b] font-semibold"
+                          className="w-full bg-transparent outline-none text-[#2c1a10] placeholder:text-[#b09080] text-sm font-medium"
                         />
+                        {stockSearch && (
+                          <button onClick={() => setStockSearch("")} className="text-[#9a7060] hover:text-[#2c1a10] transition-colors cursor-pointer">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                          </button>
+                        )}
                       </div>
 
-                      <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
-                        <button
-                          onClick={() => {
-                            setStockView("prepa");
-                            ;
-                          }}
-                          className={`px-2 py-1 rounded-full whitespace-nowrap text-xs sm:text-xs font-black shrink-0 transition ${
-                            stockView === "prepa"
-                              ? "bg-[#6f8f32] text-white shadow-md"
-                              : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
-                          }`}
-                        >
-                          👨‍🍳 Prépas
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setStockView("stock");
-                            if (stockCategories[0]) {
-                              setActiveStockCategory(stockCategories[0]);
-                            }
-                          }}
-                          className={`px-2 py-1 rounded-full whitespace-nowrap text-xs sm:text-xs font-black shrink-0 transition ${
-                            stockView === "stock"
-                              ? "bg-[#6f8f32] text-white shadow-md"
-                              : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
-                          }`}
-                        >
-                          📦 Stock
-                        </button>
+                      {/* View toggle */}
+                      <div className="flex gap-2">
+                        {[
+                          { key: "prepa", label: "👨‍🍳 Prépas", onSelect: () => setStockView("prepa") },
+                          { key: "stock", label: "📦 Stock", onSelect: () => { setStockView("stock"); if (stockCategories[0]) setActiveStockCategory(stockCategories[0]); } },
+                        ].map(({ key, label, onSelect }) => (
+                          <button
+                            key={key}
+                            onClick={onSelect}
+                            className={`h-8 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              stockView === key
+                                ? "bg-[#2c1a10] text-white"
+                                : "bg-[#faf5ef] text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
                       </div>
 
+                      {/* Category pills for stock view */}
                       {stockView === "stock" && (
-                        <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
+                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                           {stockCategories.filter((cat) => String(cat).trim().toLowerCase() !== "tous").map((cat) => (
                             <button
                               key={cat}
                               onClick={() => setActiveStockCategory(cat)}
-                              className={`px-2 py-1 rounded-full whitespace-nowrap text-xs sm:text-xs font-black shrink-0 transition ${
+                              className={`h-7 px-3 rounded-lg whitespace-nowrap text-xs font-bold shrink-0 transition-all cursor-pointer ${
                                 activeStockCategory === cat
-                                  ? "bg-[#3b241b] text-white shadow-md"
-                                  : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
+                                  ? "bg-[#5a7828] text-white"
+                                  : "bg-[#faf5ef] text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
                               }`}
                             >
-                              {`${categoryEmojis[cat] || "📌"} ${cat}`}
+                              {categoryEmojis[cat] || "📌"} {cat}
                             </button>
                           ))}
                         </div>
                       )}
                     </div>
 
-                    <div className="space-y-8">
+                    {/* Stock cards */}
+                    <div className="space-y-6">
                       {groupedStockItems.map(([category, items]) => (
                         <div key={category}>
-                          <div className="flex items-center gap-4 mb-4">
-                            <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
+                          <div className="flex items-center gap-3 mb-3">
+                            <span className="text-sm font-black text-[#2c1a10]">
                               {stockView === "prepa" ? "👨‍🍳 Prépas" : `${categoryEmojis[category] || "📌"} ${category}`}
-                            </div>
-
-                            <div className="flex-1 h-[1px] bg-[#dccbbb]" />
-
-                            <div className="text-xs font-bold text-[#a97862]">
-                              {items.length} produits
-                            </div>
+                            </span>
+                            <div className="flex-1 h-px bg-[#e0d0c0]" />
+                            <span className="text-[11px] font-semibold text-[#9a7060]">{items.length}</span>
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                             {items.map((item) => {
                               const stockId = item.id || getStockName(item);
                               const selected = stockView === "prepa" && !!cart[stockId];
                               const status = getStockStatus(item);
-                              const isCritical = String(status).includes("Critique");
-                              const isLow = String(status).includes("Stock bas");
+                              const isCritical = String(status).toLowerCase().includes("critique");
+                              const isLow = String(status).toLowerCase().includes("stock bas");
 
                               return (
                                 <div
                                   key={stockId}
                                   onClick={() => {
-                                    if (stockView === "stock") {
-                                      openStockReceive(item);
-                                      return;
-                                    }
-
+                                    if (stockView === "stock") { openStockReceive(item); return; }
                                     selected ? removeItem(stockId) : addStockPrep(item);
                                   }}
-                                  className={`rounded-[1.75rem] shadow-sm border transition overflow-hidden cursor-pointer ${
+                                  className={`rounded-2xl border transition-all overflow-hidden cursor-pointer active:scale-[0.98] ${
                                     selected
-                                      ? "bg-[#6f8f32] text-white border-[#6f8f32]"
-                                      : "bg-white text-[#3b241b] border-[#eadfd4]"
+                                      ? "bg-[#5a7828] text-white border-[#5a7828] shadow-lg"
+                                      : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:shadow-md hover:border-[#d0c0b0]"
                                   }`}
                                 >
-                                  <div className={`h-3 ${
-                                    isCritical ? "bg-red-600" : isLow ? "bg-orange-500" : "bg-[#6f8f32]"
-                                  }`} />
+                                  {/* Status bar */}
+                                  <div className={`h-1 ${isCritical ? "bg-red-500" : isLow ? "bg-orange-400" : "bg-[#5a7828]"}`} />
 
-                                  <div className="p-5">
-                                    <div className={`text-xs font-black mb-2 ${
-                                      selected ? "text-white/80" : "text-[#6f8f32]"
+                                  <div className="p-4">
+                                    {/* Status badge */}
+                                    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold mb-2 ${
+                                      isCritical
+                                        ? selected ? "bg-white/20 text-white" : "bg-red-50 text-red-600"
+                                        : isLow
+                                        ? selected ? "bg-white/20 text-white" : "bg-orange-50 text-orange-600"
+                                        : selected ? "bg-white/20 text-white" : "bg-[#f0f7e5] text-[#5a7828]"
                                     }`}>
-                                      {status}
+                                      {isCritical ? "●" : isLow ? "●" : "●"} {status}
                                     </div>
 
-                                    <h2 className="text-base font-black leading-tight">
-                                      {getStockName(item)}
-                                    </h2>
+                                    <h3 className="text-sm font-black leading-tight mb-3">{getStockName(item)}</h3>
 
-                                    <div className={`mt-5 rounded-2xl p-4 ${
-                                      selected ? "bg-white/20" : "bg-[#f7efe4]"
-                                    }`}>
-                                      <div className="text-xs opacity-70">
-                                        Portions restantes
-                                      </div>
-
-                                      <div className="text-xl font-black mt-1">
-                                        {getStockPortions(item)}
-                                      </div>
-
+                                    {/* Portions info */}
+                                    <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/15" : "bg-[#faf5ef]"}`}>
+                                      <div className={`text-[10px] font-medium mb-1 ${selected ? "text-white/70" : "text-[#9a7060]"}`}>Portions restantes</div>
+                                      <div className="text-xl font-black">{getStockPortions(item)}</div>
                                       {getStockZone(item) && (
-                                        <div className="text-xs opacity-70 mt-1">
-                                          Zone : {getStockZone(item)}
-                                        </div>
+                                        <div className={`text-[10px] mt-1 ${selected ? "text-white/60" : "text-[#9a7060]"}`}>📍 {getStockZone(item)}</div>
                                       )}
                                     </div>
 
                                     {stockView === "stock" ? (
                                       <button
                                         type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          openStockReceive(item);
-                                        }}
-                                        className="mt-4 w-full rounded-2xl bg-[#eef7e9] border border-[#b9d6a6] px-4 py-3 text-left shadow-sm active:scale-[0.98]"
+                                        onClick={(e) => { e.stopPropagation(); openStockReceive(item); }}
+                                        className="w-full rounded-xl bg-[#f0f7e5] border border-[#c8dfa0] px-3 py-2.5 text-left hover:bg-[#e5f0d5] transition-colors cursor-pointer"
                                       >
-                                        <div className="text-xs font-black tracking-[0.22em] text-[#6f8f32] uppercase">
-                                          📦 RÉCEPTION
-                                        </div>
-                                        <div className="text-sm font-black text-[#3b241b] mt-1">
-                                          + Ajouter du stock
-                                        </div>
+                                        <div className="text-[10px] font-bold text-[#5a7828] uppercase tracking-wide">📦 Réception</div>
+                                        <div className="text-xs font-black text-[#2c1a10] mt-0.5">+ Ajouter du stock</div>
                                       </button>
                                     ) : (
-                                      <div className="mt-4 flex justify-between items-center">
-                                        <span className={`text-xs font-semibold ${
-                                          selected ? "text-white/80" : "text-[#a97862]"
-                                        }`}>
-                                          {selected ? "Sélectionné" : "Toucher pour préparer"}
-                                        </span>
-
-                                        <span className="text-3xl">
-                                          {selected ? "✅" : "＋"}
+                                      <div className={`flex items-center justify-between text-xs font-semibold ${selected ? "text-white/80" : "text-[#9a7060]"}`}>
+                                        <span>{selected ? "✓ Sélectionné" : "Toucher pour préparer"}</span>
+                                        <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-base ${selected ? "bg-white/20" : "bg-[#f0f7e5] text-[#5a7828]"}`}>
+                                          {selected ? "✓" : "+"}
                                         </span>
                                       </div>
                                     )}
 
                                     {isAdmin && (
                                       <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          openSettings(item);
-                                        }}
-                                        className={`block mt-4 text-xs font-bold underline ${
-                                          selected ? "text-white/80" : "text-[#a97862]"
-                                        }`}
+                                        onClick={(e) => { e.stopPropagation(); openSettings(item); }}
+                                        className={`mt-3 text-[10px] font-bold underline cursor-pointer ${selected ? "text-white/70" : "text-[#9a7060] hover:text-[#2c1a10]"}`}
                                       >
                                         ⚙️ Corriger stock
                                       </button>
@@ -2629,49 +2592,64 @@ export default function MokaOrderPad() {
               </>
             )}
 
+            {/* ── ORDERPAD TAB ──── */}
             {activeTab === "orderpad" && (
               <>
-                <div className="bg-white/80 border border-[#eadfd4] rounded-[1.1rem] p-3 mb-2 shadow-sm">
-                  <div className="flex items-center gap-3 rounded-[1.1rem] bg-[#fffaf3] border border-[#d6b8a7] px-2 py-1">
-                    <span className="text-xl">🔍</span>
-
+                {/* Search + category filters */}
+                <div className="bg-white rounded-2xl p-3 mb-4 border border-[#e5d5c5] shadow-sm space-y-3">
+                  <div className="flex items-center gap-2 bg-[#faf5ef] border border-[#d8c8b8] rounded-xl px-3 py-2">
+                    <svg className="w-4 h-4 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     <input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Rechercher un produit, une zone, une sous-catégorie..."
-                      className="w-full bg-transparent outline-none text-[#3b241b] placeholder:text-[#b08d7b] font-semibold"
+                      placeholder="Rechercher un produit, zone, sous-catégorie..."
+                      className="w-full bg-transparent outline-none text-[#2c1a10] placeholder:text-[#b09080] text-sm font-medium"
                     />
+                    {search && (
+                      <button onClick={() => setSearch("")} className="text-[#9a7060] hover:text-[#2c1a10] transition-colors cursor-pointer">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                      </button>
+                    )}
                   </div>
 
-                  <div className="flex gap-3 mt-4 overflow-x-auto pb-1">
+                  {/* Category pills */}
+                  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                     {categories.filter((cat) => String(cat).trim().toLowerCase() !== "tous").map((cat) => (
                       <button
                         key={cat}
-                        onClick={() => {
-                          setActiveCategory(cat);
-                          setActiveSubCategory("");
-                        }}
-                        className={`px-2 py-1 rounded-full whitespace-nowrap text-xs sm:text-xs font-black shrink-0 transition ${
+                        onClick={() => { setActiveCategory(cat); setActiveSubCategory(""); }}
+                        className={`h-8 px-3 rounded-lg whitespace-nowrap text-xs font-bold shrink-0 transition-all cursor-pointer ${
                           activeCategory === cat
-                            ? "bg-[#6f8f32] text-white shadow-md"
-                            : "bg-white text-[#6b4a3d] border border-[#eadfd4]"
+                            ? "bg-[#5a7828] text-white shadow-sm"
+                            : "bg-[#faf5ef] text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
                         }`}
                       >
-                        {`${categoryEmojis[cat] || "📌"} ${cat}`}
+                        {categoryEmojis[cat] || "📌"} {cat}
                       </button>
                     ))}
                   </div>
 
+                  {/* Sub-category pills */}
                   {subCategories.length > 0 && (
-                    <div className="flex flex-nowrap gap-2 mt-1 overflow-x-auto pb-1 whitespace-nowrap">
-{subCategories.map((sub) => (
+                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                      <button
+                        onClick={() => setActiveSubCategory("")}
+                        className={`h-7 px-3 rounded-md text-[11px] font-bold shrink-0 transition-all cursor-pointer ${
+                          !activeSubCategory
+                            ? "bg-[#2c1a10] text-white"
+                            : "bg-[#faf5ef] text-[#8b6f61] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
+                        }`}
+                      >
+                        Tous
+                      </button>
+                      {subCategories.map((sub) => (
                         <button
                           key={sub}
                           onClick={() => setActiveSubCategory(sub)}
-                          className={`px-2 py-1 rounded-full whitespace-nowrap text-xs font-black transition ${
+                          className={`h-7 px-3 rounded-md whitespace-nowrap text-[11px] font-bold shrink-0 transition-all cursor-pointer ${
                             activeSubCategory === sub
-                              ? "bg-[#3b241b] text-white"
-                              : "bg-[#f7efe4] text-[#8b6f61] border border-[#eadfd4]"
+                              ? "bg-[#2c1a10] text-white"
+                              : "bg-[#faf5ef] text-[#8b6f61] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
                           }`}
                         >
                           {sub}
@@ -2682,151 +2660,91 @@ export default function MokaOrderPad() {
                 </div>
 
                 {loading ? (
-                  <div className="bg-white rounded-[1.4rem] p-10 text-center text-[#a97862]">
-                    Chargement des produits…
+                  <div className="bg-white rounded-2xl p-10 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
+                    <div className="text-2xl mb-2">⏳</div>
+                    <div className="font-semibold">Chargement des produits…</div>
                   </div>
                 ) : filtered.length === 0 ? (
-                  <div className="bg-white rounded-[1.4rem] p-10 text-center text-[#a97862]">
-                    Aucun produit trouvé.
+                  <div className="bg-white rounded-2xl p-10 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
+                    <div className="text-2xl mb-2">🔍</div>
+                    <div className="font-semibold">Aucun produit trouvé.</div>
                   </div>
                 ) : (
-                  <div className="space-y-8">
+                  <div className="space-y-6">
                     {groupedProducts.map(([subCategory, productsInGroup]) => (
                       <div key={subCategory}>
-                        <div className="flex items-center gap-4 mb-4">
-                          <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
-                            {subCategory}
-                          </div>
-
-                          <div className="flex-1 h-[1px] bg-[#dccbbb]" />
-
-                          <div className="text-xs font-bold text-[#a97862]">
-                            {productsInGroup.length} produits
-                          </div>
+                        <div className="flex items-center gap-3 mb-3">
+                          <span className="text-sm font-black text-[#2c1a10]">{subCategory}</span>
+                          <div className="flex-1 h-px bg-[#e0d0c0]" />
+                          <span className="text-[11px] font-semibold text-[#9a7060]">{productsInGroup.length}</span>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                           {productsInGroup.map((product) => {
                             const selected = !!cart[product.id];
                             const cat = product.category || "Autres";
                             const sub = getSubCategory(product);
                             const supplier = getSupplier(product);
-                            const productUrl = product.url || null;
 
                             return (
                               <div
                                 key={product.id}
-                                className={`rounded-[1.75rem] shadow-sm border transition overflow-hidden ${
+                                className={`rounded-2xl border overflow-hidden transition-all ${
                                   selected
-                                    ? "bg-[#6f8f32] text-white border-[#6f8f32]"
-                                    : "bg-white text-[#3b241b] border-[#eadfd4]"
+                                    ? "bg-[#5a7828] text-white border-[#5a7828] shadow-lg"
+                                    : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:shadow-md hover:border-[#d0c0b0]"
                                 }`}
                               >
+                                {/* Photo / icon zone */}
                                 <button
-                                  onClick={() =>
-                                    selected
-                                      ? removeItem(product.id)
-                                      : addProduct(product)
-                                  }
-                                  className={`w-full h-20 flex items-center justify-center overflow-hidden ${
-                                    selected ? "bg-white/10" : "bg-[#efe4d7]"
+                                  onClick={() => selected ? removeItem(product.id) : addProduct(product)}
+                                  className={`w-full h-16 flex items-center justify-center overflow-hidden cursor-pointer ${
+                                    selected ? "bg-white/10" : "bg-[#f0e8dc]"
                                   }`}
                                 >
                                   {product.photo ? (
-                                    <img
-                                      src={product.photo}
-                                      alt={product.name || "Produit"}
-                                      className="w-full h-full object-cover"
-                                    />
+                                    <img src={product.photo} alt={product.name || "Produit"} className="w-full h-full object-cover" />
                                   ) : (
-                                    <span className="text-5xl">
-                                      {categoryEmojis[cat] || "📌"}
-                                    </span>
+                                    <span className="text-4xl">{categoryEmojis[cat] || "📌"}</span>
                                   )}
                                 </button>
 
+                                {/* Card body */}
                                 <button
-                                  onClick={() =>
-                                    selected
-                                      ? removeItem(product.id)
-                                      : addProduct(product)
-                                  }
-                                  className="w-full text-left p-5 active:scale-[0.99]"
+                                  onClick={() => selected ? removeItem(product.id) : addProduct(product)}
+                                  className="w-full text-left p-4 cursor-pointer"
                                 >
-                                  <div className="flex justify-between gap-4">
-                                    <div>
-                                      <div
-                                        className={`text-xs font-black mb-1 ${
-                                          selected
-                                            ? "text-white/85"
-                                            : "text-[#6f8f32]"
-                                        }`}
-                                      >
-                                        {categoryEmojis[cat] || "📌"} {cat}
-                                      </div>
-
-                                      <div
-                                        className={`inline-flex mb-2 px-3 py-1 rounded-full text-xs font-black ${
-                                          selected
-                                            ? "bg-white/20 text-white"
-                                            : "bg-[#f7efe4] text-[#a97862]"
-                                        }`}
-                                      >
+                                  <div className="flex justify-between gap-2 mb-2">
+                                    <div className="flex-1 min-w-0">
+                                      <div className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold mb-1.5 ${
+                                        selected ? "bg-white/20 text-white" : "bg-[#faf5ef] text-[#9a7060]"
+                                      }`}>
                                         {sub}
                                       </div>
-
-                                      <h2 className="text-base font-black leading-tight">
-                                        {product.name}
-                                      </h2>
+                                      <h3 className="text-sm font-black leading-tight truncate">{product.name}</h3>
                                     </div>
-
-                                    <div
-                                      className={`text-xs text-right max-w-[120px] ${
-                                        selected
-                                          ? "text-white/75"
-                                          : "text-[#a97862]"
-                                      }`}
-                                    >
+                                    <div className={`text-[10px] text-right shrink-0 max-w-[80px] leading-tight ${
+                                      selected ? "text-white/70" : "text-[#9a7060]"
+                                    }`}>
                                       {supplier}
                                     </div>
                                   </div>
 
-                                  <div
-                                    className={`mt-5 rounded-2xl p-4 ${
-                                      selected ? "bg-white/20" : "bg-[#f7efe4]"
-                                    }`}
-                                  >
-                                    <div className="text-xs opacity-70">
-                                      À commander
-                                    </div>
-
-                                    <div className="text-xl font-black mt-1">
-                                      {product.suggested || 1}{" "}
-                                      {product.unit || "unité"}
-                                    </div>
-
+                                  {/* Quantity box */}
+                                  <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/15" : "bg-[#faf5ef]"}`}>
+                                    <div className={`text-[10px] font-medium mb-0.5 ${selected ? "text-white/70" : "text-[#9a7060]"}`}>À commander</div>
+                                    <div className="text-lg font-black">{product.suggested || 1} <span className={`text-sm font-semibold ${selected ? "text-white/80" : "text-[#6b4a3d]"}`}>{product.unit || "unité"}</span></div>
                                     {product.zone && (
-                                      <div className="text-xs opacity-70 mt-1">
-                                        Zone : {product.zone}
-                                      </div>
+                                      <div className={`text-[10px] mt-0.5 ${selected ? "text-white/60" : "text-[#9a7060]"}`}>📍 {product.zone}</div>
                                     )}
                                   </div>
 
-                                  <div className="mt-4 flex justify-between items-center">
-                                    <span
-                                      className={`text-xs font-semibold ${
-                                        selected
-                                          ? "text-white/80"
-                                          : "text-[#a97862]"
-                                      }`}
-                                    >
-                                      {selected
-                                        ? "Ajouté"
-                                        : "Toucher pour ajouter"}
-                                    </span>
-
-                                    <span className="text-3xl">
-                                      {selected ? "✅" : "＋"}
+                                  <div className={`flex items-center justify-between text-xs font-semibold ${selected ? "text-white/80" : "text-[#9a7060]"}`}>
+                                    <span>{selected ? "✓ Ajouté" : "Toucher pour ajouter"}</span>
+                                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-base ${
+                                      selected ? "bg-white/20" : "bg-[#f0f7e5] text-[#5a7828]"
+                                    }`}>
+                                      {selected ? "✓" : "+"}
                                     </span>
                                   </div>
                                 </button>
@@ -2834,10 +2752,8 @@ export default function MokaOrderPad() {
                                 {isAdmin && (
                                   <button
                                     onClick={() => openSettings(product)}
-                                    className={`block px-5 pb-5 text-xs font-bold underline ${
-                                      selected
-                                        ? "text-white/80"
-                                        : "text-[#a97862]"
+                                    className={`block w-full px-4 pb-3 text-[10px] font-bold underline text-left cursor-pointer ${
+                                      selected ? "text-white/70" : "text-[#9a7060] hover:text-[#2c1a10]"
                                     }`}
                                   >
                                     ⚙️ Réglages
@@ -2854,143 +2770,95 @@ export default function MokaOrderPad() {
               </>
             )}
 
+            {/* ── PREPS TAB ──── */}
             {activeTab === "preps" && (
               <>
                 {loadingPreps ? (
-                  <div className="bg-white rounded-[1.4rem] p-10 text-center text-[#a97862]">
-                    Chargement des préparations…
+                  <div className="bg-white rounded-2xl p-10 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
+                    <div className="text-2xl mb-2">⏳</div>
+                    <div className="font-semibold">Chargement des préparations…</div>
                   </div>
                 ) : preps.length === 0 ? (
-                  <div className="bg-white rounded-[1.4rem] p-10 text-center text-[#a97862]">
-                    Aucune préparation à faire.
+                  <div className="bg-white rounded-2xl p-10 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
+                    <div className="text-2xl mb-2">✅</div>
+                    <div className="font-semibold">Aucune préparation à faire.</div>
                   </div>
                 ) : (
-                  <div className="space-y-8">
+                  <div className="space-y-6">
                     {groupedPreps.map(([category, prepsInGroup]) => (
                       <div key={category}>
-                        <div className="flex items-center gap-4 mb-4">
-                          <div className="text-xl font-black text-[#3b241b] whitespace-nowrap">
-                            👨‍🍳 {category}
-                          </div>
-
-                          <div className="flex-1 h-[1px] bg-[#dccbbb]" />
-
-                          <div className="text-xs font-bold text-[#a97862]">
-                            {prepsInGroup.length} prépas
-                          </div>
+                        <div className="flex items-center gap-3 mb-3">
+                          <span className={`text-sm font-black ${
+                            category.includes("aujourd'hui") ? "text-red-600" :
+                            category.includes("demain") ? "text-orange-500" : "text-[#2c1a10]"
+                          }`}>{category}</span>
+                          <div className="flex-1 h-px bg-[#e0d0c0]" />
+                          <span className="text-[11px] font-semibold text-[#9a7060]">{prepsInGroup.length}</span>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                           {prepsInGroup.map((prep) => {
                             const id = prep.id || getPrepName(prep);
                             const selected = !!cart[id];
-                            const name = getPrepName(prep);
                             const qty = getPrepQuantity(prep);
                             const unit = getPrepUnit(prep);
                             const status = getPrepStatus(prep);
                             const priority = getPrepPriority(prep);
+                            const isUrgent = String(priority).toLowerCase().includes("urgent") || String(priority).toLowerCase().includes("haute");
 
                             return (
                               <div
                                 key={id}
-                                className={`rounded-[1.75rem] shadow-sm border transition overflow-hidden ${
+                                className={`rounded-2xl border overflow-hidden transition-all cursor-pointer active:scale-[0.98] ${
                                   selected
-                                    ? "bg-[#6f8f32] text-white border-[#6f8f32]"
-                                    : "bg-white text-[#3b241b] border-[#eadfd4]"
+                                    ? "bg-[#5a7828] text-white border-[#5a7828] shadow-lg"
+                                    : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:shadow-md"
                                 }`}
                               >
+                                {isUrgent && <div className="h-1 bg-orange-400" />}
+
                                 <button
-                                  onClick={() =>
-                                    selected ? removeItem(id) : addPrep(prep)
-                                  }
-                                  className={`w-full text-left p-5 active:scale-[0.99] ${
-                                    selected ? "text-white" : "text-[#3b241b]"
-                                  }`}
+                                  onClick={() => selected ? removeItem(id) : addPrep(prep)}
+                                  className="w-full text-left p-4 cursor-pointer"
                                 >
-                                  <div className="flex justify-between gap-4">
+                                  <div className="flex items-start justify-between gap-2 mb-2">
                                     <div>
-                                      <div
-                                        className={`text-xs font-black mb-2 ${
-                                          selected
-                                            ? "text-white/85"
-                                            : "text-[#6f8f32]"
-                                        }`}
-                                      >
-                                        👨‍🍳 Préparation
-                                      </div>
-
-                                      <h2 className="text-base font-black leading-tight">
-                                        {name}
-                                      </h2>
+                                      {isUrgent && (
+                                        <div className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold mb-1.5 ${
+                                          selected ? "bg-white/20 text-white" : "bg-orange-50 text-orange-600"
+                                        }`}>
+                                          ⚡ {priority}
+                                        </div>
+                                      )}
+                                      <h3 className="text-sm font-black leading-tight">{getPrepName(prep)}</h3>
                                     </div>
-
-                                    <div
-                                      className={`text-xs text-right max-w-[120px] ${
-                                        selected
-                                          ? "text-white/75"
-                                          : "text-[#a97862]"
-                                      }`}
-                                    >
-                                      {priority}
-                                    </div>
+                                    <div className={`text-[10px] text-right ${selected ? "text-white/70" : "text-[#9a7060]"}`}>{priority}</div>
                                   </div>
 
-                                  <div
-                                    className={`mt-5 rounded-2xl p-4 ${
-                                      selected ? "bg-white/20" : "bg-[#f7efe4]"
-                                    }`}
-                                  >
-                                    <div className="text-xs opacity-70">
-                                      Quantité à préparer
-                                    </div>
-
-                                    <div className="text-xl font-black mt-1">
-                                      {qty} {unit}
-                                    </div>
-
-                                    <div className="text-xs opacity-70 mt-1">
-                                      Statut : {status}
-                                    </div>
-
+                                  <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/15" : "bg-[#faf5ef]"}`}>
+                                    <div className={`text-[10px] font-medium mb-0.5 ${selected ? "text-white/70" : "text-[#9a7060]"}`}>Quantité</div>
+                                    <div className="text-lg font-black">{qty} <span className={`text-sm ${selected ? "text-white/80" : "text-[#6b4a3d]"}`}>{unit}</span></div>
+                                    <div className={`text-[10px] mt-1 ${selected ? "text-white/60" : "text-[#9a7060]"}`}>Statut : {status}</div>
                                     {getPrepDueDate(prep) && (
-                                      <div className="text-xs opacity-70 mt-1">
-                                        Date prévue : {getPrepDueDate(prep).split("-").reverse().join("/")}
-                                      </div>
-                                    )}
-
-                                    {prep.assignedTo && (
-                                      <div className="text-xs opacity-70 mt-1">
-                                        Assigné à : {prep.assignedTo}
+                                      <div className={`text-[10px] mt-0.5 ${selected ? "text-white/60" : "text-[#9a7060]"}`}>
+                                        📅 {getPrepDueDate(prep).split("-").reverse().join("/")}
                                       </div>
                                     )}
                                   </div>
 
-                                  <div className="mt-4 flex justify-between items-center">
-                                    <span
-                                      className={`text-xs font-semibold ${
-                                        selected
-                                          ? "text-white/80"
-                                          : "text-[#a97862]"
-                                      }`}
-                                    >
-                                      {selected
-                                        ? "Ajouté à l’action"
-                                        : "Toucher pour ajouter"}
-                                    </span>
-
-                                    <span className="text-3xl">
-                                      {selected ? "✅" : "＋"}
-                                    </span>
+                                  <div className={`flex items-center justify-between text-xs font-semibold ${selected ? "text-white/80" : "text-[#9a7060]"}`}>
+                                    <span>{selected ? "✓ Ajouté" : "Toucher pour ajouter"}</span>
+                                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center font-black ${
+                                      selected ? "bg-white/20" : "bg-[#f0f7e5] text-[#5a7828]"
+                                    }`}>{selected ? "✓" : "+"}</span>
                                   </div>
                                 </button>
 
                                 {isAdmin && (
                                   <button
                                     onClick={() => openSettings(prep)}
-                                    className={`block px-5 pb-5 text-xs font-bold underline ${
-                                      selected
-                                        ? "text-white/80"
-                                        : "text-[#a97862]"
+                                    className={`block w-full px-4 pb-3 text-[10px] font-bold underline text-left cursor-pointer ${
+                                      selected ? "text-white/70" : "text-[#9a7060] hover:text-[#2c1a10]"
                                     }`}
                                   >
                                     ⚙️ Réglages
@@ -3008,126 +2876,97 @@ export default function MokaOrderPad() {
             )}
           </section>
 
-          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 sm:sticky sm:top-3 sm:self-start sm:max-h-[calc(100vh-1rem)] sm:overflow-y-auto ${activeTab === "stock" && stockView === "stock" ? "hidden" : ""}`}>
-            <div className="bg-white/95 rounded-[1.1rem] p-4 shadow-sm border border-[#eadfd4] sticky top-3 max-h-[calc(100vh-1.5rem)] overflow-y-auto max-h-[calc(100vh-1.5rem)] overflow-y-auto">
-              <h2 className="text-xl font-black text-[#3b241b]">
-                {activeTab === "stock"
-                  ? "👨‍🍳 Envoyer en préparation"
-                  : activeTab === "preps"
-                  ? "👨‍🍳 Confirmer la préparation"
-                  : "🛒 Action du jour"}
-              </h2>
+          {/* ── CART / ASIDE ─────────────────────────── */}
+          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 ${activeTab === "stock" && stockView === "stock" ? "hidden" : ""}`}>
+            <div className="bg-white rounded-2xl p-4 border border-[#e5d5c5] shadow-sm sm:sticky sm:top-[72px]">
+              {/* Cart header */}
+              <div className="mb-4">
+                <h2 className="text-base font-black text-[#2c1a10]">
+                  {activeTab === "stock" ? "👨‍🍳 Envoyer en prépa" : activeTab === "preps" ? "✅ Confirmer la prépa" : "🛒 Action du jour"}
+                </h2>
+                <p className="text-[11px] text-[#9a7060] mt-0.5">
+                  {activeTab === "stock" ? "Sélectionne un produit puis un staff" : activeTab === "preps" ? "Valider une préparation terminée" : "Sélection staff depuis le pad"}
+                </p>
+              </div>
 
-              <p className="text-[11px] text-[#a97862] mt-0">
-                {activeTab === "stock"
-                  ? "Sélectionne un produit Stock Live puis un staff"
-                  : activeTab === "preps"
-                  ? "Valider une préparation terminée"
-                  : "Sélection staff depuis le pad"}
-              </p>
-
-              <div className="mt-4">
-                <label className="block text-xs font-black text-[#a97862] mb-2">
-                  Membre du staff
-                </label>
-
+              {/* Staff selector */}
+              <div className="mb-3">
+                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Membre du staff</label>
                 <select
                   value={selectedStaff}
                   onChange={(e) => setSelectedStaff(e.target.value)}
-                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-2 py-1.5 text-xs font-bold text-[#3b241b] outline-none"
+                  className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-3 py-2 text-sm font-semibold text-[#2c1a10] outline-none cursor-pointer"
                 >
-                  <option value="">Sélectionner...</option>
-
+                  <option value="">Sélectionner…</option>
                   {staff.map((member) => (
-                    <option
-                      key={member.id || getStaffName(member)}
-                      value={member.id || getStaffName(member)}
-                    >
+                    <option key={member.id || getStaffName(member)} value={member.id || getStaffName(member)}>
                       {getStaffName(member)}
                     </option>
                   ))}
                 </select>
               </div>
 
+              {/* Due date (stock mode) */}
               {activeTab === "stock" && (
-                <div className="mt-4">
-                  <label className="block text-xs font-black text-[#a97862] mb-2">
-                    Date prévue
-                  </label>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      ["1", "+1 jour"],
-                      ["3", "+3 jours"],
-                      ["5", "+5 jours"],
-                      ["custom", "Perso"],
-                    ].map(([value, label]) => (
+                <div className="mb-4">
+                  <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Date prévue</label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {[["1", "+1 jour"], ["3", "+3 jours"], ["5", "+5 jours"], ["custom", "Perso"]].map(([value, label]) => (
                       <button
                         key={value}
                         type="button"
                         onClick={() => setDueDateMode(value)}
-                        className={`rounded-2xl px-3 py-3 text-xs font-black border ${
+                        className={`rounded-lg px-2 py-2 text-xs font-bold border transition-all cursor-pointer ${
                           dueDateMode === value
-                            ? "bg-[#6f8f32] text-white border-[#6f8f32]"
-                            : "bg-[#fffaf3] text-[#6b4a3d] border-[#eadfd4]"
+                            ? "bg-[#5a7828] text-white border-[#5a7828]"
+                            : "bg-[#faf5ef] text-[#6b4a3d] border-[#e5d5c5] hover:bg-[#f0e4d4]"
                         }`}
                       >
                         {label}
                       </button>
                     ))}
                   </div>
-
                   {dueDateMode === "custom" && (
                     <input
                       type="date"
                       value={customDueDate}
                       onChange={(e) => setCustomDueDate(e.target.value)}
-                      className="w-full mt-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-2 py-1.5 text-xs font-bold text-[#3b241b] outline-none"
+                      className="w-full mt-2 rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-3 py-2 text-sm font-semibold text-[#2c1a10] outline-none"
                     />
                   )}
-
-                  <div className="text-xs text-[#a97862] font-bold mt-1">
+                  <div className="text-[11px] text-[#9a7060] font-semibold mt-1.5">
                     Prévu le : {selectedDueDate.split("-").reverse().join("/")}
                   </div>
                 </div>
               )}
 
-              <div className="mt-6 space-y-3">
-                {cartItems.length === 0 && (
-                  <div className="text-[#a97862] bg-[#f7efe4] rounded-2xl p-5 text-center">
+              {/* Cart items */}
+              <div className="space-y-2 mb-4 max-h-[30vh] overflow-y-auto">
+                {cartItems.length === 0 ? (
+                  <div className="text-[#9a7060] bg-[#faf5ef] rounded-xl p-4 text-center text-xs font-medium">
                     Aucun élément sélectionné
                   </div>
-                )}
-
-                {cartItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex justify-between gap-3 border-b border-[#eadfd4] pb-3"
-                  >
-                    <div>
-                      <div className="font-black">{item.name}</div>
-
-                      <div className="text-xs text-[#a97862]">
-                        {item.type === "prep"
-                          ? "Préparation interne"
-                          : getSupplier(item)}
+                ) : (
+                  cartItems.map((item) => (
+                    <div key={item.id} className="flex justify-between gap-2 items-start py-2 border-b border-[#f0e8dc] last:border-0">
+                      <div className="min-w-0">
+                        <div className="text-xs font-black text-[#2c1a10] truncate">{item.name}</div>
+                        <div className="text-[10px] text-[#9a7060]">{item.type === "prep" ? "Préparation interne" : getSupplier(item)}</div>
                       </div>
+                      <div className="text-xs font-black text-[#5a7828] whitespace-nowrap shrink-0">{item.qty} {item.unit}</div>
                     </div>
-
-                    <div className="font-black whitespace-nowrap text-[#6f8f32]">
-                      {item.qty} {item.unit}
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
 
+              {/* Send button */}
               <button
                 onClick={sendToMokaOS}
                 disabled={cartItems.length === 0 || sending}
-                className={`w-full mt-4 py-3 rounded-2xl font-black transition ${
+                className={`w-full py-3 rounded-xl text-sm font-black transition-all cursor-pointer ${
                   cartItems.length === 0
-                    ? "bg-[#eadfd4] text-[#a97862]"
-                    : "bg-[#6f8f32] text-white shadow-md"
+                    ? "bg-[#ede0d4] text-[#b09080] cursor-not-allowed"
+                    : "bg-[#5a7828] text-white shadow-md hover:bg-[#4e6a22] active:scale-[0.98]"
                 }`}
               >
                 {sending
@@ -3143,1343 +2982,127 @@ export default function MokaOrderPad() {
         </div>
       </div>
 
-
-
-
-      {settingsPanel && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3">
-          <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-[98vw] max-w-none max-h-[86vh] overflow-hidden">
-            <div className="p-3 border-b border-[#eadfd4] flex justify-between items-start gap-4">
-              <div>
-                <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
-                  Paramètres
-                </div>
-                <h2 className="text-lg font-black text-[#3b241b] mt-0">
-                  {settingsPanel === "suppliers" && "🏢 Fournisseurs"}
-                  {settingsPanel === "staff" && "👥 Staff"}
-                  {settingsPanel === "categories" && "📦 Catégories"}
-                  {settingsPanel === "subcategories" && "📂 Sous-catégories"}
-                  {settingsPanel === "units" && "📏 Unités"}
-                  {settingsPanel === "zones" && "🗄️ Zones"}
-                </h2>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={openSettingsCreate}
-                  className="rounded-2xl px-4 py-3 bg-[#6f8f32] text-white font-black text-xs border border-[#6f8f32]"
-                >
-                  ➕ Ajouter
-                </button>
-
-                <button
-                  onClick={() => setSettingsPanel("")}
-                  className="w-10 h-10 rounded-full bg-[#f4eee7] hover:bg-[#eadfd4] flex items-center justify-center text-xl font-black text-[#a97862]"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-
-            {loadingSettingsPanel ? (
-              <div className="p-10 text-center text-[#a97862] font-black">
-                Chargement…
-              </div>
-            ) : settingsData.length === 0 ? (
-              <div className="p-10 text-center text-[#a97862] font-black">
-                Aucun élément trouvé.
-              </div>
-            ) : (
-              <div className="overflow-auto flex-1 pb-24">
-                <table className="w-full text-xs">
-                  <thead className="bg-[#f7efe4] text-[#a97862] sticky top-0">
-                    <tr>
-                      <th className="text-left p-2 font-black">Nom</th>
-                      <th className="text-left p-2 font-black">Catégorie / rôle</th>
-                      <th className="text-left p-2 font-black">Contact</th>
-                      <th className="text-left p-2 font-black">Téléphone</th>
-                      <th className="text-left p-2 font-black">Email</th>
-                      <th className="text-left p-2 font-black">Statut</th>
-                      <th className="text-left p-2 font-black">Actions</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {settingsData.map((item, index) => (
-                      <tr key={item.id || item.nom || item.name || index} className="border-t border-[#eadfd4]">
-                        <td className="p-2 font-black text-[#3b241b]">
-                          {item.nom || item.name || item.fournisseur || item.prenom || "Sans nom"}
-                        </td>
-                        <td className="p-2 text-[#6b4a3d] font-bold">
-                          {item.categorie || item.category || item.role || "—"}
-                        </td>
-                        <td className="p-2 text-[#6b4a3d]">
-                          {item.contact || item.methodeContact || "—"}
-                        </td>
-                        <td className="p-2 text-[#6b4a3d]">
-                          {item.telephone || item.whatsapp || item.phone || "—"}
-                        </td>
-                        <td className="p-2 text-[#6b4a3d]">
-                          {item.email || "—"}
-                        </td>
-                        <td className="p-2">
-                          <span className={`px-3 py-1 rounded-full text-xs font-black ${
-                            item.actif === false
-                              ? "bg-red-100 text-red-700"
-                              : "bg-[#eef5df] text-[#6f8f32]"
-                          }`}>
-                            {item.actif === false ? "Inactif" : "Actif"}
-                          </span>
-                        </td>
-
-                        <td className="p-2">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => openSettingsEdit(item)}
-                              className="rounded-xl px-2 py-1.5 bg-white border border-[#eadfd4] font-black text-[#6b4a3d]"
-                            >
-                              ✏️ Ajuster
-                            </button>
-
-                            <button
-                              onClick={() => archiveSettingsDatabaseItem(item)}
-                              className="rounded-xl px-2 py-1.5 bg-red-50 border border-red-100 font-black text-red-700"
-                            >
-                              Désactiver
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-
-
-      {creatingSettingsItem && (
-        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-3">
-          <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-xl p-5">
-            <div className="flex justify-between items-start gap-4 mb-5">
-              <div>
-                <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
-                  Ajouter
-                </div>
-                <h2 className="text-xl font-black text-[#3b241b]">
-                  {settingsPanel === "suppliers" && "🏢 Nouveau fournisseur"}
-                  {settingsPanel === "staff" && "👥 Nouveau staff"}
-                  {settingsPanel === "categories" && "📦 Nouvelle catégorie"}
-                  {settingsPanel === "subcategories" && "📂 Nouvelle sous-catégorie"}
-                  {settingsPanel === "units" && "📏 Nouvelle unité"}
-                  {settingsPanel === "zones" && "🗄️ Nouvelle zone"}
-                </h2>
-              </div>
-
-              <button
-                onClick={() => setCreatingSettingsItem(false)}
-                className="w-10 h-10 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="md:col-span-2">
-                <label className="block text-xs font-black text-[#a97862] mb-2">Nom</label>
-                <input
-                  value={creatingSettingsForm.nom || ""}
-                  onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, nom: e.target.value, name: e.target.value }))}
-                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                  placeholder="Nom"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-[#a97862] mb-2">Catégorie / rôle</label>
-                <input
-                  value={creatingSettingsForm.categorie || ""}
-                  onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, categorie: e.target.value, role: e.target.value }))}
-                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-[#a97862] mb-2">Contact</label>
-                <input
-                  value={creatingSettingsForm.contact || ""}
-                  onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, contact: e.target.value }))}
-                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-[#a97862] mb-2">Téléphone / WhatsApp</label>
-                <input
-                  value={creatingSettingsForm.telephone || ""}
-                  onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, telephone: e.target.value, whatsapp: e.target.value, phone: e.target.value }))}
-                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-[#a97862] mb-2">Email</label>
-                <input
-                  value={creatingSettingsForm.email || ""}
-                  onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, email: e.target.value }))}
-                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                />
-              </div>
-
-              <label className="md:col-span-2 flex items-center gap-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black">
-                <input
-                  type="checkbox"
-                  checked={creatingSettingsForm.actif !== false}
-                  onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, actif: e.target.checked }))}
-                />
-                Actif
-              </label>
-            </div>
-
-            <button
-              onClick={saveSettingsDatabaseCreate}
-              disabled={savingSettingsPanel}
-              className="w-full mt-5 py-4 rounded-2xl bg-[#6f8f32] text-white font-black shadow-md"
-            >
-              {savingSettingsPanel ? "Création…" : "Créer ✅"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {editingSettingsItem && (
-        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-3">
-          <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-xl max-h-[86vh] overflow-y-auto p-5">
-            <div className="flex justify-between items-start gap-4 mb-5">
-              <div>
-                <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
-                  Modifier
-                </div>
-                <h2 className="text-xl font-black text-[#3b241b]">
-                  {settingsPanel === "suppliers" ? "🏢 Fournisseur" : "👥 Staff"}
-                </h2>
-              </div>
-
-              <button
-                onClick={() => setEditingSettingsItem(null)}
-                className="w-10 h-10 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="md:col-span-2">
-                <label className="block text-xs font-black text-[#a97862] mb-2">
-                  Nom
-                </label>
-                <input
-                  value={editingSettingsForm.nom || ""}
-                  onChange={(e) => setEditingSettingsForm((prev) => ({ ...prev, nom: e.target.value, name: e.target.value }))}
-                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-[#a97862] mb-2">
-                  Catégorie / rôle
-                </label>
-                <input
-                  value={editingSettingsForm.categorie || ""}
-                  onChange={(e) => setEditingSettingsForm((prev) => ({ ...prev, categorie: e.target.value, role: e.target.value }))}
-                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-[#a97862] mb-2">
-                  Contact
-                </label>
-                <input
-                  value={editingSettingsForm.contact || ""}
-                  onChange={(e) => setEditingSettingsForm((prev) => ({ ...prev, contact: e.target.value }))}
-                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-[#a97862] mb-2">
-                  Téléphone / WhatsApp
-                </label>
-                <input
-                  value={editingSettingsForm.telephone || ""}
-                  onChange={(e) => setEditingSettingsForm((prev) => ({ ...prev, telephone: e.target.value, whatsapp: e.target.value, phone: e.target.value }))}
-                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-[#a97862] mb-2">
-                  Email
-                </label>
-                <input
-                  value={editingSettingsForm.email || ""}
-                  onChange={(e) => setEditingSettingsForm((prev) => ({ ...prev, email: e.target.value }))}
-                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                />
-              </div>
-
-              <label className="md:col-span-2 flex items-center gap-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black">
-                <input
-                  type="checkbox"
-                  checked={editingSettingsForm.actif !== false}
-                  onChange={(e) => setEditingSettingsForm((prev) => ({ ...prev, actif: e.target.checked }))}
-                />
-                Actif
-              </label>
-            </div>
-
-            <button
-              onClick={saveSettingsDatabaseItem}
-              disabled={savingSettingsPanel}
-              className="w-full mt-5 py-4 rounded-2xl bg-[#6f8f32] text-white font-black shadow-md"
-            >
-              {savingSettingsPanel ? "Enregistrement…" : "Enregistrer ✅"}
-            </button>
-          </div>
-        </div>
-      )}
-
-
-
-      {creatingProductDb && (
-        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-3">
-          <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-[98vw] max-w-none max-h-[86vh] overflow-y-auto p-5">
-            <div className="flex justify-between items-start gap-4 mb-5">
-              <div>
-                <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
-                  Nouveau produit
-                </div>
-                <h2 className="text-xl font-black text-[#3b241b]">
-                  ➕ Ajouter au catalogue matières premières
-                </h2>
-              </div>
-
-              <button
-                onClick={() => setCreatingProductDb(false)}
-                className="w-10 h-10 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-black text-[#a97862] mb-2">
-                  Nom du produit / ingrédient
-                </label>
-                <input
-                  value={creatingProductDbForm.ingredient || ""}
-                  onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, ingredient: e.target.value }))}
-                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-4 text-xl font-black outline-none"
-                  placeholder="Ex : Mangue fraîche"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Photo URL</label>
-                  <div className="space-y-2">
-                    <input
-                      value={creatingProductDbForm.photo || ""}
-                      onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, photo: e.target.value }))}
-                      className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                      placeholder="Coller une URL image"
-                    />
-
-                    <label className="flex items-center justify-center gap-2 rounded-2xl border border-[#eadfd4] bg-[#f7efe4] px-4 py-3 font-black text-[#6b4a3d] cursor-pointer">
-                      📷 Choisir / prendre une photo
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          setCreatingProductPhotoFile(file.name);
-                          setCreatingProductDbForm((prev) => ({
-                            ...prev,
-                            photo: file.name,
-                          }));
-                        }}
-                      />
-                    </label>
-
-                    {creatingProductPhotoFile && (
-                      <div className="text-xs font-bold text-[#a97862]">
-                        Photo sélectionnée : {creatingProductPhotoFile}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Catégorie</label>
-                  <select
-                    value={creatingProductDbForm.categorie || ""}
-                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, categorie: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
-                  >
-                    <option value="">À définir</option>
-                    {productsDbCategories.filter((cat) => cat !== "Tous").map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Sous-catégorie</label>
-                  <select
-                    value={creatingProductDbForm.sousCategorie || ""}
-                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, sousCategorie: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
-                  >
-                    <option value="">À définir</option>
-                    {productsDbSubCategoryChoices.map((sub) => (
-                      <option key={sub} value={sub}>{sub}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Fournisseur par défaut</label>
-                  <select
-                    value={creatingProductDbForm.fournisseurDefaut || ""}
-                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, fournisseurDefaut: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
-                  >
-                    <option value="">À définir</option>
-                    {productsDbSupplierChoices.map((supplier) => (
-                      <option key={supplier} value={supplier}>{supplier}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Zone de stockage</label>
-                  <select
-                    value={creatingProductDbForm.zoneStockage || ""}
-                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, zoneStockage: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
-                  >
-                    <option value="">À définir</option>
-                    {productsDbZoneChoices.map((zone) => (
-                      <option key={zone} value={zone}>{zone}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Méthode de suivi</label>
-                  <select
-                    value={creatingProductDbForm.methodeSuivi || "Manuel"}
-                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, methodeSuivi: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
-                  >
-                    <option value="Manuel">Manuel</option>
-                    <option value="Automatique">Automatique</option>
-                    <option value="Préparation">Préparation</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Quantité commande suggérée</label>
-                  <input
-                    type="number"
-                    value={creatingProductDbForm.quantiteCommandeSuggeree ?? ""}
-                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, quantiteCommandeSuggeree: Number(e.target.value) }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Portion (g)</label>
-                  <input
-                    type="number"
-                    value={creatingProductDbForm.portionGrammes ?? ""}
-                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, portionGrammes: Number(e.target.value) }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Unité stock</label>
-                  <select
-                    value={creatingProductDbForm.uniteStock || ""}
-                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, uniteStock: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
-                  >
-                    <option value="">À définir</option>
-                    {productsDbUnitChoices.map((unit) => (
-                      <option key={unit} value={unit}>{unit}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Unité commande</label>
-                  <select
-                    value={creatingProductDbForm.uniteCommande || ""}
-                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, uniteCommande: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
-                  >
-                    <option value="">À définir</option>
-                    {productsDbUnitChoices.map((unit) => (
-                      <option key={unit} value={unit}>{unit}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Seuil alerte</label>
-                  <input
-                    type="number"
-                    value={creatingProductDbForm.seuilAlerte ?? ""}
-                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, seuilAlerte: Number(e.target.value) }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Seuil critique</label>
-                  <input
-                    type="number"
-                    value={creatingProductDbForm.seuilCritique ?? ""}
-                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, seuilCritique: Number(e.target.value) }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                  />
-                </div>
-              </div>
-
-              <label className="flex items-center gap-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black">
-                <input
-                  type="checkbox"
-                  checked={creatingProductDbForm.visibleOrderPad !== false}
-                  onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, visibleOrderPad: e.target.checked }))}
-                />
-                Visible sur OrderPad
-              </label>
-
-              <div>
-                <label className="block text-xs font-black text-[#a97862] mb-2">Utilisé dans</label>
-                <textarea
-                  value={creatingProductDbForm.utiliseDans || ""}
-                  onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, utiliseDans: e.target.value }))}
-                  className="w-full min-h-[70px] rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-semibold outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-[#a97862] mb-2">Notes</label>
-                <textarea
-                  value={creatingProductDbForm.notes || ""}
-                  onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, notes: e.target.value }))}
-                  className="w-full min-h-[70px] rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-semibold outline-none"
-                />
-              </div>
-            </div>
-
-            <button
-              onClick={saveProductDbCreate}
-              disabled={savingProductDb}
-              className="w-full mt-5 py-4 rounded-2xl bg-[#6f8f32] text-white font-black shadow-md"
-            >
-              {savingProductDb ? "Création…" : "Créer le produit ✅"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {editingProductDb && (
-        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-3">
-          <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-[98vw] max-w-none max-h-[86vh] overflow-y-auto p-5">
-            <div className="flex justify-between items-start gap-4 mb-5">
-              <div>
-                <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
-                  Modifier matière première
-                </div>
-                <h2 className="text-xl font-black text-[#3b241b]">
-                  ✏️ {editingProductDbForm.ingredient || "Produit"}
-                </h2>
-              </div>
-
-              <button
-                onClick={() => setEditingProductDb(null)}
-                className="w-10 h-10 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-black text-[#a97862] mb-2">
-                  Nom du produit / ingrédient
-                </label>
-                <input
-                  value={editingProductDbForm.ingredient || ""}
-                  onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, ingredient: e.target.value }))}
-                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-4 text-xl font-black outline-none"
-                  placeholder="Ex : Mangue fraîche"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Photo URL</label>
-                  <input
-                    value={editingProductDbForm.photo || ""}
-                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, photo: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                    placeholder="Coller une URL image"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Catégorie</label>
-                  <select
-                    value={editingProductDbForm.categorie || ""}
-                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, categorie: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
-                  >
-                    <option value="">À définir</option>
-                    {productsDbCategories.filter((cat) => cat !== "Tous").map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Sous-catégorie</label>
-                  <select
-                    value={editingProductDbForm.sousCategorie || ""}
-                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, sousCategorie: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
-                  >
-                    <option value="">À définir</option>
-                    {productsDbSubCategoryChoices.map((sub) => (
-                      <option key={sub} value={sub}>{sub}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Fournisseur par défaut</label>
-                  <select
-                    value={editingProductDbForm.fournisseurDefaut || ""}
-                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, fournisseurDefaut: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
-                  >
-                    <option value="">À définir</option>
-                    {productsDbSupplierChoices.map((supplier) => (
-                      <option key={supplier} value={supplier}>{supplier}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Zone de stockage</label>
-                  <select
-                    value={editingProductDbForm.zoneStockage || ""}
-                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, zoneStockage: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
-                  >
-                    <option value="">À définir</option>
-                    {productsDbZoneChoices.map((zone) => (
-                      <option key={zone} value={zone}>{zone}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Méthode de suivi</label>
-                  <select
-                    value={editingProductDbForm.methodeSuivi || "Manuel"}
-                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, methodeSuivi: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
-                  >
-                    <option value="">À définir</option>
-                    <option value="Manuel">Manuel</option>
-                    <option value="Automatique">Automatique</option>
-                    <option value="Préparation">Préparation</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Quantité commande suggérée</label>
-                  <input
-                    type="number"
-                    value={editingProductDbForm.quantiteCommandeSuggeree ?? ""}
-                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, quantiteCommandeSuggeree: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Portion (g)</label>
-                  <input
-                    type="number"
-                    value={editingProductDbForm.portionGrammes ?? ""}
-                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, portionGrammes: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Unité stock</label>
-                  <select
-                    value={editingProductDbForm.uniteStock || ""}
-                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, uniteStock: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
-                  >
-                    <option value="">À définir</option>
-                    {productsDbUnitChoices.map((unit) => (
-                      <option key={unit} value={unit}>{unit}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Unité commande</label>
-                  <select
-                    value={editingProductDbForm.uniteCommande || ""}
-                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, uniteCommande: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black outline-none"
-                  >
-                    <option value="">À définir</option>
-                    {productsDbUnitChoices.map((unit) => (
-                      <option key={unit} value={unit}>{unit}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Seuil alerte</label>
-                  <input
-                    type="number"
-                    value={editingProductDbForm.seuilAlerte ?? ""}
-                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, seuilAlerte: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">Seuil critique</label>
-                  <input
-                    type="number"
-                    value={editingProductDbForm.seuilCritique ?? ""}
-                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, seuilCritique: e.target.value }))}
-                    className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-bold outline-none"
-                  />
-                </div>
-              </div>
-
-              <label className="flex items-center gap-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-black">
-                <input
-                  type="checkbox"
-                  checked={editingProductDbForm.visibleOrderPad !== false}
-                  onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, visibleOrderPad: e.target.checked }))}
-                />
-                Visible sur OrderPad
-              </label>
-
-              <div>
-                <label className="block text-xs font-black text-[#a97862] mb-2">Utilisé dans</label>
-                <textarea
-                  value={editingProductDbForm.utiliseDans || ""}
-                  onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, utiliseDans: e.target.value }))}
-                  className="w-full min-h-[70px] rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-semibold outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-[#a97862] mb-2">Notes</label>
-                <textarea
-                  value={editingProductDbForm.notes || ""}
-                  onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, notes: e.target.value }))}
-                  className="w-full min-h-[70px] rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-3 font-semibold outline-none"
-                />
-              </div>
-            </div>
-
-            <button
-              onClick={saveProductDbEdit}
-              disabled={savingProductDb}
-              className="w-full mt-5 py-4 rounded-2xl bg-[#6f8f32] text-white font-black shadow-md"
-            >
-              {savingProductDb ? "Enregistrement…" : "Enregistrer les modifications ✅"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {stockReceiveItem && (
-        <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-3">
-          <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-md p-4">
-            <div className="flex justify-between gap-4 items-start mb-5">
-              <div>
-                <div className="text-[10px] font-black tracking-[0.28em] text-[#a97862] uppercase">
-                  📦 RÉCEPTION — + Ajouter du stock
-                </div>
-                <h2 className="text-xl font-black text-[#3b241b]">
-                  {getStockName(stockReceiveItem)}
-                </h2>
-              </div>
-
-              <button
-                onClick={() => setStockReceiveItem(null)}
-                className="w-10 h-10 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="rounded-2xl bg-[#fffaf3] border border-[#eadfd4] p-4 mb-4">
-              <div className="text-xs font-black text-[#a97862]">Portions actuelles</div>
-              <div className="text-lg font-black text-[#3b241b] mt-0">
-                {getStockPortions(stockReceiveItem)}
-              </div>
-              <div className="text-[11px] text-[#a97862] mt-0">
-                Statut : {getStockStatus(stockReceiveItem)}
-              </div>
-            </div>
-
-            <label className="block text-xs font-black text-[#a97862] mb-2">
-              Quantité reçue à ajouter
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={stockReceiveWeight}
-              onChange={(e) => setStockReceiveWeight(e.target.value)}
-              placeholder="Ex : 5"
-              className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-4 text-xl font-black outline-none"
-            />
-
-            <label className="block text-xs font-black text-[#a97862] mt-4 mb-2">
-              Unité
-            </label>
-            <select
-              value={stockReceiveUnit}
-              onChange={(e) => setStockReceiveUnit(e.target.value)}
-              className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-4 text-lg font-black outline-none"
-            >
-              {["kg", "g", "L", "ml", "pièce", "carton", "sachet", "bouteille"].map((unit) => (
-                <option key={unit} value={unit}>{unit}</option>
-              ))}
-            </select>
-
-            <button
-              onClick={saveStockReceive}
-              disabled={savingStockReceive}
-              className="w-full mt-5 py-4 rounded-2xl bg-[#6f8f32] text-white font-black shadow-md"
-            >
-              {savingStockReceive ? "Ajout en cours…" : "Ajouter au stock existant ✅"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {inventoryItem && (
-        <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center p-3">
-          <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-lg p-5">
-            <div className="flex justify-between items-start gap-4 mb-5">
-              <div>
-                <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
-                  Ajustement inventaire
-                </div>
-                <h2 className="text-xl font-black text-[#3b241b]">
-                  {getStockName(inventoryItem)}
-                </h2>
-              </div>
-
-              <button
-                onClick={() => setInventoryItem(null)}
-                className="w-10 h-10 rounded-full bg-[#f4eee7] flex items-center justify-center text-xl font-black text-[#a97862]"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="rounded-2xl bg-[#fffaf3] border border-[#eadfd4] p-4 mb-4">
-              <div className="text-xs font-black text-[#a97862]">Portions actuelles</div>
-              <div className="text-lg font-black text-[#3b241b] mt-0">
-                {getStockPortions(inventoryItem)}
-              </div>
-              <div className="text-[11px] text-[#a97862] mt-0">
-                Statut : {getStockStatus(inventoryItem)}
-              </div>
-            </div>
-
-            <label className="block text-xs font-black text-[#a97862] mb-2">
-              Nouveau poids total mesuré en kg
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={inventoryWeight}
-              onChange={(e) => setInventoryWeight(e.target.value)}
-              placeholder="Ex : 4.25"
-              className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-4 text-xl font-black outline-none"
-            />
-
-            <button
-              onClick={saveInventoryAdjust}
-              disabled={savingInventory}
-              className="w-full mt-5 py-4 rounded-2xl bg-[#6f8f32] text-white font-black shadow-md"
-            >
-              {savingInventory ? "Mise à jour…" : "Mettre à jour le stock ✅"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showClockModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3">
-          <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-xl max-h-[86vh] overflow-y-auto p-4">
-            <div className="flex justify-between gap-4 items-start mb-6">
-              <div>
-                <h2 className="text-xl font-black text-[#3b241b]">
-                  ⏱ Pointage staff
-                </h2>
-                <p className="text-[11px] text-[#a97862] mt-0">
-                  Arrivée, pause, retour pause et départ.
-                </p>
-              </div>
-
-              <button
-                onClick={() => setShowClockModal(false)}
-                className="w-10 h-10 rounded-full bg-[#f4eee7] hover:bg-[#eadfd4] flex items-center justify-center text-xl font-black text-[#a97862] shrink-0"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {staff.map((member) => {
-                const staffId = member.id || getStaffName(member);
-                const staffName = getStaffName(member);
-                const status = clockStatuses[staffId] || "absent";
-
-                const statusLabel =
-                  status === "present"
-                    ? "🟢 Présent"
-                    : status === "pause"
-                    ? "🟠 En pause"
-                    : status === "done"
-                    ? "⚫ Terminé"
-                    : "⚪ Pas pointé";
-
-                return (
-                  <div
-                    key={staffId}
-                    className="rounded-[1.25rem] border border-[#eadfd4] bg-[#fffaf3] p-3"
-                  >
-                    <div className="flex justify-between gap-3 items-start">
-                      <div>
-                        <div className="font-black text-base text-[#3b241b]">
-                          {staffName}
-                        </div>
-                        <div className="text-xs font-bold text-[#a97862] mt-1">
-                          {statusLabel}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 mt-4">
-                      {status === "absent" && (
-                        <button
-                          disabled={clockSending}
-                          onClick={() => sendClockAction(member, "Arrivée")}
-                          className="col-span-2 bg-[#6f8f32] text-white py-2 rounded-xl font-black text-xs"
-                        >
-                          Arrivée ✅
-                        </button>
-                      )}
-
-                      {status === "present" && (
-                        <>
-                          <button
-                            disabled={clockSending}
-                            onClick={() => sendClockAction(member, "Départ pause")}
-                            className="bg-orange-500 text-white py-2 rounded-xl font-black text-xs"
-                          >
-                            Pause
-                          </button>
-
-                          <button
-                            disabled={clockSending}
-                            onClick={() => sendClockAction(member, "Départ")}
-                            className="bg-[#3b241b] text-white py-2 rounded-xl font-black text-xs"
-                          >
-                            Départ
-                          </button>
-                        </>
-                      )}
-
-                      {status === "pause" && (
-                        <button
-                          disabled={clockSending}
-                          onClick={() => sendClockAction(member, "Retour pause")}
-                          className="col-span-2 bg-[#6f8f32] text-white py-2 rounded-xl font-black text-xs"
-                        >
-                          Retour pause ✅
-                        </button>
-                      )}
-
-                      {status === "done" && (
-                        <button
-                          disabled
-                          className="col-span-2 bg-[#eadfd4] text-[#a97862] py-2 rounded-xl font-black text-xs"
-                        >
-                          Journée terminée
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showAdminModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3">
-          <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-full max-w-sm p-6">
-            <h2 className="text-xl font-black text-[#3b241b]">
-              👤 Accès admin
-            </h2>
-
-            <p className="text-[11px] text-[#a97862] mt-0">
-              Entrez le code à 4 chiffres pour accéder aux réglages.
-            </p>
-
-            <input
-              value={adminPin}
-              onChange={(e) => setAdminPin(e.target.value)}
-              type="password"
-              inputMode="numeric"
-              maxLength={4}
-              placeholder="••••"
-              className="w-full mt-6 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-4 py-4 text-center text-xl font-black tracking-[0.4em] text-[#3b241b] outline-none"
-            />
-
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => {
-                  setShowAdminModal(false);
-                  setAdminPin("");
-                }}
-                className="flex-1 py-4 rounded-2xl font-black bg-[#eadfd4] text-[#a97862]"
-              >
-                Annuler
-              </button>
-
-              <button
-                onClick={unlockAdmin}
-                className="flex-1 py-4 rounded-2xl font-black bg-[#6f8f32] text-white"
-              >
-                Entrer ✅
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {settingsItem && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-3">
-          <div className="bg-white rounded-[1.1rem] shadow-xl border border-[#eadfd4] w-[92vw] max-w-2xl max-h-[84vh] overflow-y-auto p-4">
-            <div className="flex justify-between gap-4 items-start mb-6">
-              <div>
-                <h2 className="text-xl font-black text-[#3b241b]">
-                  {settingsItem?.isNew ? "➕ Nouveau produit" : "⚙️ Réglages produit"}
-                </h2>
-                <p className="text-[11px] text-[#a97862] mt-0">
-                  {settingsForm.name}
-                </p>
-              </div>
-
-              <button
-                onClick={() => setSettingsItem(null)}
-                className="w-10 h-10 rounded-full bg-[#f4eee7] hover:bg-[#eadfd4] flex items-center justify-center text-xl font-black text-[#a97862] shrink-0"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <div className="col-span-2 md:col-span-3">
-                <label className="block text-xs font-black text-[#a97862] mb-2">
-                  Nom produit
-                </label>
-
-                <input
-                  type="text"
-                  value={settingsForm.name || ""}
-                  onChange={(e) =>
-                    setSettingsForm((prev) => ({
-                      ...prev,
-                      name: e.target.value,
-                    }))
-                  }
-                  placeholder="Ex: Mangue fraîche"
-                  className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-2 py-1.5 text-xs font-bold text-[#3b241b] outline-none"
-                />
-              </div>
-
-              {[
-                ["Catégorie", "categorie", "select", categoryOptions],
-                ["Sous-catégorie", "sousCategorie", "select", subCategoryOptions],
-                ["Visible OrderPad", "visibleOrderPad", "checkbox", []],
-                ["Fournisseur par défaut", "fournisseurDefaut", "select", fournisseurOptions],
-                ["Zone de stockage", "zoneStockage", "select", zoneOptions],
-                ["Quantité commandée", "quantiteCommandee", "number", []],
-                ["Unité stock", "uniteStock", "select", uniteOptions],
-                ["Unité commande", "uniteCommande", "select", uniteOptions],
-                ["Portion (g)", "portion", "number", []],
-                ["Seuil alerte (portion)", "seuilAlerte", "number", []],
-                ["Seuil critique (portion)", "seuilCritique", "number", []],
-              ].map(([label, key, type, options]) => (
-                <div key={key}>
-                  <label className="block text-xs font-black text-[#a97862] mb-2">
-                    {label}
-                  </label>
-
-                  {type === "checkbox" ? (
-                    <label className="flex items-center gap-3 rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-2 py-1.5 text-xs font-bold text-[#3b241b]">
-                      <input
-                        type="checkbox"
-                        checked={!!settingsForm[key]}
-                        onChange={(e) =>
-                          setSettingsForm((prev) => ({
-                            ...prev,
-                            [key]: e.target.checked,
-                          }))
-                        }
-                        className="w-5 h-5"
-                      />
-                      Oui
-                    </label>
-                  ) : type === "select" ? (
-                    <select
-                      value={settingsForm[key] || ""}
-                      onChange={(e) =>
-                        setSettingsForm((prev) => ({
-                          ...prev,
-                          [key]: e.target.value,
-                        }))
-                      }
-                      className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-2 py-1.5 text-xs font-bold text-[#3b241b] outline-none"
-                    >
-                      <option value="">Sélectionner...</option>
-
-                      {options.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="number"
-                      value={settingsForm[key] ?? ""}
-                      onChange={(e) =>
-                        setSettingsForm((prev) => ({
-                          ...prev,
-                          [key]: e.target.value,
-                        }))
-                      }
-                      placeholder="Non défini"
-                      className="w-full rounded-2xl border border-[#eadfd4] bg-[#fffaf3] px-2 py-1.5 text-xs font-bold text-[#3b241b] outline-none placeholder:text-[#c8b4a8]"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => setSettingsItem(null)}
-                className="flex-1 py-4 rounded-2xl font-black bg-[#eadfd4] text-[#a97862]"
-              >
-                Annuler
-              </button>
-
-              <button
-                onClick={saveSettings}
-                disabled={savingSettings}
-                className="flex-1 py-4 rounded-2xl font-black bg-[#6f8f32] text-white"
-              >
-                {savingSettings ? "Enregistrement…" : "Enregistrer ✅"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* ── ADMIN PANEL (fullscreen overlay) ────────── */}
       {isAdmin && adminSection !== "dashboard" && (
-        <div className="fixed inset-0 z-40 bg-[#f7efe4] text-[#332019] overflow-y-auto px-3 pt-3 pb-3">
-          <div className="max-w-none w-full">
-            <div className={["products", "inventory"].includes(adminSection) ? "hidden" : "flex items-center justify-between gap-4 mb-3"}>
+        <div className="fixed inset-0 z-40 bg-[#f5ede0] overflow-y-auto">
+          {/* Admin panel header */}
+          <div className={`sticky top-0 z-10 bg-[#f5ede0]/95 backdrop-blur border-b border-[#e5d5c5] px-4 py-3 ${["products", "inventory"].includes(adminSection) ? "" : ""}`}>
+            <div className="max-w-screen-2xl mx-auto flex items-center justify-between">
               <div>
-                <div className="text-xs font-black tracking-[0.35em] text-[#a97862] uppercase">
-                  MÖKA OS
-                </div>
-
-                <h1 className="text-3xl font-black text-[#3b241b] mt-1">
+                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-[0.3em]">MÖKA OS · Admin</div>
+                <h1 className="text-xl font-black text-[#2c1a10] mt-0.5">
                   {adminSection === "orders" && "🛒 Commandes"}
                   {adminSection === "reports" && "📊 Rapports"}
                   {adminSection === "settings" && "⚙️ Paramètres"}
-                  {adminSection === "dashboard" && "Dashboard"}
+                  {adminSection === "products" && "📦 Catalogue"}
+                  {adminSection === "inventory" && "📋 Inventaire"}
                 </h1>
               </div>
             </div>
+          </div>
 
+          <div className="max-w-screen-2xl mx-auto px-4 py-4">
+
+            {/* PRODUCTS PANEL */}
             {adminSection === "products" && (
-              <div className="bg-white rounded-[1.4rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-20px)] flex flex-col">
-                <div className="p-2 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+              <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden" style={{height: "calc(100vh - 100px)"}}>
+                <div className="p-3 border-b border-[#e5d5c5] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div>
-                    <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
-                      Base de données
-                    </div>
-                    <h2 className="text-lg font-black text-[#3b241b] mt-0">
-                      📦 Catalogue matières premières
-                    </h2>
-                    <p className="text-[11px] text-[#a97862] mt-0">
-                      Affichage complet de la database produits Notion.
-                    </p>
+                    <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Base de données</div>
+                    <h2 className="text-base font-black text-[#2c1a10]">📦 Catalogue matières premières</h2>
+                    <p className="text-[11px] text-[#9a7060]">Affichage complet de la database produits Notion.</p>
                   </div>
-
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => loadProductsDatabase(false)}
+                      className="h-9 px-3 rounded-xl bg-[#faf5ef] border border-[#e5d5c5] text-xs font-bold text-[#6b4a3d] hover:bg-[#f0e4d4] transition-colors cursor-pointer"
+                    >
+                      🔄 Actualiser
+                    </button>
                     <button
                       onClick={openProductDbCreate}
-                      className="rounded-2xl px-4 py-3 bg-[#6f8f32] text-white font-black text-xs border border-[#6f8f32] shadow-sm"
+                      className="h-9 px-3 rounded-xl bg-[#5a7828] text-white text-xs font-bold hover:bg-[#4e6a22] transition-colors cursor-pointer"
                     >
-                      + Ajouter produit
+                      ➕ Nouveau produit
                     </button>
-
-                    <div className="rounded-2xl px-4 py-3 bg-[#f7efe4] text-[#6b4a3d] font-black text-xs border border-[#eadfd4]">
-                      {loadingProductsDb ? "🟡 Sync…" : "🟢 À jour"}
-                    </div>
                   </div>
                 </div>
 
-                <div className="p-2 border-b border-[#eadfd4]">
-                  <div className="flex items-center gap-3 rounded-[1.1rem] bg-[#fffaf3] border border-[#d6b8a7] px-2 py-1">
-                    <span className="text-base">🔍</span>
+                {/* Search + category filters */}
+                <div className="p-3 border-b border-[#e5d5c5] flex flex-col sm:flex-row gap-3">
+                  <div className="flex items-center gap-2 bg-[#faf5ef] border border-[#d8c8b8] rounded-xl px-3 py-2 flex-1">
+                    <svg className="w-4 h-4 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     <input
                       value={productsDbSearch}
                       onChange={(e) => setProductsDbSearch(e.target.value)}
-                      placeholder="Rechercher un ingrédient, fournisseur, zone, catégorie..."
-                      className="w-full bg-transparent outline-none text-[#3b241b] placeholder:text-[#b08d7b] font-semibold"
+                      placeholder="Rechercher un produit..."
+                      className="w-full bg-transparent outline-none text-[#2c1a10] placeholder:text-[#b09080] text-sm"
                     />
                   </div>
-
-                  <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                     {productsDbCategories.map((cat) => (
                       <button
                         key={cat}
                         onClick={() => setProductsDbCategory(cat)}
-                        className={`px-2 py-1 rounded-full whitespace-nowrap text-xs font-black shrink-0 ${
+                        className={`h-9 px-3 rounded-xl whitespace-nowrap text-xs font-bold shrink-0 transition-all cursor-pointer ${
                           productsDbCategory === cat
-                            ? "bg-[#3b241b] text-white"
-                            : "bg-[#f7efe4] text-[#6b4a3d] border border-[#eadfd4]"
+                            ? "bg-[#2c1a10] text-white"
+                            : "bg-[#faf5ef] text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
                         }`}
                       >
                         {cat === "Tous" ? "Tous" : `${categoryEmojis[cat] || "📌"} ${cat}`}
                       </button>
                     ))}
                   </div>
-
-                  <div className="text-xs font-bold text-[#a97862] mt-1">
-                    {filteredProductsDb.length} / {productsDb.length} produits affichés
-                  </div>
                 </div>
 
-                <div className="overflow-auto flex-1 pb-24">
+                <div className="text-[11px] font-semibold text-[#9a7060] px-3 py-1.5 border-b border-[#f0e8dc]">
+                  {loadingProductsDb ? "Chargement…" : `${filteredProductsDb.length} produit${filteredProductsDb.length > 1 ? "s" : ""}`}
+                </div>
+
+                <div className="overflow-auto flex-1" style={{maxHeight: "calc(100vh - 260px)"}}>
                   <table className="w-full text-xs">
-                    <thead className="bg-[#f7efe4] text-[#a97862] sticky top-0 z-10">
+                    <thead className="bg-[#faf5ef] text-[#9a7060] sticky top-0 z-10">
                       <tr>
-                        <th className="text-left p-2 font-black min-w-[180px]">Produit</th>
-                        <th className="text-left p-2 font-black">Visible</th>
-                        <th className="text-left p-2 font-black">Catégorie</th>
-                        <th className="text-left p-2 font-black">Sous-catégorie</th>
-                        <th className="text-left p-2 font-black">Fournisseur</th>
-                        <th className="text-left p-2 font-black">Zone</th>
-                        <th className="text-left p-2 font-black">Unité</th>
-                        <th className="text-left p-2 font-black">Portion</th>
-                        <th className="text-left p-2 font-black">Actions</th>
+                        <th className="text-left px-3 py-2.5 font-bold min-w-[160px]">Produit</th>
+                        <th className="text-left px-3 py-2.5 font-bold">Visible</th>
+                        <th className="text-left px-3 py-2.5 font-bold">Catégorie</th>
+                        <th className="text-left px-3 py-2.5 font-bold">Sous-cat.</th>
+                        <th className="text-left px-3 py-2.5 font-bold">Fournisseur</th>
+                        <th className="text-left px-3 py-2.5 font-bold">Zone</th>
+                        <th className="text-left px-3 py-2.5 font-bold">Unité</th>
+                        <th className="text-left px-3 py-2.5 font-bold">Portion</th>
+                        <th className="text-left px-3 py-2.5 font-bold">Actions</th>
                       </tr>
                     </thead>
-
                     <tbody>
                       {filteredProductsDb.map((item, index) => (
-                        <tr key={item.id || index} className="border-t border-[#eadfd4]">
-                          <td className="p-2 font-black text-[#3b241b]">
-                            {item.ingredient || item.name || "—"}
-                          </td>
-
-                          <td className="p-2">
-                            <span className={`px-3 py-1 rounded-full text-xs font-black ${
-                              item.visibleOrderPad !== false
-                                ? "bg-[#eef5df] text-[#6f8f32]"
-                                : "bg-red-50 text-red-700"
+                        <tr key={item.id || index} className="border-t border-[#f0e8dc] hover:bg-[#faf5ef] transition-colors">
+                          <td className="px-3 py-2.5 font-bold text-[#2c1a10]">{item.ingredient || item.name || "—"}</td>
+                          <td className="px-3 py-2.5">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                              item.visibleOrderPad !== false ? "bg-[#f0f7e5] text-[#5a7828]" : "bg-red-50 text-red-600"
                             }`}>
                               {item.visibleOrderPad !== false ? "Oui" : "Non"}
                             </span>
                           </td>
-
-                          <td className="p-2 text-[#6b4a3d]">
-                            {categoryEmojis[item.categorie || item.category] || "📌"} {item.categorie || item.category || "Autres"}
-                          </td>
-
-                          <td className="p-2 text-[#6b4a3d]">
-                            {item.sousCategorie || item.subcategory || "—"}
-                          </td>
-
-                          <td className="p-2 text-[#6b4a3d]">
-                            {getProductsDbSupplierName(item)}
-                          </td>
-
-                          <td className="p-2 text-[#6b4a3d]">
-                            {item.zoneStockage || item.zone || "—"}
-                          </td>
-
-                          <td className="p-2 text-[#6b4a3d]">
-                            {item.uniteStock || item.unit || "—"}
-                          </td>
-
-                          <td className="p-2 font-black text-[#3b241b]">
-                            {item.portionGrammes || item.portion || 0}
-                          </td>
-
-                          <td className="p-2">
-                            <div className="flex gap-2">
+                          <td className="px-3 py-2.5 text-[#6b4a3d]">{categoryEmojis[item.categorie || item.category] || "📌"} {item.categorie || item.category || "—"}</td>
+                          <td className="px-3 py-2.5 text-[#6b4a3d]">{item.sousCategorie || item.subcategory || "—"}</td>
+                          <td className="px-3 py-2.5 text-[#6b4a3d]">{getProductsDbSupplierName(item)}</td>
+                          <td className="px-3 py-2.5 text-[#6b4a3d]">{item.zoneStockage || item.zone || "—"}</td>
+                          <td className="px-3 py-2.5 text-[#6b4a3d]">{item.uniteStock || item.unit || "—"}</td>
+                          <td className="px-3 py-2.5 font-bold text-[#2c1a10]">{item.portionGrammes || item.portion || 0}</td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex gap-1.5">
                               <button
                                 onClick={() => openProductDbEdit(item)}
-                                className="rounded-xl px-2 py-1.5 bg-[#6f8f32] text-white font-black"
+                                className="h-7 px-2.5 rounded-lg bg-[#5a7828] text-white text-[11px] font-bold hover:bg-[#4e6a22] transition-colors cursor-pointer"
                               >
-                                ✏️ Ajuster
+                                ✏️ Modifier
                               </button>
-
                               <button
                                 onClick={() => deleteProductDb(item)}
-                                className="rounded-xl px-2 py-1.5 bg-red-50 border border-red-100 text-red-700 font-black"
+                                className="h-7 px-2.5 rounded-lg bg-red-50 border border-red-100 text-red-600 text-[11px] font-bold hover:bg-red-100 transition-colors cursor-pointer"
                               >
                                 Supprimer
                               </button>
@@ -4493,153 +3116,82 @@ export default function MokaOrderPad() {
               </div>
             )}
 
+            {/* INVENTORY PANEL */}
             {adminSection === "inventory" && (
               <div className="space-y-4">
-                <div className="grid grid-cols-4 gap-2">
-                  <button
-                    onClick={() => setInventoryStatusFilter("Tous")}
-                    className={`rounded-[0.9rem] px-3 py-2 border shadow-sm text-left ${
-                      inventoryStatusFilter === "Tous"
-                        ? "bg-[#3b241b] text-white border-[#3b241b]"
-                        : "bg-white text-[#3b241b] border-[#eadfd4]"
-                    }`}
-                  >
-                    <div className="text-xs font-black">📦 Produits suivis</div>
-                    <div className="text-xl font-black mt-1">{inventoryBaseItems.length}</div>
-                  </button>
-
-                  <button
-                    onClick={() => setInventoryStatusFilter(inventoryStatusFilter === "OK" ? "Tous" : "OK")}
-                    className={`rounded-[0.9rem] px-3 py-2 border shadow-sm text-left ${
-                      inventoryStatusFilter === "OK"
-                        ? "bg-[#6f8f32] text-white border-[#6f8f32]"
-                        : "bg-white text-[#3b241b] border-[#eadfd4]"
-                    }`}
-                  >
-                    <div className="text-xs font-black">🟢 OK</div>
-                    <div className="text-xl font-black mt-1">
-                      {inventoryBaseItems.filter((item) => {
-                        const s = String(getStockStatus(item)).toLowerCase();
-                        return !s.includes("critique") && !s.includes("stock bas") && !s.includes("alerte") && !s.includes("à commander");
-                      }).length}
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => setInventoryStatusFilter(inventoryStatusFilter === "Stock bas" ? "Tous" : "Stock bas")}
-                    className={`rounded-[0.9rem] px-3 py-2 border shadow-sm text-left ${
-                      inventoryStatusFilter === "Stock bas"
-                        ? "bg-orange-500 text-white border-orange-500"
-                        : "bg-white text-[#3b241b] border-[#eadfd4]"
-                    }`}
-                  >
-                    <div className="text-xs font-black">🟠 Stock bas</div>
-                    <div className="text-xl font-black mt-1">
-                      {inventoryBaseItems.filter((item) => {
-                        const s = String(getStockStatus(item)).toLowerCase();
-                        return s.includes("stock bas") || s.includes("alerte") || s.includes("à commander");
-                      }).length}
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => setInventoryStatusFilter(inventoryStatusFilter === "Critiques" ? "Tous" : "Critiques")}
-                    className={`rounded-[0.9rem] px-3 py-2 border shadow-sm text-left ${
-                      inventoryStatusFilter === "Critiques"
-                        ? "bg-red-600 text-white border-red-600"
-                        : "bg-white text-[#3b241b] border-[#eadfd4]"
-                    }`}
-                  >
-                    <div className="text-xs font-black">🔴 Critiques</div>
-                    <div className="text-xl font-black mt-1">
-                      {inventoryBaseItems.filter((item) => String(getStockStatus(item)).toLowerCase().includes("critique")).length}
-                    </div>
-                  </button>
+                {/* KPI row */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: "Produits suivis", value: inventoryBaseItems.length, filter: "Tous", color: "text-[#2c1a10]", bg: "bg-white border-[#e5d5c5]", active: inventoryStatusFilter === "Tous" },
+                    { label: "OK", value: inventoryBaseItems.filter((i) => { const s = String(getStockStatus(i)).toLowerCase(); return !s.includes("critique") && !s.includes("stock bas") && !s.includes("alerte") && !s.includes("à commander"); }).length, filter: "OK", color: "text-[#5a7828]", bg: "bg-[#f0f7e5] border-[#c8dfa0]", active: inventoryStatusFilter === "OK" },
+                    { label: "Stock bas", value: inventoryBaseItems.filter((i) => { const s = String(getStockStatus(i)).toLowerCase(); return s.includes("stock bas") || s.includes("alerte") || s.includes("à commander"); }).length, filter: "Stock bas", color: "text-orange-500", bg: "bg-orange-50 border-orange-100", active: inventoryStatusFilter === "Stock bas" },
+                    { label: "Critiques", value: inventoryBaseItems.filter((i) => String(getStockStatus(i)).toLowerCase().includes("critique")).length, filter: "Critiques", color: "text-red-600", bg: "bg-red-50 border-red-100", active: inventoryStatusFilter === "Critiques" },
+                  ].map(({ label, value, filter, color, bg, active }) => (
+                    <button
+                      key={label}
+                      onClick={() => setInventoryStatusFilter(inventoryStatusFilter === filter && filter !== "Tous" ? "Tous" : filter)}
+                      className={`rounded-xl p-3 border text-left shadow-sm transition-all cursor-pointer hover:shadow-md ${bg} ${active && filter !== "Tous" ? "ring-2 ring-offset-1 ring-[#2c1a10]/20" : ""}`}
+                    >
+                      <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1">{label}</div>
+                      <div className={`text-2xl font-black ${color}`}>{value}</div>
+                    </button>
+                  ))}
                 </div>
 
-                <div className="bg-white rounded-[1.4rem] border border-[#eadfd4] shadow-sm overflow-hidden h-[calc(100vh-20px)] flex flex-col">
-                  <div className="p-2 border-b border-[#eadfd4] flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                    <div>
-                      <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">
-                        Inventaire
+                {/* Inventory table */}
+                <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden" style={{height: "calc(100vh - 220px)"}}>
+                  <div className="p-3 border-b border-[#e5d5c5]">
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {/* View toggle */}
+                      {[{ key: "stock", label: "📦 Stock" }, { key: "prepa", label: "👨‍🍳 Prépas" }].map(({ key, label }) => (
+                        <button
+                          key={key}
+                          onClick={() => { setInventoryView(key); setInventoryCategory("Tous"); setInventoryStatusFilter("Tous"); }}
+                          className={`h-8 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            inventoryView === key ? "bg-[#2c1a10] text-white" : "bg-[#faf5ef] text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+
+                      <div className="ml-auto flex gap-2">
+                        <button
+                          className="h-8 px-3 rounded-lg bg-[#faf5ef] border border-[#e5d5c5] text-xs font-bold text-[#6b4a3d] hover:bg-[#f0e4d4] transition-colors cursor-pointer"
+                          onClick={() => alert("Bientôt : photo facture + IA réception stock")}
+                        >
+                          📸 Scanner facture
+                        </button>
+                        <button
+                          className="h-8 px-3 rounded-lg bg-[#faf5ef] border border-[#e5d5c5] text-xs font-bold text-[#6b4a3d] hover:bg-[#f0e4d4] transition-colors cursor-pointer"
+                          onClick={() => alert("Bientôt : photo Z de caisse + IA décompte ventes")}
+                        >
+                          🧾 Scanner Z
+                        </button>
                       </div>
-                      <h2 className="text-lg font-black text-[#3b241b] mt-0">
-                        📋 Stock & ajustements manuels
-                      </h2>
-                      <p className="text-[11px] text-[#a97862] mt-0">
-                        Stock = matières premières. Prépas = productions internes.
-                      </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        className="rounded-2xl px-4 py-3 bg-[#f7efe4] text-[#6b4a3d] font-black text-xs border border-[#eadfd4]"
-                        onClick={() => alert("Bientôt : photo facture + IA réception stock")}
-                      >
-                        📸 Scanner facture
-                      </button>
-
-                      <button
-                        className="rounded-2xl px-4 py-3 bg-[#f7efe4] text-[#6b4a3d] font-black text-xs border border-[#eadfd4]"
-                        onClick={() => alert("Bientôt : photo Z de caisse + IA décompte ventes")}
-                      >
-                        🧾 Scanner Z
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="p-2 border-b border-[#eadfd4]">
-                    <div className="flex gap-2 mb-2 overflow-x-auto pb-1">
-                      <button
-                        onClick={() => {
-                          setInventoryView("stock");
-                          setInventoryCategory("Tous");
-                          setInventoryStatusFilter("Tous");
-                        }}
-                        className={`px-2 py-1 rounded-full whitespace-nowrap text-xs font-black ${
-                          inventoryView === "stock"
-                            ? "bg-[#3b241b] text-white"
-                            : "bg-[#f7efe4] text-[#6b4a3d] border border-[#eadfd4]"
-                        }`}
-                      >
-                        📦 Stock
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setInventoryView("prepa");
-                          setInventoryCategory("Tous");
-                          setInventoryStatusFilter("Tous");
-                        }}
-                        className={`px-2 py-1 rounded-full whitespace-nowrap text-xs font-black ${
-                          inventoryView === "prepa"
-                            ? "bg-[#3b241b] text-white"
-                            : "bg-[#f7efe4] text-[#6b4a3d] border border-[#eadfd4]"
-                        }`}
-                      >
-                        👨‍🍳 Prépas
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-3 rounded-[1.1rem] bg-[#fffaf3] border border-[#d6b8a7] px-2 py-1">
-                      <span className="text-base">🔍</span>
+                    {/* Search */}
+                    <div className="flex items-center gap-2 bg-[#faf5ef] border border-[#d8c8b8] rounded-xl px-3 py-2">
+                      <svg className="w-4 h-4 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                       <input
                         value={stockSearch}
                         onChange={(e) => setStockSearch(e.target.value)}
-                        placeholder={inventoryView === "stock" ? "Rechercher un produit, une zone, un statut..." : "Rechercher une prépa, une zone, un statut..."}
-                        className="w-full bg-transparent outline-none text-[#3b241b] placeholder:text-[#b08d7b] font-semibold"
+                        placeholder={inventoryView === "stock" ? "Rechercher un produit, zone, statut..." : "Rechercher une prépa, zone, statut..."}
+                        className="w-full bg-transparent outline-none text-[#2c1a10] placeholder:text-[#b09080] text-sm"
                       />
                     </div>
 
-                    <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                    {/* Category pills */}
+                    <div className="flex gap-2 mt-2 overflow-x-auto pb-1 scrollbar-hide">
                       {inventoryCategories.map((cat) => (
                         <button
                           key={cat}
                           onClick={() => setInventoryCategory(cat)}
-                          className={`px-2 py-1 rounded-full whitespace-nowrap text-xs font-black shrink-0 ${
+                          className={`h-7 px-3 rounded-lg whitespace-nowrap text-[11px] font-bold shrink-0 transition-all cursor-pointer ${
                             inventoryCategory === cat
-                              ? "bg-[#3b241b] text-white"
-                              : "bg-[#f7efe4] text-[#6b4a3d] border border-[#eadfd4]"
+                              ? "bg-[#2c1a10] text-white"
+                              : "bg-[#faf5ef] text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
                           }`}
                         >
                           {cat === "Tous" ? "Tous" : `${categoryEmojis[cat] || "📌"} ${cat}`}
@@ -4647,77 +3199,55 @@ export default function MokaOrderPad() {
                       ))}
                     </div>
 
-                    <div className="text-xs font-bold text-[#a97862] mt-1">
-                      {inventoryFilteredStock.length} éléments affichés
-                      {inventoryStatusFilter !== "Tous" ? ` · Statut : ${inventoryStatusFilter}` : ""}
-                      {inventoryCategory !== "Tous" ? ` · Catégorie : ${inventoryCategory}` : ""}
+                    <div className="text-[11px] font-semibold text-[#9a7060] mt-1.5">
+                      {inventoryFilteredStock.length} élément{inventoryFilteredStock.length > 1 ? "s" : ""}
+                      {inventoryStatusFilter !== "Tous" && ` · ${inventoryStatusFilter}`}
+                      {inventoryCategory !== "Tous" && ` · ${inventoryCategory}`}
                     </div>
                   </div>
 
-                  <div className="overflow-auto flex-1 pb-24">
+                  <div className="overflow-auto" style={{maxHeight: "calc(100vh - 380px)"}}>
                     <table className="w-full text-xs">
-                      <thead className="bg-[#f7efe4] text-[#a97862] sticky top-0 z-10">
+                      <thead className="bg-[#faf5ef] text-[#9a7060] sticky top-0 z-10">
                         <tr>
-                          <th className="text-left p-2 font-black min-w-[180px]">
-                            {inventoryView === "stock" ? "Produit" : "Prépa"}
-                          </th>
-                          <th className="text-left p-2 font-black">Catégorie</th>
-                          <th className="text-left p-2 font-black">Zone</th>
-                          <th className="text-left p-2 font-black">Portions</th>
-                          <th className="text-left p-2 font-black">Statut</th>
-                          <th className="text-left p-2 font-black">Actions</th>
+                          <th className="text-left px-3 py-2.5 font-bold min-w-[160px]">{inventoryView === "stock" ? "Produit" : "Prépa"}</th>
+                          <th className="text-left px-3 py-2.5 font-bold">Catégorie</th>
+                          <th className="text-left px-3 py-2.5 font-bold">Zone</th>
+                          <th className="text-left px-3 py-2.5 font-bold">Portions</th>
+                          <th className="text-left px-3 py-2.5 font-bold">Statut</th>
+                          <th className="text-left px-3 py-2.5 font-bold">Actions</th>
                         </tr>
                       </thead>
-
                       <tbody>
                         {inventoryFilteredStock.map((item, index) => {
                           const status = getStockStatus(item);
                           const statusLower = String(status).toLowerCase();
                           const isCritical = statusLower.includes("critique");
                           const isLow = statusLower.includes("stock bas") || statusLower.includes("alerte") || statusLower.includes("à commander");
-
                           return (
-                            <tr key={item.id || index} className="border-t border-[#eadfd4]">
-                              <td className="p-2 font-black text-[#3b241b]">
-                                {getStockName(item)}
-                              </td>
-
-                              <td className="p-2 text-[#6b4a3d]">
-                                {categoryEmojis[getStockCategory(item)] || "📌"} {getStockCategory(item)}
-                              </td>
-
-                              <td className="p-2 text-[#6b4a3d]">
-                                {getStockZone(item) || "—"}
-                              </td>
-
-                              <td className="p-2 text-[#3b241b] font-black">
-                                {getStockPortions(item)}
-                              </td>
-
-                              <td className="p-2">
-                                <span className={`px-3 py-1 rounded-full text-xs font-black ${
-                                  isCritical
-                                    ? "bg-red-100 text-red-700"
-                                    : isLow
-                                    ? "bg-orange-100 text-orange-700"
-                                    : "bg-[#eef5df] text-[#6f8f32]"
+                            <tr key={item.id || index} className="border-t border-[#f0e8dc] hover:bg-[#faf5ef] transition-colors">
+                              <td className="px-3 py-2.5 font-bold text-[#2c1a10]">{getStockName(item)}</td>
+                              <td className="px-3 py-2.5 text-[#6b4a3d]">{categoryEmojis[getStockCategory(item)] || "📌"} {getStockCategory(item)}</td>
+                              <td className="px-3 py-2.5 text-[#6b4a3d]">{getStockZone(item) || "—"}</td>
+                              <td className="px-3 py-2.5 font-black text-[#2c1a10]">{getStockPortions(item)}</td>
+                              <td className="px-3 py-2.5">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                                  isCritical ? "bg-red-50 text-red-600" : isLow ? "bg-orange-50 text-orange-600" : "bg-[#f0f7e5] text-[#5a7828]"
                                 }`}>
                                   {status}
                                 </span>
                               </td>
-
-                              <td className="p-2">
-                                <div className="flex gap-2">
+                              <td className="px-3 py-2.5">
+                                <div className="flex gap-1.5">
                                   <button
                                     onClick={() => openInventoryAdjust(item)}
-                                    className="rounded-xl px-2 py-1.5 bg-[#6f8f32] text-white font-black"
+                                    className="h-7 px-2.5 rounded-lg bg-[#5a7828] text-white text-[11px] font-bold hover:bg-[#4e6a22] transition-colors cursor-pointer"
                                   >
                                     ✏️ Ajuster
                                   </button>
-
                                   <button
                                     onClick={() => deleteProductDb(item)}
-                                    className="rounded-xl px-2 py-1.5 bg-red-50 border border-red-100 text-red-700 font-black"
+                                    className="h-7 px-2.5 rounded-lg bg-red-50 border border-red-100 text-red-600 text-[11px] font-bold hover:bg-red-100 transition-colors cursor-pointer"
                                   >
                                     Supprimer
                                   </button>
@@ -4732,39 +3262,43 @@ export default function MokaOrderPad() {
                 </div>
               </div>
             )}
+
+            {/* ORDERS PANEL */}
             {adminSection === "orders" && (
-              <div className="w-full h-[calc(100vh-8px)] -mt-20 rounded-[1.4rem] overflow-hidden border border-[#eadfd4] bg-[#f7efe4] shadow-sm">
-                <iframe
-                  src="/preview-commandes"
-                  title="Commandes fournisseurs preview"
-                  className="w-full h-full border-0"
-                />
+              <div className="rounded-2xl overflow-hidden border border-[#e5d5c5] bg-white shadow-sm" style={{height: "calc(100vh - 100px)"}}>
+                <iframe src="/preview-commandes" title="Commandes fournisseurs" className="w-full h-full border-0" />
               </div>
             )}
 
+            {/* REPORTS PANEL */}
             {adminSection === "reports" && (
-              <div className="bg-white rounded-[1.4rem] p-8 border border-[#eadfd4] shadow-sm">
-                <div className="text-3xl mb-4">📊</div>
-                <div className="text-xl font-black">Rapports</div>
-                <p className="text-[11px] text-[#a97862] mt-0">À développer plus tard.</p>
+              <div className="bg-white rounded-2xl p-8 border border-[#e5d5c5] shadow-sm text-center">
+                <div className="text-4xl mb-3">📊</div>
+                <div className="text-lg font-black text-[#2c1a10]">Rapports</div>
+                <p className="text-xs text-[#9a7060] mt-1">À développer plus tard.</p>
               </div>
             )}
 
+            {/* SETTINGS PANEL */}
             {adminSection === "settings" && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {[
-                  ["🏢", "Fournisseurs", "Ajouter, modifier, désactiver"],
-                  ["📦", "Catégories", "Créer / organiser"],
-                  ["📂", "Sous-catégories", "Ranger les produits"],
-                  ["📏", "Unités", "kg, pièce, carton..."],
-                  ["🗄️", "Zones", "Stockage et emplacement"],
-                  ["👥", "Staff", "Équipe et pointage"],
-                ].map(([icon, title, desc]) => (
-                  <div key={title} className="bg-white rounded-[1.4rem] p-6 border border-[#eadfd4] shadow-sm">
-                    <div className="text-3xl mb-4">{icon}</div>
-                    <div className="text-xl font-black">{title}</div>
-                    <p className="text-[11px] text-[#a97862] mt-0">{desc}</p>
-                  </div>
+                  ["🏢", "Fournisseurs", "Ajouter, modifier, désactiver", "suppliers"],
+                  ["📦", "Catégories", "Créer / organiser", "categories"],
+                  ["📂", "Sous-catégories", "Ranger les produits", "subcategories"],
+                  ["📏", "Unités", "kg, pièce, carton...", "units"],
+                  ["🗄️", "Zones", "Stockage et emplacement", "zones"],
+                  ["👥", "Staff", "Équipe et pointage", "staff"],
+                ].map(([icon, title, desc, panelKey]) => (
+                  <button
+                    key={title}
+                    onClick={() => loadSettingsPanel(panelKey)}
+                    className="bg-white rounded-2xl p-5 border border-[#e5d5c5] shadow-sm text-left hover:shadow-md hover:border-[#d0c0b0] transition-all cursor-pointer active:scale-[0.98]"
+                  >
+                    <div className="text-3xl mb-3">{icon}</div>
+                    <div className="text-base font-black text-[#2c1a10]">{title}</div>
+                    <p className="text-[11px] text-[#9a7060] mt-1">{desc}</p>
+                  </button>
                 ))}
               </div>
             )}
@@ -4772,8 +3306,9 @@ export default function MokaOrderPad() {
         </div>
       )}
 
+      {/* ── ADMIN BOTTOM NAV ─────────────────────────── */}
       {isAdmin && (
-        <div className="fixed left-1/2 bottom-2 -translate-x-1/2 z-[90] bg-white/55 backdrop-blur-xl border border-white/60 shadow-md rounded-[1.5rem] px-3 py-1.5 flex items-center gap-1 max-w-[92vw] overflow-x-auto">
+        <div className="fixed left-1/2 bottom-3 -translate-x-1/2 z-50 bg-white/90 backdrop-blur border border-white/80 shadow-lg rounded-2xl px-2 py-1.5 flex items-center gap-1 max-w-[92vw]">
           {[
             ["dashboard", "🏠", "Dashboard"],
             ["products", "📦", "Produits"],
@@ -4785,16 +3320,681 @@ export default function MokaOrderPad() {
             <button
               key={id}
               onClick={() => setAdminSection(id)}
-              className={`w-9 h-9 rounded-xl font-black text-[10px] flex flex-col items-center justify-center gap-0 shrink-0 ${
+              title={label}
+              className={`flex flex-col items-center justify-center w-10 h-10 rounded-xl text-[10px] font-bold shrink-0 transition-all cursor-pointer ${
                 adminSection === id
-                  ? "bg-[#3b241b] text-white"
-                  : "text-[#6b4a3d] hover:bg-[#f7efe4]"
+                  ? "bg-[#2c1a10] text-white"
+                  : "text-[#6b4a3d] hover:bg-[#f0e4d4]"
               }`}
             >
-              <span className="text-base">{icon}</span>
-              <span className="sr-only">{label}</span>
+              <span className="text-base leading-none">{icon}</span>
+              <span className="hidden sm:block mt-0.5 leading-none">{label}</span>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* ── SETTINGS DATABASE MODAL ──────────────────── */}
+      {settingsPanel && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-[#e5d5c5] flex justify-between items-center shrink-0">
+              <div>
+                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Paramètres</div>
+                <h2 className="text-base font-black text-[#2c1a10] mt-0.5">
+                  {settingsPanel === "suppliers" && "🏢 Fournisseurs"}
+                  {settingsPanel === "staff" && "👥 Staff"}
+                  {settingsPanel === "categories" && "📦 Catégories"}
+                  {settingsPanel === "subcategories" && "📂 Sous-catégories"}
+                  {settingsPanel === "units" && "📏 Unités"}
+                  {settingsPanel === "zones" && "🗄️ Zones"}
+                </h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={openSettingsCreate}
+                  className="h-9 px-3 rounded-xl bg-[#5a7828] text-white text-xs font-bold cursor-pointer hover:bg-[#4e6a22] transition-colors"
+                >
+                  ➕ Ajouter
+                </button>
+                <button
+                  onClick={() => setSettingsPanel("")}
+                  className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] transition-colors cursor-pointer"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {loadingSettingsPanel ? (
+              <div className="p-10 text-center text-[#9a7060] font-semibold">Chargement…</div>
+            ) : settingsData.length === 0 ? (
+              <div className="p-10 text-center text-[#9a7060] font-semibold">Aucun élément trouvé.</div>
+            ) : (
+              <div className="overflow-auto flex-1">
+                <table className="w-full text-xs">
+                  <thead className="bg-[#faf5ef] text-[#9a7060] sticky top-0">
+                    <tr>
+                      {["Nom", "Catégorie / rôle", "Contact", "Téléphone", "Email", "Statut", "Actions"].map((h) => (
+                        <th key={h} className="text-left px-3 py-2.5 font-bold">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {settingsData.map((item, index) => (
+                      <tr key={item.id || item.nom || index} className="border-t border-[#f0e8dc] hover:bg-[#faf5ef] transition-colors">
+                        <td className="px-3 py-2.5 font-bold text-[#2c1a10]">{item.nom || item.name || item.fournisseur || item.prenom || "Sans nom"}</td>
+                        <td className="px-3 py-2.5 text-[#6b4a3d]">{item.categorie || item.category || item.role || "—"}</td>
+                        <td className="px-3 py-2.5 text-[#6b4a3d]">{item.contact || item.methodeContact || "—"}</td>
+                        <td className="px-3 py-2.5 text-[#6b4a3d]">{item.telephone || item.whatsapp || item.phone || "—"}</td>
+                        <td className="px-3 py-2.5 text-[#6b4a3d]">{item.email || "—"}</td>
+                        <td className="px-3 py-2.5">
+                          <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                            item.actif === false ? "bg-red-50 text-red-600" : "bg-[#f0f7e5] text-[#5a7828]"
+                          }`}>
+                            {item.actif === false ? "Inactif" : "Actif"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex gap-1.5">
+                            <button onClick={() => openSettingsEdit(item)} className="h-7 px-2.5 rounded-lg bg-white border border-[#e5d5c5] text-[11px] font-bold text-[#6b4a3d] hover:bg-[#faf5ef] transition-colors cursor-pointer">✏️ Modifier</button>
+                            <button onClick={() => archiveSettingsDatabaseItem(item)} className="h-7 px-2.5 rounded-lg bg-red-50 border border-red-100 text-[11px] font-bold text-red-600 hover:bg-red-100 transition-colors cursor-pointer">Désactiver</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── CREATE SETTINGS ITEM MODAL ───────────────── */}
+      {creatingSettingsItem && (
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-xl max-h-[90vh] overflow-y-auto p-5">
+            <div className="flex justify-between items-start gap-4 mb-5">
+              <div>
+                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Ajouter</div>
+                <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">
+                  {settingsPanel === "suppliers" && "🏢 Nouveau fournisseur"}
+                  {settingsPanel === "staff" && "👥 Nouveau staff"}
+                  {settingsPanel === "categories" && "📦 Nouvelle catégorie"}
+                  {settingsPanel === "subcategories" && "📂 Nouvelle sous-catégorie"}
+                  {settingsPanel === "units" && "📏 Nouvelle unité"}
+                  {settingsPanel === "zones" && "🗄️ Nouvelle zone"}
+                </h2>
+              </div>
+              <button onClick={() => setCreatingSettingsItem(false)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] transition-colors cursor-pointer">×</button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Nom</label>
+                <input
+                  value={creatingSettingsForm.nom || ""}
+                  onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, nom: e.target.value, name: e.target.value }))}
+                  className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                  placeholder="Nom…"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Catégorie / rôle</label>
+                <input
+                  value={creatingSettingsForm.categorie || ""}
+                  onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, categorie: e.target.value }))}
+                  className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Méthode contact</label>
+                <select
+                  value={creatingSettingsForm.methodeContact || "WhatsApp"}
+                  onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, methodeContact: e.target.value }))}
+                  className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none"
+                >
+                  <option>WhatsApp</option><option>Email</option><option>Téléphone</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Téléphone / WhatsApp</label>
+                <input
+                  value={creatingSettingsForm.telephone || ""}
+                  onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, telephone: e.target.value }))}
+                  className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Email</label>
+                <input
+                  value={creatingSettingsForm.email || ""}
+                  onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, email: e.target.value }))}
+                  className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                />
+              </div>
+              <label className="md:col-span-2 flex items-center gap-3 rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={creatingSettingsForm.actif !== false}
+                  onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, actif: e.target.checked }))}
+                  className="w-4 h-4"
+                />
+                Actif
+              </label>
+            </div>
+
+            <button
+              onClick={saveSettingsDatabaseCreate}
+              disabled={savingSettingsPanel}
+              className="w-full mt-5 py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-md hover:bg-[#4e6a22] transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {savingSettingsPanel ? "Création…" : "Créer ✅"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── EDIT SETTINGS ITEM MODAL ─────────────────── */}
+      {editingSettingsItem && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-xl max-h-[90vh] overflow-y-auto p-5">
+            <div className="flex justify-between items-start gap-4 mb-5">
+              <div>
+                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Modifier</div>
+                <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">
+                  {settingsPanel === "suppliers" ? "🏢 Fournisseur" : "👥 Staff"}
+                </h2>
+              </div>
+              <button onClick={() => setEditingSettingsItem(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer">×</button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {[
+                { label: "Nom", key: "nom", extra: (v) => ({ name: v }) },
+                { label: "Catégorie / rôle", key: "categorie", extra: (v) => ({ role: v }) },
+                { label: "Contact", key: "contact" },
+                { label: "Téléphone / WhatsApp", key: "telephone", extra: (v) => ({ whatsapp: v, phone: v }) },
+                { label: "Email", key: "email" },
+              ].map(({ label, key, extra }, i) => (
+                <div key={key} className={i === 0 ? "md:col-span-2" : ""}>
+                  <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">{label}</label>
+                  <input
+                    value={editingSettingsForm[key] || ""}
+                    onChange={(e) => setEditingSettingsForm((prev) => ({ ...prev, [key]: e.target.value, ...(extra ? extra(e.target.value) : {}) }))}
+                    className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                  />
+                </div>
+              ))}
+              <label className="md:col-span-2 flex items-center gap-3 rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editingSettingsForm.actif !== false}
+                  onChange={(e) => setEditingSettingsForm((prev) => ({ ...prev, actif: e.target.checked }))}
+                  className="w-4 h-4"
+                />
+                Actif
+              </label>
+            </div>
+
+            <button
+              onClick={saveSettingsDatabaseItem}
+              disabled={savingSettingsPanel}
+              className="w-full mt-5 py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-md hover:bg-[#4e6a22] transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {savingSettingsPanel ? "Enregistrement…" : "Enregistrer ✅"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── STOCK RECEIVE MODAL ──────────────────────── */}
+      {stockReceiveItem && (
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-md p-5">
+            <div className="flex justify-between gap-4 items-start mb-5">
+              <div>
+                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">📦 Réception · + Stock</div>
+                <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">{getStockName(stockReceiveItem)}</h2>
+              </div>
+              <button onClick={() => setStockReceiveItem(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer">×</button>
+            </div>
+
+            <div className="rounded-xl bg-[#faf5ef] border border-[#e5d5c5] p-4 mb-4">
+              <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Stock actuel</div>
+              <div className="text-2xl font-black text-[#2c1a10] mt-1">{getStockPortions(stockReceiveItem)}</div>
+              <div className="text-[11px] text-[#9a7060] mt-0.5">Statut : {getStockStatus(stockReceiveItem)}</div>
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Quantité reçue à ajouter</label>
+              <input
+                type="number"
+                step="0.01"
+                value={stockReceiveWeight}
+                onChange={(e) => setStockReceiveWeight(e.target.value)}
+                placeholder="Ex : 5"
+                className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-4 text-2xl font-black text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+              />
+            </div>
+
+            <div className="mb-5">
+              <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Unité</label>
+              <select
+                value={stockReceiveUnit}
+                onChange={(e) => setStockReceiveUnit(e.target.value)}
+                className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 text-base font-bold text-[#2c1a10] outline-none"
+              >
+                {["kg", "g", "L", "ml", "pièce", "carton", "sachet", "bouteille"].map((u) => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={saveStockReceive}
+              disabled={savingStockReceive}
+              className="w-full py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-md hover:bg-[#4e6a22] transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {savingStockReceive ? "Enregistrement…" : "Ajouter au stock ✅"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── INVENTORY ADJUST MODAL ───────────────────── */}
+      {inventoryItem && (
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-md p-5">
+            <div className="flex justify-between gap-4 items-start mb-5">
+              <div>
+                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">📋 Ajuster le stock</div>
+                <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">{getStockName(inventoryItem)}</h2>
+              </div>
+              <button onClick={() => setInventoryItem(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer">×</button>
+            </div>
+
+            <div className="rounded-xl bg-[#faf5ef] border border-[#e5d5c5] p-4 mb-4">
+              <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Portions actuelles</div>
+              <div className="text-2xl font-black text-[#2c1a10] mt-1">{getStockPortions(inventoryItem)}</div>
+              <div className="text-[11px] text-[#9a7060] mt-0.5">Statut : {getStockStatus(inventoryItem)}</div>
+            </div>
+
+            <div className="mb-5">
+              <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Nouveau poids total mesuré (kg)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={inventoryWeight}
+                onChange={(e) => setInventoryWeight(e.target.value)}
+                placeholder="Ex : 4.25"
+                className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-4 text-2xl font-black text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+              />
+            </div>
+
+            <button
+              onClick={saveInventoryAdjust}
+              disabled={savingInventory}
+              className="w-full py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-md hover:bg-[#4e6a22] transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {savingInventory ? "Mise à jour…" : "Mettre à jour le stock ✅"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── PRODUCT SETTINGS MODAL (quick edit) ──────── */}
+      {settingsItem && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto p-5">
+            <div className="flex justify-between gap-4 items-start mb-5">
+              <div>
+                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">{settingsItem?.isNew ? "Nouveau produit" : "Réglages produit"}</div>
+                <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">{settingsForm.name || "Sans nom"}</h2>
+              </div>
+              <button onClick={() => setSettingsItem(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer">×</button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="col-span-2 md:col-span-3">
+                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Nom produit</label>
+                <input
+                  type="text"
+                  value={settingsForm.name || ""}
+                  onChange={(e) => setSettingsForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="Ex: Mangue fraîche"
+                  className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                />
+              </div>
+
+              {[
+                ["Catégorie", "categorie", "select", categoryOptions],
+                ["Sous-catégorie", "sousCategorie", "select", subCategoryOptions],
+                ["Visible OrderPad", "visibleOrderPad", "checkbox", []],
+                ["Fournisseur par défaut", "fournisseurDefaut", "select", fournisseurOptions],
+                ["Zone de stockage", "zoneStockage", "select", zoneOptions],
+                ["Quantité commandée", "quantiteCommandee", "number", []],
+                ["Unité stock", "uniteStock", "select", uniteOptions],
+                ["Unité commande", "uniteCommande", "select", uniteOptions],
+                ["Portion (g)", "portion", "number", []],
+                ["Seuil alerte", "seuilAlerte", "number", []],
+                ["Seuil critique", "seuilCritique", "number", []],
+              ].map(([label, key, type, options]) => (
+                <div key={key}>
+                  <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">{label}</label>
+                  {type === "checkbox" ? (
+                    <label className="flex items-center gap-3 rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={!!settingsForm[key]}
+                        onChange={(e) => setSettingsForm((prev) => ({ ...prev, [key]: e.target.checked }))}
+                        className="w-4 h-4"
+                      />
+                      Oui
+                    </label>
+                  ) : type === "select" ? (
+                    <select
+                      value={settingsForm[key] || ""}
+                      onChange={(e) => setSettingsForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                      className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none"
+                    >
+                      <option value="">Sélectionner…</option>
+                      {options.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      type="number"
+                      value={settingsForm[key] ?? ""}
+                      onChange={(e) => setSettingsForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                      placeholder="Non défini"
+                      className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none placeholder:text-[#c0b0a8] focus:border-[#5a7828] transition-colors"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setSettingsItem(null)} className="flex-1 py-3 rounded-xl font-black bg-[#ede0d4] text-[#9a7060] hover:bg-[#e5d5c5] transition-colors cursor-pointer">Annuler</button>
+              <button onClick={saveSettings} disabled={savingSettings} className="flex-1 py-3 rounded-xl font-black bg-[#5a7828] text-white hover:bg-[#4e6a22] transition-colors disabled:opacity-50 cursor-pointer">
+                {savingSettings ? "Enregistrement…" : "Enregistrer ✅"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CREATE PRODUCT DB MODAL ───────────────────── */}
+      {creatingProductDb && (
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-3xl max-h-[90vh] overflow-y-auto p-5">
+            <div className="flex justify-between items-start gap-4 mb-5">
+              <div>
+                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Nouveau produit</div>
+                <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">➕ Ajouter au catalogue</h2>
+              </div>
+              <button onClick={() => setCreatingProductDb(false)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer">×</button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Nom du produit / ingrédient</label>
+                <input
+                  value={creatingProductDbForm.ingredient || ""}
+                  onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, ingredient: e.target.value }))}
+                  className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-4 text-xl font-black text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                  placeholder="Ex : Mangue fraîche"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Photo URL</label>
+                  <input
+                    value={creatingProductDbForm.photo || ""}
+                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, photo: e.target.value }))}
+                    className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none"
+                    placeholder="Coller une URL image"
+                  />
+                </div>
+
+                {[
+                  ["Catégorie", "categorie", "select", productsDbCategories.filter((c) => c !== "Tous")],
+                  ["Sous-catégorie", "sousCategorie", "select", productsDbSubCategoryChoices],
+                  ["Fournisseur", "fournisseurDefaut", "select", productsDbSupplierChoices],
+                  ["Zone de stockage", "zoneStockage", "select", productsDbZoneChoices],
+                  ["Unité stock", "uniteStock", "select", productsDbUnitChoices],
+                  ["Unité commande", "uniteCommande", "select", productsDbUnitChoices],
+                  ["Qté commande suggérée", "quantiteCommandeSuggeree", "number", []],
+                  ["Portion (g)", "portionGrammes", "number", []],
+                  ["Seuil alerte", "seuilAlerte", "number", []],
+                  ["Seuil critique", "seuilCritique", "number", []],
+                ].map(([label, key, type, opts]) => (
+                  <div key={key}>
+                    <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">{label}</label>
+                    {type === "select" ? (
+                      <select
+                        value={creatingProductDbForm[key] || ""}
+                        onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                        className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none"
+                      >
+                        <option value="">À définir</option>
+                        {opts.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    ) : (
+                      <input
+                        type="number"
+                        value={creatingProductDbForm[key] ?? ""}
+                        onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                        className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none"
+                      />
+                    )}
+                  </div>
+                ))}
+
+                <label className="md:col-span-2 flex items-center gap-3 rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={creatingProductDbForm.visibleOrderPad !== false}
+                    onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, visibleOrderPad: e.target.checked }))}
+                    className="w-4 h-4"
+                  />
+                  Visible sur OrderPad
+                </label>
+              </div>
+            </div>
+
+            <button
+              onClick={saveProductDbCreate}
+              disabled={savingProductDb}
+              className="w-full mt-5 py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-md hover:bg-[#4e6a22] transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {savingProductDb ? "Création…" : "Créer le produit ✅"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── EDIT PRODUCT DB MODAL ───────────────────── */}
+      {editingProductDb && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-3xl max-h-[90vh] overflow-y-auto p-5">
+            <div className="flex justify-between items-start gap-4 mb-5">
+              <div>
+                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Modifier le produit</div>
+                <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">{editingProductDb?.ingredient || editingProductDb?.name || "Produit"}</h2>
+              </div>
+              <button onClick={() => setEditingProductDb(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer">×</button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Nom du produit</label>
+                <input
+                  value={editingProductDbForm.ingredient || ""}
+                  onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, ingredient: e.target.value }))}
+                  className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-4 text-xl font-black text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  ["Fournisseur", "fournisseurDefaut", "select", productsDbSupplierChoices],
+                  ["Zone de stockage", "zoneStockage", "select", productsDbZoneChoices],
+                  ["Méthode de suivi", "methodeSuivi", "select", ["Manuel", "Automatique", "Préparation"]],
+                  ["Qté commande suggérée", "quantiteCommandeSuggeree", "number", []],
+                  ["Portion (g)", "portionGrammes", "number", []],
+                  ["Unité stock", "uniteStock", "select", productsDbUnitChoices],
+                  ["Unité commande", "uniteCommande", "select", productsDbUnitChoices],
+                  ["Seuil alerte", "seuilAlerte", "number", []],
+                  ["Seuil critique", "seuilCritique", "number", []],
+                ].map(([label, key, type, opts]) => (
+                  <div key={key}>
+                    <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">{label}</label>
+                    {type === "select" ? (
+                      <select
+                        value={editingProductDbForm[key] || ""}
+                        onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                        className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none"
+                      >
+                        <option value="">À définir</option>
+                        {opts.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    ) : (
+                      <input
+                        type="number"
+                        value={editingProductDbForm[key] ?? ""}
+                        onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                        className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none"
+                      />
+                    )}
+                  </div>
+                ))}
+
+                <label className="md:col-span-2 flex items-center gap-3 rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editingProductDbForm.visibleOrderPad !== false}
+                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, visibleOrderPad: e.target.checked }))}
+                    className="w-4 h-4"
+                  />
+                  Visible sur OrderPad
+                </label>
+              </div>
+
+              {[["Utilisé dans", "utiliseDans"], ["Notes", "notes"]].map(([label, key]) => (
+                <div key={key}>
+                  <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">{label}</label>
+                  <textarea
+                    value={editingProductDbForm[key] || ""}
+                    onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                    className="w-full min-h-[60px] rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none"
+                  />
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={saveProductDbEdit}
+              disabled={savingProductDb}
+              className="w-full mt-5 py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-md hover:bg-[#4e6a22] transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {savingProductDb ? "Enregistrement…" : "Enregistrer les modifications ✅"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── CLOCK MODAL ──────────────────────────────── */}
+      {showClockModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-xl max-h-[90vh] overflow-y-auto p-5">
+            <div className="flex justify-between gap-4 items-start mb-5">
+              <div>
+                <h2 className="text-lg font-black text-[#2c1a10]">⏱ Pointage staff</h2>
+                <p className="text-[11px] text-[#9a7060] mt-0.5">Arrivée, pause, retour et départ.</p>
+              </div>
+              <button onClick={() => setShowClockModal(false)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-lg text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer">×</button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {staff.map((member) => {
+                const staffId = member.id || getStaffName(member);
+                const staffName = getStaffName(member);
+                const status = clockStatuses[staffId] || "absent";
+                const statusConfig = {
+                  present: { label: "Présent", color: "text-[#5a7828]", dot: "bg-[#5a7828]" },
+                  pause: { label: "En pause", color: "text-orange-500", dot: "bg-orange-400" },
+                  done: { label: "Terminé", color: "text-[#9a7060]", dot: "bg-[#9a7060]" },
+                  absent: { label: "Pas pointé", color: "text-[#b09080]", dot: "bg-[#d5c5b5]" },
+                }[status] || { label: "Pas pointé", color: "text-[#b09080]", dot: "bg-[#d5c5b5]" };
+
+                return (
+                  <div key={staffId} className="rounded-2xl border border-[#e5d5c5] bg-[#faf5ef] p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${statusConfig.dot}`}></span>
+                      <div>
+                        <div className="font-black text-sm text-[#2c1a10]">{staffName}</div>
+                        <div className={`text-[10px] font-semibold ${statusConfig.color}`}>{statusConfig.label}</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {status === "absent" && (
+                        <button disabled={clockSending} onClick={() => sendClockAction(member, "Arrivée")} className="col-span-2 bg-[#5a7828] text-white py-2.5 rounded-xl font-bold text-xs hover:bg-[#4e6a22] transition-colors cursor-pointer">Arrivée ✅</button>
+                      )}
+                      {status === "present" && (<>
+                        <button disabled={clockSending} onClick={() => sendClockAction(member, "Départ pause")} className="bg-orange-500 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-orange-600 transition-colors cursor-pointer">Pause</button>
+                        <button disabled={clockSending} onClick={() => sendClockAction(member, "Départ")} className="bg-[#2c1a10] text-white py-2.5 rounded-xl font-bold text-xs hover:bg-[#1e100a] transition-colors cursor-pointer">Départ</button>
+                      </>)}
+                      {status === "pause" && (
+                        <button disabled={clockSending} onClick={() => sendClockAction(member, "Retour pause")} className="col-span-2 bg-[#5a7828] text-white py-2.5 rounded-xl font-bold text-xs hover:bg-[#4e6a22] transition-colors cursor-pointer">Retour pause ✅</button>
+                      )}
+                      {status === "done" && (
+                        <button disabled className="col-span-2 bg-[#ede0d4] text-[#b09080] py-2.5 rounded-xl font-bold text-xs cursor-not-allowed">Journée terminée</button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ADMIN PIN MODAL ───────────────────────────── */}
+      {showAdminModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#e5d5c5] w-full max-w-sm p-6">
+            <h2 className="text-lg font-black text-[#2c1a10]">👤 Accès admin</h2>
+            <p className="text-[11px] text-[#9a7060] mt-1 mb-5">Entrez le code à 4 chiffres pour accéder aux réglages.</p>
+
+            <input
+              value={adminPin}
+              onChange={(e) => setAdminPin(e.target.value)}
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              placeholder="••••"
+              className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-4 text-center text-2xl font-black tracking-[0.5em] text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors mb-4"
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowAdminModal(false); setAdminPin(""); }}
+                className="flex-1 py-3 rounded-xl font-black bg-[#ede0d4] text-[#9a7060] hover:bg-[#e5d5c5] transition-colors cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={unlockAdmin}
+                className="flex-1 py-3 rounded-xl font-black bg-[#5a7828] text-white hover:bg-[#4e6a22] transition-colors cursor-pointer"
+              >
+                Entrer ✅
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
