@@ -150,9 +150,9 @@ function getStockPortions(item) {
 }
 
 function getStockQty(item) {
-  return item?.quantiteStock ?? item?.quantite ?? item?.PoidsTotal ??
-         item?.quantiteRecue ?? item?.qteStock ?? item?.stock ??
-         item?.portionsRestantes ?? item?.portions ?? 0;
+  return item?.quantiteStock ?? item?.quantite ?? item?.poidsTotal ??
+         item?.PoidsTotal ?? item?.poids_live ?? item?.poidsLive ??
+         item?.portionsRestantes ?? 0;
 }
 
 function getStockDisplayUnit(item) {
