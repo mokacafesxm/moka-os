@@ -1473,12 +1473,19 @@ export default function MokaOrderPad() {
           resource: "products",
           action: "create",
           data: {
-            ...creatingProductDbForm,
-            fournisseurDefautName: creatingProductDbForm.fournisseurDefaut || "",
-            fournisseurDefautId: getSupplierIdFromName(
-              creatingProductDbForm.fournisseurDefaut,
-              settingsCache.suppliers || []
-            ),
+            ingredient: creatingProductDbForm.ingredient,
+            visibleOrderPad: creatingProductDbForm.visibleOrderPad ?? true,
+            categorie: creatingProductDbForm.categorie || "",
+            sousCategorie: creatingProductDbForm.sousCategorie || "",
+            zoneStockage: creatingProductDbForm.zoneStockage || "",
+            methodeSuivi: creatingProductDbForm.methodeSuivi || "",
+            quantiteCommandeSuggeree: Number(creatingProductDbForm.quantiteCommandeSuggeree) || null,
+            uniteStock: creatingProductDbForm.uniteStock || "",
+            uniteCommande: creatingProductDbForm.uniteCommande || "",
+            seuilAlerte: Number(creatingProductDbForm.seuilAlerte) || null,
+            seuilCritique: Number(creatingProductDbForm.seuilCritique) || null,
+            portionGrammes: Number(creatingProductDbForm.portionGrammes) || null,
+            notes: creatingProductDbForm.notes || "",
           },
         }),
       });
@@ -1562,12 +1569,19 @@ export default function MokaOrderPad() {
           action: "update",
           id: editingProductDbForm.id,
           data: {
-            ...editingProductDbForm,
-            fournisseurDefautName: editingProductDbForm.fournisseurDefaut || "",
-            fournisseurDefautId: getSupplierIdFromName(
-              editingProductDbForm.fournisseurDefaut,
-              settingsCache.suppliers || []
-            ),
+            ingredient: editingProductDbForm.ingredient,
+            visibleOrderPad: editingProductDbForm.visibleOrderPad ?? true,
+            categorie: editingProductDbForm.categorie || "",
+            sousCategorie: editingProductDbForm.sousCategorie || "",
+            zoneStockage: editingProductDbForm.zoneStockage || "",
+            methodeSuivi: editingProductDbForm.methodeSuivi || "",
+            quantiteCommandeSuggeree: Number(editingProductDbForm.quantiteCommandeSuggeree) || null,
+            uniteStock: editingProductDbForm.uniteStock || "",
+            uniteCommande: editingProductDbForm.uniteCommande || "",
+            seuilAlerte: Number(editingProductDbForm.seuilAlerte) || null,
+            seuilCritique: Number(editingProductDbForm.seuilCritique) || null,
+            portionGrammes: Number(editingProductDbForm.portionGrammes) || null,
+            notes: editingProductDbForm.notes || "",
           },
         }),
       });
@@ -1587,6 +1601,7 @@ export default function MokaOrderPad() {
       }
 
       setEditingProductDb(null);
+      await loadProductsDatabase(true);
       await refreshOrderPadProducts();
       alert("Produit modifié ✅");
     } catch (error) {
@@ -1889,10 +1904,29 @@ export default function MokaOrderPad() {
 
       let response;
       try {
-        response = await fetch(isNewProduct ? PRODUCT_CREATE_URL : PRODUCT_UPDATE_URL, {
+        response = await fetch(SETTINGS_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            resource: "products",
+            action: isNewProduct ? "create" : "update",
+            id: payload.id,
+            data: {
+              ingredient: payload.name,
+              visibleOrderPad: payload.visibleOrderPad,
+              categorie: payload.categorie,
+              sousCategorie: payload.sousCategorie,
+              zoneStockage: payload.zoneStockage,
+              methodeSuivi: settingsForm.methodeSuivi || "",
+              quantiteCommandeSuggeree: Number(payload.quantiteCommandee) || null,
+              uniteStock: payload.uniteStock,
+              uniteCommande: payload.uniteCommande,
+              seuilAlerte: Number(payload.seuilAlerte) || null,
+              seuilCritique: Number(payload.seuilCritique) || null,
+              portionGrammes: Number(payload.portionGrammes) || null,
+              notes: payload.notes,
+            },
+          }),
           signal: controller.signal,
         });
       } finally {
