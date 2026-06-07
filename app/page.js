@@ -149,6 +149,17 @@ function getStockPortions(item) {
   return item?.portionsRestantes || item?.portions || item?.["Portions restantes"] || 0;
 }
 
+function getStockQty(item) {
+  return item?.quantiteStock ?? item?.quantite ?? item?.PoidsTotal ??
+         item?.quantiteRecue ?? item?.qteStock ?? item?.stock ??
+         item?.portionsRestantes ?? item?.portions ?? 0;
+}
+
+function getStockDisplayUnit(item) {
+  return item?.uniteStock || item?.unite || item?.unit ||
+         item?.Unite || item?.uniteCommande || "";
+}
+
 function getStockZone(item) {
   return item?.zone || item?.emplacement || item?.zoneStockage || "";
 }
@@ -346,6 +357,7 @@ export default function MokaOrderPad() {
   const [stockSearch, setStockSearch] = useState("");
   const [inventoryItem, setInventoryItem] = useState(null);
   const [inventoryWeight, setInventoryWeight] = useState("");
+  const [inventoryUnit, setInventoryUnit] = useState("kg");
   const [stockReceiveItem, setStockReceiveItem] = useState(null);
   const [stockReceiveWeight, setStockReceiveWeight] = useState("");
   const [stockReceiveUnit, setStockReceiveUnit] = useState("kg");
@@ -2123,6 +2135,7 @@ export default function MokaOrderPad() {
   const openInventoryAdjust = (item) => {
     setInventoryItem(item);
     setInventoryWeight("");
+    setInventoryUnit(item?.uniteStock || item?.unit || item?.unite || "kg");
   };
 
   const openStockReceive = (item) => {
@@ -2200,6 +2213,7 @@ export default function MokaOrderPad() {
           Produit: getStockName(inventoryItem),
           PoidsTotal: Number(inventoryWeight),
           mode: "replace",
+          Unite: inventoryUnit,
           Utilisateur: selectedStaffName || "MOKA OS",
           Source: "Inventaire admin",
         }),
@@ -2703,10 +2717,10 @@ export default function MokaOrderPad() {
 
                                     <h3 className="text-sm font-black leading-tight mb-3">{getStockName(item)}</h3>
 
-                                    {/* Portions info */}
+                                    {/* Stock info */}
                                     <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/10 border border-white/20" : "bg-[#faf5ef] border border-[#ede0d0]"}`}>
-                                      <div className={`text-[10px] font-semibold mb-1 uppercase tracking-wide ${selected ? "text-white/60" : "text-[#9a7060]"}`}>Portions restantes</div>
-                                      <div className="text-xl font-black">{getStockPortions(item)}</div>
+                                      <div className={`text-[10px] font-semibold mb-1 uppercase tracking-wide ${selected ? "text-white/60" : "text-[#9a7060]"}`}>{isPrepStock(item) ? "Portions restantes" : "En stock"}</div>
+                                      <div className="text-xl font-black">{isPrepStock(item) ? getStockPortions(item) : `${getStockQty(item)}${getStockDisplayUnit(item) ? " " + getStockDisplayUnit(item) : ""}`}</div>
                                       {getStockZone(item) && (
                                         <div className={`text-[10px] mt-1 flex items-center gap-1 ${selected ? "text-white/50" : "text-[#9a7060]"}`}>
                                           <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -3483,7 +3497,7 @@ export default function MokaOrderPad() {
                           <th className="text-left px-3 py-2.5 font-bold min-w-[160px]">{inventoryView === "stock" ? "Produit" : "Prépa"}</th>
                           <th className="text-left px-3 py-2.5 font-bold">Catégorie</th>
                           <th className="text-left px-3 py-2.5 font-bold">Zone</th>
-                          <th className="text-left px-3 py-2.5 font-bold">Portions</th>
+                          <th className="text-left px-3 py-2.5 font-bold">{inventoryView === "stock" ? "En stock" : "Portions"}</th>
                           <th className="text-left px-3 py-2.5 font-bold">Statut</th>
                           <th className="text-left px-3 py-2.5 font-bold">Actions</th>
                         </tr>
@@ -3499,7 +3513,7 @@ export default function MokaOrderPad() {
                               <td className="px-3 py-2.5 font-bold text-[#2c1a10]">{getStockName(item)}</td>
                               <td className="px-3 py-2.5 text-[#6b4a3d]">{categoryEmojis[getStockCategory(item)] || "📌"} {getStockCategory(item)}</td>
                               <td className="px-3 py-2.5 text-[#6b4a3d]">{getStockZone(item) || "—"}</td>
-                              <td className="px-3 py-2.5 font-black text-[#2c1a10]">{getStockPortions(item)}</td>
+                              <td className="px-3 py-2.5 font-black text-[#2c1a10]">{inventoryView === "stock" ? `${getStockQty(item)}${getStockDisplayUnit(item) ? " " + getStockDisplayUnit(item) : ""}` : `${getStockPortions(item)} portions`}</td>
                               <td className="px-3 py-2.5">
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${
                                   isCritical ? "bg-red-50 text-red-600" : isLow ? "bg-orange-50 text-orange-600" : "bg-[#f0f7e5] text-[#5a7828]"
@@ -4134,13 +4148,13 @@ export default function MokaOrderPad() {
             </div>
 
             <div className="rounded-xl bg-[#faf5ef] border border-[#e5d5c5] p-4 mb-4">
-              <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Portions actuelles</div>
-              <div className="text-2xl font-black text-[#2c1a10] mt-1">{getStockPortions(inventoryItem)}</div>
+              <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">En stock actuellement</div>
+              <div className="text-2xl font-black text-[#2c1a10] mt-1">{getStockQty(inventoryItem)} {getStockDisplayUnit(inventoryItem)}</div>
               <div className="text-[11px] text-[#9a7060] mt-0.5">Statut : {getStockStatus(inventoryItem)}</div>
             </div>
 
-            <div className="mb-5">
-              <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Nouveau poids total mesuré (kg)</label>
+            <div className="mb-3">
+              <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Nouvelle quantité totale</label>
               <input
                 type="number"
                 step="0.01"
@@ -4149,6 +4163,19 @@ export default function MokaOrderPad() {
                 placeholder="Ex : 4.25"
                 className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-4 text-2xl font-black text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
               />
+            </div>
+
+            <div className="mb-5">
+              <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Unité</label>
+              <select
+                value={inventoryUnit}
+                onChange={(e) => setInventoryUnit(e.target.value)}
+                className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 text-base font-bold text-[#2c1a10] outline-none"
+              >
+                {["kg", "g", "L", "ml", "pièce", "sachet", "carton", "bouteille", "barquette"].map((u) => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
             </div>
 
             <button
