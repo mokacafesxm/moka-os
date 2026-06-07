@@ -361,6 +361,7 @@ export default function MokaOrderPad() {
   const [stockReceiveItem, setStockReceiveItem] = useState(null);
   const [stockReceiveWeight, setStockReceiveWeight] = useState("");
   const [stockReceiveUnit, setStockReceiveUnit] = useState("kg");
+  const [stockReceiveMode, setStockReceiveMode] = useState("add");
   const [savingStockReceive, setSavingStockReceive] = useState(false);
   const [inventoryCategory, setInventoryCategory] = useState("Tous");
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("Tous");
@@ -2172,17 +2173,18 @@ export default function MokaOrderPad() {
     setInventoryUnit(item?.uniteStock || item?.unit || item?.unite || "kg");
   };
 
-  const openStockReceive = (item) => {
+  const openStockReceive = (item, mode = "add") => {
     setStockReceiveItem(item);
     setStockReceiveWeight("");
-    setStockReceiveUnit(item?.unit || item?.unite || "kg");
+    setStockReceiveUnit(item?.uniteStock || item?.unit || item?.unite || "kg");
+    setStockReceiveMode(mode);
   };
 
   const saveStockReceive = async () => {
     if (!stockReceiveItem) return;
 
     if (!stockReceiveWeight) {
-      alert("Entre la quantité reçue ❌");
+      alert("Entre la quantité ❌");
       return;
     }
 
@@ -2197,10 +2199,10 @@ export default function MokaOrderPad() {
           ingredientId: stockReceiveItem.ingredientId || "",
           Produit: getStockName(stockReceiveItem),
           PoidsTotal: Number(stockReceiveWeight),
-          mode: "add",
+          mode: stockReceiveMode,
           Unite: stockReceiveUnit || stockReceiveItem.unit || "kg",
           Utilisateur: selectedStaffName || "MOKA OS",
-          Source: "Réception fournisseur",
+          Source: stockReceiveMode === "replace" ? "Correction inventaire" : "Réception fournisseur",
         }),
       });
 
@@ -2208,7 +2210,7 @@ export default function MokaOrderPad() {
 
       setStockReceiveItem(null);
       setStockReceiveWeight("");
-      alert("Stock reçu ajouté ✅");
+      alert(stockReceiveMode === "replace" ? "Stock corrigé ✅" : "Stock reçu ajouté ✅");
 
       fetch(STOCK_URL)
         .then((res) => res.json())
@@ -4119,22 +4121,32 @@ export default function MokaOrderPad() {
       {stockReceiveItem && (
         <div className="fixed inset-0 bg-black/50 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-md p-5">
-            <div className="flex justify-between gap-4 items-start mb-5">
+            <div className="flex justify-between gap-4 items-start mb-4">
               <div>
-                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Réception · Ajouter stock</div>
+                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">{stockReceiveMode === "replace" ? "✏️ Corriger le stock" : "📦 Réception"}</div>
                 <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">{getStockName(stockReceiveItem)}</h2>
               </div>
               <button onClick={() => setStockReceiveItem(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] hover:text-[#2c1a10] transition-all cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
             </div>
 
+            <div className="flex gap-2 mb-4">
+              {[{ id: "add", label: "📦 Réception" }, { id: "replace", label: "✏️ Correction" }].map((m) => (
+                <button key={m.id} onClick={() => setStockReceiveMode(m.id)} className={`flex-1 py-2 rounded-xl text-xs font-black transition ${stockReceiveMode === m.id ? "bg-[#2c1a10] text-white" : "bg-[#f0e8dc] text-[#6b4a3d]"}`}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+
             <div className="rounded-xl bg-[#faf5ef] border border-[#e5d5c5] p-4 mb-4">
-              <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Stock actuel</div>
-              <div className="text-2xl font-black text-[#2c1a10] mt-1">{getStockPortions(stockReceiveItem)}</div>
+              <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">En stock actuellement</div>
+              <div className="text-2xl font-black text-[#2c1a10] mt-1">{getStockQty(stockReceiveItem)} {getStockDisplayUnit(stockReceiveItem)}</div>
               <div className="text-[11px] text-[#9a7060] mt-0.5">Statut : {getStockStatus(stockReceiveItem)}</div>
             </div>
 
             <div className="mb-3">
-              <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Quantité reçue à ajouter</label>
+              <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">
+                {stockReceiveMode === "replace" ? "Quantité totale réelle (remplace le stock)" : "Quantité reçue à ajouter"}
+              </label>
               <input
                 type="number"
                 step="0.01"
@@ -4163,7 +4175,7 @@ export default function MokaOrderPad() {
               disabled={savingStockReceive}
               className="w-full py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-md hover:bg-[#4e6a22] transition-colors disabled:opacity-50 cursor-pointer"
             >
-              {savingStockReceive ? "Enregistrement…" : "Ajouter au stock ✅"}
+              {savingStockReceive ? "Enregistrement…" : stockReceiveMode === "replace" ? "Corriger le stock ✅" : "Ajouter au stock ✅"}
             </button>
           </div>
         </div>
