@@ -838,9 +838,19 @@ export default function MokaOrderPad() {
     const selLower = String(ordSelectedSupplier || "").trim().toLowerCase();
     if (!selLower) return [];
 
+    const supplierNameMap = {};
+    (settingsCache.suppliers || []).forEach((s) => {
+      const name = String(s.nom || s.name || "").trim();
+      if (s.id) supplierNameMap[s.id] = name;
+      if (s.id) supplierNameMap[s.id.replaceAll("-", "")] = name;
+    });
+
     const matched = productsDb.filter((p) => {
-      const sup = String(p.fournisseurDefaut || p.fournisseurDefautName || p.supplier || "").trim().toLowerCase();
-      return sup === selLower;
+      let sup = String(p.fournisseurDefaut || p.fournisseurDefautName || p.supplier || "").trim();
+      if (/^[0-9a-f-]{36}$/i.test(sup)) {
+        sup = supplierNameMap[sup] || supplierNameMap[sup.replaceAll("-", "")] || sup;
+      }
+      return sup.toLowerCase() === selLower;
     });
 
     const stockById = {};
@@ -878,7 +888,7 @@ export default function MokaOrderPad() {
       if (subCmp !== 0) return subCmp;
       return String(a.name).localeCompare(String(b.name));
     });
-  }, [productsDb, stockLive, ordSelectedSupplier]);
+  }, [productsDb, stockLive, ordSelectedSupplier, settingsCache]);
   const ordFilteredOrders = useMemo(() => {
     const list = ordStatusFilter === "Tous" ? supplierOrders : supplierOrders.filter((o) => o.statut === ordStatusFilter);
     return [...list].sort((a, b) => String(b.dateCreation || "").localeCompare(String(a.dateCreation || "")));
