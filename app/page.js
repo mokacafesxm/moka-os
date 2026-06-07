@@ -834,10 +834,51 @@ export default function MokaOrderPad() {
     });
     return Object.entries(map);
   }, [ordUrgentItems]);
-  const ordSupplierProducts = useMemo(
-    () => ordNormalizedStock.filter((item) => (item.fournisseur || "Sans fournisseur") === ordSelectedSupplier),
-    [ordNormalizedStock, ordSelectedSupplier]
-  );
+  const ordSupplierProducts = useMemo(() => {
+    const selLower = String(ordSelectedSupplier || "").trim().toLowerCase();
+    if (!selLower) return [];
+
+    const matched = productsDb.filter((p) => {
+      const sup = String(p.fournisseurDefaut || p.fournisseurDefautName || p.supplier || "").trim().toLowerCase();
+      return sup === selLower;
+    });
+
+    const stockById = {};
+    const stockByName = {};
+    stockLive.forEach((item) => {
+      if (item.ingredientId) stockById[item.ingredientId] = item;
+      if (item.id) stockById[item.id] = item;
+      const n = String(getStockName(item)).trim().toLowerCase();
+      if (n) stockByName[n] = item;
+    });
+
+    const enriched = matched.map((p) => {
+      const name = p.ingredient || p.name || "";
+      const stockItem = stockById[p.id] || stockById[p.ingredientId] || stockByName[String(name).trim().toLowerCase()];
+      return {
+        id: p.id,
+        name,
+        categorie: p.categorie || p.category || "Autres",
+        sousCategorie: p.sousCategorie || p.subcategory || "Autres",
+        unit: p.uniteCommande || p.uniteStock || "kg",
+        suggested: Number(p.quantiteCommandeSuggeree) || 1,
+        stockQty: stockItem?.quantiteStock ?? 0,
+        stockUnit: stockItem?.uniteStock || p.uniteStock || "kg",
+        status: stockItem ? getStockStatus(stockItem) : "—",
+        fournisseur: p.fournisseurDefaut || p.fournisseurDefautName || "",
+      };
+    });
+
+    return enriched.sort((a, b) => {
+      const ia = categoryOrder.indexOf(a.categorie);
+      const ib = categoryOrder.indexOf(b.categorie);
+      const catDiff = (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+      if (catDiff !== 0) return catDiff;
+      const subCmp = String(a.sousCategorie).localeCompare(String(b.sousCategorie));
+      if (subCmp !== 0) return subCmp;
+      return String(a.name).localeCompare(String(b.name));
+    });
+  }, [productsDb, stockLive, ordSelectedSupplier]);
   const ordFilteredOrders = useMemo(() => {
     const list = ordStatusFilter === "Tous" ? supplierOrders : supplierOrders.filter((o) => o.statut === ordStatusFilter);
     return [...list].sort((a, b) => String(b.dateCreation || "").localeCompare(String(a.dateCreation || "")));
@@ -1268,14 +1309,9 @@ export default function MokaOrderPad() {
   }, [isAdmin, adminSection]);
 
   useEffect(() => {
-    if (!isAdmin || adminSection !== "orders" || !stockLive.length) return;
-    const normalizedStock = stockLive.map(ordNormalizeStock);
-    const init = {};
-    normalizedStock.forEach((item) => {
-      init[item.id] = { ...item, qty: item.suggested, included: isUrgentStock(item) };
-    });
-    setComposeCart(init);
-  }, [isAdmin, adminSection, stockLive]);
+    if (!isAdmin || adminSection !== "orders") return;
+    setComposeCart({});
+  }, [isAdmin, adminSection]);
 
   useEffect(() => {
     if (!isAdmin || adminSection !== "orders" || ordSelectedSupplier) return;
@@ -3731,8 +3767,8 @@ export default function MokaOrderPad() {
                             </div>
                           );
                         })}
-                        {!loadingStock && ordSupplierProducts.length === 0 && (
-                          <div className="p-5 text-sm font-bold text-[#a97862]">Aucun produit relié à ce fournisseur dans le stock live.</div>
+                        {!loadingProductsDb && ordSupplierProducts.length === 0 && (
+                          <div className="p-5 text-sm font-bold text-[#a97862]">Aucun produit relié à ce fournisseur dans la base ingrédients.</div>
                         )}
                       </div>
                     </div>
@@ -4654,13 +4690,13 @@ function OrdSupplierContactCard({ supplier, compact = false }) {
       {!compact && (
         <div>
           <div className="text-xs font-black text-[#3b241b]">{ordGetSupplierName(supplier)}</div>
-          <div className="text-[11px] text-[#a97862]">{email || phone || "Contact à compléter"}</div>
+          <div className="text-[11px] text-[#a97862]">{[email, phone].find((v) => v && v !== "null") || "Contact à compléter"}</div>
         </div>
       )}
       <div className="flex gap-2">
-        {phone && <a href={`tel:${phone}`} className="w-9 h-9 rounded-xl bg-[#f4eee7] flex items-center justify-center text-base">📞</a>}
-        {whatsapp && <a href={`https://wa.me/${String(whatsapp).replace(/\D/g, "")}`} className="w-9 h-9 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center text-base">💬</a>}
-        {email && <a href={`mailto:${email}`} className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-base">📧</a>}
+        {phone && phone !== "null" && <a href={`tel:${phone}`} className="w-9 h-9 rounded-xl bg-[#f4eee7] flex items-center justify-center text-base">📞</a>}
+        {whatsapp && whatsapp !== "null" && <a href={`https://wa.me/${String(whatsapp).replace(/\D/g, "")}`} className="w-9 h-9 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center text-base">💬</a>}
+        {email && email !== "null" && <a href={`mailto:${email}`} className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-base">📧</a>}
       </div>
     </div>
   );
