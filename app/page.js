@@ -2342,7 +2342,7 @@ export default function MokaOrderPad() {
       const img = new Image();
       const url = URL.createObjectURL(file);
       img.onload = () => {
-        const MAX = 1200;
+        const MAX = 800;
         let w = img.width, h = img.height;
         if (w > MAX || h > MAX) {
           if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -2355,7 +2355,7 @@ export default function MokaOrderPad() {
           const reader = new FileReader();
           reader.onload = (e) => resolve(e.target.result.split(",")[1]);
           reader.readAsDataURL(blob);
-        }, "image/jpeg", 0.85);
+        }, "image/jpeg", 0.6);
         URL.revokeObjectURL(url);
       };
       img.src = url;

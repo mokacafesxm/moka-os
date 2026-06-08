@@ -1,9 +1,22 @@
 import { NextResponse } from "next/server";
 
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+export async function OPTIONS() {
+  return new Response(null, { headers: corsHeaders });
+}
+
 export async function POST(request) {
   try {
     const { base64, mediaType, stockNames } = await request.json();
-    if (!base64) return NextResponse.json({ error: "No image" }, { status: 400 });
+    if (!base64) return NextResponse.json({ error: "No image" }, { status: 400, headers: corsHeaders });
     console.log("API KEY present:", !!process.env.ANTHROPIC_API_KEY);
 
     // Limiter à 150 noms max pour ne pas dépasser le context
@@ -57,15 +70,15 @@ Retourne [] seulement si l'image n'est pas une facture.` }
     const data = await response.json();
     console.log("Anthropic response status:", response.status);
     console.log("Anthropic data:", JSON.stringify(data).slice(0, 500));
-    if (data.error) return NextResponse.json({ error: data.error.message }, { status: 500 });
+    if (data.error) return NextResponse.json({ error: data.error.message }, { status: 500, headers: corsHeaders });
 
     const text = data.content?.[0]?.text || "[]";
     let parsed;
     try { parsed = JSON.parse(text.replace(/```json|```/g, "").trim()); }
     catch { parsed = []; }
 
-    return NextResponse.json({ results: parsed });
+    return NextResponse.json({ results: parsed }, { headers: corsHeaders });
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message }, { status: 500, headers: corsHeaders });
   }
 }
