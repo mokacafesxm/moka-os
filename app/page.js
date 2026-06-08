@@ -2388,24 +2388,17 @@ export default function MokaOrderPad() {
     setInvoiceAnalyzing(true);
     setInvoiceResults([]);
     try {
-      console.log("🔵 Envoi analyse, taille base64:", base64?.length);
+      const formData = new FormData();
+      formData.append("base64", base64);
+      formData.append("mediaType", mediaType || "image/jpeg");
 
       const response = await fetch("/api/analyze-invoice", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          base64,
-          mediaType,
-          stockNames: [], // vide pour tester sans la liste
-        }),
+        body: formData,
       });
 
-      console.log("🟢 Status réponse:", response.status, response.statusText);
-
-      const text = await response.text();
-      console.log("🟢 Réponse brute:", text.slice(0, 200));
-
-      const data = JSON.parse(text);
+      console.log("🟢 Status:", response.status);
+      const data = await response.json();
       if (data.error) throw new Error(data.error);
 
       const parsed = data.results || [];
@@ -2419,7 +2412,7 @@ export default function MokaOrderPad() {
       });
       setInvoiceResults(results);
     } catch (err) {
-      console.error("❌ Erreur analyse:", err);
+      console.error("❌ Erreur:", err);
       alert("Erreur : " + err.message);
     } finally {
       setInvoiceAnalyzing(false);

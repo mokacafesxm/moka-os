@@ -15,7 +15,21 @@ export async function OPTIONS() {
 
 export async function POST(request) {
   try {
-    const { base64, mediaType, stockNames } = await request.json();
+    const contentType = request.headers.get("content-type") || "";
+    let base64, mediaType, stockNames;
+
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      base64 = formData.get("base64");
+      mediaType = formData.get("mediaType") || "image/jpeg";
+      stockNames = [];
+    } else {
+      const json = await request.json();
+      base64 = json.base64;
+      mediaType = json.mediaType || "image/jpeg";
+      stockNames = json.stockNames || [];
+    }
+
     if (!base64) return NextResponse.json({ error: "No image" }, { status: 400, headers: corsHeaders });
     console.log("API KEY present:", !!process.env.ANTHROPIC_API_KEY);
 
