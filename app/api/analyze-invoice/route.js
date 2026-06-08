@@ -14,30 +14,37 @@ export async function POST(request) {
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 1024,
+        max_tokens: 2048,
         messages: [{
           role: "user",
           content: [
             { type: "image", source: { type: "base64", media_type: mediaType || "image/jpeg", data: base64 } },
             { type: "text", text: `Tu es un assistant pour un café-restaurant.
-Analyse cette facture fournisseur et extrait tous les produits reçus.
+Analyse ATTENTIVEMENT cette facture fournisseur ligne par ligne.
+
+IMPORTANT : tu dois extraire ABSOLUMENT TOUS les produits visibles sur la facture, sans en sauter aucun. Même si tu n'es pas sûr, inclus le produit avec confidence "low".
 
 Voici la liste exacte des produits dans notre stock :
 ${stockNames ? stockNames.join("\n") : ""}
 
-Pour chaque produit de la facture, trouve le meilleur match dans notre liste de stock (même si les noms sont différents, ex: "blueberries" → "Myrtilles", "beef" → "Boeuf", "heavy cream" → "Crème liquide").
+Pour CHAQUE ligne produit de la facture (pas les totaux, taxes, frais de livraison) :
+- Identifie le nom du produit
+- Trouve la quantité et l'unité
+- Cherche le meilleur match dans notre liste stock (cross-langue : blueberries→Myrtilles, beef→Boeuf, butter→Beurre, eggs→Oeufs, cream→Crème, etc.)
 
-Réponds UNIQUEMENT en JSON valide, sans markdown :
+Réponds UNIQUEMENT en JSON valide, sans markdown, sans texte avant ou après :
 [
   {
     "name_facture": "Nom exact sur la facture",
-    "name_stock": "Nom exact dans notre stock (null si aucun match)",
+    "name_stock": "Nom exact dans notre stock ou null",
     "quantite": 5,
     "unite": "kg",
     "confidence": "high|medium|low"
   }
 ]
-Si tu ne vois pas de facture claire, retourne [].` }
+
+Si une ligne n'a pas de match dans le stock, mets name_stock: null mais inclus quand même la ligne.
+Retourne [] seulement si l'image n'est pas une facture.` }
           ]
         }]
       })
