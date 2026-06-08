@@ -434,6 +434,7 @@ export default function MokaOrderPad() {
 
   const [showClockModal, setShowClockModal] = useState(false);
   const [clockNow, setClockNow] = useState(new Date());
+  const [loadingClockStaff, setLoadingClockStaff] = useState(false);
   const [clockStatuses, setClockStatuses] = useState(() => {
     if (typeof window === "undefined") return {};
 
@@ -2644,9 +2645,24 @@ export default function MokaOrderPad() {
             onClick={() => {
               setShowClockModal(true);
               if (!staff.length) {
-                fetchSettingsResource("staff").then((list) => {
-                  if (list?.length) setStaff(list);
-                }).catch(() => {});
+                setLoadingClockStaff(true);
+                fetch(SETTINGS_URL, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ resource: "staff", action: "list" }),
+                })
+                  .then((r) => r.text())
+                  .then((text) => {
+                    try {
+                      const data = JSON.parse(text);
+                      const list = Array.isArray(data)
+                        ? data
+                        : normalizeArray(data, "staff");
+                      if (list.length) setStaff(list);
+                    } catch {}
+                  })
+                  .catch(() => {})
+                  .finally(() => setLoadingClockStaff(false));
               }
             }}
             className="relative h-10 px-4 rounded-xl bg-white border-2 border-[#e85d8a] text-[#e85d8a] font-black text-sm shadow-sm ring-2 ring-[#e85d8a]/25 hover:bg-[#fff0f5] transition-all cursor-pointer flex items-center gap-2"
@@ -4676,10 +4692,17 @@ export default function MokaOrderPad() {
 
             {/* Staff cards */}
             <div className="flex flex-col gap-3 p-4">
-              {staff.length === 0 && (
+              {loadingClockStaff && (
                 <div className="flex flex-col items-center justify-center gap-3 py-10">
                   <div className="w-8 h-8 border-4 border-[#e5d5c5] border-t-[#e85d8a] rounded-full animate-spin" />
                   <div className="text-sm font-bold text-[#9a7060]">Chargement de l'équipe…</div>
+                </div>
+              )}
+              {!loadingClockStaff && staff.length === 0 && (
+                <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                  <div className="text-3xl">⚠️</div>
+                  <div className="text-sm font-bold text-[#9a7060]">Aucun membre trouvé</div>
+                  <div className="text-xs text-[#b09080]">Vérifier la connexion ou la base staff</div>
                 </div>
               )}
               {staff.map((member) => {
