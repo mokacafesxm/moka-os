@@ -2644,6 +2644,11 @@ export default function MokaOrderPad() {
           <button
             onClick={() => {
               setShowClockModal(true);
+              if (!staff.length && settingsCache.staff?.length) {
+                setStaff(settingsCache.staff);
+                setLoadingClockStaff(false);
+                return;
+              }
               if (!staff.length) {
                 setLoadingClockStaff(true);
                 fetch(SETTINGS_URL, {
@@ -4698,14 +4703,14 @@ export default function MokaOrderPad() {
                   <div className="text-sm font-bold text-[#9a7060]">Chargement de l'équipe…</div>
                 </div>
               )}
-              {!loadingClockStaff && staff.length === 0 && (
+              {!loadingClockStaff && !staff.length && !(settingsCache.staff?.length) && (
                 <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
                   <div className="text-3xl">⚠️</div>
                   <div className="text-sm font-bold text-[#9a7060]">Aucun membre trouvé</div>
                   <div className="text-xs text-[#b09080]">Vérifier la connexion ou la base staff</div>
                 </div>
               )}
-              {staff.map((member) => {
+              {(staff.length ? staff : (settingsCache.staff || [])).map((member) => {
                 const staffId = member.id || getStaffName(member);
                 const staffName = getStaffName(member);
                 const status = clockStatuses[staffId] || "absent";
