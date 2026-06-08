@@ -230,8 +230,10 @@ function getPrepDateLabel(dateStr) {
 
 function getStaffName(member) {
   return (
-    member?.name ||
     member?.prenom ||
+    member?.firstName ||
+    member?.name ||
+    member?.nom ||
     member?.Prénom ||
     member?.staff ||
     member?.email ||
@@ -2639,7 +2641,14 @@ export default function MokaOrderPad() {
 
           {/* Centre : Pointage */}
           <button
-            onClick={() => setShowClockModal(true)}
+            onClick={() => {
+              setShowClockModal(true);
+              if (!staff.length) {
+                fetchSettingsResource("staff").then((list) => {
+                  if (list?.length) setStaff(list);
+                }).catch(() => {});
+              }
+            }}
             className="relative h-10 px-4 rounded-xl bg-white border-2 border-[#e85d8a] text-[#e85d8a] font-black text-sm shadow-sm ring-2 ring-[#e85d8a]/25 hover:bg-[#fff0f5] transition-all cursor-pointer flex items-center gap-2"
           >
             <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#e85d8a] animate-ping opacity-75" />
@@ -4667,6 +4676,12 @@ export default function MokaOrderPad() {
 
             {/* Staff cards */}
             <div className="flex flex-col gap-3 p-4">
+              {staff.length === 0 && (
+                <div className="flex flex-col items-center justify-center gap-3 py-10">
+                  <div className="w-8 h-8 border-4 border-[#e5d5c5] border-t-[#e85d8a] rounded-full animate-spin" />
+                  <div className="text-sm font-bold text-[#9a7060]">Chargement de l'équipe…</div>
+                </div>
+              )}
               {staff.map((member) => {
                 const staffId = member.id || getStaffName(member);
                 const staffName = getStaffName(member);
@@ -4684,7 +4699,7 @@ export default function MokaOrderPad() {
                     <div className="flex items-center gap-2.5 mb-4">
                       <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusConfig.dot}`} />
                       <div>
-                        <div className="font-black text-xl text-[#2c1a10] leading-tight">{staffName}</div>
+                        <div className="font-black text-2xl text-[#2c1a10] leading-tight">{staffName}</div>
                         <div className={`text-xs font-bold ${statusConfig.color}`}>{statusConfig.label}</div>
                       </div>
                     </div>
