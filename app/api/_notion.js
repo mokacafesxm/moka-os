@@ -75,7 +75,11 @@ export async function updatePage(pageId, properties) {
     method: "PATCH",
     body: JSON.stringify({ properties }),
   });
-  if (!res.ok) throw new Error(`Notion update ${pageId} failed: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error(`Notion update ${pageId} failed: ${res.status}`, body);
+    throw new Error(`Notion update ${pageId} failed: ${res.status} — ${body.slice(0, 300)}`);
+  }
   return res.json();
 }
 
