@@ -2354,10 +2354,15 @@ export default function MokaOrderPad() {
     setInvoiceAnalyzing(true);
     setInvoiceResults([]);
     try {
+      const stockNames = [
+        ...productsDb.map((p) => p.ingredient || p.name || ""),
+        ...stockLive.map((p) => getStockName(p)),
+      ].filter(Boolean);
+
       const response = await fetch("/api/analyze-invoice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base64, mediaType }),
+        body: JSON.stringify({ base64, mediaType, stockNames }),
       });
 
       const data = await response.json();
@@ -2366,15 +2371,17 @@ export default function MokaOrderPad() {
 
       const parsed = data.results || [];
       const results = parsed.map((item) => {
-        const nameLower = String(item.name).toLowerCase();
-        const matched = productsDb.find((p) => {
-          const pName = String(p.ingredient || p.name || "").toLowerCase();
-          return pName.includes(nameLower) || nameLower.includes(pName);
-        }) || stockLive.find((p) => {
-          const pName = String(getStockName(p)).toLowerCase();
-          return pName.includes(nameLower) || nameLower.includes(pName);
-        }) || null;
-        return { ...item, matched, include: true };
+        const matched = item.name_stock
+          ? (productsDb.find((p) => (p.ingredient || p.name || "").toLowerCase() === item.name_stock.toLowerCase())
+             || stockLive.find((p) => getStockName(p).toLowerCase() === item.name_stock.toLowerCase()))
+          : null;
+        return {
+          ...item,
+          name: item.name_facture || item.name || "",
+          matched,
+          include: !!matched,
+          confidence: item.confidence || "low",
+        };
       });
       setInvoiceResults(results);
     } catch (err) {
@@ -4867,16 +4874,37 @@ export default function MokaOrderPad() {
                         </button>
 
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-black text-[#2c1a10] truncate">{r.name}</div>
-                          {r.matched ? (
-                            <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-[11px] font-bold text-green-700">
-                              ✓ Identifié : {r.matched.ingredient || r.matched.name || getStockName(r.matched)}
-                            </div>
-                          ) : (
-                            <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-[11px] font-bold text-orange-700">
-                              ⚠ Non trouvé dans le stock
-                            </div>
+                          {/* Nom matché (stock) ou nom facture */}
+                          <div className="text-sm font-black text-[#2c1a10] truncate">
+                            {r.matched ? (r.matched.ingredient || r.matched.name || getStockName(r.matched)) : r.name}
+                          </div>
+                          {/* Nom sur la facture si différent du nom stock */}
+                          {r.name_facture && r.matched && (
+                            <div className="text-[11px] text-[#9a7060] truncate mt-0.5">{r.name_facture}</div>
                           )}
+                          {/* Badge match + confidence */}
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            {r.matched ? (
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-[11px] font-bold text-green-700">
+                                ✓ Identifié
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-[11px] font-bold text-orange-700">
+                                ⚠ Non trouvé
+                              </div>
+                            )}
+                            {r.confidence && (
+                              <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                r.confidence === "high"
+                                  ? "bg-green-50 border-green-200 text-green-700"
+                                  : r.confidence === "medium"
+                                  ? "bg-amber-50 border-amber-200 text-amber-700"
+                                  : "bg-red-50 border-red-200 text-red-700"
+                              }`}>
+                                {r.confidence === "high" ? "Confiance élevée" : r.confidence === "medium" ? "Confiance moyenne" : "Confiance faible"}
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         {/* Qty + unit */}
