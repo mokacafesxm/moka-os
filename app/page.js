@@ -1568,7 +1568,7 @@ export default function MokaOrderPad() {
       setCreatingProductDb(false);
       setActiveTab("orderpad");
       alert("Produit ajouté ✅");
-      setTimeout(() => loadProductsDatabase(true), 2000);
+      setTimeout(async () => { await loadProductsDatabase(false); }, 2500);
     } catch (error) {
       console.error(error);
       alert("Erreur création produit ❌");
@@ -1578,37 +1578,24 @@ export default function MokaOrderPad() {
   };
 
   const openProductDbEdit = (item) => {
-    ["suppliers", "categories", "subcategories", "units", "zones"].forEach((resource) => {
-      if (settingsCache[resource]?.length) return;
-
-      fetchSettingsResource(resource)
-        .then((list) => {
-          setSettingsCache((prev) => {
-            const next = { ...prev, [resource]: list };
-            if (typeof window !== "undefined") {
-              localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
-            }
-            return next;
-          });
-        })
-        .catch((error) => console.error("Préchargement option produit edit:", resource, error));
-    });
-
-    setEditingProductDb(null);
-    openSettings({
-      ...item,
-      name: item.ingredient || item.name || "",
-      category: item.categorie || item.category || "",
-      subcategory: item.sousCategorie || item.subcategory || "",
-      supplier: item.fournisseurDefaut || item.supplier || "",
-      zone: item.zoneStockage || item.zone || "",
-      unit: item.uniteStock || item.unit || "",
-      portion: item.portionGrammes ?? item.portion ?? "",
-      suggested: item.quantiteCommandeSuggeree || item.suggested || "",
-      photo: item.photo || "",
-      utiliseDans: item.utiliseDans || "",
+    setEditingProductDb(item);
+    setEditingProductDbForm({
+      id: item.id || "",
+      ingredient: item.ingredient || item.name || "",
+      categorie: item.categorie || item.category || "",
+      sousCategorie: item.sousCategorie || item.subcategory || "",
+      visibleOrderPad: item.visibleOrderPad !== false,
+      fournisseurDefaut: item.fournisseurDefaut || item.supplier || "",
+      zoneStockage: item.zoneStockage || item.zone || "",
+      methodeSuivi: item.methodeSuivi || "",
+      quantiteCommandeSuggeree: item.quantiteCommandeSuggeree || item.suggested || 0,
+      uniteStock: item.uniteStock || item.unit || "",
+      uniteCommande: item.uniteCommande || "",
+      portionGrammes: item.portionGrammes || item.portion || 0,
+      seuilAlerte: item.seuilAlerte || 0,
+      seuilCritique: item.seuilCritique || 0,
       notes: item.notes || "",
-      sourceFromProductsDb: true,
+      utiliseDans: item.utiliseDans || "",
     });
   };
 
@@ -1660,7 +1647,7 @@ export default function MokaOrderPad() {
 
       setEditingProductDb(null);
       alert("Produit modifié ✅");
-      setTimeout(() => loadProductsDatabase(true), 2000);
+      setTimeout(async () => { await loadProductsDatabase(false); }, 2500);
     } catch (error) {
       console.error(error);
       alert("Erreur modification produit ❌");
@@ -2045,7 +2032,7 @@ export default function MokaOrderPad() {
         return updated;
       });
 
-      setTimeout(() => loadProductsDatabase(true), 2000);
+      setTimeout(async () => { await loadProductsDatabase(false); }, 2500);
 
       if (isNewProduct) {
         setActiveTab("orderpad");
@@ -2081,7 +2068,7 @@ export default function MokaOrderPad() {
         const matchesCategory =
           productsDbCategory === "Tous" || cat === productsDbCategory;
 
-        const haystack = [
+        const matchesSearch = !q || [
           p.ingredient,
           p.name,
           p.categorie,
@@ -2095,9 +2082,9 @@ export default function MokaOrderPad() {
           p.uniteStock,
           p.uniteCommande,
           p.notes,
-        ].join(" ").toLowerCase();
+        ].join(" ").toLowerCase().includes(q);
 
-        return q ? haystack.includes(q) : matchesCategory;
+        return matchesCategory && matchesSearch;
       })
       .sort((a, b) => {
         const ca = a.categorie || a.category || "Autres";
