@@ -1371,11 +1371,7 @@ export default function MokaOrderPad() {
     }
 
     try {
-      const response = await fetch(SETTINGS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resource: "products", action: "list" }),
-      });
+      const response = await fetch(PRODUCTS_URL);
 
       if (!response.ok) throw new Error(`Erreur products ${response.status}`);
 
