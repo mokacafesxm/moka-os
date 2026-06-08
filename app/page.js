@@ -306,6 +306,10 @@ function ordNormalizeStock(item) {
     seuilCritique: ordGetStockCriticalLimit(item),
   };
 }
+function isPrepaCategory(item) {
+  const cat = String(item?.categorie || item?.category || item?.cat || "").trim().toLowerCase();
+  return cat.includes("prepa") || cat.includes("prépa") || cat.includes("preparation") || cat.includes("préparation");
+}
 function isUrgentStock(item) {
   const s = String(item.status || item.statut || "").toLowerCase();
   return s.includes("critique") || s.includes("stock bas") || s.includes("alerte") || s.includes("commander");
@@ -821,7 +825,9 @@ export default function MokaOrderPad() {
 
   // ── Orders section computed ──────────────────────────────────────
   const ordNormalizedStock = useMemo(
-    () => isAdmin && adminSection === "orders" ? stockLive.map(ordNormalizeStock) : [],
+    () => isAdmin && adminSection === "orders"
+      ? stockLive.map(ordNormalizeStock).filter((item) => !isPrepaCategory(item))
+      : [],
     [stockLive, isAdmin, adminSection]
   );
   const ordUrgentItems = useMemo(() => ordNormalizedStock.filter(isUrgentStock), [ordNormalizedStock]);
@@ -850,9 +856,7 @@ export default function MokaOrderPad() {
       if (/^[0-9a-f-]{36}$/i.test(sup)) {
         sup = supplierNameMap[sup] || supplierNameMap[sup.replaceAll("-", "")] || sup;
       }
-      const cat = String(p.categorie || p.category || "").trim().toLowerCase();
-      const isPrepa = cat.includes("prepa") || cat.includes("prépa") || cat.includes("preparation") || cat.includes("préparation");
-      return sup.toLowerCase() === selLower && !isPrepa;
+      return sup.toLowerCase() === selLower && !isPrepaCategory(p);
     });
 
     const stockById = {};
