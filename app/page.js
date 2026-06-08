@@ -1533,6 +1533,7 @@ export default function MokaOrderPad() {
           action: "create",
           data: {
             ingredient: creatingProductDbForm.ingredient,
+            fournisseurDefaut: creatingProductDbForm.fournisseurDefaut || "",
             visibleOrderPad: creatingProductDbForm.visibleOrderPad ?? true,
             categorie: creatingProductDbForm.categorie || "",
             sousCategorie: creatingProductDbForm.sousCategorie || "",

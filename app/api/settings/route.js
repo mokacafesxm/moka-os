@@ -7,12 +7,21 @@ import {
 
 async function resolveSupplier(name) {
   if (!name) return null;
-  const pages = await queryDatabase(DB.FOURNISSEURS);
-  const found = pages.find((p) => {
-    const title = getTitle(p.properties, "Fournisseur", "Nom", "nom", "name") || "";
-    return title.trim().toLowerCase() === name.trim().toLowerCase();
-  });
-  return found?.id || null;
+  try {
+    const pages = await queryDatabase(DB.FOURNISSEURS);
+    const clean = name.trim().toLowerCase();
+    const found = pages.find((p) => {
+      const t = String(
+        p.properties?.Fournisseur?.title?.[0]?.plain_text ||
+        p.properties?.Nom?.title?.[0]?.plain_text ||
+        ""
+      ).trim().toLowerCase();
+      return t === clean;
+    });
+    const supplierId = found?.id || null;
+    console.log("resolveSupplier:", name, "→", supplierId);
+    return supplierId;
+  } catch { return null; }
 }
 
 function buildProductProperties(data) {
@@ -118,7 +127,7 @@ export async function POST(request) {
         dbId = DB.INGREDIENTS;
         properties = buildProductProperties(data);
         const supplierPageId = await resolveSupplier(data?.fournisseurDefaut);
-        if (supplierPageId) properties["Fournisseur par defaut"] = relationProp(supplierPageId);
+        if (supplierPageId) properties["Fournisseur par defaut"] = { relation: [{ id: supplierPageId }] };
       } else {
         return Response.json({ error: `create not supported for ${resource}` }, { status: 400, headers: corsHeaders });
       }
@@ -146,7 +155,7 @@ export async function POST(request) {
       } else if (resource === "products") {
         properties = buildProductProperties(data);
         const supplierPageId = await resolveSupplier(data?.fournisseurDefaut);
-        if (supplierPageId) properties["Fournisseur par defaut"] = relationProp(supplierPageId);
+        if (supplierPageId) properties["Fournisseur par defaut"] = { relation: [{ id: supplierPageId }] };
       } else {
         return Response.json({ error: `update not supported for ${resource}` }, { status: 400, headers: corsHeaders });
       }
