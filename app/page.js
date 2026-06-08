@@ -2354,24 +2354,17 @@ export default function MokaOrderPad() {
     setInvoiceAnalyzing(true);
     setInvoiceResults([]);
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch("/api/analyze-invoice", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || "", "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1024,
-          messages: [{
-            role: "user",
-            content: [
-              { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
-              { type: "text", text: `Tu es un assistant pour un café-restaurant.\nAnalyse cette facture fournisseur et extrait tous les produits reçus.\nRéponds UNIQUEMENT en JSON valide, sans markdown, sans explication :\n[\n  {"name": "Nom exact du produit", "quantite": 5, "unite": "kg"},\n  {"name": "Lait entier", "quantite": 12, "unite": "L"}\n]\nUnités possibles : kg, g, L, ml, pièce, sachet, carton, bouteille, barquette, boîte.\nSi tu ne vois pas de facture claire, retourne [].` }
-            ]
-          }]
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base64, mediaType }),
       });
+
       const data = await response.json();
-      const text = data.content?.[0]?.text || "[]";
-      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+
+      if (data.error) throw new Error(data.error);
+
+      const parsed = data.results || [];
       const results = parsed.map((item) => {
         const nameLower = String(item.name).toLowerCase();
         const matched = productsDb.find((p) => {
@@ -2386,7 +2379,7 @@ export default function MokaOrderPad() {
       setInvoiceResults(results);
     } catch (err) {
       console.error("Erreur analyse facture:", err);
-      alert("Erreur analyse facture ❌");
+      alert("Erreur analyse facture ❌ : " + err.message);
     } finally {
       setInvoiceAnalyzing(false);
     }
