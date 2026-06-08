@@ -5,6 +5,9 @@ export async function POST(request) {
     const { base64, mediaType, stockNames } = await request.json();
     if (!base64) return NextResponse.json({ error: "No image" }, { status: 400 });
 
+    // Limiter à 150 noms max pour ne pas dépasser le context
+    const limitedStockNames = (stockNames || []).slice(0, 150);
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -13,7 +16,7 @@ export async function POST(request) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 2048,
         messages: [{
           role: "user",
@@ -25,7 +28,7 @@ Analyse ATTENTIVEMENT cette facture fournisseur ligne par ligne.
 IMPORTANT : tu dois extraire ABSOLUMENT TOUS les produits visibles sur la facture, sans en sauter aucun. Même si tu n'es pas sûr, inclus le produit avec confidence "low".
 
 Voici la liste exacte des produits dans notre stock :
-${stockNames ? stockNames.join("\n") : ""}
+${limitedStockNames.join("\n")}
 
 Pour CHAQUE ligne produit de la facture (pas les totaux, taxes, frais de livraison) :
 - Identifie le nom du produit
