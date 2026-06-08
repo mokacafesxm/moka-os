@@ -850,7 +850,9 @@ export default function MokaOrderPad() {
       if (/^[0-9a-f-]{36}$/i.test(sup)) {
         sup = supplierNameMap[sup] || supplierNameMap[sup.replaceAll("-", "")] || sup;
       }
-      return sup.toLowerCase() === selLower;
+      const cat = String(p.categorie || p.category || "").trim().toLowerCase();
+      const isPrepa = cat.includes("prepa") || cat.includes("prépa") || cat.includes("preparation") || cat.includes("préparation");
+      return sup.toLowerCase() === selLower && !isPrepa;
     });
 
     const stockById = {};
