@@ -4,6 +4,7 @@ export async function POST(request) {
   try {
     const { base64, mediaType, stockNames } = await request.json();
     if (!base64) return NextResponse.json({ error: "No image" }, { status: 400 });
+    console.log("API KEY present:", !!process.env.ANTHROPIC_API_KEY);
 
     // Limiter à 150 noms max pour ne pas dépasser le context
     const limitedStockNames = (stockNames || []).slice(0, 150);
