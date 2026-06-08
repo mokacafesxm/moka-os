@@ -31,17 +31,28 @@ export async function notionFetch(path, options = {}) {
   });
 }
 
-export async function queryDatabase(dbId, filter, sorts, pageSize = 200) {
-  const body = { page_size: pageSize };
-  if (filter) body.filter = filter;
-  if (sorts) body.sorts = sorts;
-  const res = await notionFetch(`/databases/${dbId}/query`, {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`Notion query ${dbId} failed: ${res.status}`);
-  const data = await res.json();
-  return data.results || [];
+export async function queryDatabase(dbId, filter, sorts, pageSize = 100) {
+  const allPages = [];
+  let cursor = undefined;
+
+  do {
+    const body = { page_size: pageSize };
+    if (filter) body.filter = filter;
+    if (sorts) body.sorts = sorts;
+    if (cursor) body.start_cursor = cursor;
+
+    const res = await notionFetch(`/databases/${dbId}/query`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Notion query ${dbId} failed: ${res.status}`);
+    const data = await res.json();
+
+    allPages.push(...(data.results || []));
+    cursor = data.has_more ? data.next_cursor : undefined;
+  } while (cursor);
+
+  return allPages;
 }
 
 export async function getPage(pageId) {
@@ -108,9 +119,10 @@ export function getFormula(props, ...keys) {
     const p = props?.[k];
     if (p?.type === "formula") {
       const f = p.formula;
-      if (f?.string !== undefined && f.string !== null) return f.string.trim();
+      if (f?.string !== undefined && f.string !== null) return String(f.string).trim();
       if (f?.number !== undefined && f.number !== null) return f.number;
-      if (f?.boolean !== undefined) return f.boolean;
+      if (f?.boolean !== undefined && f.boolean !== null) return f.boolean;
+      if (f?.date?.start) return f.date.start;
     }
   }
   return "";
