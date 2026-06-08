@@ -369,6 +369,12 @@ export default function MokaOrderPad() {
   const [stockReceiveUnit, setStockReceiveUnit] = useState("kg");
   const [stockReceiveMode, setStockReceiveMode] = useState("add");
   const [savingStockReceive, setSavingStockReceive] = useState(false);
+  const [invoiceModal, setInvoiceModal] = useState(false);
+  const [invoiceImage, setInvoiceImage] = useState(null);
+  const [invoiceImageUrl, setInvoiceImageUrl] = useState("");
+  const [invoiceAnalyzing, setInvoiceAnalyzing] = useState(false);
+  const [invoiceResults, setInvoiceResults] = useState([]);
+  const [invoiceSaving, setInvoiceSaving] = useState(false);
   const [inventoryCategory, setInventoryCategory] = useState("Tous");
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("Tous");
   const [inventoryView, setInventoryView] = useState("stock");
@@ -2332,6 +2338,93 @@ export default function MokaOrderPad() {
     }
   };
 
+  const handleInvoicePhoto = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setInvoiceImageUrl(url);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64 = ev.target.result.split(",")[1];
+      setInvoiceImage(base64);
+      analyzeInvoice(base64, file.type || "image/jpeg");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const analyzeInvoice = async (base64, mediaType) => {
+    setInvoiceAnalyzing(true);
+    setInvoiceResults([]);
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || "", "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1024,
+          messages: [{
+            role: "user",
+            content: [
+              { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
+              { type: "text", text: `Tu es un assistant pour un café-restaurant.\nAnalyse cette facture fournisseur et extrait tous les produits reçus.\nRéponds UNIQUEMENT en JSON valide, sans markdown, sans explication :\n[\n  {"name": "Nom exact du produit", "quantite": 5, "unite": "kg"},\n  {"name": "Lait entier", "quantite": 12, "unite": "L"}\n]\nUnités possibles : kg, g, L, ml, pièce, sachet, carton, bouteille, barquette, boîte.\nSi tu ne vois pas de facture claire, retourne [].` }
+            ]
+          }]
+        })
+      });
+      const data = await response.json();
+      const text = data.content?.[0]?.text || "[]";
+      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+      const results = parsed.map((item) => {
+        const nameLower = String(item.name).toLowerCase();
+        const matched = productsDb.find((p) => {
+          const pName = String(p.ingredient || p.name || "").toLowerCase();
+          return pName.includes(nameLower) || nameLower.includes(pName);
+        }) || stockLive.find((p) => {
+          const pName = String(getStockName(p)).toLowerCase();
+          return pName.includes(nameLower) || nameLower.includes(pName);
+        }) || null;
+        return { ...item, matched, include: true };
+      });
+      setInvoiceResults(results);
+    } catch (err) {
+      console.error("Erreur analyse facture:", err);
+      alert("Erreur analyse facture ❌");
+    } finally {
+      setInvoiceAnalyzing(false);
+    }
+  };
+
+  const saveInvoiceToStock = async () => {
+    const toSave = invoiceResults.filter((r) => r.include && r.matched);
+    if (!toSave.length) return;
+    setInvoiceSaving(true);
+    try {
+      await Promise.all(toSave.map((item) =>
+        fetch(STOCK_UPDATE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: item.matched.id, poidsTotal: item.quantite, Unite: item.unite, mode: "add" })
+        })
+      ));
+      alert(`✅ ${toSave.length} produit(s) ajouté(s) au stock !`);
+      setInvoiceModal(false);
+      setInvoiceResults([]);
+      setInvoiceImage(null);
+      setInvoiceImageUrl("");
+      fetch(STOCK_URL)
+        .then((res) => res.json())
+        .then((data) => {
+          const freshStock = normalizeArray(data, "stock");
+          setStockLive(freshStock);
+          if (typeof window !== "undefined") localStorage.setItem("mokaStockCache", JSON.stringify(freshStock));
+        });
+    } catch (err) {
+      alert("Erreur enregistrement stock ❌");
+    } finally {
+      setInvoiceSaving(false);
+    }
+  };
+
   const inventoryBaseItems = useMemo(() => {
     return stockLive.filter((item) =>
       inventoryView === "prepa" ? isPrepStock(item) : !isPrepStock(item)
@@ -3533,7 +3626,7 @@ export default function MokaOrderPad() {
                       <div className="ml-auto flex gap-2">
                         <button
                           className="h-8 px-3 rounded-lg bg-[#faf5ef] border border-[#e5d5c5] text-xs font-bold text-[#6b4a3d] hover:bg-[#f0e4d4] transition-colors cursor-pointer"
-                          onClick={() => alert("Bientôt : photo facture + IA réception stock")}
+                          onClick={() => { setInvoiceModal(true); setInvoiceResults([]); setInvoiceImageUrl(""); setInvoiceImage(null); }}
                         >
                           📸 Scanner facture
                         </button>
@@ -4649,6 +4742,134 @@ export default function MokaOrderPad() {
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="11" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 Entrer
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── INVOICE SCANNER MODAL ────────────────────── */}
+      {invoiceModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-[#faf5ef] rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-lg max-h-[92vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex justify-between items-start gap-4 p-5 pb-4 border-b border-[#e5d5c5]">
+              <div>
+                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Inventaire automatique</div>
+                <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">📸 Scanner une facture</h2>
+                <p className="text-xs text-[#9a7060] mt-0.5">Claude AI analyse automatiquement les produits</p>
+              </div>
+              <button onClick={() => setInvoiceModal(false)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] hover:text-[#2c1a10] transition-all cursor-pointer shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+              </button>
+            </div>
+
+            <div className="p-5 flex flex-col gap-4">
+              {/* Upload zone */}
+              <label className="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[#d5c5b5] bg-white p-6 cursor-pointer hover:border-[#b89580] hover:bg-[#fdf8f3] transition-colors">
+                <div className="text-4xl">{invoiceImageUrl ? "🔄" : "📷"}</div>
+                <div className="text-sm font-bold text-[#6b4a3d]">{invoiceImageUrl ? "Changer de photo" : "Prendre une photo ou choisir un fichier"}</div>
+                <div className="text-xs text-[#9a7060]">Facture, bon de livraison…</div>
+                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleInvoicePhoto} />
+              </label>
+
+              {/* Preview */}
+              {invoiceImageUrl && (
+                <div className="rounded-2xl overflow-hidden border border-[#e5d5c5] bg-white">
+                  <img src={invoiceImageUrl} alt="Facture" className="w-full max-h-48 object-contain" />
+                </div>
+              )}
+
+              {/* Analyzing spinner */}
+              {invoiceAnalyzing && (
+                <div className="flex items-center justify-center gap-3 py-6">
+                  <div className="w-6 h-6 border-3 border-[#b89580] border-t-[#2c1a10] rounded-full animate-spin" />
+                  <span className="text-sm font-bold text-[#6b4a3d]">Analyse en cours…</span>
+                </div>
+              )}
+
+              {/* Results */}
+              {invoiceResults.length > 0 && !invoiceAnalyzing && (
+                <div className="flex flex-col gap-3">
+                  <div className="text-xs font-black text-[#9a7060] uppercase tracking-wide">
+                    Produits détectés ({invoiceResults.length})
+                  </div>
+
+                  {invoiceResults.map((r, i) => (
+                    <div key={i} className={`rounded-xl border p-3 bg-white transition-opacity ${r.include ? "border-[#e5d5c5] opacity-100" : "border-[#e5d5c5] opacity-50"}`}>
+                      <div className="flex items-start gap-3">
+                        {/* Checkbox */}
+                        <button
+                          onClick={() => setInvoiceResults((prev) => prev.map((item, idx) => idx === i ? { ...item, include: !item.include } : item))}
+                          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors cursor-pointer ${r.include ? "bg-[#5a7828] border-[#5a7828]" : "border-[#d5c5b5] bg-white"}`}
+                        >
+                          {r.include && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                        </button>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-black text-[#2c1a10] truncate">{r.name}</div>
+                          {r.matched ? (
+                            <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-[11px] font-bold text-green-700">
+                              ✓ Identifié : {r.matched.ingredient || r.matched.name || getStockName(r.matched)}
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-[11px] font-bold text-orange-700">
+                              ⚠ Non trouvé dans le stock
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Qty + unit */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            value={r.quantite}
+                            onChange={(e) => setInvoiceResults((prev) => prev.map((item, idx) => idx === i ? { ...item, quantite: Number(e.target.value) } : item))}
+                            className="w-16 rounded-lg border border-[#e5d5c5] bg-[#faf5ef] px-2 py-1.5 text-sm font-bold text-[#2c1a10] text-center outline-none focus:border-[#5a7828] transition-colors"
+                          />
+                          <select
+                            value={r.unite}
+                            onChange={(e) => setInvoiceResults((prev) => prev.map((item, idx) => idx === i ? { ...item, unite: e.target.value } : item))}
+                            className="rounded-lg border border-[#e5d5c5] bg-[#faf5ef] px-2 py-1.5 text-sm font-bold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors cursor-pointer"
+                          >
+                            {["kg","g","L","ml","pièce","sachet","carton","bouteille","barquette","boîte"].map((u) => (
+                              <option key={u} value={u}>{u}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Actions */}
+                  <div className="flex gap-2 mt-1">
+                    <button
+                      onClick={() => setInvoiceModal(false)}
+                      className="flex-1 py-3 rounded-xl font-bold text-sm bg-[#f0e8dc] text-[#9a7060] hover:bg-[#e5d5c5] transition-colors cursor-pointer"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={saveInvoiceToStock}
+                      disabled={invoiceSaving || !invoiceResults.some((r) => r.include && r.matched)}
+                      className="flex-1 py-3 rounded-xl font-black text-sm bg-[#5a7828] text-white shadow-md hover:bg-[#4e6a22] transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {invoiceSaving ? "Enregistrement…" : `Enregistrer ${invoiceResults.filter((r) => r.include && r.matched).length} produit(s)`}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state if no image yet */}
+              {!invoiceImageUrl && !invoiceAnalyzing && invoiceResults.length === 0 && (
+                <button
+                  onClick={() => setInvoiceModal(false)}
+                  className="w-full py-3 rounded-xl font-bold text-sm bg-[#f0e8dc] text-[#9a7060] hover:bg-[#e5d5c5] transition-colors cursor-pointer"
+                >
+                  Annuler
+                </button>
+              )}
             </div>
           </div>
         </div>
