@@ -155,7 +155,11 @@ export async function POST(request) {
       } else if (resource === "products") {
         properties = buildProductProperties(data);
         const supplierPageId = await resolveSupplier(data?.fournisseurDefaut);
-        if (supplierPageId) properties["Fournisseur par defaut"] = { relation: [{ id: supplierPageId }] };
+        if (supplierPageId) {
+          properties["Fournisseur par defaut"] = { relation: [{ id: supplierPageId }] };
+        } else if (data?.fournisseurDefaut === "") {
+          properties["Fournisseur par defaut"] = { relation: [] };
+        }
       } else {
         return Response.json({ error: `update not supported for ${resource}` }, { status: 400, headers: corsHeaders });
       }

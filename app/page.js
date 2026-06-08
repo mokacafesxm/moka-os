@@ -1616,6 +1616,7 @@ export default function MokaOrderPad() {
           id: editingProductDbForm.id,
           data: {
             ingredient: editingProductDbForm.ingredient,
+            fournisseurDefaut: editingProductDbForm.fournisseurDefaut || "",
             visibleOrderPad: editingProductDbForm.visibleOrderPad ?? true,
             categorie: editingProductDbForm.categorie || "",
             sousCategorie: editingProductDbForm.sousCategorie || "",
