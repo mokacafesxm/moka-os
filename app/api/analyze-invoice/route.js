@@ -51,6 +51,8 @@ Retourne [] seulement si l'image n'est pas une facture.` }
     });
 
     const data = await response.json();
+    console.log("Anthropic response status:", response.status);
+    console.log("Anthropic data:", JSON.stringify(data).slice(0, 500));
     if (data.error) return NextResponse.json({ error: data.error.message }, { status: 500 });
 
     const text = data.content?.[0]?.text || "[]";
