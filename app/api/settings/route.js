@@ -2,8 +2,33 @@ import {
   DB, corsHeaders,
   queryDatabase, createPage, updatePage,
   getTitle, getText, getSelect, getCheckbox,
-  titleProp, textProp, selectProp, checkboxProp,
+  titleProp, textProp, selectProp, checkboxProp, numberProp, relationProp,
 } from "../_notion";
+
+async function resolveSupplier(name) {
+  if (!name) return null;
+  const pages = await queryDatabase(DB.FOURNISSEURS, {
+    property: "Fournisseur",
+    title: { equals: name },
+  }, null, 1);
+  return pages[0]?.id || null;
+}
+
+function buildProductProperties(data) {
+  return {
+    "Ingredient":                 titleProp(data?.ingredient || data?.name || ""),
+    "Categorie":                  selectProp(data?.categorie),
+    "Sous-categorie":             selectProp(data?.sousCategorie),
+    "Visible_OrderPad":           checkboxProp(data?.visibleOrderPad),
+    "Zone_stockage":              selectProp(data?.zoneStockage),
+    "Quantite_commande_suggeree": numberProp(data?.quantiteCommandeSuggeree ?? data?.quantiteCommandee ?? null),
+    "Unite_stock":                selectProp(data?.uniteStock),
+    "Unite_commande":             selectProp(data?.uniteCommande),
+    "1 Portion (g)":              numberProp(data?.portionGrammes ?? data?.portion ?? null),
+    "Seuil_alerte":               numberProp(data?.seuilAlerte ?? null),
+    "Seuil_critique":             numberProp(data?.seuilCritique ?? null),
+  };
+}
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -88,6 +113,11 @@ export async function POST(request) {
           "Rôle":    selectProp(data?.role),
           "Actif":   checkboxProp(data?.actif !== false),
         };
+      } else if (resource === "products") {
+        dbId = DB.INGREDIENTS;
+        properties = buildProductProperties(data);
+        const supplierPageId = await resolveSupplier(data?.fournisseurDefaut);
+        if (supplierPageId) properties["Fournisseur par defaut"] = relationProp(supplierPageId);
       } else {
         return Response.json({ error: `create not supported for ${resource}` }, { status: 400, headers: corsHeaders });
       }
@@ -112,6 +142,10 @@ export async function POST(request) {
           "Rôle":   selectProp(data?.role),
           "Actif":  checkboxProp(data?.actif !== false),
         };
+      } else if (resource === "products") {
+        properties = buildProductProperties(data);
+        const supplierPageId = await resolveSupplier(data?.fournisseurDefaut);
+        if (supplierPageId) properties["Fournisseur par defaut"] = relationProp(supplierPageId);
       } else {
         return Response.json({ error: `update not supported for ${resource}` }, { status: 400, headers: corsHeaders });
       }
