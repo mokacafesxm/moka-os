@@ -2610,10 +2610,10 @@ export default function MokaOrderPad() {
     <main className="min-h-screen bg-[#f5ede0] text-[#1a1008]" style={{fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"}}>
 
       {/* ── HEADER ─────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 bg-[#f5ede0]/96 backdrop-blur-md border-b border-[#ddc9b5] px-4 py-2.5 shadow-sm">
+      <header className="sticky top-0 z-30 bg-[#f5ede0]/96 backdrop-blur-md border-b border-[#ddc9b5] px-4 py-2.5 shadow-sm relative">
         <div className="max-w-screen-2xl mx-auto flex items-center justify-between gap-3">
 
-          {/* Brand */}
+          {/* Brand gauche */}
           <div className="flex items-center gap-3 shrink-0">
             <div className="w-10 h-10 rounded-2xl bg-[#2c1a10] flex items-center justify-center shadow-md">
               <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-[#f5ede0]" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -2630,49 +2630,47 @@ export default function MokaOrderPad() {
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2">
-            {/* Commande auto time */}
-            <div className="hidden sm:flex items-center gap-2 bg-white/80 rounded-xl px-3 py-2 border border-[#e5d5c5] shadow-sm">
-              <svg className="w-3.5 h-3.5 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              <div>
-                <div className="text-[9px] text-[#9a7060] leading-none font-medium">Commande auto</div>
-                <div className="font-black text-[#2c1a10] text-sm leading-none mt-0.5">17:45 SXM</div>
-              </div>
-            </div>
+          {/* Admin droite */}
+          <button
+            onClick={() => {
+              if (isAdmin) {
+                setIsAdmin(false);
+                setAdminSection("dashboard");
+                alert("Mode admin désactivé");
+              } else {
+                setShowAdminModal(true);
+              }
+            }}
+            className={`h-10 px-3.5 rounded-xl font-bold text-xs border shadow-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer ${
+              isAdmin
+                ? "bg-[#5a7828] text-white border-[#5a7828] hover:bg-[#4e6a22]"
+                : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:bg-[#f0e4d4]"
+            }`}
+          >
+            {isAdmin ? (
+              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            ) : (
+              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            )}
+            <span>{isAdmin ? "Admin ON" : "Admin"}</span>
+          </button>
+        </div>
 
-            <button
-              onClick={() => setShowClockModal(true)}
-              className="h-10 px-3.5 rounded-xl bg-white border border-[#e5d5c5] font-bold text-xs text-[#2c1a10] shadow-sm hover:bg-[#f0e4d4] active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
-            >
-              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              <span className="hidden sm:inline">Pointage</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (isAdmin) {
-                  setIsAdmin(false);
-                  setAdminSection("dashboard");
-                  alert("Mode admin désactivé");
-                } else {
-                  setShowAdminModal(true);
-                }
-              }}
-              className={`h-10 px-3.5 rounded-xl font-bold text-xs border shadow-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer ${
-                isAdmin
-                  ? "bg-[#5a7828] text-white border-[#5a7828] hover:bg-[#4e6a22]"
-                  : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:bg-[#f0e4d4]"
-              }`}
-            >
-              {isAdmin ? (
-                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              ) : (
-                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-              )}
-              <span>{isAdmin ? "Admin ON" : "Admin"}</span>
-            </button>
-          </div>
+        {/* Pointage centré en absolu */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <button
+            onClick={() => setShowClockModal(true)}
+            className="relative h-10 px-4 rounded-xl bg-white border-2 border-[#e85d8a] text-[#e85d8a] font-black text-sm shadow-sm ring-2 ring-[#e85d8a]/25 hover:bg-[#fff0f5] transition-all cursor-pointer flex items-center gap-2"
+          >
+            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#e85d8a] animate-ping opacity-75" />
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9"/>
+              <path d="M12 7v5l3 3"/>
+              <path d="M9.5 2.5h5"/>
+              <path d="M12 2v2.5"/>
+            </svg>
+            Pointage
+          </button>
         </div>
       </header>
 
