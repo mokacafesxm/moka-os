@@ -1,0 +1,157 @@
+const NOTION_BASE = "https://api.notion.com/v1";
+
+export const DB = {
+  STAFF:        "36b9512c-f66a-8069-b4b3-f0dcf9752892",
+  POINTAGES:    "36d9512c-f66a-80e0-b73b-cf0a07e47e35",
+  INGREDIENTS:  "3699512c-f66a-808f-b9fd-f39666926abb",
+  STOCK:        "3689512c-f66a-80aa-8c43-eb4f85347f8e",
+  PREPS:        "3689512c-f66a-80a1-a067-c2a0288d2cb9",
+  BESOINS:      "3689512c-f66a-80dc-a439-f3955cc30001",
+  FOURNISSEURS: "3689512c-f66a-805e-8330-fe73f781d1a5",
+};
+
+export const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+function notionHeaders() {
+  return {
+    Authorization: `Bearer ${process.env.NOTION_API_KEY}`,
+    "Notion-Version": "2022-06-28",
+    "Content-Type": "application/json",
+  };
+}
+
+export async function notionFetch(path, options = {}) {
+  return fetch(`${NOTION_BASE}${path}`, {
+    ...options,
+    headers: { ...notionHeaders(), ...(options.headers || {}) },
+  });
+}
+
+export async function queryDatabase(dbId, filter, sorts, pageSize = 200) {
+  const body = { page_size: pageSize };
+  if (filter) body.filter = filter;
+  if (sorts) body.sorts = sorts;
+  const res = await notionFetch(`/databases/${dbId}/query`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Notion query ${dbId} failed: ${res.status}`);
+  const data = await res.json();
+  return data.results || [];
+}
+
+export async function getPage(pageId) {
+  const res = await notionFetch(`/pages/${pageId}`);
+  if (!res.ok) throw new Error(`Notion getPage ${pageId} failed: ${res.status}`);
+  return res.json();
+}
+
+export async function createPage(dbId, properties) {
+  const res = await notionFetch("/pages", {
+    method: "POST",
+    body: JSON.stringify({ parent: { database_id: dbId }, properties }),
+  });
+  if (!res.ok) throw new Error(`Notion create failed: ${res.status}`);
+  return res.json();
+}
+
+export async function updatePage(pageId, properties) {
+  const res = await notionFetch(`/pages/${pageId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ properties }),
+  });
+  if (!res.ok) throw new Error(`Notion update ${pageId} failed: ${res.status}`);
+  return res.json();
+}
+
+// Find a page in dbId where titleProp exactly equals name; returns page id or null
+export async function resolveName(dbId, titleProp, name) {
+  if (!name) return null;
+  const results = await queryDatabase(dbId, {
+    property: titleProp,
+    title: { equals: name },
+  }, null, 1);
+  return results[0]?.id || null;
+}
+
+// ── Property extractors ──────────────────────────────────────────────────────
+
+export function getTitle(props, ...keys) {
+  for (const k of keys) {
+    const p = props?.[k];
+    if (!p) continue;
+    if (p.type === "title" && p.title?.length) return p.title[0].plain_text || "";
+    if (p.type === "rich_text" && p.rich_text?.length) return p.rich_text[0].plain_text || "";
+  }
+  return "";
+}
+
+export function getText(props, ...keys) {
+  for (const k of keys) {
+    const p = props?.[k];
+    if (!p) continue;
+    if (p.type === "rich_text" && p.rich_text?.length) return p.rich_text[0].plain_text || "";
+    if (p.type === "title" && p.title?.length) return p.title[0].plain_text || "";
+    if (p.type === "email") return p.email || "";
+    if (p.type === "phone_number") return p.phone_number || "";
+    if (p.type === "url") return p.url || "";
+  }
+  return "";
+}
+
+export function getSelect(props, ...keys) {
+  for (const k of keys) {
+    const p = props?.[k];
+    if (p?.type === "select" && p.select?.name) return p.select.name;
+    if (p?.type === "formula") return p.formula?.string || "";
+  }
+  return "";
+}
+
+export function getNumber(props, ...keys) {
+  for (const k of keys) {
+    const p = props?.[k];
+    if (p?.type === "number" && p.number !== null && p.number !== undefined) return p.number;
+    if (p?.type === "formula" && p.formula?.number !== undefined) return p.formula.number;
+  }
+  return 0;
+}
+
+export function getCheckbox(props, ...keys) {
+  for (const k of keys) {
+    const p = props?.[k];
+    if (p?.type === "checkbox") return !!p.checkbox;
+    if (p?.type === "formula") return !!p.formula?.boolean;
+  }
+  return false;
+}
+
+export function getDate(props, ...keys) {
+  for (const k of keys) {
+    const p = props?.[k];
+    if (p?.type === "date" && p.date?.start) return p.date.start;
+  }
+  return null;
+}
+
+export function getRelationIds(props, ...keys) {
+  for (const k of keys) {
+    const p = props?.[k];
+    if (p?.type === "relation" && p.relation?.length) return p.relation.map((r) => r.id);
+  }
+  return [];
+}
+
+// ── Property builders ────────────────────────────────────────────────────────
+
+export const titleProp  = (v) => ({ title:     [{ text: { content: String(v ?? "") } }] });
+export const textProp   = (v) => ({ rich_text: [{ text: { content: String(v ?? "") } }] });
+export const selectProp = (v) => (v ? { select: { name: String(v) } } : { select: null });
+export const numberProp = (v) => ({ number: v !== undefined && v !== null && v !== "" ? Number(v) : null });
+export const checkboxProp = (v) => ({ checkbox: Boolean(v) });
+export const dateProp   = (v) => (v ? { date: { start: v } } : { date: null });
+export const relationProp = (...ids) => ({ relation: ids.filter(Boolean).map((id) => ({ id })) });
