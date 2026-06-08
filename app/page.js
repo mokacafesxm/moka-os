@@ -1569,7 +1569,7 @@ export default function MokaOrderPad() {
       setCreatingProductDb(false);
       setActiveTab("orderpad");
       alert("Produit ajouté ✅");
-      setTimeout(async () => { await loadProductsDatabase(false); }, 2500);
+      setTimeout(async () => { await loadProductsDatabase(false); await refreshOrderPadProducts(); }, 2500);
     } catch (error) {
       console.error(error);
       alert("Erreur création produit ❌");
@@ -1649,7 +1649,7 @@ export default function MokaOrderPad() {
 
       setEditingProductDb(null);
       alert("Produit modifié ✅");
-      setTimeout(async () => { await loadProductsDatabase(false); }, 2500);
+      setTimeout(async () => { await loadProductsDatabase(false); await refreshOrderPadProducts(); }, 2500);
     } catch (error) {
       console.error(error);
       alert("Erreur modification produit ❌");
@@ -2034,7 +2034,7 @@ export default function MokaOrderPad() {
         return updated;
       });
 
-      setTimeout(async () => { await loadProductsDatabase(false); }, 2500);
+      setTimeout(async () => { await loadProductsDatabase(false); await refreshOrderPadProducts(); }, 2500);
 
       if (isNewProduct) {
         setActiveTab("orderpad");
