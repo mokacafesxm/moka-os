@@ -2336,18 +2336,40 @@ export default function MokaOrderPad() {
     }
   };
 
-  const handleInvoicePhoto = (e) => {
+  const compressImage = (file) => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement("canvas");
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const MAX = 1200;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        canvas.toBlob((blob) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result.split(",")[1]);
+          reader.readAsDataURL(blob);
+        }, "image/jpeg", 0.85);
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    });
+  };
+
+  const handleInvoicePhoto = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
     setInvoiceImageUrl(url);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const base64 = ev.target.result.split(",")[1];
-      setInvoiceImage(base64);
-      analyzeInvoice(base64, file.type || "image/jpeg");
-    };
-    reader.readAsDataURL(file);
+    const base64 = await compressImage(file);
+    setInvoiceImage(base64);
+    analyzeInvoice(base64, "image/jpeg");
   };
 
   const analyzeInvoice = async (base64, mediaType) => {
