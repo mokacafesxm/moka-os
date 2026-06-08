@@ -304,6 +304,8 @@ function ordNormalizeStock(item) {
     unit: ordGetStockUnit(item),
     suggested: ordGetStockSuggested(item),
     seuilCritique: ordGetStockCriticalLimit(item),
+    categorie: item?.categorie || item?.category || item?.cat || "",
+    category: item?.categorie || item?.category || item?.cat || "",
   };
 }
 function isPrepaCategory(item) {
