@@ -2408,13 +2408,45 @@ export default function MokaOrderPad() {
       if (data.error) throw new Error(data.error);
 
       const parsed = data.results || [];
+
+      const fuzzyMatch = (search, list, getField) => {
+        const s = search.toLowerCase().trim();
+        if (!s) return null;
+        let found = list.find(p => getField(p).toLowerCase().trim() === s);
+        if (found) return found;
+        found = list.find(p => {
+          const n = getField(p).toLowerCase().trim();
+          return n.includes(s) || s.includes(n);
+        });
+        if (found) return found;
+        const words = s.split(/\s+/).filter(w => w.length >= 4);
+        found = list.find(p => {
+          const n = getField(p).toLowerCase();
+          return words.some(w => n.includes(w));
+        });
+        return found || null;
+      };
+
       const results = parsed.map((item) => {
-        const nameLower = String(item.name_stock || item.name || "").toLowerCase();
-        const matched = productsDb.find((p) => {
-          const pName = String(p.ingredient || p.name || "").toLowerCase();
-          return pName === nameLower || pName.includes(nameLower) || nameLower.includes(pName);
-        }) || null;
-        return { ...item, name: item.name_facture || item.name, matched, include: !!matched };
+        const nameStock = String(item.name_stock || "").trim();
+        const nameFacture = String(item.name_facture || item.name || "").trim();
+        const getDbName = p => String(p.ingredient || p.name || "");
+        const getStockLiveName = p => String(getStockName(p));
+        let matched = null;
+        if (nameStock) {
+          matched = fuzzyMatch(nameStock, productsDb, getDbName) ||
+                    fuzzyMatch(nameStock, stockLive, getStockLiveName);
+        }
+        if (!matched && nameFacture) {
+          matched = fuzzyMatch(nameFacture, productsDb, getDbName) ||
+                    fuzzyMatch(nameFacture, stockLive, getStockLiveName);
+        }
+        return {
+          ...item,
+          name: nameFacture || nameStock,
+          matched,
+          include: item.confidence === "high" && !!matched,
+        };
       });
       setInvoiceResults(results);
     } catch (err) {

@@ -51,25 +51,35 @@ export async function POST(request) {
           role: "user",
           content: [
             { type: "image", source: { type: "base64", media_type: mediaType || "image/jpeg", data: base64 } },
-            { type: "text", text: `Tu es un assistant pour un café-restaurant à Saint-Martin (Antilles).
-Analyse cette facture et extrait TOUS les produits.
+            { type: "text", text: `Tu es un expert en lecture de factures pour un café-restaurant.
 
-Liste de nos produits en stock (noms français) :
+Analyse CHAQUE LIGNE de cette facture avec précision.
+
+Nos produits en stock :
 ${limitedStockNames.join(", ")}
 
-RÈGLES DE MATCHING STRICTES :
-- Cherche toujours un équivalent dans notre stock
-- Traduis si nécessaire : blueberries→Myrtilles, pineapple→Ananas, strawberries→Fraises fraîches, mango→Mangue, passion fruit→Fruit de la passion, watermelon→Pastèque, banana→Banane, lime→Citron vert, lemon→Citron jaune, avocado→Avocat, spinach→Épinards, eggs→Oeufs, butter→Beurre salé, cream→Crème liquide, milk→Lait entier, cheese→Fromage, beef→Boeuf, chicken→Poulet, salmon→Saumon, tuna→Thon, shrimp→Crevettes, flour→Farine, sugar→Sucre, olive oil→Huile d'olive, salt→Sel
-- Si le nom sur la facture correspond à un produit du stock même approximativement → mets confidence "high"
-- Si traduction probable → confidence "medium"
-- Si vraiment aucun match → name_stock: null, confidence "low"
+RÈGLE 1 - QUANTITÉ EXACTE :
+- Lis le chiffre dans la colonne QTY/Qty/Quantité/Units
+- "2 x 5kg" → quantite:10, unite:"kg"
+- "1 carton de 12" → quantite:1, unite:"carton"
+- Ne jamais mettre 1 par défaut si une quantité est lisible
+- LB → kg (÷2.205), OZ → g (×28.35)
+- EA/EACH/PC → "pièce", CS/CASE/CTN → "carton"
+
+RÈGLE 2 - MATCHING FRANÇAIS :
+blueberries→Myrtilles, pineapple→Ananas, strawberries→Fraises fraîches, mango→Mangue, watermelon→Pastèque, banana→Banane, lime→Citron vert, lemon→Citron jaune, avocado→Avocat, spinach→Épinards, iceberg lettuce→Salade iceberg, red cabbage→Chou rouge, parsley→Persil, carrot→Carotte, beet→Betterave, celery→Céleri, greek yogurt→Yaourt, eggs→Oeufs, butter→Beurre salé, heavy cream→Crème liquide, milk→Lait entier, oat milk→Lait avoine, almond milk→Lait amande, salmon→Saumon, pork→Porc, bacon→Bacon, flour→Farine, sugar→Sucre, olive oil→Huile d'olive, coffee→Café grains, matcha→Matcha poudre, sourdough→Sourdough toast, passion fruit→Fruit de la passion
+
+RÈGLE 3 - CONFIDENCE :
+- "high" = match certain dans notre stock
+- "medium" = traduction probable
+- "low" = aucun équivalent
 
 Réponds UNIQUEMENT en JSON :
 [{
-  "name_facture": "nom sur facture",
-  "name_stock": "nom exact dans notre liste ou null",
+  "name_facture": "nom exact sur facture",
+  "name_stock": "nom exact dans notre stock ou null",
   "quantite": nombre,
-  "unite": "kg|g|L|ml|pièce|sachet|carton",
+  "unite": "unité",
   "confidence": "high|medium|low"
 }]` }
           ]
