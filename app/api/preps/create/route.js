@@ -9,15 +9,15 @@ export async function POST(request) {
     const { produit, quantite, unite, priorite, statut, staffName, dueDate } = await request.json();
 
     const properties = {
-      "Préparation": titleProp(produit),
-      "Quantité":    numberProp(quantite),
-      "Unité":       selectProp(unite),
-      "Priorité":    selectProp(priorite || "Normal"),
-      "Statut":      selectProp(statut || "À faire"),
+      "Action":               titleProp(produit),
+      "Quantité suggérée":    numberProp(quantite),
+      "Unité":                selectProp(unite),
+      "Priorité":             selectProp(priorite || "Normal"),
+      "Statut":               selectProp(statut || "À faire"),
     };
 
-    if (staffName) properties["Assigné à"] = textProp(staffName);
-    if (dueDate)   properties["Date limite"]  = dateProp(dueDate);
+    if (staffName) properties["Staff"] = textProp(staffName);
+    if (dueDate)   properties["Date prévue"] = dateProp(dueDate);
 
     const page = await createPage(DB.PREPS, properties);
     return Response.json({ success: true, id: page.id }, { headers: corsHeaders });

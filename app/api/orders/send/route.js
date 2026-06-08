@@ -1,10 +1,10 @@
-import { DB, corsHeaders, createPage, updatePage, queryDatabase, titleProp, textProp, selectProp, numberProp, dateProp, relationProp, getTitle } from "../../_notion";
+import { DB, corsHeaders, createPage, queryDatabase, titleProp, selectProp, numberProp, dateProp, relationProp, getTitle } from "../../_notion";
 
-async function buildIdMap(dbId, nameProp) {
+async function buildIdMap(dbId, ...titleKeys) {
   const pages = await queryDatabase(dbId, null, null, 200);
   const map = {};
   for (const p of pages) {
-    const name = getTitle(p.properties, nameProp, "Nom", "nom", "Name", "name", "Ingredient");
+    const name = getTitle(p.properties, ...titleKeys);
     if (name) map[name.toLowerCase()] = p.id;
   }
   return map;
@@ -24,8 +24,8 @@ export async function POST(request) {
 
     const [productMap, supplierMap, staffMap] = await Promise.all([
       buildIdMap(DB.INGREDIENTS, "Ingredient"),
-      buildIdMap(DB.FOURNISSEURS, "Nom"),
-      buildIdMap(DB.STAFF, "Prénom"),
+      buildIdMap(DB.FOURNISSEURS, "Fournisseur"),
+      buildIdMap(DB.STAFF, "Prénom", "Nom", "Name"),
     ]);
 
     const results = await Promise.all(items.map(async (item) => {
@@ -34,33 +34,24 @@ export async function POST(request) {
         Fournisseur, StaffName, Source, Date: date,
       } = item;
 
-      const properties = {
-        "Produit":    titleProp(Produit || ""),
-        "Quantité":   numberProp(Quantite),
-        "Unité":      selectProp(Unite),
-        "Fournisseur": textProp(Fournisseur || ""),
-        "Statut":     selectProp("À commander"),
-        "Source":     textProp(Source || "MOKA OS"),
-      };
-
-      if (date) properties["Date"] = dateProp(date);
-
-      const page = await createPage(DB.BESOINS, properties);
-
-      // Resolve and patch relations
       const prodId     = id || productMap[(Produit || "").toLowerCase()];
       const foId       = supplierMap[(Fournisseur || "").toLowerCase()];
       const staffId    = staffMap[(StaffName || "").toLowerCase()];
 
-      const relProps = {};
-      if (prodId)  relProps["Ingredient"]   = relationProp(prodId);
-      if (foId)    relProps["Fournisseur relation"] = relationProp(foId);
-      if (staffId) relProps["Staff"]         = relationProp(staffId);
+      const properties = {
+        "Besoin":            titleProp(Produit || ""),
+        "Quantité suggérée": numberProp(Quantite),
+        "Unité":             selectProp(Unite),
+        "Statut":            selectProp("À commander"),
+        "Source":            selectProp(Source || "MOKA OS"),
+      };
 
-      if (Object.keys(relProps).length) {
-        await updatePage(page.id, relProps).catch(() => {});
-      }
+      if (date)    properties["Date envoi"] = dateProp(date);
+      if (prodId)  properties["Produit"]    = relationProp(prodId);
+      if (foId)    properties["Fournisseur"] = relationProp(foId);
+      if (staffId) properties["Staff"]      = relationProp(staffId);
 
+      const page = await createPage(DB.BESOINS, properties);
       return page.id;
     }));
 

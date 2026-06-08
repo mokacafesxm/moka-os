@@ -84,8 +84,8 @@ export function getTitle(props, ...keys) {
   for (const k of keys) {
     const p = props?.[k];
     if (!p) continue;
-    if (p.type === "title" && p.title?.length) return p.title[0].plain_text || "";
-    if (p.type === "rich_text" && p.rich_text?.length) return p.rich_text[0].plain_text || "";
+    if (p.type === "title" && p.title?.length) return (p.title[0].plain_text || "").trim();
+    if (p.type === "rich_text" && p.rich_text?.length) return (p.rich_text[0].plain_text || "").trim();
   }
   return "";
 }
@@ -94,11 +94,24 @@ export function getText(props, ...keys) {
   for (const k of keys) {
     const p = props?.[k];
     if (!p) continue;
-    if (p.type === "rich_text" && p.rich_text?.length) return p.rich_text[0].plain_text || "";
-    if (p.type === "title" && p.title?.length) return p.title[0].plain_text || "";
-    if (p.type === "email") return p.email || "";
-    if (p.type === "phone_number") return p.phone_number || "";
-    if (p.type === "url") return p.url || "";
+    if (p.type === "rich_text" && p.rich_text?.length) return (p.rich_text[0].plain_text || "").trim();
+    if (p.type === "title" && p.title?.length) return (p.title[0].plain_text || "").trim();
+    if (p.type === "email") return (p.email || "").trim();
+    if (p.type === "phone_number") return (p.phone_number || "").trim();
+    if (p.type === "url") return (p.url || "").trim();
+  }
+  return "";
+}
+
+export function getFormula(props, ...keys) {
+  for (const k of keys) {
+    const p = props?.[k];
+    if (p?.type === "formula") {
+      const f = p.formula;
+      if (f?.string !== undefined && f.string !== null) return f.string.trim();
+      if (f?.number !== undefined && f.number !== null) return f.number;
+      if (f?.boolean !== undefined) return f.boolean;
+    }
   }
   return "";
 }
@@ -106,8 +119,8 @@ export function getText(props, ...keys) {
 export function getSelect(props, ...keys) {
   for (const k of keys) {
     const p = props?.[k];
-    if (p?.type === "select" && p.select?.name) return p.select.name;
-    if (p?.type === "formula") return p.formula?.string || "";
+    if (p?.type === "select" && p.select?.name) return p.select.name.trim();
+    if (p?.type === "formula") return (p.formula?.string || "").trim();
   }
   return "";
 }

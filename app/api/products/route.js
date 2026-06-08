@@ -1,10 +1,10 @@
-import { DB, corsHeaders, queryDatabase, getTitle, getText, getSelect, getCheckbox, getNumber, getRelationIds, getPage } from "../_notion";
+import { DB, corsHeaders, queryDatabase, getTitle, getText, getSelect, getCheckbox, getNumber, getRelationIds } from "../_notion";
 
 async function buildSupplierMap() {
   const pages = await queryDatabase(DB.FOURNISSEURS);
   const map = {};
   for (const p of pages) {
-    map[p.id] = getTitle(p.properties, "Nom", "nom", "Name", "name");
+    map[p.id] = getTitle(p.properties, "Fournisseur");
   }
   return map;
 }
@@ -17,7 +17,7 @@ export async function GET() {
   try {
     const [pages, supplierMap] = await Promise.all([
       queryDatabase(DB.INGREDIENTS, {
-        property: "Visible OrderPad",
+        property: "Visible_OrderPad",
         checkbox: { equals: true },
       }),
       buildSupplierMap(),
@@ -25,31 +25,32 @@ export async function GET() {
 
     const products = pages.map((page) => {
       const p = page.properties;
-      const supplierIds = getRelationIds(p, "Fournisseur par défaut", "Fournisseur", "fournisseur");
-      const supplier = supplierIds.length ? (supplierMap[supplierIds[0]] || "") : getText(p, "Fournisseur par défaut", "fournisseurDefaut");
+      const supplierIds = getRelationIds(p, "Fournisseur par defaut");
+      const supplier = supplierIds.length ? (supplierMap[supplierIds[0]] || "") : "";
 
       return {
         id: page.id,
-        name: getTitle(p, "Ingredient", "Nom", "nom", "Name", "name"),
-        ingredient: getTitle(p, "Ingredient", "Nom", "nom", "Name", "name"),
-        category: getSelect(p, "Catégorie", "Categorie", "categorie", "Category"),
-        categorie: getSelect(p, "Catégorie", "Categorie", "categorie", "Category"),
-        subcategory: getSelect(p, "Sous-catégorie", "Sous catégorie", "SousCategorie", "sousCategorie"),
-        sousCategorie: getSelect(p, "Sous-catégorie", "Sous catégorie", "SousCategorie", "sousCategorie"),
+        name: getTitle(p, "Ingredient"),
+        ingredient: getTitle(p, "Ingredient"),
+        category: getSelect(p, "Categorie"),
+        categorie: getSelect(p, "Categorie"),
+        subcategory: getSelect(p, "Sous-categorie"),
+        sousCategorie: getSelect(p, "Sous-categorie"),
         supplier,
         fournisseurDefaut: supplier,
-        unit: getSelect(p, "Unité commande", "Unite commande", "uniteCommande", "Unité stock"),
-        uniteStock: getSelect(p, "Unité stock", "Unite stock", "uniteStock"),
-        uniteCommande: getSelect(p, "Unité commande", "Unite commande", "uniteCommande"),
-        suggested: getNumber(p, "Quantité commandée suggérée", "quantiteCommandeSuggeree", "Quantite commandee"),
-        quantiteCommandeSuggeree: getNumber(p, "Quantité commandée suggérée", "quantiteCommandeSuggeree"),
-        zone: getSelect(p, "Zone de stockage", "Zone", "zone", "zoneStockage"),
-        zoneStockage: getSelect(p, "Zone de stockage", "Zone", "zone", "zoneStockage"),
-        seuilAlerte: getNumber(p, "Seuil alerte", "seuilAlerte"),
-        seuilCritique: getNumber(p, "Seuil critique", "seuilCritique"),
-        portionGrammes: getNumber(p, "Portion (g)", "Portion", "portionGrammes"),
-        visibleOrderPad: getCheckbox(p, "Visible OrderPad", "visibleOrderPad"),
-        photo: p["Photo"]?.files?.[0]?.file?.url || p["Photo"]?.files?.[0]?.external?.url || "",
+        unit: getSelect(p, "Unite_commande", "Unite_stock"),
+        uniteStock: getSelect(p, "Unite_stock"),
+        uniteCommande: getSelect(p, "Unite_commande"),
+        suggested: getNumber(p, "Quantite_commande_suggeree"),
+        quantiteCommandeSuggeree: getNumber(p, "Quantite_commande_suggeree"),
+        zone: getSelect(p, "Zone_stockage"),
+        zoneStockage: getSelect(p, "Zone_stockage"),
+        seuilAlerte: getNumber(p, "Seuil_alerte"),
+        seuilCritique: getNumber(p, "Seuil_critique"),
+        portionGrammes: getNumber(p, "1 Portion (g)"),
+        visibleOrderPad: getCheckbox(p, "Visible_OrderPad"),
+        methodeSuivi: getSelect(p, "Methode_suivi"),
+        photo: p["photo"]?.files?.[0]?.file?.url || p["photo"]?.files?.[0]?.external?.url || "",
       };
     });
 

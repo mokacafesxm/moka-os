@@ -1,9 +1,9 @@
-import { DB, corsHeaders, createPage, queryDatabase, titleProp, selectProp, numberProp, checkboxProp, relationProp, getTitle } from "../../_notion";
+import { DB, corsHeaders, createPage, queryDatabase, titleProp, selectProp, numberProp, checkboxProp, relationProp } from "../../_notion";
 
 async function resolveSupplier(name) {
   if (!name) return null;
   const pages = await queryDatabase(DB.FOURNISSEURS, {
-    property: "Nom",
+    property: "Fournisseur",
     title: { equals: name },
   }, null, 1);
   return pages[0]?.id || null;
@@ -25,21 +25,21 @@ export async function POST(request) {
     const supplierPageId = await resolveSupplier(fournisseurDefaut);
 
     const properties = {
-      "Ingredient":                 titleProp(name),
-      "Catégorie":                  selectProp(categorie),
-      "Sous-catégorie":             selectProp(sousCategorie),
-      "Visible OrderPad":           checkboxProp(visibleOrderPad),
-      "Zone de stockage":           selectProp(zoneStockage),
-      "Quantité commandée suggérée": numberProp(quantiteCommandee),
-      "Unité stock":                selectProp(uniteStock),
-      "Unité commande":             selectProp(uniteCommande),
-      "Portion (g)":                numberProp(portion),
-      "Seuil alerte":               numberProp(seuilAlerte),
-      "Seuil critique":             numberProp(seuilCritique),
+      "Ingredient":                   titleProp(name),
+      "Categorie":                    selectProp(categorie),
+      "Sous-categorie":               selectProp(sousCategorie),
+      "Visible_OrderPad":             checkboxProp(visibleOrderPad),
+      "Zone_stockage":                selectProp(zoneStockage),
+      "Quantite_commande_suggeree":   numberProp(quantiteCommandee),
+      "Unite_stock":                  selectProp(uniteStock),
+      "Unite_commande":               selectProp(uniteCommande),
+      "1 Portion (g)":                numberProp(portion),
+      "Seuil_alerte":                 numberProp(seuilAlerte),
+      "Seuil_critique":               numberProp(seuilCritique),
     };
 
     if (supplierPageId) {
-      properties["Fournisseur par défaut"] = relationProp(supplierPageId);
+      properties["Fournisseur par defaut"] = relationProp(supplierPageId);
     }
 
     const page = await createPage(DB.INGREDIENTS, properties);

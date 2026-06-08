@@ -1,8 +1,8 @@
 import {
   DB, corsHeaders,
   queryDatabase, createPage,
-  getTitle, getText, getSelect, getNumber, getDate,
-  titleProp, textProp, selectProp, numberProp, dateProp,
+  getTitle, getText, getSelect, getNumber, getDate, getRelationIds,
+  titleProp, textProp, selectProp, numberProp, dateProp, relationProp,
 } from "../_notion";
 
 export async function OPTIONS() {
@@ -12,22 +12,22 @@ export async function OPTIONS() {
 export async function GET() {
   try {
     const pages = await queryDatabase(DB.BESOINS, null, [
-      { property: "Date", direction: "descending" },
+      { property: "Date envoi", direction: "descending" },
     ], 200);
 
     const orders = pages.map((page) => {
       const p = page.properties;
       return {
         id: page.id,
-        produit: getTitle(p, "Produit", "produit", "Nom", "Ingredient"),
-        quantite: getNumber(p, "Quantité", "quantite", "Quantite"),
-        unite: getSelect(p, "Unité", "unite", "Unite"),
-        fournisseur: getText(p, "Fournisseur", "fournisseur"),
-        statut: getSelect(p, "Statut", "statut", "Status"),
-        notes: getText(p, "Notes", "notes"),
-        date: getDate(p, "Date", "date", "Date création"),
-        staff: getText(p, "Staff", "staff"),
-        source: getText(p, "Source", "source"),
+        produit: getTitle(p, "Besoin"),
+        quantite: getNumber(p, "Quantité suggérée"),
+        unite: getSelect(p, "Unité"),
+        statut: getSelect(p, "Statut"),
+        source: getSelect(p, "Source"),
+        date: getDate(p, "Date envoi", "Date création"),
+        produitId: getRelationIds(p, "Produit")[0] || null,
+        fournisseurId: getRelationIds(p, "Fournisseur")[0] || null,
+        staffId: getRelationIds(p, "Staff")[0] || null,
       };
     });
 
@@ -39,18 +39,19 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { produit, quantite, unite, fournisseur, statut, notes } = await request.json();
+    const { produit, quantite, unite, fournisseurId, statut, notes, produitId, staffId } = await request.json();
 
     const properties = {
-      "Produit":    titleProp(produit || ""),
-      "Quantité":   numberProp(quantite),
-      "Unité":      selectProp(unite),
-      "Fournisseur": textProp(fournisseur || ""),
-      "Statut":     selectProp(statut || "À commander"),
-      "Date":       dateProp(new Date().toISOString()),
+      "Besoin":            titleProp(produit || ""),
+      "Quantité suggérée": numberProp(quantite),
+      "Unité":             selectProp(unite),
+      "Statut":            selectProp(statut || "À commander"),
+      "Date création":     dateProp(new Date().toISOString()),
     };
 
-    if (notes) properties["Notes"] = textProp(notes);
+    if (produitId)     properties["Produit"]     = relationProp(produitId);
+    if (fournisseurId) properties["Fournisseur"] = relationProp(fournisseurId);
+    if (staffId)       properties["Staff"]       = relationProp(staffId);
 
     const page = await createPage(DB.BESOINS, properties);
     return Response.json({ success: true, id: page.id }, { headers: corsHeaders });

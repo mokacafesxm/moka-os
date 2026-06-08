@@ -1,4 +1,4 @@
-import { DB, corsHeaders, queryDatabase, getTitle, getText, getSelect, getNumber, getDate, getRelationIds } from "../_notion";
+import { DB, corsHeaders, queryDatabase, getTitle, getText, getSelect, getNumber, getDate } from "../_notion";
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -15,13 +15,15 @@ export async function GET() {
       const p = page.properties;
       return {
         id: page.id,
-        name: getTitle(p, "Préparation", "Produit", "produit", "Nom", "nom", "Name"),
-        quantity: getNumber(p, "Quantité", "quantite", "Quantite"),
-        unit: getSelect(p, "Unité", "unite", "Unite", "Unit"),
-        priority: getSelect(p, "Priorité", "priorite", "Priorite", "Priority"),
-        status: getSelect(p, "Statut", "statut", "Status"),
-        dueDate: getDate(p, "Date limite", "Date", "date"),
-        assignedTo: getText(p, "Assigné à", "Assigne", "assignedTo", "Staff"),
+        name: getTitle(p, "Action"),
+        quantity: getNumber(p, "Quantité suggérée"),
+        unit: getSelect(p, "Unité"),
+        priority: getSelect(p, "Priorité"),
+        status: getSelect(p, "Statut"),
+        dueDate: getDate(p, "Date prévue"),
+        assignedTo: getText(p, "Staff"),
+        type: getSelect(p, "Type"),
+        comment: getText(p, "Commentaire"),
       };
     });
 

@@ -3,7 +3,7 @@ import { DB, corsHeaders, updatePage, queryDatabase, titleProp, selectProp, numb
 async function resolveSupplier(name) {
   if (!name) return null;
   const pages = await queryDatabase(DB.FOURNISSEURS, {
-    property: "Nom",
+    property: "Fournisseur",
     title: { equals: name },
   }, null, 1);
   return pages[0]?.id || null;
@@ -30,23 +30,18 @@ export async function POST(request) {
 
     const properties = {
       "Ingredient":                  titleProp(name),
-      "Catégorie":                   selectProp(categorie),
-      "Sous-catégorie":              selectProp(sousCategorie),
-      "Visible OrderPad":            checkboxProp(visibleOrderPad),
-      "Zone de stockage":            selectProp(zoneStockage),
-      "Quantité commandée suggérée": numberProp(quantiteCommandee),
-      "Unité stock":                 selectProp(uniteStock),
-      "Unité commande":              selectProp(uniteCommande),
-      "Portion (g)":                 numberProp(portion),
-      "Seuil alerte":                numberProp(seuilAlerte),
-      "Seuil critique":              numberProp(seuilCritique),
+      "Categorie":                   selectProp(categorie),
+      "Sous-categorie":              selectProp(sousCategorie),
+      "Visible_OrderPad":            checkboxProp(visibleOrderPad),
+      "Zone_stockage":               selectProp(zoneStockage),
+      "Quantite_commande_suggeree":  numberProp(quantiteCommandee),
+      "Unite_stock":                 selectProp(uniteStock),
+      "Unite_commande":              selectProp(uniteCommande),
+      "1 Portion (g)":               numberProp(portion),
+      "Seuil_alerte":                numberProp(seuilAlerte),
+      "Seuil_critique":              numberProp(seuilCritique),
+      "Fournisseur par defaut":      supplierPageId ? relationProp(supplierPageId) : { relation: [] },
     };
-
-    if (supplierPageId !== undefined) {
-      properties["Fournisseur par défaut"] = supplierPageId
-        ? relationProp(supplierPageId)
-        : { relation: [] };
-    }
 
     await updatePage(id, properties);
     return Response.json({ success: true }, { headers: corsHeaders });

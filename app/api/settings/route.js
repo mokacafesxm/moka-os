@@ -15,14 +15,15 @@ async function listSuppliers() {
     const p = page.properties;
     return {
       id: page.id,
-      nom: getTitle(p, "Nom", "nom", "Name", "name"),
-      name: getTitle(p, "Nom", "nom", "Name", "name"),
-      categorie: getSelect(p, "Catégorie", "Categorie", "categorie"),
-      contact: getText(p, "Contact", "contact"),
-      telephone: getText(p, "Téléphone", "telephone", "Phone", "phone"),
-      whatsapp: getText(p, "WhatsApp", "whatsapp", "Téléphone", "telephone"),
-      email: getText(p, "Email", "email"),
-      actif: getCheckbox(p, "Actif", "actif", "Active"),
+      nom: getTitle(p, "Fournisseur"),
+      name: getTitle(p, "Fournisseur"),
+      fournisseur: getTitle(p, "Fournisseur"),
+      categorie: getSelect(p, "Catégorie"),
+      contact: getText(p, "Contact principal"),
+      telephone: getText(p, "WhatsApp"),
+      whatsapp: getText(p, "WhatsApp"),
+      email: getText(p, "Email"),
+      actif: getCheckbox(p, "Actif"),
     };
   });
 }
@@ -33,13 +34,13 @@ async function listStaff() {
     const p = page.properties;
     return {
       id: page.id,
-      nom: getTitle(p, "Prénom", "prenom", "Nom", "nom", "Name", "name"),
-      name: getTitle(p, "Prénom", "prenom", "Nom", "nom", "Name", "name"),
-      prenom: getTitle(p, "Prénom", "prenom", "Nom", "nom", "Name", "name"),
-      role: getSelect(p, "Rôle", "Role", "role", "Poste"),
-      telephone: getText(p, "Téléphone", "telephone", "Phone"),
+      nom: getTitle(p, "Prénom", "Nom", "Name", "name"),
+      name: getTitle(p, "Prénom", "Nom", "Name", "name"),
+      prenom: getTitle(p, "Prénom", "Nom", "Name", "name"),
+      role: getSelect(p, "Rôle", "Role", "role"),
+      telephone: getText(p, "Téléphone", "telephone"),
       email: getText(p, "Email", "email"),
-      actif: getCheckbox(p, "Actif", "actif", "Active"),
+      actif: getCheckbox(p, "Actif", "actif"),
     };
   });
 }
@@ -60,12 +61,12 @@ export async function POST(request) {
 
     // ── LIST ────────────────────────────────────────────────────────────────
     if (action === "list") {
-      if (resource === "suppliers")   return Response.json(await listSuppliers(), { headers: corsHeaders });
-      if (resource === "staff")       return Response.json(await listStaff(), { headers: corsHeaders });
-      if (resource === "categories")  return Response.json(await listFromIngredients("Catégorie"), { headers: corsHeaders });
-      if (resource === "subcategories") return Response.json(await listFromIngredients("Sous-catégorie"), { headers: corsHeaders });
-      if (resource === "units")       return Response.json(await listFromIngredients("Unité stock"), { headers: corsHeaders });
-      if (resource === "zones")       return Response.json(await listFromIngredients("Zone de stockage"), { headers: corsHeaders });
+      if (resource === "suppliers")     return Response.json(await listSuppliers(), { headers: corsHeaders });
+      if (resource === "staff")         return Response.json(await listStaff(), { headers: corsHeaders });
+      if (resource === "categories")    return Response.json(await listFromIngredients("Categorie"), { headers: corsHeaders });
+      if (resource === "subcategories") return Response.json(await listFromIngredients("Sous-categorie"), { headers: corsHeaders });
+      if (resource === "units")         return Response.json(await listFromIngredients("Unite_stock"), { headers: corsHeaders });
+      if (resource === "zones")         return Response.json(await listFromIngredients("Zone_stockage"), { headers: corsHeaders });
       return Response.json({ error: `Unknown resource: ${resource}` }, { status: 400, headers: corsHeaders });
     }
 
@@ -75,21 +76,17 @@ export async function POST(request) {
       if (resource === "suppliers") {
         dbId = DB.FOURNISSEURS;
         properties = {
-          "Nom":       titleProp(data?.nom || data?.name || ""),
-          "Catégorie": selectProp(data?.categorie),
-          "Contact":   textProp(data?.contact || ""),
-          "Téléphone": textProp(data?.telephone || ""),
-          "Email":     textProp(data?.email || ""),
-          "Actif":     checkboxProp(data?.actif !== false),
+          "Fournisseur":     titleProp(data?.nom || data?.name || ""),
+          "Catégorie":       selectProp(data?.categorie),
+          "Contact principal": textProp(data?.contact || ""),
+          "Actif":           checkboxProp(data?.actif !== false),
         };
       } else if (resource === "staff") {
         dbId = DB.STAFF;
         properties = {
-          "Prénom":    titleProp(data?.nom || data?.name || data?.prenom || ""),
-          "Rôle":      selectProp(data?.role),
-          "Téléphone": textProp(data?.telephone || ""),
-          "Email":     textProp(data?.email || ""),
-          "Actif":     checkboxProp(data?.actif !== false),
+          "Prénom":  titleProp(data?.nom || data?.name || data?.prenom || ""),
+          "Rôle":    selectProp(data?.role),
+          "Actif":   checkboxProp(data?.actif !== false),
         };
       } else {
         return Response.json({ error: `create not supported for ${resource}` }, { status: 400, headers: corsHeaders });
@@ -100,24 +97,20 @@ export async function POST(request) {
 
     // ── UPDATE ───────────────────────────────────────────────────────────────
     if (action === "update") {
-      if (!id) return Response.json({ error: "id required for update" }, { status: 400, headers: corsHeaders });
+      if (!id) return Response.json({ error: "id required" }, { status: 400, headers: corsHeaders });
       let properties;
       if (resource === "suppliers") {
         properties = {
-          "Nom":       titleProp(data?.nom || data?.name || ""),
-          "Catégorie": selectProp(data?.categorie),
-          "Contact":   textProp(data?.contact || ""),
-          "Téléphone": textProp(data?.telephone || ""),
-          "Email":     textProp(data?.email || ""),
-          "Actif":     checkboxProp(data?.actif !== false),
+          "Fournisseur":     titleProp(data?.nom || data?.name || ""),
+          "Catégorie":       selectProp(data?.categorie),
+          "Contact principal": textProp(data?.contact || ""),
+          "Actif":           checkboxProp(data?.actif !== false),
         };
       } else if (resource === "staff") {
         properties = {
-          "Prénom":    titleProp(data?.nom || data?.name || data?.prenom || ""),
-          "Rôle":      selectProp(data?.role),
-          "Téléphone": textProp(data?.telephone || ""),
-          "Email":     textProp(data?.email || ""),
-          "Actif":     checkboxProp(data?.actif !== false),
+          "Prénom": titleProp(data?.nom || data?.name || data?.prenom || ""),
+          "Rôle":   selectProp(data?.role),
+          "Actif":  checkboxProp(data?.actif !== false),
         };
       } else {
         return Response.json({ error: `update not supported for ${resource}` }, { status: 400, headers: corsHeaders });
@@ -128,7 +121,7 @@ export async function POST(request) {
 
     // ── ARCHIVE ──────────────────────────────────────────────────────────────
     if (action === "archive") {
-      if (!id) return Response.json({ error: "id required for archive" }, { status: 400, headers: corsHeaders });
+      if (!id) return Response.json({ error: "id required" }, { status: 400, headers: corsHeaders });
       await updatePage(id, { "Actif": checkboxProp(false) });
       return Response.json({ success: true }, { headers: corsHeaders });
     }
