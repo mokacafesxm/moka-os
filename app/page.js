@@ -1598,7 +1598,11 @@ export default function MokaOrderPad() {
 
 
   const saveProductDbEdit = async () => {
-    if (!editingProductDbForm.id) return;
+    console.log("💾 saveProductDbEdit — id:", editingProductDbForm.id, "| ingredient:", editingProductDbForm.ingredient);
+    if (!editingProductDbForm.id) {
+      alert("❌ ID produit manquant — impossible de sauvegarder");
+      return;
+    }
 
     setSavingProductDb(true);
 
@@ -1629,7 +1633,9 @@ export default function MokaOrderPad() {
         }),
       });
 
-      if (!response.ok) throw new Error(`Erreur update ${response.status}`);
+      const resText = await response.text();
+      console.log("💾 saveProductDbEdit — réponse:", response.status, resText.slice(0, 200));
+      if (!response.ok) throw new Error(`Erreur update ${response.status}: ${resText.slice(0, 200)}`);
 
       const updated = productsDb.map((item) =>
         item.id === editingProductDbForm.id
