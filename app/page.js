@@ -2,41 +2,29 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
-const PRODUCTS_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook/moka-orderpad-products";
+const PRODUCTS_URL = "/api/products";
 
-const SEND_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook/moka-orderpad-send";
+const SEND_URL = "/api/orders/send";
 
-const PREPS_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook/moka-preps-to-do";
+const PREPS_URL = "/api/preps";
 
-const STAFF_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook/moka-staff-list";
+const STAFF_URL = "/api/staff";
 
-const STOCK_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook/moka-stock-live";
+const STOCK_URL = "/api/stock";
 
-const STOCK_UPDATE_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook/moka-stock-update";
+const STOCK_UPDATE_URL = "/api/stock/update";
 
-const PRODUCT_UPDATE_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook/moka-product-update";
+const PRODUCT_UPDATE_URL = "/api/products/update";
 
-const PRODUCT_CREATE_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook/moka-product-create";
+const PRODUCT_CREATE_URL = "/api/products/create";
 
-const COMPLETE_PREP_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook/moka-prep-complete";
+const COMPLETE_PREP_URL = "/api/preps/complete";
 
-const CREATE_PREP_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook/moka-create-prep";
+const CREATE_PREP_URL = "/api/preps/create";
 
-const CLOCK_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook/moka-staff-clock";
+const CLOCK_URL = "/api/clock";
 
-const SETTINGS_URL =
-  "https://mokacafesxm.app.n8n.cloud/webhook/moka-settings";
+const SETTINGS_URL = "/api/settings";
 
 const categoryEmojis = {
   Bar: "☕",
