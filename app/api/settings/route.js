@@ -7,11 +7,12 @@ import {
 
 async function resolveSupplier(name) {
   if (!name) return null;
-  const pages = await queryDatabase(DB.FOURNISSEURS, {
-    property: "Fournisseur",
-    title: { equals: name },
-  }, null, 1);
-  return pages[0]?.id || null;
+  const pages = await queryDatabase(DB.FOURNISSEURS);
+  const found = pages.find((p) => {
+    const title = getTitle(p.properties, "Fournisseur", "Nom", "nom", "name") || "";
+    return title.trim().toLowerCase() === name.trim().toLowerCase();
+  });
+  return found?.id || null;
 }
 
 function buildProductProperties(data) {
