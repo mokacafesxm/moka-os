@@ -2338,27 +2338,39 @@ export default function MokaOrderPad() {
 
   const compressImage = (file) => {
     return new Promise((resolve) => {
-      const canvas = document.createElement("canvas");
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        const MAX = 800;
-        let w = img.width, h = img.height;
-        if (w > MAX || h > MAX) {
-          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-          else { w = Math.round(w * MAX / h); h = MAX; }
-        }
-        canvas.width = w;
-        canvas.height = h;
-        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        canvas.toBlob((blob) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target.result.split(",")[1]);
-          reader.readAsDataURL(blob);
-        }, "image/jpeg", 0.6);
-        URL.revokeObjectURL(url);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const MAX = 800;
+            let w = img.width, h = img.height;
+            if (w > MAX || h > MAX) {
+              if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+              else { w = Math.round(w * MAX / h); h = MAX; }
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = w || 800;
+            canvas.height = h || 600;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+            if (dataUrl && dataUrl.length > 100) {
+              resolve(dataUrl.split(",")[1]);
+            } else {
+              // Fallback : envoie l'image originale sans compression
+              resolve(e.target.result.split(",")[1]);
+            }
+          } catch {
+            // Fallback Safari : image originale
+            resolve(e.target.result.split(",")[1]);
+          }
+        };
+        img.onerror = () => resolve(e.target.result.split(",")[1]);
+        img.src = e.target.result;
       };
-      img.src = url;
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
     });
   };
 
