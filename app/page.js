@@ -431,6 +431,7 @@ export default function MokaOrderPad() {
   const [adminPin, setAdminPin] = useState("");
 
   const [showClockModal, setShowClockModal] = useState(false);
+  const [clockNow, setClockNow] = useState(new Date());
   const [clockStatuses, setClockStatuses] = useState(() => {
     if (typeof window === "undefined") return {};
 
@@ -1431,6 +1432,12 @@ export default function MokaOrderPad() {
         .catch((error) => console.error("Préchargement fournisseurs produits:", error));
     }
   }, [isAdmin, adminSection]);
+
+  useEffect(() => {
+    if (!showClockModal) return;
+    const interval = setInterval(() => setClockNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, [showClockModal]);
 
   const refreshOrderPadProducts = async () => {
     console.log("[refreshOrderPadProducts] Début refresh…");
@@ -2610,7 +2617,7 @@ export default function MokaOrderPad() {
     <main className="min-h-screen bg-[#f5ede0] text-[#1a1008]" style={{fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"}}>
 
       {/* ── HEADER ─────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 bg-[#f5ede0]/96 backdrop-blur-md border-b border-[#ddc9b5] px-4 py-2.5 shadow-sm relative">
+      <header className="sticky top-0 z-30 bg-[#f5ede0]/96 backdrop-blur-md border-b border-[#ddc9b5] px-4 py-2.5 shadow-sm">
         <div className="max-w-screen-2xl mx-auto flex items-center justify-between gap-3">
 
           {/* Brand gauche */}
@@ -2629,6 +2636,18 @@ export default function MokaOrderPad() {
               <div className="text-[10px] text-[#9a7060] tracking-[0.25em] uppercase mt-0.5">Order Pad</div>
             </div>
           </div>
+
+          {/* Centre : Pointage */}
+          <button
+            onClick={() => setShowClockModal(true)}
+            className="relative h-10 px-4 rounded-xl bg-white border-2 border-[#e85d8a] text-[#e85d8a] font-black text-sm shadow-sm ring-2 ring-[#e85d8a]/25 hover:bg-[#fff0f5] transition-all cursor-pointer flex items-center gap-2"
+          >
+            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#e85d8a] animate-ping opacity-75" />
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/><path d="M9.5 2.5h5"/><path d="M12 2v2.5"/>
+            </svg>
+            Pointage
+          </button>
 
           {/* Admin droite */}
           <button
@@ -2653,23 +2672,6 @@ export default function MokaOrderPad() {
               <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             )}
             <span>{isAdmin ? "Admin ON" : "Admin"}</span>
-          </button>
-        </div>
-
-        {/* Pointage centré en absolu */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-auto">
-          <button
-            onClick={() => setShowClockModal(true)}
-            className="relative h-10 px-4 rounded-xl bg-white border-2 border-[#e85d8a] text-[#e85d8a] font-black text-sm shadow-sm ring-2 ring-[#e85d8a]/25 hover:bg-[#fff0f5] transition-all cursor-pointer flex items-center gap-2"
-          >
-            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#e85d8a] animate-ping opacity-75" />
-            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9"/>
-              <path d="M12 7v5l3 3"/>
-              <path d="M9.5 2.5h5"/>
-              <path d="M12 2v2.5"/>
-            </svg>
-            Pointage
           </button>
         </div>
       </header>
@@ -4645,53 +4647,90 @@ export default function MokaOrderPad() {
 
       {/* ── CLOCK MODAL ──────────────────────────────── */}
       {showClockModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-xl max-h-[90vh] overflow-y-auto p-5">
-            <div className="flex justify-between gap-4 items-start mb-5">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-lg max-h-[92vh] overflow-y-auto">
+
+            {/* Header */}
+            <div className="flex justify-between items-start gap-4 p-5 pb-4 border-b border-[#f0e8dc]">
               <div>
-                <h2 className="text-lg font-black text-[#2c1a10] flex items-center gap-2"><svg className="w-5 h-5 text-[#9a7060]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Pointage staff</h2>
-                <p className="text-[11px] text-[#9a7060] mt-0.5">Arrivée, pause, retour et départ.</p>
+                <h2 className="text-xl font-black text-[#2c1a10]">Pointage</h2>
+                <div className="text-sm font-bold text-[#e85d8a] mt-0.5 tabular-nums">
+                  {clockNow.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                  {" · "}
+                  {clockNow.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                </div>
               </div>
-              <button onClick={() => setShowClockModal(false)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] hover:text-[#2c1a10] transition-all cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
+              <button onClick={() => setShowClockModal(false)} className="w-10 h-10 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] hover:text-[#2c1a10] transition-all cursor-pointer shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Staff cards */}
+            <div className="flex flex-col gap-3 p-4">
               {staff.map((member) => {
                 const staffId = member.id || getStaffName(member);
                 const staffName = getStaffName(member);
                 const status = clockStatuses[staffId] || "absent";
                 const statusConfig = {
-                  present: { label: "Présent", color: "text-[#5a7828]", dot: "bg-[#5a7828]" },
-                  pause: { label: "En pause", color: "text-orange-500", dot: "bg-orange-400" },
-                  done: { label: "Terminé", color: "text-[#9a7060]", dot: "bg-[#9a7060]" },
-                  absent: { label: "Pas pointé", color: "text-[#b09080]", dot: "bg-[#d5c5b5]" },
-                }[status] || { label: "Pas pointé", color: "text-[#b09080]", dot: "bg-[#d5c5b5]" };
+                  present: { label: "Présent",     color: "text-[#5a7828]",  dot: "bg-[#5a7828]" },
+                  pause:   { label: "En pause",    color: "text-orange-500", dot: "bg-orange-400" },
+                  done:    { label: "Terminé",     color: "text-[#9a7060]",  dot: "bg-[#9a7060]" },
+                  absent:  { label: "Absent",      color: "text-[#b09080]",  dot: "bg-[#d5c5b5]" },
+                }[status] || { label: "Absent", color: "text-[#b09080]", dot: "bg-[#d5c5b5]" };
 
                 return (
                   <div key={staffId} className="rounded-2xl border border-[#e5d5c5] bg-[#faf5ef] p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${statusConfig.dot}`}></span>
+                    {/* Name + status */}
+                    <div className="flex items-center gap-2.5 mb-4">
+                      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusConfig.dot}`} />
                       <div>
-                        <div className="font-black text-sm text-[#2c1a10]">{staffName}</div>
-                        <div className={`text-[10px] font-semibold ${statusConfig.color}`}>{statusConfig.label}</div>
+                        <div className="font-black text-xl text-[#2c1a10] leading-tight">{staffName}</div>
+                        <div className={`text-xs font-bold ${statusConfig.color}`}>{statusConfig.label}</div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      {status === "absent" && (
-                        <button disabled={clockSending} onClick={() => sendClockAction(member, "Arrivée")} className="col-span-2 bg-[#5a7828] text-white py-2.5 rounded-xl font-bold text-xs hover:bg-[#4e6a22] transition-colors cursor-pointer">Arrivée ✅</button>
-                      )}
-                      {status === "present" && (<>
-                        <button disabled={clockSending} onClick={() => sendClockAction(member, "Départ pause")} className="bg-orange-500 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-orange-600 transition-colors cursor-pointer">Pause</button>
-                        <button disabled={clockSending} onClick={() => sendClockAction(member, "Départ")} className="bg-[#2c1a10] text-white py-2.5 rounded-xl font-bold text-xs hover:bg-[#1e100a] transition-colors cursor-pointer">Départ</button>
-                      </>)}
-                      {status === "pause" && (
-                        <button disabled={clockSending} onClick={() => sendClockAction(member, "Retour pause")} className="col-span-2 bg-[#5a7828] text-white py-2.5 rounded-xl font-bold text-xs hover:bg-[#4e6a22] transition-colors cursor-pointer">Retour pause ✅</button>
-                      )}
-                      {status === "done" && (
-                        <button disabled className="col-span-2 bg-[#ede0d4] text-[#b09080] py-2.5 rounded-xl font-bold text-xs cursor-not-allowed">Journée terminée</button>
-                      )}
-                    </div>
+                    {/* Action buttons */}
+                    {status === "absent" && (
+                      <button
+                        disabled={clockSending}
+                        onClick={() => sendClockAction(member, "Arrivée")}
+                        className="w-full h-14 rounded-2xl bg-[#5a7828] text-white font-black text-base hover:bg-[#4e6a22] active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+                      >
+                        ✓ Arrivée
+                      </button>
+                    )}
+                    {status === "present" && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          disabled={clockSending}
+                          onClick={() => sendClockAction(member, "Départ pause")}
+                          className="h-14 rounded-2xl bg-orange-500 text-white font-black text-base hover:bg-orange-600 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+                        >
+                          Pause déjeuner
+                        </button>
+                        <button
+                          disabled={clockSending}
+                          onClick={() => sendClockAction(member, "Départ")}
+                          className="h-14 rounded-2xl bg-[#2c1a10] text-white font-black text-base hover:bg-[#1e100a] active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+                        >
+                          Fin de service
+                        </button>
+                      </div>
+                    )}
+                    {status === "pause" && (
+                      <button
+                        disabled={clockSending}
+                        onClick={() => sendClockAction(member, "Retour pause")}
+                        className="w-full h-14 rounded-2xl bg-[#5a7828] text-white font-black text-base hover:bg-[#4e6a22] active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+                      >
+                        ↩ Retour
+                      </button>
+                    )}
+                    {status === "done" && (
+                      <div className="h-14 rounded-2xl bg-[#f0e8dc] flex items-center justify-center font-black text-base text-[#b09080]">
+                        Journée terminée ✓
+                      </div>
+                    )}
                   </div>
                 );
               })}
