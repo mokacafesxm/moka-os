@@ -2376,39 +2376,39 @@ export default function MokaOrderPad() {
     setInvoiceAnalyzing(true);
     setInvoiceResults([]);
     try {
-      const stockNames = [
-        ...productsDb.map((p) => p.ingredient || p.name || ""),
-        ...stockLive.map((p) => getStockName(p)),
-      ].filter(Boolean);
+      console.log("🔵 Envoi analyse, taille base64:", base64?.length);
 
       const response = await fetch("/api/analyze-invoice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base64, mediaType, stockNames }),
+        body: JSON.stringify({
+          base64,
+          mediaType,
+          stockNames: [], // vide pour tester sans la liste
+        }),
       });
 
-      const data = await response.json();
+      console.log("🟢 Status réponse:", response.status, response.statusText);
 
+      const text = await response.text();
+      console.log("🟢 Réponse brute:", text.slice(0, 200));
+
+      const data = JSON.parse(text);
       if (data.error) throw new Error(data.error);
 
       const parsed = data.results || [];
       const results = parsed.map((item) => {
-        const matched = item.name_stock
-          ? (productsDb.find((p) => (p.ingredient || p.name || "").toLowerCase() === item.name_stock.toLowerCase())
-             || stockLive.find((p) => getStockName(p).toLowerCase() === item.name_stock.toLowerCase()))
-          : null;
-        return {
-          ...item,
-          name: item.name_facture || item.name || "",
-          matched,
-          include: !!matched,
-          confidence: item.confidence || "low",
-        };
+        const nameLower = String(item.name_stock || item.name || "").toLowerCase();
+        const matched = productsDb.find((p) => {
+          const pName = String(p.ingredient || p.name || "").toLowerCase();
+          return pName === nameLower || pName.includes(nameLower) || nameLower.includes(pName);
+        }) || null;
+        return { ...item, name: item.name_facture || item.name, matched, include: !!matched };
       });
       setInvoiceResults(results);
     } catch (err) {
-      console.error("Erreur analyse facture:", err);
-      alert("Erreur analyse facture ❌ : " + err.message);
+      console.error("❌ Erreur analyse:", err);
+      alert("Erreur : " + err.message);
     } finally {
       setInvoiceAnalyzing(false);
     }
