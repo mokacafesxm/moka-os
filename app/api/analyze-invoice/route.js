@@ -22,7 +22,8 @@ export async function POST(request) {
       const formData = await request.formData();
       base64 = formData.get("base64");
       mediaType = formData.get("mediaType") || "image/jpeg";
-      stockNames = [];
+      const stockNamesRaw = formData.get("stockNames");
+      stockNames = stockNamesRaw ? JSON.parse(stockNamesRaw) : [];
     } else {
       const json = await request.json();
       base64 = json.base64;
@@ -50,32 +51,27 @@ export async function POST(request) {
           role: "user",
           content: [
             { type: "image", source: { type: "base64", media_type: mediaType || "image/jpeg", data: base64 } },
-            { type: "text", text: `Tu es un assistant pour un café-restaurant.
-Analyse ATTENTIVEMENT cette facture fournisseur ligne par ligne.
+            { type: "text", text: `Tu es un assistant pour un café-restaurant à Saint-Martin (Antilles).
+Analyse cette facture et extrait TOUS les produits.
 
-IMPORTANT : tu dois extraire ABSOLUMENT TOUS les produits visibles sur la facture, sans en sauter aucun. Même si tu n'es pas sûr, inclus le produit avec confidence "low".
+Liste de nos produits en stock (noms français) :
+${limitedStockNames.join(", ")}
 
-Voici la liste exacte des produits dans notre stock :
-${limitedStockNames.join("\n")}
+RÈGLES DE MATCHING STRICTES :
+- Cherche toujours un équivalent dans notre stock
+- Traduis si nécessaire : blueberries→Myrtilles, pineapple→Ananas, strawberries→Fraises fraîches, mango→Mangue, passion fruit→Fruit de la passion, watermelon→Pastèque, banana→Banane, lime→Citron vert, lemon→Citron jaune, avocado→Avocat, spinach→Épinards, eggs→Oeufs, butter→Beurre salé, cream→Crème liquide, milk→Lait entier, cheese→Fromage, beef→Boeuf, chicken→Poulet, salmon→Saumon, tuna→Thon, shrimp→Crevettes, flour→Farine, sugar→Sucre, olive oil→Huile d'olive, salt→Sel
+- Si le nom sur la facture correspond à un produit du stock même approximativement → mets confidence "high"
+- Si traduction probable → confidence "medium"
+- Si vraiment aucun match → name_stock: null, confidence "low"
 
-Pour CHAQUE ligne produit de la facture (pas les totaux, taxes, frais de livraison) :
-- Identifie le nom du produit
-- Trouve la quantité et l'unité
-- Cherche le meilleur match dans notre liste stock (cross-langue : blueberries→Myrtilles, beef→Boeuf, butter→Beurre, eggs→Oeufs, cream→Crème, etc.)
-
-Réponds UNIQUEMENT en JSON valide, sans markdown, sans texte avant ou après :
-[
-  {
-    "name_facture": "Nom exact sur la facture",
-    "name_stock": "Nom exact dans notre stock ou null",
-    "quantite": 5,
-    "unite": "kg",
-    "confidence": "high|medium|low"
-  }
-]
-
-Si une ligne n'a pas de match dans le stock, mets name_stock: null mais inclus quand même la ligne.
-Retourne [] seulement si l'image n'est pas une facture.` }
+Réponds UNIQUEMENT en JSON :
+[{
+  "name_facture": "nom sur facture",
+  "name_stock": "nom exact dans notre liste ou null",
+  "quantite": nombre,
+  "unite": "kg|g|L|ml|pièce|sachet|carton",
+  "confidence": "high|medium|low"
+}]` }
           ]
         }]
       })

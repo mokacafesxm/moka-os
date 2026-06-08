@@ -2388,9 +2388,15 @@ export default function MokaOrderPad() {
     setInvoiceAnalyzing(true);
     setInvoiceResults([]);
     try {
+      const stockNames = [
+        ...productsDb.map(p => p.ingredient || p.name || ""),
+        ...stockLive.map(p => getStockName(p))
+      ].filter(Boolean).slice(0, 200);
+
       const formData = new FormData();
       formData.append("base64", base64);
       formData.append("mediaType", mediaType || "image/jpeg");
+      formData.append("stockNames", JSON.stringify(stockNames));
 
       const response = await fetch("/api/analyze-invoice", {
         method: "POST",
