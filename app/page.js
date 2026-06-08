@@ -2657,7 +2657,7 @@ export default function MokaOrderPad() {
         </div>
 
         {/* Pointage centré en absolu */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-auto">
           <button
             onClick={() => setShowClockModal(true)}
             className="relative h-10 px-4 rounded-xl bg-white border-2 border-[#e85d8a] text-[#e85d8a] font-black text-sm shadow-sm ring-2 ring-[#e85d8a]/25 hover:bg-[#fff0f5] transition-all cursor-pointer flex items-center gap-2"
