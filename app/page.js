@@ -1574,8 +1574,20 @@ export default function MokaOrderPad() {
     }
   };
 
-  const openProductDbEdit = (item) => {
-    ["suppliers", "categories", "subcategories", "units", "zones"].forEach((resource) => {
+  const openProductDbEdit = async (item) => {
+    // Charge les fournisseurs en priorité avant d'ouvrir le modal
+    if (!settingsCache.suppliers?.length) {
+      try {
+        const suppliers = await fetchSettingsResource("suppliers");
+        setSettingsCache((prev) => {
+          const next = { ...prev, suppliers };
+          if (typeof window !== "undefined") localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
+          return next;
+        });
+      } catch {}
+    }
+    // Charge le reste en arrière-plan
+    ["categories", "subcategories", "units", "zones"].forEach((resource) => {
       if (settingsCache[resource]?.length) return;
       fetchSettingsResource(resource)
         .then((list) => setSettingsCache((prev) => {
@@ -1609,7 +1621,7 @@ export default function MokaOrderPad() {
 
 
   const saveProductDbEdit = async () => {
-    console.log("💾 saveProductDbEdit — id:", editingProductDbForm.id, "| ingredient:", editingProductDbForm.ingredient);
+    console.log("💾 saveProductDbEdit — id:", editingProductDbForm.id, "| ingredient:", editingProductDbForm.ingredient, "| fournisseurDefaut:", editingProductDbForm.fournisseurDefaut);
     if (!editingProductDbForm.id) {
       alert("❌ ID produit manquant — impossible de sauvegarder");
       return;
