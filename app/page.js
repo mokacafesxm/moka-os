@@ -1590,11 +1590,11 @@ export default function MokaOrderPad() {
     } catch {}
     const supplierName = item.fournisseurDefaut || item.supplier || "";
     const resolvedSupplierId = suppliersList.find((s) => {
-      const sName = String(
-        s.fournisseur || s.nom || s.name || s.title || ""
-      ).toLowerCase().trim();
+      const sName = String(s.nom || s.fournisseur || s.name || "")
+        .toLowerCase().trim();
       return sName === supplierName.toLowerCase().trim();
     })?.id || "";
+    console.log("resolvedSupplierId:", resolvedSupplierId, "pour:", supplierName, "dans:", suppliersList.map((s) => s.nom));
 
     // Charge le reste en arrière-plan
     ["categories", "subcategories", "units", "zones"].forEach((resource) => {

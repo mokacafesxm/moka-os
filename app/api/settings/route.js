@@ -48,11 +48,12 @@ async function listSuppliers() {
   const pages = await queryDatabase(DB.FOURNISSEURS);
   return pages.map((page) => {
     const p = page.properties;
+    const nom = getTitle(p, "Fournisseur", "Nom", "nom");
     return {
       id: page.id,
-      nom: getTitle(p, "Fournisseur"),
-      name: getTitle(p, "Fournisseur"),
-      fournisseur: getTitle(p, "Fournisseur"),
+      nom,
+      name: nom,
+      fournisseur: nom,
       categorie: getSelect(p, "Catégorie"),
       contact: getText(p, "Contact principal"),
       telephone: getText(p, "WhatsApp"),
