@@ -1278,6 +1278,26 @@ export default function MokaOrderPad() {
     };
   };
 
+  const markAsSent = async (items) => {
+    try {
+      await Promise.all((items || []).map((item) =>
+        fetch("/api/supplier-orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "updateStatus",
+            id: item.id,
+            statut: "Envoyé",
+            dateSent: new Date().toISOString(),
+          }),
+        })
+      ));
+      await loadSupplierOrders();
+    } catch (err) {
+      console.error("Erreur markAsSent:", err);
+    }
+  };
+
   const loadSupplierOrders = async () => {
     setLoadingSupplierOrders(true);
     try {
@@ -4003,6 +4023,7 @@ export default function MokaOrderPad() {
                     selectedSupplier={ordSelectedSupplier}
                     supplier={ordSupplierContact}
                     setShowPreview={setShowOrderPreview}
+                    onSent={() => markAsSent(ordCartItems)}
                   />
                 )}
                 {orderDetail && (
@@ -5068,7 +5089,7 @@ function OrdSupplierContactCard({ supplier, compact = false }) {
   );
 }
 
-function OrdPreviewModal({ buildMessage, selectedSupplier, supplier, setShowPreview }) {
+function OrdPreviewModal({ buildMessage, selectedSupplier, supplier, setShowPreview, onSent }) {
   const message = buildMessage();
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-3">
@@ -5085,15 +5106,16 @@ function OrdPreviewModal({ buildMessage, selectedSupplier, supplier, setShowPrev
           <button onClick={() => {
             const wa = ordGetSupplierWhatsapp(supplier);
             if (wa) window.open(`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`);
+            onSent?.();
+            setShowPreview(false);
           }} className="flex-1 py-3 rounded-[1rem] bg-green-500 text-white font-black text-sm">💬 WhatsApp</button>
           <button onClick={() => {
             const em = ordGetSupplierEmail(supplier);
             if (em) window.open(`mailto:${em}?subject=Commande MÖKA&body=${encodeURIComponent(message)}`);
+            onSent?.();
+            setShowPreview(false);
           }} className="flex-1 py-3 rounded-[1rem] bg-blue-500 text-white font-black text-sm">📧 Email</button>
         </div>
-        <button onClick={() => { alert("Prochaine étape : sauvegarde/envoi dans Notion ✅"); setShowPreview(false); }} className="w-full mt-2 py-3 rounded-[1rem] bg-[#6f8f32] text-white font-black text-sm">
-          ✅ Marquer comme préparée
-        </button>
       </div>
     </div>
   );

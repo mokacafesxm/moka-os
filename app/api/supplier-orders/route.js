@@ -1,6 +1,6 @@
 import {
   DB, corsHeaders,
-  queryDatabase, createPage,
+  queryDatabase, createPage, updatePage,
   getTitle, getText, getSelect, getNumber, getDate, getRelationIds,
   titleProp, textProp, selectProp, numberProp, dateProp, relationProp,
 } from "../_notion";
@@ -39,7 +39,18 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { produit, quantite, unite, fournisseurId, statut, notes, produitId, staffId } = await request.json();
+    const body = await request.json();
+    const { action, produit, quantite, unite, fournisseurId, statut, notes, produitId, staffId } = body;
+
+    if (action === "updateStatus") {
+      const { id, statut: newStatut, dateSent } = body;
+      const properties = {
+        "Statut": selectProp(newStatut),
+      };
+      if (dateSent) properties["Date envoi"] = dateProp(dateSent);
+      await updatePage(id, properties);
+      return Response.json({ success: true }, { headers: corsHeaders });
+    }
 
     const properties = {
       "Besoin":            titleProp(produit || ""),
