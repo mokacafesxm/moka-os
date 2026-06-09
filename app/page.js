@@ -1575,17 +1575,23 @@ export default function MokaOrderPad() {
   };
 
   const openProductDbEdit = async (item) => {
-    // Charge les fournisseurs en priorité avant d'ouvrir le modal
-    if (!settingsCache.suppliers?.length) {
+    // Charge les fournisseurs et résout l'ID directement depuis la liste fraîche
+    let suppliersList = settingsCache.suppliers || [];
+    if (!suppliersList.length) {
       try {
-        const suppliers = await fetchSettingsResource("suppliers");
+        suppliersList = await fetchSettingsResource("suppliers");
         setSettingsCache((prev) => {
-          const next = { ...prev, suppliers };
+          const next = { ...prev, suppliers: suppliersList };
           if (typeof window !== "undefined") localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
           return next;
         });
       } catch {}
     }
+    const supplierName = item.fournisseurDefaut || item.supplier || "";
+    const resolvedSupplierId = suppliersList.find(
+      (s) => (s.nom || s.name || s.fournisseur || "") === supplierName
+    )?.id || "";
+
     // Charge le reste en arrière-plan
     ["categories", "subcategories", "units", "zones"].forEach((resource) => {
       if (settingsCache[resource]?.length) return;
@@ -1605,14 +1611,8 @@ export default function MokaOrderPad() {
       categorie: item.categorie || item.category || "",
       sousCategorie: item.sousCategorie || item.subcategory || "",
       visibleOrderPad: item.visibleOrderPad !== false,
-      fournisseurDefaut: item.fournisseurDefaut || item.supplier || "",
-      fournisseurId: item.fournisseurId || (() => {
-        const name = item.fournisseurDefaut || item.supplier || "";
-        const found = (settingsCache.suppliers || []).find(
-          (s) => (s.nom || s.name || s.fournisseur || "") === name
-        );
-        return found?.id || "";
-      })(),
+      fournisseurDefaut: supplierName,
+      fournisseurId: resolvedSupplierId,
       zoneStockage: item.zoneStockage || item.zone || "",
       methodeSuivi: item.methodeSuivi || "",
       quantiteCommandeSuggeree: item.quantiteCommandeSuggeree || item.suggested || 0,

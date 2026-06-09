@@ -7,10 +7,8 @@ export async function OPTIONS() {
 export async function GET() {
   try {
     const pages = await queryDatabase(DB.PREPS, {
-      or: [
-        { property: "Statut", select: { equals: "À faire" } },
-        { property: "Statut", select: { equals: "En cours" } },
-      ],
+      property: "Statut",
+      select: { equals: "À faire" },
     });
 
     const preps = pages.map((page) => {
