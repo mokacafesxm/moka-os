@@ -1608,7 +1608,6 @@ export default function MokaOrderPad() {
     })?.id || "";
 
     console.log("🔵 supplier match:", supplierName, "→", resolvedSupplierId, "| correctId:", correctId);
-    alert("DEBUG: supplier=" + supplierName + " | id=" + resolvedSupplierId + " | liste=" + suppliersList.slice(0,3).map(s=>s.nom).join(","));
 
     setEditingProductDb(item);
     setEditingProductDbForm({
