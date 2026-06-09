@@ -2526,17 +2526,24 @@ export default function MokaOrderPad() {
           .filter((item) => item.type === "stock-prep")
           .map((item) => ({
             id: item.id,
-            produit: item.name,
-            quantite: item.qty,
-            unite: item.unit || "kg",
-            priorite: "Haute",
+            produit: getStockName(item),
+            quantite: item.suggested || item.quantitePrep || item.qty || 1,
+            unite: item.unit || item.uniteStock || "kg",
+            priorite: (() => {
+              const status = String(getStockStatus(item)).toLowerCase();
+              if (status.includes("critique")) return "Haute";
+              if (status.includes("stock bas") || status.includes("alerte")) return "Normale";
+              return "Normale";
+            })(),
             statut: "À faire",
-            staffId: selectedStaff,
-            staffName: selectedStaffName,
+            staffName: getStaffName(staff.find((s) =>
+              (s.id || getStaffName(s)) === selectedStaff
+            )) || selectedStaffName || "",
+            staffId: selectedStaff || "",
             source: "Stock Live",
+            dueDate: selectedDueDate || new Date().toISOString().slice(0, 10),
+            datePrevue: selectedDueDate || new Date().toISOString().slice(0, 10),
             date: new Date().toISOString(),
-            dueDate: selectedDueDate,
-            datePrevue: selectedDueDate,
           }));
 
         const response = await fetch(CREATE_PREP_URL, {
