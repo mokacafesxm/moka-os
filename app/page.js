@@ -1575,38 +1575,27 @@ export default function MokaOrderPad() {
   };
 
   const openProductDbEdit = async (item) => {
-    // Toujours charger une liste fraîche pour avoir les vrais IDs Notion
-    let suppliersList = settingsCache.suppliers || [];
+    let suppliersList = [];
     try {
-      const fresh = await fetchSettingsResource("suppliers");
-      if (fresh?.length) {
-        suppliersList = fresh;
-        setSettingsCache((prev) => {
-          const next = { ...prev, suppliers: fresh };
-          if (typeof window !== "undefined") localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
-          return next;
-        });
-      }
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resource: "suppliers", action: "list" }),
+      });
+      suppliersList = await res.json();
     } catch {}
-    const supplierName = item.fournisseurDefaut || item.supplier || "";
-    const resolvedSupplierId = suppliersList.find((s) => {
-      const sName = String(s.nom || s.fournisseur || s.name || "")
-        .toLowerCase().trim();
-      return sName === supplierName.toLowerCase().trim();
-    })?.id || "";
-    console.log("resolvedSupplierId:", resolvedSupplierId, "pour:", supplierName, "dans:", suppliersList.map((s) => s.nom));
 
-    // Charge le reste en arrière-plan
-    ["categories", "subcategories", "units", "zones"].forEach((resource) => {
-      if (settingsCache[resource]?.length) return;
-      fetchSettingsResource(resource)
-        .then((list) => setSettingsCache((prev) => {
-          const next = { ...prev, [resource]: list };
-          if (typeof window !== "undefined") localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
-          return next;
-        }))
-        .catch(() => {});
-    });
+    const supplierName = String(
+      item.fournisseurDefaut || item.supplier || item.fournisseurDefautName || ""
+    ).trim().toLowerCase();
+
+    const resolvedSupplierId = suppliersList.find((s) => {
+      const sName = String(s.nom || s.name || s.fournisseur || "")
+        .trim().toLowerCase();
+      return sName === supplierName;
+    })?.id || "";
+
+    console.log("🔵 supplier match:", supplierName, "→", resolvedSupplierId);
 
     setEditingProductDb(item);
     setEditingProductDbForm({
@@ -1615,7 +1604,7 @@ export default function MokaOrderPad() {
       categorie: item.categorie || item.category || "",
       sousCategorie: item.sousCategorie || item.subcategory || "",
       visibleOrderPad: item.visibleOrderPad !== false,
-      fournisseurDefaut: supplierName,
+      fournisseurDefaut: item.fournisseurDefaut || item.supplier || "",
       fournisseurId: resolvedSupplierId,
       zoneStockage: item.zoneStockage || item.zone || "",
       methodeSuivi: item.methodeSuivi || "",
