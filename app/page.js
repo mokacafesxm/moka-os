@@ -1589,9 +1589,12 @@ export default function MokaOrderPad() {
       }
     } catch {}
     const supplierName = item.fournisseurDefaut || item.supplier || "";
-    const resolvedSupplierId = suppliersList.find(
-      (s) => (s.nom || s.name || s.fournisseur || "").toLowerCase() === supplierName.toLowerCase()
-    )?.id || "";
+    const resolvedSupplierId = suppliersList.find((s) => {
+      const sName = String(
+        s.fournisseur || s.nom || s.name || s.title || ""
+      ).toLowerCase().trim();
+      return sName === supplierName.toLowerCase().trim();
+    })?.id || "";
 
     // Charge le reste en arrière-plan
     ["categories", "subcategories", "units", "zones"].forEach((resource) => {

@@ -126,10 +126,7 @@ export async function POST(request) {
       } else if (resource === "products") {
         dbId = DB.INGREDIENTS;
         properties = buildProductProperties(data);
-        let supplierPageId = data?.fournisseurId || null;
-        if (!supplierPageId && data?.fournisseurDefaut) {
-          supplierPageId = await resolveSupplier(data.fournisseurDefaut);
-        }
+        const supplierPageId = data?.fournisseurId || await resolveSupplier(data?.fournisseurDefaut);
         if (supplierPageId) properties["Fournisseur par defaut"] = { relation: [{ id: supplierPageId }] };
       } else {
         return Response.json({ error: `create not supported for ${resource}` }, { status: 400, headers: corsHeaders });
@@ -157,16 +154,11 @@ export async function POST(request) {
         };
       } else if (resource === "products") {
         properties = buildProductProperties(data);
-        // Priorité : ID direct fourni par le client, sinon résolution par nom
-        let supplierPageId = data?.fournisseurId || null;
-        if (!supplierPageId && data?.fournisseurDefaut) {
-          supplierPageId = await resolveSupplier(data.fournisseurDefaut);
-        }
+        const supplierPageId = data?.fournisseurId || await resolveSupplier(data?.fournisseurDefaut);
         console.log("UPDATE products — fournisseurId:", data?.fournisseurId, "| résolu:", supplierPageId);
         if (supplierPageId) {
           properties["Fournisseur par defaut"] = { relation: [{ id: supplierPageId }] };
         }
-        // Si rien fourni → on ne touche pas à la relation existante
       } else {
         return Response.json({ error: `update not supported for ${resource}` }, { status: 400, headers: corsHeaders });
       }
