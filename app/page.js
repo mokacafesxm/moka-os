@@ -4532,7 +4532,7 @@ export default function MokaOrderPad() {
                 {[
                   ["Catégorie", "categorie", "select", productsDbCategories.filter((c) => c !== "Tous")],
                   ["Sous-catégorie", "sousCategorie", "select", productsDbSubCategoryChoices],
-                  ["Fournisseur", "fournisseurDefaut", "select", productsDbSupplierChoices],
+                  ["Fournisseur", "fournisseurDefaut", "select", productsDbSupplierChoices.map((s) => s.name)],
                   ["Zone de stockage", "zoneStockage", "select", productsDbZoneChoices],
                   ["Unité stock", "uniteStock", "select", productsDbUnitChoices],
                   ["Unité commande", "uniteCommande", "select", productsDbUnitChoices],
