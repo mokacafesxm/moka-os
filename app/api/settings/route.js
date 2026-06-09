@@ -133,6 +133,20 @@ export async function POST(request) {
         return Response.json({ error: `create not supported for ${resource}` }, { status: 400, headers: corsHeaders });
       }
       const page = await createPage(dbId, properties);
+      if (resource === "products") {
+        const supplierPageId = data?.fournisseurId || await resolveSupplier(data?.fournisseurDefaut);
+        if (supplierPageId) {
+          await fetch(`https://api.notion.com/v1/pages/${page.id}`, {
+            method: "PATCH",
+            headers: {
+              "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
+              "Notion-Version": "2022-06-28",
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ properties: { "Fournisseur par defaut": { relation: [{ id: supplierPageId }] } } }),
+          });
+        }
+      }
       return Response.json({ success: true, id: page.id }, { headers: corsHeaders });
     }
 
@@ -164,6 +178,20 @@ export async function POST(request) {
         return Response.json({ error: `update not supported for ${resource}` }, { status: 400, headers: corsHeaders });
       }
       await updatePage(id, properties);
+      if (resource === "products") {
+        const supplierPageId = data?.fournisseurId || await resolveSupplier(data?.fournisseurDefaut);
+        if (supplierPageId) {
+          await fetch(`https://api.notion.com/v1/pages/${id}`, {
+            method: "PATCH",
+            headers: {
+              "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
+              "Notion-Version": "2022-06-28",
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ properties: { "Fournisseur par defaut": { relation: [{ id: supplierPageId }] } } }),
+          });
+        }
+      }
       return Response.json({ success: true }, { headers: corsHeaders });
     }
 
