@@ -1575,21 +1575,22 @@ export default function MokaOrderPad() {
   };
 
   const openProductDbEdit = async (item) => {
-    // Charge les fournisseurs et résout l'ID directement depuis la liste fraîche
+    // Toujours charger une liste fraîche pour avoir les vrais IDs Notion
     let suppliersList = settingsCache.suppliers || [];
-    if (!suppliersList.length) {
-      try {
-        suppliersList = await fetchSettingsResource("suppliers");
+    try {
+      const fresh = await fetchSettingsResource("suppliers");
+      if (fresh?.length) {
+        suppliersList = fresh;
         setSettingsCache((prev) => {
-          const next = { ...prev, suppliers: suppliersList };
+          const next = { ...prev, suppliers: fresh };
           if (typeof window !== "undefined") localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
           return next;
         });
-      } catch {}
-    }
+      }
+    } catch {}
     const supplierName = item.fournisseurDefaut || item.supplier || "";
     const resolvedSupplierId = suppliersList.find(
-      (s) => (s.nom || s.name || s.fournisseur || "") === supplierName
+      (s) => (s.nom || s.name || s.fournisseur || "").toLowerCase() === supplierName.toLowerCase()
     )?.id || "";
 
     // Charge le reste en arrière-plan
@@ -1629,7 +1630,6 @@ export default function MokaOrderPad() {
 
   const saveProductDbEdit = async () => {
     console.log("💾 saveProductDbEdit", { id: editingProductDbForm.id, ingredient: editingProductDbForm.ingredient, fournisseurId: editingProductDbForm.fournisseurId, fournisseurDefaut: editingProductDbForm.fournisseurDefaut });
-    alert(`DEBUG — fournisseurId: "${editingProductDbForm.fournisseurId}" | fournisseurDefaut: "${editingProductDbForm.fournisseurDefaut}"\n\nAppuie OK pour continuer le save.`);
     if (!editingProductDbForm.id) {
       alert("❌ ID produit manquant — impossible de sauvegarder");
       return;
@@ -4691,11 +4691,14 @@ export default function MokaOrderPad() {
                     }}
                     className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none"
                   >
-                    <option value="">À définir</option>
+                    <option value="">À définir ({productsDbSupplierChoices.length} choix)</option>
                     {productsDbSupplierChoices.map((s) => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
+                  {editingProductDbForm.fournisseurId && (
+                    <div className="text-[9px] text-[#9a7060] mt-1 font-mono truncate">ID: {editingProductDbForm.fournisseurId}</div>
+                  )}
                 </div>
 
                 {[
