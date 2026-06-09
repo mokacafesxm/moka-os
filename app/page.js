@@ -481,8 +481,7 @@ export default function MokaOrderPad() {
         setProducts(list);
         if (typeof window !== "undefined") localStorage.setItem("mokaProductsCache", JSON.stringify(list));
 
-        const firstCategory = list.find((p) => p.category)?.category;
-        if (firstCategory) setActiveCategory(firstCategory);
+        setActiveCategory((prev) => prev || list[0]?.category || list[0]?.categorie || "");
 
         setLoading(false);
       })
@@ -4702,26 +4701,25 @@ export default function MokaOrderPad() {
 
       {/* ── CLOCK MODAL ──────────────────────────────── */}
       {showClockModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-lg max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-[#f5ede0] overflow-y-auto">
 
-            {/* Header */}
-            <div className="flex justify-between items-start gap-4 p-5 pb-4 border-b border-[#f0e8dc]">
-              <div>
-                <h2 className="text-xl font-black text-[#2c1a10]">Pointage</h2>
-                <div className="text-sm font-bold text-[#e85d8a] mt-0.5 tabular-nums">
-                  {clockNow.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
-                  {" · "}
-                  {clockNow.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                </div>
+          {/* Header sticky */}
+          <div className="sticky top-0 bg-[#f5ede0] border-b border-[#e5d5c5] px-4 py-4 flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-black text-[#2c1a10]">⏱ Pointage</h1>
+              <div className="text-[#e85d8a] font-bold tabular-nums text-sm">
+                {clockNow.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                {" · "}
+                {clockNow.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               </div>
-              <button onClick={() => setShowClockModal(false)} className="w-10 h-10 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] hover:text-[#2c1a10] transition-all cursor-pointer shrink-0">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
-              </button>
             </div>
+            <button onClick={() => setShowClockModal(false)} className="w-12 h-12 rounded-2xl bg-white border border-[#e5d5c5] flex items-center justify-center text-2xl cursor-pointer hover:bg-[#f0e8dc] transition-colors">
+              ×
+            </button>
+          </div>
 
-            {/* Staff cards */}
-            <div className="flex flex-col gap-3 p-4">
+          {/* Staff cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
               {loadingClockStaff && (
                 <div className="flex flex-col items-center justify-center gap-3 py-10">
                   <div className="w-8 h-8 border-4 border-[#e5d5c5] border-t-[#e85d8a] rounded-full animate-spin" />
@@ -4802,7 +4800,6 @@ export default function MokaOrderPad() {
                   </div>
                 );
               })}
-            </div>
           </div>
         </div>
       )}
