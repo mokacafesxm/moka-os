@@ -1606,6 +1606,13 @@ export default function MokaOrderPad() {
       sousCategorie: item.sousCategorie || item.subcategory || "",
       visibleOrderPad: item.visibleOrderPad !== false,
       fournisseurDefaut: item.fournisseurDefaut || item.supplier || "",
+      fournisseurId: item.fournisseurId || (() => {
+        const name = item.fournisseurDefaut || item.supplier || "";
+        const found = (settingsCache.suppliers || []).find(
+          (s) => (s.nom || s.name || s.fournisseur || "") === name
+        );
+        return found?.id || "";
+      })(),
       zoneStockage: item.zoneStockage || item.zone || "",
       methodeSuivi: item.methodeSuivi || "",
       quantiteCommandeSuggeree: item.quantiteCommandeSuggeree || item.suggested || 0,
@@ -1640,6 +1647,7 @@ export default function MokaOrderPad() {
           data: {
             ingredient: editingProductDbForm.ingredient,
             fournisseurDefaut: editingProductDbForm.fournisseurDefaut || "",
+            fournisseurId: editingProductDbForm.fournisseurId || "",
             visibleOrderPad: editingProductDbForm.visibleOrderPad ?? true,
             categorie: editingProductDbForm.categorie || "",
             sousCategorie: editingProductDbForm.sousCategorie || "",
@@ -2157,14 +2165,9 @@ export default function MokaOrderPad() {
   };
 
   const productsDbSupplierChoices = useMemo(() => {
-    const suppliers = settingsCache.suppliers || [];
-
-    return uniqueValues(
-      suppliers
-        .map((s) => s.nom || s.name || s.fournisseur || s.title || "")
-        .map(cleanSupplierOption)
-        .filter(Boolean)
-    );
+    return (settingsCache.suppliers || [])
+      .map((s) => ({ id: s.id || "", name: s.nom || s.name || s.fournisseur || "" }))
+      .filter((s) => s.id && s.name);
   }, [settingsCache]);
 
   const productsDbZoneChoices = useMemo(() => {
@@ -4672,8 +4675,29 @@ export default function MokaOrderPad() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Fournisseur — select spécial avec id comme value */}
+                <div>
+                  <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Fournisseur</label>
+                  <select
+                    value={editingProductDbForm.fournisseurId || ""}
+                    onChange={(e) => {
+                      const opt = productsDbSupplierChoices.find((s) => s.id === e.target.value);
+                      setEditingProductDbForm((prev) => ({
+                        ...prev,
+                        fournisseurId: e.target.value,
+                        fournisseurDefaut: opt?.name || "",
+                      }));
+                    }}
+                    className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none"
+                  >
+                    <option value="">À définir</option>
+                    {productsDbSupplierChoices.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+
                 {[
-                  ["Fournisseur", "fournisseurDefaut", "select", productsDbSupplierChoices],
                   ["Zone de stockage", "zoneStockage", "select", productsDbZoneChoices],
                   ["Méthode de suivi", "methodeSuivi", "select", ["Manuel", "Automatique", "Préparation"]],
                   ["Qté commande suggérée", "quantiteCommandeSuggeree", "number", []],

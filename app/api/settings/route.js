@@ -126,7 +126,10 @@ export async function POST(request) {
       } else if (resource === "products") {
         dbId = DB.INGREDIENTS;
         properties = buildProductProperties(data);
-        const supplierPageId = await resolveSupplier(data?.fournisseurDefaut);
+        let supplierPageId = data?.fournisseurId || null;
+        if (!supplierPageId && data?.fournisseurDefaut) {
+          supplierPageId = await resolveSupplier(data.fournisseurDefaut);
+        }
         if (supplierPageId) properties["Fournisseur par defaut"] = { relation: [{ id: supplierPageId }] };
       } else {
         return Response.json({ error: `create not supported for ${resource}` }, { status: 400, headers: corsHeaders });
@@ -153,16 +156,18 @@ export async function POST(request) {
           "Actif":  checkboxProp(data?.actif !== false),
         };
       } else if (resource === "products") {
-        console.log("UPDATE products — id:", id, "| fournisseurDefaut reçu:", data?.fournisseurDefaut);
         properties = buildProductProperties(data);
-        const supplierPageId = await resolveSupplier(data?.fournisseurDefaut);
-        console.log("UPDATE products — supplierPageId résolu:", supplierPageId);
+        // Priorité : ID direct fourni par le client, sinon résolution par nom
+        let supplierPageId = data?.fournisseurId || null;
+        if (!supplierPageId && data?.fournisseurDefaut) {
+          supplierPageId = await resolveSupplier(data.fournisseurDefaut);
+        }
+        console.log("UPDATE products — fournisseurId:", data?.fournisseurId, "| résolu:", supplierPageId);
         if (supplierPageId) {
           properties["Fournisseur par defaut"] = { relation: [{ id: supplierPageId }] };
-        } else if (data?.fournisseurDefaut === "") {
+        } else if (!data?.fournisseurId && !data?.fournisseurDefaut) {
           properties["Fournisseur par defaut"] = { relation: [] };
         }
-        console.log("UPDATE products — propriétés envoyées à Notion:", JSON.stringify(properties).slice(0, 300));
       } else {
         return Response.json({ error: `update not supported for ${resource}` }, { status: 400, headers: corsHeaders });
       }
