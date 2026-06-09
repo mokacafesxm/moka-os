@@ -1739,95 +1739,24 @@ export default function MokaOrderPad() {
     }
   };
 
-  const openSettings = (item) => {
+  const openSettings = async (item) => {
     if (!isAdmin) {
       setShowAdminModal(true);
       return;
     }
 
-    console.log("[openSettings] Item reçu:", {
-      id: getEditableId(item),
-      name: item?.name,
-      portion: item?.portion,
-      portionGrammes: item?.portionGrammes,
-      seuilAlerte: item?.seuilAlerte,
-      seuilCritique: item?.seuilCritique,
-      quantiteCommandee: item?.quantiteCommandee,
-    });
+    // Cherche le produit correspondant dans productsDb pour avoir les vraies données INGREDIENTS
+    const enriched = productsDb.find((p) =>
+      p.id === item.id ||
+      p.id === item.ingredientId ||
+      (p.ingredient || p.name || "").toLowerCase() === (item.name || item.ingredient || "").toLowerCase()
+    );
 
-    setSettingsItem(item);
-    setSettingsForm({
-      id: getEditableId(item),
-      name: item?.name || getPrepName(item),
-      categorie: item?.category || item?.categorie || "Autres",
-      sousCategorie: item?.subcategory || item?.sousCategorie || getSubCategory(item),
-      visibleOrderPad: item?.visible ?? item?.visibleOrderPad ?? true,
-      fournisseurDefaut: (() => {
-        const raw = String(getSupplier(item) || "").trim();
-        if (!raw || raw === "À définir" || raw === "—") return "";
+    // Utilise les données enrichies si trouvées
+    const itemToEdit = enriched ? { ...enriched, id: enriched.id } : item;
 
-        const compact = raw.replaceAll("-", "");
-        const found = (settingsCache.suppliers || []).find((supplier) => {
-          const name = String(supplier.nom || supplier.name || supplier.fournisseur || supplier.title || "").trim();
-          const ids = [
-            supplier.id,
-            supplier.pageId,
-            supplier.notionId,
-            supplier.notionPageId,
-          ].filter(Boolean).map((value) => String(value).trim());
-
-          return (
-            name === raw ||
-            ids.includes(raw) ||
-            ids.map((id) => id.replaceAll("-", "")).includes(compact)
-          );
-        });
-
-        if (found) return found.nom || found.name || found.fournisseur || found.title || "";
-        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) return "";
-        return raw;
-      })(),
-      zoneStockage: item?.zone || item?.zoneStockage || item?.emplacement || "",
-      quantiteCommandee: item?.quantiteCommandee ?? item?.suggested ?? item?.quantity ?? "",
-      uniteStock: item?.unit || item?.uniteStock || "kg",
-      uniteCommande: item?.uniteCommande || item?.unit || "kg",
-      portion:
-        item?.portion ??
-        item?.portionGrammes ??
-        item?.portionGramme ??
-        item?.["Portion (g)"] ??
-        item?.["Portion g"] ??
-        item?.["portion g"] ??
-        "",
-      seuilAlerte:
-        item?.seuilAlerte ??
-        item?.seuilAlertePortion ??
-        item?.alerte ??
-        item?.alert ??
-        item?.["Seuil alerte"] ??
-        item?.["Seuil alerte (portion)"] ??
-        item?.["seuil alerte"] ??
-        "",
-      seuilCritique:
-        item?.seuilCritique ??
-        item?.seuilCritiquePortion ??
-        item?.critique ??
-        item?.critical ??
-        item?.["Seuil critique"] ??
-        item?.["Seuil critique (portion)"] ??
-        item?.["seuil critique"] ??
-        "",
-      photo: item?.photo || "",
-      utiliseDans: item?.utiliseDans || "",
-      notes: item?.notes || "",
-    });
-
-    console.log("[openSettings] Form initialisé:", {
-      portion: item?.portion ?? item?.portionGrammes ?? item?.portionGramme ?? "",
-      seuilAlerte: item?.seuilAlerte ?? item?.seuilAlertePortion ?? "",
-      seuilCritique: item?.seuilCritique ?? item?.seuilCritiquePortion ?? "",
-      quantiteCommandee: item?.quantiteCommandee ?? item?.suggested ?? "",
-    });
+    // Appelle openProductDbEdit avec les bonnes données
+    await openProductDbEdit(itemToEdit);
   };
 
   const openNewProduct = () => {
