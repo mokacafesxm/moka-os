@@ -1575,6 +1575,17 @@ export default function MokaOrderPad() {
   };
 
   const openProductDbEdit = (item) => {
+    ["suppliers", "categories", "subcategories", "units", "zones"].forEach((resource) => {
+      if (settingsCache[resource]?.length) return;
+      fetchSettingsResource(resource)
+        .then((list) => setSettingsCache((prev) => {
+          const next = { ...prev, [resource]: list };
+          if (typeof window !== "undefined") localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
+          return next;
+        }))
+        .catch(() => {});
+    });
+
     setEditingProductDb(item);
     setEditingProductDbForm({
       id: item.id || "",
