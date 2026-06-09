@@ -1628,7 +1628,8 @@ export default function MokaOrderPad() {
 
 
   const saveProductDbEdit = async () => {
-    console.log("💾 saveProductDbEdit — id:", editingProductDbForm.id, "| ingredient:", editingProductDbForm.ingredient, "| fournisseurDefaut:", editingProductDbForm.fournisseurDefaut);
+    console.log("💾 saveProductDbEdit", { id: editingProductDbForm.id, ingredient: editingProductDbForm.ingredient, fournisseurId: editingProductDbForm.fournisseurId, fournisseurDefaut: editingProductDbForm.fournisseurDefaut });
+    alert(`DEBUG — fournisseurId: "${editingProductDbForm.fournisseurId}" | fournisseurDefaut: "${editingProductDbForm.fournisseurDefaut}"\n\nAppuie OK pour continuer le save.`);
     if (!editingProductDbForm.id) {
       alert("❌ ID produit manquant — impossible de sauvegarder");
       return;
