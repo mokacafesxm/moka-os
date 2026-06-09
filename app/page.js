@@ -230,14 +230,10 @@ function getStaffName(member) {
 }
 
 function getPrepName(prep) {
-  return (
-    prep?.name ||
-    prep?.prep ||
-    prep?.preparation ||
-    prep?.Préparation ||
-    prep?.Besoin ||
-    "Préparation"
-  );
+  const raw = prep?.name || prep?.action || prep?.produit ||
+              prep?.prep || prep?.preparation || prep?.Préparation ||
+              prep?.property_action || "Préparation";
+  return String(raw).replace(/^Préparer\s+/i, "").trim() || "Préparation";
 }
 
 function getPrepQuantity(prep) {
