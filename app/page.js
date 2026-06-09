@@ -1575,6 +1575,11 @@ export default function MokaOrderPad() {
   };
 
   const openProductDbEdit = async (item) => {
+    // Si l'item vient du stock live, utiliser ingredientId (page INGREDIENTS)
+    const correctId = item.ingredientId && item.ingredientId !== item.id
+      ? item.ingredientId
+      : item.id;
+
     let suppliersList = [];
     try {
       const res = await fetch("/api/settings", {
@@ -1583,6 +1588,13 @@ export default function MokaOrderPad() {
         body: JSON.stringify({ resource: "suppliers", action: "list" }),
       });
       suppliersList = await res.json();
+      if (suppliersList?.length) {
+        setSettingsCache((prev) => {
+          const next = { ...prev, suppliers: suppliersList };
+          if (typeof window !== "undefined") localStorage.setItem("mokaSettingsCache", JSON.stringify(next));
+          return next;
+        });
+      }
     } catch {}
 
     const supplierName = String(
@@ -1595,12 +1607,12 @@ export default function MokaOrderPad() {
       return sName === supplierName;
     })?.id || "";
 
-    console.log("🔵 supplier match:", supplierName, "→", resolvedSupplierId);
+    console.log("🔵 supplier match:", supplierName, "→", resolvedSupplierId, "| correctId:", correctId);
     alert("DEBUG: supplier=" + supplierName + " | id=" + resolvedSupplierId + " | liste=" + suppliersList.slice(0,3).map(s=>s.nom).join(","));
 
     setEditingProductDb(item);
     setEditingProductDbForm({
-      id: item.id || "",
+      id: correctId || "",
       ingredient: item.ingredient || item.name || "",
       categorie: item.categorie || item.category || "",
       sousCategorie: item.sousCategorie || item.subcategory || "",
