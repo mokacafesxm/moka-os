@@ -448,7 +448,7 @@ export default function MokaOrderPad() {
   const [orderCart, setOrderCart] = useState({});
   const [ordSelectedSupplier, setOrdSelectedSupplier] = useState("");
   const [orderDetail, setOrderDetail] = useState(null);
-  const [showOrderPreview, setShowOrderPreview] = useState(false);
+  const [showMultiPanelModal, setShowMultiPanelModal] = useState(false);
   const [orderNotes, setOrderNotes] = useState("");
   const [ordStatusFilter, setOrdStatusFilter] = useState("Tous");
   const [composeCart, setComposeCart] = useState({});
@@ -899,6 +899,24 @@ export default function MokaOrderPad() {
   const ordAlertCount = ordNormalizedStock.filter((i) => { const s = String(i.status).toLowerCase(); return s.includes("stock bas") || s.includes("alerte") || s.includes("commander"); }).length;
   const ordSupplierContact = (settingsCache.suppliers || []).find((s) => ordGetSupplierName(s) === ordSelectedSupplier);
   const ordIncludedItems = ordSupplierProducts.filter((p) => composeCart[p.id]?.included);
+  const composeCartGroups = useMemo(() => {
+    const map = {};
+    Object.values(composeCart).forEach((item) => {
+      if (!item.included) return;
+      const key = item.fournisseurId || item.fournisseurNom || "sans";
+      if (!map[key]) {
+        map[key] = {
+          fournisseurId: item.fournisseurId || null,
+          fournisseurNom: item.fournisseurNom || item.fournisseur || "Sans fournisseur",
+          supplier: (settingsCache.suppliers || []).find((s) => s.id === item.fournisseurId) || null,
+          items: [],
+        };
+      }
+      map[key].items.push(item);
+    });
+    return Object.values(map);
+  }, [composeCart, settingsCache]);
+  const composeCartTotal = Object.values(composeCart).filter((i) => i.included).length;
   const ordCartItems = Object.values(orderCart);
   const addToOrderCart = (item) => {
     setOrderCart((prev) => ({ ...prev, [item.id]: { ...item, qty: item.suggested || 1 } }));
@@ -3911,14 +3929,21 @@ export default function MokaOrderPad() {
 
                 {orderView === "compose" && (
                   <div className="space-y-4">
+                    {composeCartTotal > 0 && (
+                      <div className="text-xs font-bold text-[#6f8f32] bg-[#f0f7e8] border border-[#c5dfa0] rounded-xl px-3 py-2">
+                        {composeCartGroups.length} fournisseur{composeCartGroups.length > 1 ? "s" : ""} · {composeCartTotal} produit{composeCartTotal > 1 ? "s" : ""} sélectionné{composeCartTotal > 1 ? "s" : ""}
+                      </div>
+                    )}
                     <div>
                       <div className="text-xs font-black text-[#a97862] mb-2">Sélectionner un fournisseur</div>
                       <div className="flex gap-2 overflow-x-auto pb-1">
                         {(settingsCache.suppliers || []).map((s) => {
                           const name = ordGetSupplierName(s);
+                          const count = Object.values(composeCart).filter((i) => i.included && (i.fournisseurId === s.id || i.fournisseurNom === name)).length;
                           return (
-                            <button key={s.id || name} onClick={() => setOrdSelectedSupplier(name)} className={`px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition ${ordSelectedSupplier === name ? "bg-[#6f8f32] text-white" : "bg-white border border-[#eadfd4] text-[#6b4a3d]"}`}>
+                            <button key={s.id || name} onClick={() => setOrdSelectedSupplier(name)} className={`px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition flex items-center gap-1.5 ${ordSelectedSupplier === name ? "bg-[#6f8f32] text-white" : "bg-white border border-[#eadfd4] text-[#6b4a3d]"}`}>
                               {name}
+                              {count > 0 && <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-black ${ordSelectedSupplier === name ? "bg-white/30 text-white" : "bg-[#6f8f32] text-white"}`}>{count}</span>}
                             </button>
                           );
                         })}
@@ -3937,7 +3962,7 @@ export default function MokaOrderPad() {
                           const isLow = isUrgentStock(p) && !isCrit;
                           return (
                             <div key={p.id} className={`px-4 py-3 flex items-center gap-3 transition ${!item.included ? "opacity-50" : ""}`}>
-                              <OrdToggle checked={item.included} onChange={(v) => setComposeCart((prev) => ({ ...prev, [p.id]: { ...item, included: v } }))} />
+                              <OrdToggle checked={item.included} onChange={(v) => setComposeCart((prev) => ({ ...prev, [p.id]: { ...item, included: v, fournisseurId: ordSupplierContact?.id || null, fournisseurNom: ordSelectedSupplier } }))} />
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm font-black text-[#3b241b] truncate">{p.name}</div>
                                 {(isCrit || isLow) && <div className={`text-[11px] font-bold ${isCrit ? "text-red-600" : "text-orange-500"}`}>{isCrit ? "🔴 Critique" : "🟠 Stock bas"}</div>}
@@ -3955,8 +3980,8 @@ export default function MokaOrderPad() {
                       <label className="block text-xs font-black text-[#a97862] mb-1.5">Notes (optionnel)</label>
                       <textarea value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder="Ex : livraison matin SVP, emballage sous-vide..." className="w-full rounded-[1rem] border border-[#eadfd4] bg-white px-4 py-3 text-sm text-[#3b241b] outline-none resize-none placeholder:text-[#c8b4a8]" rows={2} />
                     </div>
-                    <button onClick={() => setShowOrderPreview(true)} disabled={ordIncludedItems.length === 0} className="w-full py-4 rounded-[1rem] bg-[#6f8f32] text-white font-black shadow-md disabled:opacity-40 disabled:cursor-not-allowed">
-                      👁 Prévisualiser et envoyer ({ordIncludedItems.length} produits)
+                    <button onClick={() => setShowMultiPanelModal(true)} disabled={composeCartTotal === 0} className="w-full py-4 rounded-[1rem] bg-[#6f8f32] text-white font-black shadow-md disabled:opacity-40 disabled:cursor-not-allowed">
+                      📦 Préparer les commandes ({composeCartGroups.length} fournisseur{composeCartGroups.length > 1 ? "s" : ""})
                     </button>
                   </div>
                 )}
@@ -4031,42 +4056,16 @@ export default function MokaOrderPad() {
                   </div>
                 )}
 
-                {showOrderPreview && (
-                  <OrdPreviewModal
-                    buildMessage={buildOrderMessage}
-                    selectedSupplier={ordSelectedSupplier}
-                    supplier={ordSupplierContact}
-                    setShowPreview={setShowOrderPreview}
-                    onSent={async () => {
-                      try {
-                        const fournisseurId = ordSupplierContact?.id || null;
-                        const msg = buildOrderMessage();
-                        const fournisseurName = ordSupplierContact?.nom || ordSupplierContact?.name || ordSupplierContact?.fournisseur || ordSelectedSupplier || "Fournisseur";
-                        console.log("🔵 onSent items:", ordIncludedItems.length);
-                        await Promise.all(ordIncludedItems.map((p) =>
-                          fetch("/api/supplier-orders", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              produit: p.name || p.ingredient,
-                              quantite: composeCart[p.id]?.qty || p.suggested || 1,
-                              unite: p.unit || "kg",
-                              fournisseurId,
-                              fournisseur: fournisseurName,
-                              produitId: p.id,
-                              statut: "Envoyé",
-                              source: "Commandes",
-                              message: msg,
-                            }),
-                          })
-                        ));
-                        console.log("🟢 onSent done, rechargement...");
-                        await loadSupplierOrders();
-                        setOrdSelectedSupplier("");
-                        setComposeCart({});
-                      } catch (err) {
-                        console.error("Erreur création commandes envoyées:", err);
-                      }
+                {showMultiPanelModal && (
+                  <OrdMultiPanelModal
+                    groups={composeCartGroups}
+                    onClose={() => setShowMultiPanelModal(false)}
+                    onAllSent={async () => {
+                      setShowMultiPanelModal(false);
+                      setComposeCart({});
+                      setOrdSelectedSupplier("");
+                      await loadSupplierOrders();
+                      setOrderView("history");
                     }}
                   />
                 )}
@@ -5129,6 +5128,128 @@ function OrdSupplierContactCard({ supplier, compact = false }) {
         {whatsapp && whatsapp !== "null" && <a href={`https://wa.me/${String(whatsapp).replace(/\D/g, "")}`} className="w-9 h-9 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center text-base">💬</a>}
         {email && email !== "null" && <a href={`mailto:${email}`} className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-base">📧</a>}
       </div>
+    </div>
+  );
+}
+
+function buildGroupedMessage(fournisseurNom, items) {
+  const dateStr = new Date().toLocaleDateString("fr-FR", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+    timeZone: "America/Puerto_Rico",
+  });
+  const lines = items.map((p) => `- ${p.name} — ${p.qty} ${p.unit}`).join("\n");
+  return `Bonjour ${fournisseurNom} 👋\n\nCommande du ${dateStr} :\n\n${lines}\n\nMerci 🙏\n— Équipe MÖKA`;
+}
+
+function getGridCols(n) {
+  if (n === 1) return "md:grid-cols-1";
+  if (n === 2) return "md:grid-cols-2";
+  if (n <= 4)  return "md:grid-cols-2";
+  return "md:grid-cols-3";
+}
+
+function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
+  const [sentPanels, setSentPanels] = React.useState({});
+
+  const allSent = groups.length > 0 && groups.every((g) => sentPanels[g.fournisseurId || g.fournisseurNom]);
+
+  const markGroupSent = async (group) => {
+    const key = group.fournisseurId || group.fournisseurNom;
+    const msg = buildGroupedMessage(group.fournisseurNom, group.items);
+    const now = new Date().toLocaleString("sv-SE", { timeZone: "America/Puerto_Rico" }).replace(" ", "T") + "-04:00";
+    try {
+      await fetch("/api/supplier-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          produit: `Order composée — ${group.fournisseurNom}`,
+          quantite: group.items.length,
+          unite: "lignes",
+          fournisseurId: group.fournisseurId || null,
+          fournisseur: group.fournisseurNom,
+          statut: "Envoyé",
+          source: "Commandes",
+          message: msg,
+        }),
+      });
+      setSentPanels((prev) => ({ ...prev, [key]: true }));
+    } catch (err) {
+      console.error("Erreur markGroupSent:", err);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-50 flex flex-col">
+      <div className="flex items-center justify-between px-5 py-4 bg-white border-b border-[#eadfd4] shrink-0">
+        <div>
+          <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">Commandes</div>
+          <h2 className="text-lg font-black text-[#3b241b]">{groups.length} fournisseur{groups.length > 1 ? "s" : ""} à contacter</h2>
+        </div>
+        <button onClick={onClose} className="w-9 h-9 rounded-full bg-[#f4eee7] flex items-center justify-center font-black text-[#a97862] text-lg cursor-pointer">×</button>
+      </div>
+
+      {allSent ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 bg-[#f9f5f0] p-8">
+          <div className="text-6xl">✅</div>
+          <div className="text-xl font-black text-[#3b241b] text-center">Toutes les commandes envoyées !</div>
+          <button onClick={onAllSent} className="px-8 py-4 rounded-xl bg-[#6f8f32] text-white font-black text-sm cursor-pointer hover:bg-[#5a7228] transition-colors">
+            Fermer et voir l'historique
+          </button>
+        </div>
+      ) : (
+        <div className={`flex-1 overflow-auto p-4 grid grid-cols-1 ${getGridCols(groups.length)} gap-4 content-start`}>
+          {groups.map((group) => {
+            const key = group.fournisseurId || group.fournisseurNom;
+            const isSent = sentPanels[key];
+            const message = buildGroupedMessage(group.fournisseurNom, group.items);
+            const wa = group.supplier ? ordGetSupplierWhatsapp(group.supplier) : null;
+            const em = group.supplier ? ordGetSupplierEmail(group.supplier) : null;
+            return (
+              <div key={key} className={`rounded-[1.4rem] border overflow-hidden flex flex-col transition-all ${isSent ? "bg-[#f0f7e8] border-[#6f8f32] opacity-70" : "bg-white border-[#eadfd4] shadow-sm"}`}>
+                <div className="px-4 py-3 border-b border-[#eadfd4] flex items-center justify-between">
+                  <div>
+                    <div className="font-black text-[#3b241b]">{group.fournisseurNom}</div>
+                    <div className="text-[11px] text-[#a97862]">{group.items.length} produit{group.items.length > 1 ? "s" : ""}</div>
+                  </div>
+                  {isSent && <span className="text-[#6f8f32] font-black text-sm">✅ Envoyé</span>}
+                </div>
+                <div className="divide-y divide-[#f0e8dc] px-4 flex-1">
+                  {group.items.map((p) => (
+                    <div key={p.id} className="py-2 flex justify-between text-sm">
+                      <span className="font-bold text-[#3b241b] truncate flex-1 mr-2">{p.name}</span>
+                      <span className="text-[#a97862] shrink-0">{p.qty} {p.unit}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mx-3 my-3 bg-[#e8f5e1] rounded-xl p-3 font-mono text-xs text-[#2d5a1b] whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto">
+                  {message}
+                </div>
+                {!isSent && (
+                  <div className="px-3 pb-3 flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <button onClick={async () => {
+                        if (wa) window.open(`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`);
+                        await markGroupSent(group);
+                      }} className="flex-1 py-3 rounded-xl bg-[#25D366] text-white font-black text-sm cursor-pointer hover:bg-[#1db954] transition-colors">
+                        💬 WhatsApp
+                      </button>
+                      <button onClick={async () => {
+                        if (em) window.open(`mailto:${em}?subject=Commande MÖKA&body=${encodeURIComponent(message)}`);
+                        await markGroupSent(group);
+                      }} className="flex-1 py-3 rounded-xl bg-[#2563eb] text-white font-black text-sm cursor-pointer hover:bg-[#1d4ed8] transition-colors">
+                        📧 Email
+                      </button>
+                    </div>
+                    <button onClick={() => markGroupSent(group)} className="w-full py-3 rounded-xl bg-[#2c1a10] text-white font-black text-sm cursor-pointer hover:bg-[#1e100a] transition-colors">
+                      ✅ Marquer comme envoyé
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
