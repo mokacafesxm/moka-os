@@ -4041,6 +4041,7 @@ export default function MokaOrderPad() {
                       try {
                         const fournisseurId = ordSupplierContact?.id || null;
                         const msg = buildOrderMessage();
+                        const fournisseurName = ordSupplierContact?.nom || ordSupplierContact?.name || ordSupplierContact?.fournisseur || ordSelectedSupplier || "Fournisseur";
                         console.log("🔵 onSent items:", ordIncludedItems.length);
                         await Promise.all(ordIncludedItems.map((p) =>
                           fetch("/api/supplier-orders", {
@@ -4051,6 +4052,7 @@ export default function MokaOrderPad() {
                               quantite: composeCart[p.id]?.qty || p.suggested || 1,
                               unite: p.unit || "kg",
                               fournisseurId,
+                              fournisseur: fournisseurName,
                               produitId: p.id,
                               statut: "Envoyé",
                               source: "Commandes",
