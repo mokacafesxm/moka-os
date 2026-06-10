@@ -2658,6 +2658,35 @@ export default function MokaOrderPad() {
         throw new Error(`Erreur webhook ${response.status}`);
       }
 
+      // Créer entrées Notion BESOINS groupées par fournisseur
+      const staffNameVal = getStaffName(staff.find((s) => (s.id || getStaffName(s)) === selectedStaff)) || selectedStaffName || "Staff";
+      const nowSXM = new Date().toLocaleString("sv-SE", { timeZone: "America/Puerto_Rico" }).replace(" ", "T") + "-04:00";
+      const dateStr = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "America/Puerto_Rico" });
+      const grouped = {};
+      cartItems.forEach((item) => {
+        const sup = getSupplier(item);
+        if (!grouped[sup]) grouped[sup] = { items: [], fournisseurId: getSupplierIdFromName(sup, settingsCache.suppliers || []) || null };
+        grouped[sup].items.push(item);
+      });
+      await Promise.all(Object.entries(grouped).map(async ([supName, { items, fournisseurId }]) => {
+        const lines = items.map((p) => `- ${p.name} — ${p.qty} ${p.unit || "unité"}`).join("\n");
+        const msg = `Bonjour ${supName} 👋\n\nCommande du ${dateStr} :\n\n${lines}\n\nMerci 🙏\n— Équipe MÖKA`;
+        await fetch("/api/supplier-orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            produit: `NEW ORDER : ${staffNameVal}`,
+            quantite: items.length,
+            fournisseurId,
+            fournisseur: supName,
+            statut: "À commander",
+            source: "OrderPad",
+            message: msg,
+            staffName: staffNameVal,
+          }),
+        });
+      }));
+
       setCart({});
       alert("Commande envoyée vers MOKA-OS ✅");
     } catch (error) {
@@ -5151,12 +5180,19 @@ function getGridCols(n) {
 function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
   const [sentPanels, setSentPanels] = React.useState({});
 
-  const allSent = groups.length > 0 && groups.every((g) => sentPanels[g.fournisseurId || g.fournisseurNom]);
+  const n = groups.length;
+  const compact = n >= 3;
+  const veryCompact = n >= 5;
+  const btnPy = veryCompact ? "py-1.5" : compact ? "py-2" : "py-3";
+  const btnSz = veryCompact ? "text-[11px] font-bold" : compact ? "text-xs font-bold" : "text-sm font-black";
+  const msgSz = n >= 4 ? "text-[10px]" : "text-xs";
+  const cardHeaderPad = compact ? "px-3 py-2" : "px-4 py-3";
+
+  const allSent = n > 0 && groups.every((g) => sentPanels[g.fournisseurId || g.fournisseurNom]);
 
   const markGroupSent = async (group) => {
     const key = group.fournisseurId || group.fournisseurNom;
     const msg = buildGroupedMessage(group.fournisseurNom, group.items);
-    const now = new Date().toLocaleString("sv-SE", { timeZone: "America/Puerto_Rico" }).replace(" ", "T") + "-04:00";
     try {
       await fetch("/api/supplier-orders", {
         method: "POST",
@@ -5164,7 +5200,6 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
         body: JSON.stringify({
           produit: `Order composée — ${group.fournisseurNom}`,
           quantite: group.items.length,
-          unite: "lignes",
           fournisseurId: group.fournisseurId || null,
           fournisseur: group.fournisseurNom,
           statut: "Envoyé",
@@ -5183,7 +5218,7 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
       <div className="flex items-center justify-between px-5 py-4 bg-white border-b border-[#eadfd4] shrink-0">
         <div>
           <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">Commandes</div>
-          <h2 className="text-lg font-black text-[#3b241b]">{groups.length} fournisseur{groups.length > 1 ? "s" : ""} à contacter</h2>
+          <h2 className="text-lg font-black text-[#3b241b]">{n} fournisseur{n > 1 ? "s" : ""} à contacter</h2>
         </div>
         <button onClick={onClose} className="w-9 h-9 rounded-full bg-[#f4eee7] flex items-center justify-center font-black text-[#a97862] text-lg cursor-pointer">×</button>
       </div>
@@ -5197,7 +5232,7 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
           </button>
         </div>
       ) : (
-        <div className={`flex-1 overflow-auto p-4 grid grid-cols-1 ${getGridCols(groups.length)} gap-4 content-start`}>
+        <div className={`flex-1 overflow-auto p-4 grid grid-cols-1 ${getGridCols(n)} gap-3 content-start`}>
           {groups.map((group) => {
             const key = group.fournisseurId || group.fournisseurNom;
             const isSent = sentPanels[key];
@@ -5205,42 +5240,42 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
             const wa = group.supplier ? ordGetSupplierWhatsapp(group.supplier) : null;
             const em = group.supplier ? ordGetSupplierEmail(group.supplier) : null;
             return (
-              <div key={key} className={`rounded-[1.4rem] border overflow-hidden flex flex-col transition-all ${isSent ? "bg-[#f0f7e8] border-[#6f8f32] opacity-70" : "bg-white border-[#eadfd4] shadow-sm"}`}>
-                <div className="px-4 py-3 border-b border-[#eadfd4] flex items-center justify-between">
+              <div key={key} className={`rounded-[1.2rem] border overflow-hidden flex flex-col transition-all ${isSent ? "bg-[#f0f7e8] border-[#6f8f32] opacity-70" : "bg-white border-[#eadfd4] shadow-sm"}`}>
+                <div className={`${cardHeaderPad} border-b border-[#eadfd4] flex items-center justify-between`}>
                   <div>
-                    <div className="font-black text-[#3b241b]">{group.fournisseurNom}</div>
+                    <div className={`font-black text-[#3b241b] ${compact ? "text-sm" : "text-base"}`}>{group.fournisseurNom}</div>
                     <div className="text-[11px] text-[#a97862]">{group.items.length} produit{group.items.length > 1 ? "s" : ""}</div>
                   </div>
                   {isSent && <span className="text-[#6f8f32] font-black text-sm">✅ Envoyé</span>}
                 </div>
-                <div className="divide-y divide-[#f0e8dc] px-4 flex-1">
+                <div className={`divide-y divide-[#f0e8dc] ${compact ? "px-3" : "px-4"} flex-1`}>
                   {group.items.map((p) => (
-                    <div key={p.id} className="py-2 flex justify-between text-sm">
-                      <span className="font-bold text-[#3b241b] truncate flex-1 mr-2">{p.name}</span>
-                      <span className="text-[#a97862] shrink-0">{p.qty} {p.unit}</span>
+                    <div key={p.id} className={`${compact ? "py-1.5" : "py-2"} flex justify-between text-sm`}>
+                      <span className={`font-bold text-[#3b241b] truncate flex-1 mr-2 ${compact ? "text-xs" : "text-sm"}`}>{p.name}</span>
+                      <span className="text-[#a97862] shrink-0 text-xs">{p.qty} {p.unit}</span>
                     </div>
                   ))}
                 </div>
-                <div className="mx-3 my-3 bg-[#e8f5e1] rounded-xl p-3 font-mono text-xs text-[#2d5a1b] whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto">
+                <div className={`mx-2 my-2 bg-[#e8f5e1] rounded-xl p-2 font-mono ${msgSz} text-[#2d5a1b] whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto`}>
                   {message}
                 </div>
                 {!isSent && (
-                  <div className="px-3 pb-3 flex flex-col gap-2">
-                    <div className="flex gap-2">
+                  <div className="px-2 pb-2 flex flex-col gap-1.5">
+                    <div className="flex gap-1.5">
                       <button onClick={async () => {
                         if (wa) window.open(`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`);
                         await markGroupSent(group);
-                      }} className="flex-1 py-3 rounded-xl bg-[#25D366] text-white font-black text-sm cursor-pointer hover:bg-[#1db954] transition-colors">
+                      }} className={`flex-1 ${btnPy} rounded-xl bg-[#25D366] text-white ${btnSz} cursor-pointer hover:bg-[#1db954] transition-colors`}>
                         💬 WhatsApp
                       </button>
                       <button onClick={async () => {
                         if (em) window.open(`mailto:${em}?subject=Commande MÖKA&body=${encodeURIComponent(message)}`);
                         await markGroupSent(group);
-                      }} className="flex-1 py-3 rounded-xl bg-[#2563eb] text-white font-black text-sm cursor-pointer hover:bg-[#1d4ed8] transition-colors">
+                      }} className={`flex-1 ${btnPy} rounded-xl bg-[#2563eb] text-white ${btnSz} cursor-pointer hover:bg-[#1d4ed8] transition-colors`}>
                         📧 Email
                       </button>
                     </div>
-                    <button onClick={() => markGroupSent(group)} className="w-full py-3 rounded-xl bg-[#2c1a10] text-white font-black text-sm cursor-pointer hover:bg-[#1e100a] transition-colors">
+                    <button onClick={() => markGroupSent(group)} className={`w-full ${btnPy} rounded-xl bg-[#2c1a10] text-white ${btnSz} cursor-pointer hover:bg-[#1e100a] transition-colors`}>
                       ✅ Marquer comme envoyé
                     </button>
                   </div>

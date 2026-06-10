@@ -5,6 +5,20 @@ import {
   titleProp, textProp, selectProp, numberProp, dateProp, relationProp,
 } from "../_notion";
 
+async function resolveProductId(productName, productId) {
+  if (productId && /^[0-9a-f-]{36}$/i.test(String(productId))) return productId;
+  if (!productName) return null;
+  try {
+    const pages = await queryDatabase(DB.INGREDIENTS);
+    const clean = String(productName).trim().toLowerCase();
+    const found = pages.find((p) => {
+      const nom = String(getTitle(p.properties, "Ingredient", "Nom", "nom") || "").trim().toLowerCase();
+      return nom === clean;
+    });
+    return found?.id || null;
+  } catch { return null; }
+}
+
 const buildBesoinTitle = (source, staffName, fournisseur, produit) => {
   if (source === "Commandes" || source === "Composer") {
     return `Order composée — ${fournisseur || "Fournisseur"}`;
@@ -71,21 +85,22 @@ export async function POST(request) {
     }
 
     const title = buildBesoinTitle(source, staffName, fournisseur, produit);
+    const resolvedProduitId = await resolveProductId(produit, produitId);
 
     const properties = {
       "Besoin":            titleProp(title),
       "Quantité suggérée": numberProp(quantite),
-      "Unité":             selectProp(unite),
       "Statut":            selectProp(statut || "À commander"),
       "Source":            selectProp(source || "Commandes"),
       "Date création":     dateProp(new Date().toISOString()),
     };
+    if (unite)         properties["Unité"]          = selectProp(unite);
     if (statut === "Envoyé") properties["Date envoi"] = dateProp(new Date().toISOString());
     if (message)       properties["Message envoyé"] = textProp(message);
 
-    if (produitId)     properties["Produit"]     = relationProp(produitId);
-    if (fournisseurId) properties["Fournisseur"] = relationProp(fournisseurId);
-    if (staffId)       properties["Staff"]       = relationProp(staffId);
+    if (resolvedProduitId) properties["Produit"]    = relationProp(resolvedProduitId);
+    if (fournisseurId)     properties["Fournisseur"] = relationProp(fournisseurId);
+    if (staffId)           properties["Staff"]       = relationProp(staffId);
 
     const page = await createPage(DB.BESOINS, properties);
     return Response.json({ success: true, id: page.id }, { headers: corsHeaders });
