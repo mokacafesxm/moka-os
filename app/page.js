@@ -1302,11 +1302,7 @@ export default function MokaOrderPad() {
   const loadSupplierOrders = async () => {
     setLoadingSupplierOrders(true);
     try {
-      const response = await fetch(SETTINGS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resource: "supplierOrders", action: "list" }),
-      });
+      const response = await fetch(`/api/supplier-orders?t=${Date.now()}`);
 
       if (!response.ok) throw new Error(`Erreur supplierOrders ${response.status}`);
 
@@ -4045,6 +4041,7 @@ export default function MokaOrderPad() {
                       try {
                         const fournisseurId = ordSupplierContact?.id || null;
                         const msg = buildOrderMessage();
+                        console.log("🔵 onSent items:", ordIncludedItems.length);
                         await Promise.all(ordIncludedItems.map((p) =>
                           fetch("/api/supplier-orders", {
                             method: "POST",
@@ -4061,7 +4058,10 @@ export default function MokaOrderPad() {
                             }),
                           })
                         ));
+                        console.log("🟢 onSent done, rechargement...");
                         await loadSupplierOrders();
+                        setOrdSelectedSupplier("");
+                        setComposeCart({});
                       } catch (err) {
                         console.error("Erreur création commandes envoyées:", err);
                       }
