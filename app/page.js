@@ -4023,7 +4023,28 @@ export default function MokaOrderPad() {
                     selectedSupplier={ordSelectedSupplier}
                     supplier={ordSupplierContact}
                     setShowPreview={setShowOrderPreview}
-                    onSent={() => markAsSent(ordCartItems)}
+                    onSent={async () => {
+                      try {
+                        const fournisseurId = ordSupplierContact?.id || null;
+                        await Promise.all(ordIncludedItems.map((p) =>
+                          fetch("/api/supplier-orders", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              produit: p.name || p.ingredient,
+                              quantite: composeCart[p.id]?.qty || p.suggested || 1,
+                              unite: p.unit || "kg",
+                              fournisseurId,
+                              produitId: p.id,
+                              statut: "Envoyé",
+                            }),
+                          })
+                        ));
+                        await loadSupplierOrders();
+                      } catch (err) {
+                        console.error("Erreur création commandes envoyées:", err);
+                      }
+                    }}
                   />
                 )}
                 {orderDetail && (

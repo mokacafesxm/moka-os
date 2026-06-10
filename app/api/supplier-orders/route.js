@@ -59,6 +59,7 @@ export async function POST(request) {
       "Statut":            selectProp(statut || "À commander"),
       "Date création":     dateProp(new Date().toISOString()),
     };
+    if (statut === "Envoyé") properties["Date envoi"] = dateProp(new Date().toISOString());
 
     if (produitId)     properties["Produit"]     = relationProp(produitId);
     if (fournisseurId) properties["Fournisseur"] = relationProp(fournisseurId);
