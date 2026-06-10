@@ -403,6 +403,7 @@ export default function MokaOrderPad() {
     try { return JSON.parse(localStorage.getItem("mokaProductsDbCache") || "[]").length === 0; }
     catch { return false; }
   });
+  const [syncingProductsDb, setSyncingProductsDb] = useState(false);
   const [editingProductDb, setEditingProductDb] = useState(null);
   const [editingProductDbForm, setEditingProductDbForm] = useState({});
   const [savingProductDb, setSavingProductDb] = useState(false);
@@ -1381,7 +1382,9 @@ export default function MokaOrderPad() {
       setProductsDb(cached);
     }
 
-    if (!silent && !cached.length) {
+    if (silent) {
+      setSyncingProductsDb(true);
+    } else if (!cached.length) {
       setLoadingProductsDb(true);
     }
 
@@ -1393,16 +1396,28 @@ export default function MokaOrderPad() {
       const data = await response.json();
       const list = Array.isArray(data) ? data : normalizeArray(data, "products");
 
-      setProductsDb(list);
-
-      if (typeof window !== "undefined") {
-        localStorage.setItem("mokaProductsDbCache", JSON.stringify(list));
-        localStorage.setItem("mokaProductsDbCacheUpdatedAt", String(Date.now()));
+      if (silent) {
+        const freshJson = JSON.stringify(list);
+        const cachedJson = localStorage.getItem("mokaProductsDbCache") || "[]";
+        if (freshJson !== cachedJson) {
+          setProductsDb(list);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("mokaProductsDbCache", freshJson);
+            localStorage.setItem("mokaProductsDbCacheUpdatedAt", String(Date.now()));
+          }
+        }
+      } else {
+        setProductsDb(list);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("mokaProductsDbCache", JSON.stringify(list));
+          localStorage.setItem("mokaProductsDbCacheUpdatedAt", String(Date.now()));
+        }
       }
     } catch (error) {
       console.error(error);
       if (!cached.length && !silent) alert("Erreur chargement base produits ❌");
     } finally {
+      setSyncingProductsDb(false);
       setLoadingProductsDb(false);
     }
   };
@@ -3577,8 +3592,11 @@ export default function MokaOrderPad() {
                   </div>
                 </div>
 
-                <div className="text-[11px] font-semibold text-[#9a7060] px-3 py-1.5 border-b border-[#f0e8dc]">
+                <div className="text-[11px] font-semibold text-[#9a7060] px-3 py-1.5 border-b border-[#f0e8dc] flex items-center gap-2">
                   {loadingProductsDb ? "Chargement…" : `${filteredProductsDb.length} produit${filteredProductsDb.length > 1 ? "s" : ""}`}
+                  {syncingProductsDb && !loadingProductsDb && (
+                    <span className="text-[10px] text-[#9a7060] animate-pulse">Synchronisation…</span>
+                  )}
                 </div>
 
                 <div className="overflow-auto flex-1" style={{maxHeight: "calc(100vh - 260px)"}}>
