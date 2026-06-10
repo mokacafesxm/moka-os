@@ -5141,19 +5141,23 @@ function OrdPreviewModal({ buildMessage, selectedSupplier, supplier, setShowPrev
           <button onClick={() => setShowPreview(false)} className="w-9 h-9 rounded-full bg-[#f4eee7] flex items-center justify-center font-black text-[#a97862]">×</button>
         </div>
         <div className="bg-[#e8f5e1] rounded-[1rem] p-4 mb-4 font-mono text-sm text-[#2d5a1b] whitespace-pre-wrap leading-relaxed">{message}</div>
-        <div className="flex gap-2">
-          <button onClick={() => {
+        <div className="flex flex-col gap-2">
+          <button onClick={async () => {
             const wa = ordGetSupplierWhatsapp(supplier);
             if (wa) window.open(`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`);
-            onSent?.();
+            await onSent?.();
             setShowPreview(false);
-          }} className="flex-1 py-3 rounded-[1rem] bg-green-500 text-white font-black text-sm">💬 WhatsApp</button>
-          <button onClick={() => {
+          }} className="w-full py-3 rounded-[1rem] bg-green-500 text-white font-black text-sm cursor-pointer hover:bg-green-600 transition-colors">💬 WhatsApp</button>
+          <button onClick={async () => {
+            await onSent?.();
+            setShowPreview(false);
+          }} className="w-full py-3 rounded-xl bg-[#2c1a10] text-white font-black text-sm cursor-pointer hover:bg-[#1e100a] transition-colors">✅ Marquer comme envoyé</button>
+          <button onClick={async () => {
             const em = ordGetSupplierEmail(supplier);
             if (em) window.open(`mailto:${em}?subject=Commande MÖKA&body=${encodeURIComponent(message)}`);
-            onSent?.();
+            await onSent?.();
             setShowPreview(false);
-          }} className="flex-1 py-3 rounded-[1rem] bg-blue-500 text-white font-black text-sm">📧 Email</button>
+          }} className="w-full py-3 rounded-[1rem] bg-blue-500 text-white font-black text-sm cursor-pointer hover:bg-blue-600 transition-colors">📧 Email</button>
         </div>
       </div>
     </div>
