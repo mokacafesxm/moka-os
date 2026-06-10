@@ -2658,35 +2658,6 @@ export default function MokaOrderPad() {
         throw new Error(`Erreur webhook ${response.status}`);
       }
 
-      // Créer entrées Notion BESOINS groupées par fournisseur
-      const staffNameVal = getStaffName(staff.find((s) => (s.id || getStaffName(s)) === selectedStaff)) || selectedStaffName || "Staff";
-      const nowSXM = new Date().toLocaleString("sv-SE", { timeZone: "America/Puerto_Rico" }).replace(" ", "T") + "-04:00";
-      const dateStr = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "America/Puerto_Rico" });
-      const grouped = {};
-      cartItems.forEach((item) => {
-        const sup = getSupplier(item);
-        if (!grouped[sup]) grouped[sup] = { items: [], fournisseurId: getSupplierIdFromName(sup, settingsCache.suppliers || []) || null };
-        grouped[sup].items.push(item);
-      });
-      await Promise.all(Object.entries(grouped).map(async ([supName, { items, fournisseurId }]) => {
-        const lines = items.map((p) => `- ${p.name} — ${p.qty} ${p.unit || "unité"}`).join("\n");
-        const msg = `Bonjour ${supName} 👋\n\nCommande du ${dateStr} :\n\n${lines}\n\nMerci 🙏\n— Équipe MÖKA`;
-        await fetch("/api/supplier-orders", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            produit: `NEW ORDER : ${staffNameVal}`,
-            quantite: items.length,
-            fournisseurId,
-            fournisseur: supName,
-            statut: "À commander",
-            source: "OrderPad",
-            message: msg,
-            staffName: staffNameVal,
-          }),
-        });
-      }));
-
       setCart({});
       alert("Commande envoyée vers MOKA-OS ✅");
     } catch (error) {
@@ -5161,8 +5132,8 @@ function OrdSupplierContactCard({ supplier, compact = false }) {
   );
 }
 
-function buildGroupedMessage(fournisseurNom, items) {
-  const dateStr = new Date().toLocaleDateString("fr-FR", {
+function buildGroupedMessage(fournisseurNom, items, dateOverride) {
+  const dateStr = dateOverride || new Date().toLocaleDateString("fr-FR", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
     timeZone: "America/Puerto_Rico",
   });
@@ -5192,7 +5163,11 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
 
   const markGroupSent = async (group) => {
     const key = group.fournisseurId || group.fournisseurNom;
-    const msg = buildGroupedMessage(group.fournisseurNom, group.items);
+    const dateStr = new Date().toLocaleDateString("fr-FR", {
+      weekday: "long", day: "numeric", month: "long", year: "numeric",
+      timeZone: "America/Puerto_Rico",
+    });
+    const msg = buildGroupedMessage(group.fournisseurNom, group.items, dateStr);
     try {
       await fetch("/api/supplier-orders", {
         method: "POST",

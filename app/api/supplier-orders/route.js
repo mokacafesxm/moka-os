@@ -86,17 +86,19 @@ export async function POST(request) {
 
     const title = buildBesoinTitle(source, staffName, fournisseur, produit);
     const resolvedProduitId = await resolveProductId(produit, produitId);
+    const nowSXM = new Date().toLocaleString("sv-SE", { timeZone: "America/Puerto_Rico" }).replace(" ", "T") + "-04:00";
 
     const properties = {
       "Besoin":            titleProp(title),
       "Quantité suggérée": numberProp(quantite),
       "Statut":            selectProp(statut || "À commander"),
       "Source":            selectProp(source || "Commandes"),
-      "Date création":     dateProp(new Date().toISOString()),
+      "Date création":     { date: { start: nowSXM } },
     };
-    if (unite)         properties["Unité"]          = selectProp(unite);
-    if (statut === "Envoyé") properties["Date envoi"] = dateProp(new Date().toISOString());
-    if (message)       properties["Message envoyé"] = textProp(message);
+    if (unite)              properties["Unité"]          = selectProp(unite);
+    if (statut === "Envoyé") properties["Date envoi"]    = { date: { start: nowSXM } };
+    if (message)             properties["Message envoyé"] = textProp(message);
+    Object.keys(properties).forEach((k) => { if (properties[k] === undefined) delete properties[k]; });
 
     if (resolvedProduitId) properties["Produit"]    = relationProp(resolvedProduitId);
     if (fournisseurId)     properties["Fournisseur"] = relationProp(fournisseurId);
