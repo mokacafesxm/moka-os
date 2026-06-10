@@ -4044,6 +4044,7 @@ export default function MokaOrderPad() {
                     onSent={async () => {
                       try {
                         const fournisseurId = ordSupplierContact?.id || null;
+                        const msg = buildOrderMessage();
                         await Promise.all(ordIncludedItems.map((p) =>
                           fetch("/api/supplier-orders", {
                             method: "POST",
@@ -4055,6 +4056,8 @@ export default function MokaOrderPad() {
                               fournisseurId,
                               produitId: p.id,
                               statut: "Envoyé",
+                              source: "Commandes",
+                              message: msg,
                             }),
                           })
                         ));
@@ -5141,23 +5144,25 @@ function OrdPreviewModal({ buildMessage, selectedSupplier, supplier, setShowPrev
           <button onClick={() => setShowPreview(false)} className="w-9 h-9 rounded-full bg-[#f4eee7] flex items-center justify-center font-black text-[#a97862]">×</button>
         </div>
         <div className="bg-[#e8f5e1] rounded-[1rem] p-4 mb-4 font-mono text-sm text-[#2d5a1b] whitespace-pre-wrap leading-relaxed">{message}</div>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 mt-1">
+          <div className="flex gap-3">
+            <button onClick={async () => {
+              const wa = ordGetSupplierWhatsapp(supplier);
+              if (wa) window.open(`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`);
+              await onSent?.();
+              setShowPreview(false);
+            }} className="flex-1 py-3.5 rounded-xl bg-[#25D366] text-white font-black text-sm cursor-pointer hover:bg-[#1db954] transition-colors">💬 WhatsApp</button>
+            <button onClick={async () => {
+              const em = ordGetSupplierEmail(supplier);
+              if (em) window.open(`mailto:${em}?subject=Commande MÖKA&body=${encodeURIComponent(message)}`);
+              await onSent?.();
+              setShowPreview(false);
+            }} className="flex-1 py-3.5 rounded-xl bg-[#2563eb] text-white font-black text-sm cursor-pointer hover:bg-[#1d4ed8] transition-colors">📧 Email</button>
+          </div>
           <button onClick={async () => {
-            const wa = ordGetSupplierWhatsapp(supplier);
-            if (wa) window.open(`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`);
             await onSent?.();
             setShowPreview(false);
-          }} className="w-full py-3 rounded-[1rem] bg-green-500 text-white font-black text-sm cursor-pointer hover:bg-green-600 transition-colors">💬 WhatsApp</button>
-          <button onClick={async () => {
-            await onSent?.();
-            setShowPreview(false);
-          }} className="w-full py-3 rounded-xl bg-[#2c1a10] text-white font-black text-sm cursor-pointer hover:bg-[#1e100a] transition-colors">✅ Marquer comme envoyé</button>
-          <button onClick={async () => {
-            const em = ordGetSupplierEmail(supplier);
-            if (em) window.open(`mailto:${em}?subject=Commande MÖKA&body=${encodeURIComponent(message)}`);
-            await onSent?.();
-            setShowPreview(false);
-          }} className="w-full py-3 rounded-[1rem] bg-blue-500 text-white font-black text-sm cursor-pointer hover:bg-blue-600 transition-colors">📧 Email</button>
+          }} className="w-full py-3.5 rounded-xl bg-[#2c1a10] text-white font-black text-sm cursor-pointer hover:bg-[#1e100a] transition-colors">✅ Marquer comme envoyé</button>
         </div>
       </div>
     </div>

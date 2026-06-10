@@ -40,14 +40,15 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { action, produit, quantite, unite, fournisseurId, statut, notes, produitId, staffId } = body;
+    const { action, produit, quantite, unite, fournisseurId, statut, source, message, produitId, staffId } = body;
 
     if (action === "updateStatus") {
-      const { id, statut: newStatut, dateSent } = body;
+      const { id, statut: newStatut, dateSent, message: sentMsg } = body;
       const properties = {
         "Statut": selectProp(newStatut),
       };
       if (dateSent) properties["Date envoi"] = dateProp(dateSent);
+      if (sentMsg)  properties["Message envoyé"] = textProp(sentMsg);
       await updatePage(id, properties);
       return Response.json({ success: true }, { headers: corsHeaders });
     }
@@ -57,9 +58,11 @@ export async function POST(request) {
       "Quantité suggérée": numberProp(quantite),
       "Unité":             selectProp(unite),
       "Statut":            selectProp(statut || "À commander"),
+      "Source":            selectProp(source || "Commandes"),
       "Date création":     dateProp(new Date().toISOString()),
     };
     if (statut === "Envoyé") properties["Date envoi"] = dateProp(new Date().toISOString());
+    if (message)       properties["Message envoyé"] = textProp(message);
 
     if (produitId)     properties["Produit"]     = relationProp(produitId);
     if (fournisseurId) properties["Fournisseur"] = relationProp(fournisseurId);
