@@ -5180,6 +5180,7 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
           statut: "Envoyé",
           source: "Commandes",
           message: msg,
+          produits: group.items.map((p) => ({ name: p.name, qty: p.qty, unit: p.unit, produitId: p.id || null })),
         }),
       });
       setSentPanels((prev) => ({ ...prev, [key]: true }));

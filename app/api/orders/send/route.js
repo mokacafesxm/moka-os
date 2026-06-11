@@ -1,4 +1,4 @@
-import { DB, corsHeaders, createPage, queryDatabase, titleProp, selectProp, numberProp, dateProp, relationProp, getTitle } from "../../_notion";
+import { DB, corsHeaders, createPage, queryDatabase, titleProp, textProp, selectProp, numberProp, relationProp, getTitle } from "../../_notion";
 
 async function buildIdMap(dbId, ...titleKeys) {
   const pages = await queryDatabase(dbId, null, null, 200);
@@ -22,34 +22,43 @@ export async function POST(request) {
       return Response.json({ error: "Array of order items required" }, { status: 400, headers: corsHeaders });
     }
 
-    const [productMap, supplierMap, staffMap] = await Promise.all([
-      buildIdMap(DB.INGREDIENTS, "Ingredient"),
+    const [supplierMap, staffMap] = await Promise.all([
       buildIdMap(DB.FOURNISSEURS, "Fournisseur"),
       buildIdMap(DB.STAFF, "Prénom", "Nom", "Name"),
     ]);
 
-    const results = await Promise.all(items.map(async (item) => {
-      const {
-        id, Produit, "Quantité": Quantite, Unite,
-        Fournisseur, StaffName, Source, Date: date,
-      } = item;
+    const grouped = {};
+    items.forEach((item) => {
+      const sup = item.Fournisseur || "Sans fournisseur";
+      if (!grouped[sup]) grouped[sup] = { items: [], staffName: item.StaffName || "Staff" };
+      grouped[sup].items.push(item);
+    });
 
-      const prodId     = id || productMap[(Produit || "").toLowerCase()];
-      const foId       = supplierMap[(Fournisseur || "").toLowerCase()];
-      const staffId    = staffMap[(StaffName || "").toLowerCase()];
+    const nowSXM = new Date().toLocaleString("sv-SE", { timeZone: "America/Puerto_Rico" }).replace(" ", "T") + "-04:00";
+    const dateStr = new Date().toLocaleDateString("fr-FR", {
+      weekday: "long", day: "numeric", month: "long", year: "numeric",
+      timeZone: "America/Puerto_Rico",
+    });
+
+    const results = await Promise.all(Object.entries(grouped).map(async ([supName, { items: groupItems, staffName }]) => {
+      const foId    = supplierMap[supName.toLowerCase()];
+      const staffId = staffMap[staffName.toLowerCase()];
+
+      const lines   = groupItems.map((p) => `- ${p.Produit} — ${p["Quantité"]} ${p.Unite || ""}`.trim()).join("\n");
+      const message = `Bonjour ${supName} 👋\n\nCommande du ${dateStr} :\n\n${lines}\n\nMerci 🙏\n— Équipe MÖKA`;
 
       const properties = {
-        "Besoin":            titleProp(Produit || ""),
-        "Quantité suggérée": numberProp(Quantite),
-        "Unité":             selectProp(Unite),
+        "Besoin":            titleProp(`NEW ORDER : ${staffName}`),
+        "Quantité suggérée": numberProp(groupItems.length),
         "Statut":            selectProp("À commander"),
-        "Source":            selectProp(Source || "MOKA OS"),
+        "Source":            selectProp("OrderPad"),
+        "Message envoyé":    textProp(message),
+        "ID Produit":        textProp(groupItems.map((p) => p.Produit).join(", ")),
+        "Date création":     { date: { start: nowSXM } },
       };
 
-      if (date)    properties["Date envoi"] = dateProp(date);
-      if (prodId)  properties["Produit"]    = relationProp(prodId);
       if (foId)    properties["Fournisseur"] = relationProp(foId);
-      if (staffId) properties["Staff"]      = relationProp(staffId);
+      if (staffId) properties["Staff"]       = relationProp(staffId);
 
       const page = await createPage(DB.BESOINS, properties);
       return page.id;
