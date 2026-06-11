@@ -1399,13 +1399,10 @@ export default function MokaOrderPad() {
     const handleScroll = () => {
       const y = window.scrollY;
       const diff = y - lastScrollY.current;
-      if (diff > 8) {
-        setNavVisible(false);
-        setNavCompact(true);
-      } else if (diff < -8) {
-        setNavVisible(true);
-        setNavCompact(false);
-      }
+      if (diff > 5) setNavCompact(true);
+      else if (diff < -5) setNavCompact(false);
+      if (diff > 50) setNavVisible(false);
+      else if (diff < -10) setNavVisible(true);
       lastScrollY.current = y;
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -3762,10 +3759,11 @@ export default function MokaOrderPad() {
                   {adminSection === "inventory" && <svg className="w-4 h-4 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect width="6" height="4" x="9" y="3" rx="1"/><path d="m9 14 2 2 4-4"/></svg>}
                 </div>
                 <div>
-                  <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-[0.25em]">MÖKA OS · Admin</div>
+                  <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">MÖKA OS · Admin</div>
                   <h1 className="text-xl font-black text-[#2c1a10] leading-tight">
-                    {adminSection === "orders" && "Commandes fournisseurs"}
-                    {adminSection === "reports" && "Rapports"}
+                    {adminSection === "dashboard" && "Dashboard"}
+                    {adminSection === "orders" && "Commandes"}
+                    {adminSection === "reports" && "Rapports & IA"}
                     {adminSection === "settings" && "Paramètres"}
                     {adminSection === "products" && "Catalogue produits"}
                     {adminSection === "inventory" && "Inventaire"}
@@ -3780,10 +3778,6 @@ export default function MokaOrderPad() {
             {/* PRODUCTS PANEL */}
             {adminSection === "products" && (
               <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden" style={{height: "calc(100vh - 100px)"}}>
-                <div className="px-4 pt-4 pb-0">
-                  <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">MÖKA OS · Admin</div>
-                  <h1 className="text-2xl font-black text-[#2c1a10] mt-0.5">Catalogue produits</h1>
-                </div>
                 <div className="p-3 border-b border-[#e5d5c5] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div>
                     <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Base de données</div>
@@ -3902,10 +3896,6 @@ export default function MokaOrderPad() {
             {/* INVENTORY PANEL */}
             {adminSection === "inventory" && (
               <div className="space-y-4">
-                <div>
-                  <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">MÖKA OS · Admin</div>
-                  <h1 className="text-2xl font-black text-[#2c1a10] mt-0.5">Inventaire</h1>
-                </div>
                 {/* KPI row */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
@@ -4363,10 +4353,6 @@ export default function MokaOrderPad() {
             {/* REPORTS PANEL */}
             {adminSection === "reports" && (
               <div className="space-y-4">
-                <div>
-                  <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">MÖKA OS · Admin</div>
-                  <h1 className="text-2xl font-black text-[#2c1a10] mt-0.5">Rapports & IA</h1>
-                </div>
                 {/* Period selector */}
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
@@ -4669,10 +4655,6 @@ export default function MokaOrderPad() {
             {/* SETTINGS PANEL */}
             {adminSection === "settings" && (
               <div className="space-y-4">
-                <div>
-                  <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">MÖKA OS · Admin</div>
-                  <h1 className="text-2xl font-black text-[#2c1a10] mt-0.5">Paramètres</h1>
-                </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {[
                   { key: "suppliers", title: "Fournisseurs", desc: "Ajouter, modifier, désactiver", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
@@ -4710,7 +4692,7 @@ export default function MokaOrderPad() {
         </div>
       )}
 
-      {/* ── ADMIN BOTTOM NAV — pill Instagram ────────── */}
+      {/* ── ADMIN BOTTOM NAV — glassmorphism ─────────── */}
       {isAdmin && (() => {
         const dashboardSVG = <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>;
         const productsSVG  = <><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>;
@@ -4726,35 +4708,44 @@ export default function MokaOrderPad() {
           { id: "reports",   icon: reportsSVG   },
           ...(!isIphone ? [{ id: "settings", icon: settingsSVG }] : []),
         ];
+        const navWidth = navCompact ? "w-auto px-5" : "w-[280px]";
         return (
           <div
-            className="fixed z-50 transition-all duration-300 ease-out"
+            className="fixed z-50 transition-all duration-500 ease-out"
             style={{
-              bottom: `calc(env(safe-area-inset-bottom) + 12px)`,
+              bottom: `calc(env(safe-area-inset-bottom) + 16px)`,
               left: "50%",
-              transform: `translateX(-50%) translateY(${navVisible ? "0" : "100px"})`,
+              transform: `translateX(-50%) translateY(${navVisible ? "0" : "calc(100% + 20px)"})`,
             }}
           >
-            <div className={`flex items-center transition-all duration-300 bg-[#f5ede0]/95 backdrop-blur-xl shadow-2xl border border-[#e5d5c5] ${
-              navCompact ? "rounded-full px-4 py-2.5 gap-4" : "rounded-2xl px-3 py-2 gap-1"
-            }`}>
+            <div
+              className={`flex items-center justify-around transition-all duration-500 ease-out ${navWidth} py-3 rounded-full border border-white/40`}
+              style={{
+                background: "rgba(245, 237, 224, 0.75)",
+                backdropFilter: "blur(20px) saturate(180%)",
+                WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                boxShadow: "0 8px 32px rgba(44, 26, 16, 0.12), 0 1px 0 rgba(255,255,255,0.6) inset",
+              }}
+            >
               {navItems.map(({ id, icon }) => (
                 <button
                   key={id}
                   onClick={() => setAdminSection(id)}
-                  className={`relative flex items-center justify-center cursor-pointer transition-all duration-200 ${
-                    navCompact ? "w-8 h-8" : "w-10 h-10 rounded-xl"
-                  } ${
-                    adminSection === id
-                      ? navCompact ? "text-[#2c1a10] scale-110" : "bg-[#2c1a10] text-[#f5ede0]"
-                      : "text-[#9a7060] hover:text-[#2c1a10]"
+                  className={`relative flex items-center justify-center w-10 h-10 rounded-full cursor-pointer transition-all duration-200 active:scale-90 ${
+                    adminSection === id ? "bg-[#2c1a10]" : "hover:bg-[#2c1a10]/8"
                   }`}
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={adminSection === id ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    className={`transition-all duration-200 ${navCompact ? "w-4 h-4" : "w-5 h-5"} ${adminSection === id ? "text-[#f5ede0]" : "text-[#9a7060]"}`}
+                    fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={adminSection === id ? 2.2 : 1.8}
+                    strokeLinecap="round" strokeLinejoin="round"
+                  >
                     {icon}
                   </svg>
                   {adminSection === id && !navCompact && (
-                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#f5ede0]" />
+                    <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#2c1a10] opacity-40" />
                   )}
                 </button>
               ))}
