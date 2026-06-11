@@ -4229,59 +4229,73 @@ export default function MokaOrderPad() {
                 {reportsData && (
                   <>
                     {/* Bento Row 1: KPI Cards */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {/* Stock critique */}
-                      <div className={`rounded-2xl p-5 border flex flex-col gap-1 ${
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                      {/* 1. Chiffre d'affaires */}
+                      <div className="rounded-2xl p-5 border flex flex-col gap-1 bg-gradient-to-br from-[#faf0e0] to-[#f5e8cc] border-[#e5c87a]">
+                        <div className="w-9 h-9 rounded-xl bg-[#fde88a]/60 flex items-center justify-center mb-1">
+                          <svg className="w-5 h-5 text-[#8a6a00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8"/><path d="M12 18V6"/></svg>
+                        </div>
+                        <div className="text-3xl font-black text-[#8a6a00]">
+                          {reportsData.ca?.total || "—"}
+                        </div>
+                        <div className="text-xs font-bold text-[#8a6a00]">Chiffre d'affaires</div>
+                        <div className="text-[10px] text-[#8a6a00]/70">
+                          {reportsData.ca ? reportsData.ca.subtitle : "Connecter la caisse"}
+                        </div>
+                      </div>
+
+                      {/* 2. Dépenses fournisseurs */}
+                      <div className="rounded-2xl p-5 border flex flex-col gap-1 bg-gradient-to-br from-orange-50 to-orange-100/60 border-orange-200">
+                        <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center mb-1">
+                          <svg className="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16.5 9.4 7.55 4.24"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><line x1="12" x2="12" y1="22.08" y2="12"/></svg>
+                        </div>
+                        <div className="text-3xl font-black text-orange-600">
+                          {reportsData.commandes.total}
+                        </div>
+                        <div className="text-xs font-bold text-orange-700">Dépenses fournisseurs</div>
+                        <div className="text-[10px] text-orange-500">{reportsData.commandes.envoyees} envoyées</div>
+                      </div>
+
+                      {/* 3. Commandes */}
+                      <div className="rounded-2xl p-5 border flex flex-col gap-1 bg-gradient-to-br from-[#faf5ef] to-[#f5ede0] border-[#e5d5c5]">
+                        <div className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center mb-1">
+                          <svg className="w-5 h-5 text-[#6b4a3d]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" x2="21" y1="6" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                        </div>
+                        <div className="text-3xl font-black text-[#6b4a3d]">
+                          {reportsData.commandes.total}
+                        </div>
+                        <div className="text-xs font-bold text-[#6b4a3d]">Commandes</div>
+                        <div className="text-[10px] text-[#9a7060]">{reportsData.commandes.enAttente} en attente</div>
+                      </div>
+
+                      {/* 4. Staff actif */}
+                      <div className="rounded-2xl p-5 border flex flex-col gap-1 bg-gradient-to-br from-[#f0f7e5] to-[#e5f0d0] border-[#c8dfa0]">
+                        <div className="w-9 h-9 rounded-xl bg-[#d4ecaa]/60 flex items-center justify-center mb-1">
+                          <svg className="w-5 h-5 text-[#5a7828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </div>
+                        <div className="text-3xl font-black text-[#5a7828]">
+                          {reportsData.staff.presences.length}
+                        </div>
+                        <div className="text-xs font-bold text-[#5a7828]">Staff actif</div>
+                        <div className="text-[10px] text-[#5a7828]/70">membres pointés</div>
+                      </div>
+
+                      {/* 5. Stock critique */}
+                      <div className={`rounded-2xl p-5 border flex flex-col gap-1 bg-gradient-to-br ${
                         reportsData.stock.critique > 0
-                          ? "bg-red-50 border-red-200"
-                          : "bg-emerald-50 border-emerald-200"
+                          ? "from-red-50 to-red-100/60 border-red-200"
+                          : "from-emerald-50 to-emerald-100/60 border-emerald-200"
                       }`}>
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-1 ${
                           reportsData.stock.critique > 0 ? "bg-red-100" : "bg-emerald-100"
                         }`}>
-                          <svg className={`w-5 h-5 ${reportsData.stock.critique > 0 ? "text-red-600" : "text-emerald-600"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2Z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                          <svg className={`w-5 h-5 ${reportsData.stock.critique > 0 ? "text-red-600" : "text-emerald-600"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
                         </div>
-                        <div className={`text-3xl font-black ${reportsData.stock.critique > 0 ? "text-red-700" : "text-emerald-700"}`}>
+                        <div className={`text-3xl font-black ${reportsData.stock.critique > 0 ? "text-red-600" : "text-emerald-600"}`}>
                           {reportsData.stock.critique}
                         </div>
-                        <div className="text-xs font-bold text-[#6b4a3d]">Stock critique</div>
-                        <div className="text-[10px] text-[#9a7060]">{reportsData.stock.total} ingrédients total</div>
-                      </div>
-
-                      {/* Prépas à faire */}
-                      <div className={`rounded-2xl p-5 border flex flex-col gap-1 ${
-                        reportsData.preps.todo > 0 ? "bg-amber-50 border-amber-200" : "bg-white border-[#e5d5c5]"
-                      }`}>
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-1 ${
-                          reportsData.preps.todo > 0 ? "bg-amber-100" : "bg-[#f0e8dc]"
-                        }`}>
-                          <svg className={`w-5 h-5 ${reportsData.preps.todo > 0 ? "text-amber-600" : "text-[#9a7060]"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect width="6" height="4" x="9" y="3" rx="1"/><path d="m9 12 2 2 4-4"/></svg>
-                        </div>
-                        <div className={`text-3xl font-black ${reportsData.preps.todo > 0 ? "text-amber-700" : "text-[#2c1a10]"}`}>
-                          {reportsData.preps.todo}
-                        </div>
-                        <div className="text-xs font-bold text-[#6b4a3d]">Prépas à faire</div>
-                        <div className="text-[10px] text-[#9a7060]">{reportsData.preps.fait} faites</div>
-                      </div>
-
-                      {/* Commandes envoyées */}
-                      <div className="rounded-2xl p-5 border bg-white border-[#e5d5c5] flex flex-col gap-1">
-                        <div className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center mb-1">
-                          <svg className="w-5 h-5 text-[#6b4a3d]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
-                        </div>
-                        <div className="text-3xl font-black text-[#2c1a10]">{reportsData.commandes.envoyees}</div>
-                        <div className="text-xs font-bold text-[#6b4a3d]">Commandes envoyées</div>
-                        <div className="text-[10px] text-[#9a7060]">{reportsData.commandes.aCommander} en attente</div>
-                      </div>
-
-                      {/* Staff actif */}
-                      <div className="rounded-2xl p-5 border bg-white border-[#e5d5c5] flex flex-col gap-1">
-                        <div className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center mb-1">
-                          <svg className="w-5 h-5 text-[#6b4a3d]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                        </div>
-                        <div className="text-3xl font-black text-[#2c1a10]">{reportsData.staff.actifs}</div>
-                        <div className="text-xs font-bold text-[#6b4a3d]">Staff actif</div>
-                        <div className="text-[10px] text-[#9a7060]">{reportsData.staff.total} au total</div>
+                        <div className={`text-xs font-bold ${reportsData.stock.critique > 0 ? "text-red-700" : "text-emerald-700"}`}>Stock critique</div>
+                        <div className={`text-[10px] ${reportsData.stock.critique > 0 ? "text-red-400" : "text-emerald-500"}`}>{reportsData.stock.alerte} en alerte</div>
                       </div>
                     </div>
 

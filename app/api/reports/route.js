@@ -47,7 +47,7 @@ export async function GET(request) {
     })).filter((i) => i.name);
 
     const stockCritique = stockItems.filter((i) => i.qty <= i.min && i.min > 0);
-    const stockOk = stockItems.filter((i) => i.qty > i.min || i.min === 0);
+    const stockAlerte = stockItems.filter((i) => i.qty > i.min && i.qty <= i.min * 1.5 && i.min > 0);
     const totalIngredients = stockItems.length;
 
     // ── Preps ────────────────────────────────────────────────────
@@ -82,6 +82,7 @@ export async function GET(request) {
 
     const commandesEnvoyees = commandes.filter((c) => c.statut === "Envoyé").length;
     const commandesTotal = commandes.length;
+    const commandesEnAttente = commandesTotal - commandesEnvoyees;
 
     const byFournisseur = {};
     commandes.forEach((c) => {
@@ -102,12 +103,15 @@ export async function GET(request) {
       actif: p.properties["Actif"]?.checkbox ?? true,
     })).filter((s) => s.nom);
 
+    const staffActifs = staffList.filter((s) => s.actif);
+
     return Response.json({
       period,
+      ca: null,
       stock: {
         total: totalIngredients,
         critique: stockCritique.length,
-        ok: stockOk.length,
+        alerte: stockAlerte.length,
         criticalItems: stockCritique.slice(0, 5).map((i) => i.name),
       },
       preps: {
@@ -119,13 +123,15 @@ export async function GET(request) {
       commandes: {
         total: commandesTotal,
         envoyees: commandesEnvoyees,
-        aCommander: commandesTotal - commandesEnvoyees,
+        enAttente: commandesEnAttente,
+        aCommander: commandesEnAttente,
         byFournisseur: fournisseurRanking,
         recent: commandes.slice(0, 5),
       },
       staff: {
         total: staffList.length,
-        actifs: staffList.filter((s) => s.actif).length,
+        actifs: staffActifs.length,
+        presences: staffActifs,
         list: staffList,
       },
     }, { headers: corsHeaders });
