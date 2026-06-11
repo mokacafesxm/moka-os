@@ -22,9 +22,10 @@ export async function POST(request) {
       return Response.json({ error: "Array of order items required" }, { status: 400, headers: corsHeaders });
     }
 
-    const [supplierMap, staffMap] = await Promise.all([
+    const [supplierMap, staffMap, productMap] = await Promise.all([
       buildIdMap(DB.FOURNISSEURS, "Fournisseur"),
       buildIdMap(DB.STAFF, "Prénom", "Nom", "Name"),
+      buildIdMap(DB.INGREDIENTS, "Ingredient"),
     ]);
 
     const grouped = {};
@@ -57,6 +58,10 @@ export async function POST(request) {
         "Date création":     { date: { start: nowSXM } },
       };
 
+      const produitIds = groupItems
+        .map((p) => (/^[0-9a-f-]{36}$/i.test(String(p.id || "")) ? p.id : null) || productMap[(p.Produit || "").toLowerCase()])
+        .filter(Boolean);
+      if (produitIds.length) properties["Produit"] = { relation: produitIds.map((id) => ({ id })) };
       if (foId)    properties["Fournisseur"] = relationProp(foId);
       if (staffId) properties["Staff"]       = relationProp(staffId);
 

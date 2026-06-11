@@ -58,6 +58,7 @@ export async function GET() {
         source: getSelect(p, "Source"),
         date: getDate(p, "Date création") || page.created_time || "",
         fournisseur: fournisseurMap[fRelIds[0]] || getText(p, "Fournisseur") || "Sans fournisseur",
+        message: getText(p, "Message envoyé") || "",
         produitId: getRelationIds(p, "Produit")[0] || null,
         fournisseurId: fRelIds[0] || null,
         staffId: getRelationIds(p, "Staff")[0] || null,
@@ -87,28 +88,37 @@ export async function POST(request) {
     const title = buildBesoinTitle(source, staffName, fournisseur, produit);
     const nowSXM = new Date().toLocaleString("sv-SE", { timeZone: "America/Puerto_Rico" }).replace(" ", "T") + "-04:00";
 
-    // Pour une entrée groupée (produits array), on résout le premier produit seulement
-    const isGrouped = Array.isArray(produits) && produits.length > 0;
+    const isGrouped   = Array.isArray(produits) && produits.length > 0;
+    const isCommandes = source === "Commandes" || source === "Composer";
+
     const resolvedProduitId = isGrouped
-      ? (produits[0]?.produitId || null)
+      ? null
       : await resolveProductId(produit, produitId);
 
+    const validProduitIds = isGrouped
+      ? produits.map((p) => p.produitId).filter((id) => id && /^[0-9a-f-]{36}$/i.test(String(id)))
+      : [];
+
     const properties = {
-      "Besoin":            titleProp(title),
-      "Quantité suggérée": numberProp(quantite),
-      "Statut":            selectProp(statut || "À commander"),
-      "Source":            selectProp(source || "Commandes"),
-      "Date création":     { date: { start: nowSXM } },
+      "Besoin":        titleProp(title),
+      "Statut":        selectProp(statut || "À commander"),
+      "Source":        selectProp(source || "Commandes"),
+      "Date création": { date: { start: nowSXM } },
     };
-    if (unite)               properties["Unité"]          = selectProp(unite);
-    if (statut === "Envoyé") properties["Date envoi"]     = { date: { start: nowSXM } };
-    if (message)             properties["Message envoyé"] = textProp(message);
-    if (isGrouped)           properties["ID Produit"]     = textProp(produits.map((p) => p.name).join(", "));
+    if (!isCommandes && quantite != null) properties["Quantité suggérée"] = numberProp(quantite);
+    if (!isCommandes && unite)            properties["Unité"]             = selectProp(unite);
+    if (statut === "Envoyé")              properties["Date envoi"]        = { date: { start: nowSXM } };
+    if (message)                          properties["Message envoyé"]    = textProp(message);
+    if (isGrouped)                        properties["ID Produit"]        = textProp(produits.map((p) => p.name).join(", "));
     Object.keys(properties).forEach((k) => { if (properties[k] === undefined) delete properties[k]; });
 
-    if (resolvedProduitId) properties["Produit"]     = relationProp(resolvedProduitId);
-    if (fournisseurId)     properties["Fournisseur"] = relationProp(fournisseurId);
-    if (staffId)           properties["Staff"]        = relationProp(staffId);
+    if (isGrouped && validProduitIds.length) {
+      properties["Produit"] = { relation: validProduitIds.map((id) => ({ id })) };
+    } else if (resolvedProduitId) {
+      properties["Produit"] = relationProp(resolvedProduitId);
+    }
+    if (fournisseurId) properties["Fournisseur"] = relationProp(fournisseurId);
+    if (staffId)       properties["Staff"]        = relationProp(staffId);
 
     const page = await createPage(DB.BESOINS, properties);
     return Response.json({ success: true, id: page.id }, { headers: corsHeaders });

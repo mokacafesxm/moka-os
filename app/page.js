@@ -4004,8 +4004,8 @@ export default function MokaOrderPad() {
                               <OrdStatusBadge status={order.statut} />
                               <span className="text-[11px] text-[#a97862]">{String(order.dateCreation || "").slice(0, 10) || "Sans date"} · {order.staff}</span>
                             </div>
-                            <div className="font-black text-sm text-[#3b241b]">{order.fournisseur}</div>
-                            <div className="text-[11px] text-[#a97862] mt-1 truncate">{order.produit} × {order.quantite} {order.unite}</div>
+                            <div className="font-black text-sm text-[#3b241b]">{order.produit}</div>
+                            <div className="text-[11px] text-[#a97862] mt-1 truncate">{order.fournisseur}</div>
                           </div>
                           <button onClick={() => setOrderDetail(order)} className="shrink-0 text-xs font-black text-[#6f8f32] border border-[#6f8f32] px-3 py-1.5 rounded-xl">
                             Détail →
@@ -5305,38 +5305,34 @@ function OrdPreviewModal({ buildMessage, selectedSupplier, supplier, setShowPrev
 
 function OrdDetailModal({ orderDetail, supplier, setOrderDetail }) {
   const dateStr = String(orderDetail.dateCreation || "").slice(0, 10);
-  const orderDate = dateStr
-    ? new Date(dateStr + "T00:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
-    : "";
-  const message = orderDetail.message ||
-    `Bonjour ${orderDetail.fournisseur} 👋\n\nCommande du ${orderDate} :\n\n- ${orderDetail.produit} — ${orderDetail.quantite} ${orderDetail.unite}\n\nMerci 🙏\n— Équipe MÖKA`;
+  const message = orderDetail.message || "";
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-3">
       <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-full max-w-lg max-h-[85vh] overflow-y-auto p-5">
         <div className="flex justify-between items-start gap-4 mb-4">
           <div>
             <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">Détail commande</div>
-            <h2 className="text-lg font-black text-[#3b241b]">{orderDetail.fournisseur}</h2>
+            <h2 className="text-lg font-black text-[#3b241b]">{orderDetail.produit}</h2>
             <div className="flex items-center gap-2 mt-1">
               <OrdStatusBadge status={orderDetail.statut} />
-              <span className="text-xs text-[#a97862]">{dateStr || "Sans date"} · {orderDetail.staff}</span>
+              <span className="text-xs text-[#a97862]">{orderDetail.fournisseur} · {dateStr || "Sans date"}</span>
             </div>
           </div>
           <button onClick={() => setOrderDetail(null)} className="w-9 h-9 rounded-full bg-[#f4eee7] flex items-center justify-center font-black text-[#a97862]">×</button>
         </div>
-        <div className="bg-[#f7efe4] rounded-[1rem] p-3 mb-4">
-          <div className="text-xs font-black text-[#a97862] mb-2">PRODUIT COMMANDÉ</div>
-          <div className="text-sm font-bold text-[#3b241b]">{orderDetail.produit} × {orderDetail.quantite} {orderDetail.unite}</div>
+        <div className="text-xs font-black text-[#a97862] mb-2">MESSAGE ENVOYÉ</div>
+        <div className="bg-[#e8f5e1] rounded-[1rem] p-4 font-mono text-xs text-[#2d5a1b] whitespace-pre-wrap leading-relaxed mb-4">
+          {message || "Aucun message enregistré"}
         </div>
-        <div className="text-xs font-black text-[#a97862] mb-2">MESSAGE</div>
-        <div className="bg-[#e8f5e1] rounded-[1rem] p-4 font-mono text-xs text-[#2d5a1b] whitespace-pre-wrap leading-relaxed mb-4">{message}</div>
-        <div className="flex gap-2">
-          <button onClick={() => {
-            const wa = ordGetSupplierWhatsapp(supplier);
-            if (wa) window.open(`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`);
-          }} className="flex-1 py-3 rounded-[1rem] bg-green-50 border border-green-200 text-green-700 font-black text-xs">💬 WhatsApp</button>
-          <button onClick={() => navigator.clipboard?.writeText(message).then(() => alert("Copié !"))} className="flex-1 py-3 rounded-[1rem] bg-[#f4eee7] text-[#3b241b] font-black text-xs">📋 Copier</button>
-        </div>
+        {message && (
+          <div className="flex gap-2">
+            <button onClick={() => {
+              const wa = ordGetSupplierWhatsapp(supplier);
+              if (wa) window.open(`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`);
+            }} className="flex-1 py-3 rounded-[1rem] bg-green-50 border border-green-200 text-green-700 font-black text-xs">💬 WhatsApp</button>
+            <button onClick={() => navigator.clipboard?.writeText(message).then(() => alert("Copié !"))} className="flex-1 py-3 rounded-[1rem] bg-[#f4eee7] text-[#3b241b] font-black text-xs">📋 Copier</button>
+          </div>
+        )}
       </div>
     </div>
   );
