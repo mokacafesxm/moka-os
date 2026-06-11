@@ -3820,11 +3820,7 @@ export default function MokaOrderPad() {
             {/* ORDERS PANEL */}
             {adminSection === "orders" && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-[10px] font-black tracking-[0.35em] text-[#a97862] uppercase">MÖKA OS</div>
-                    <h2 className="text-xl font-black text-[#3b241b]">Commandes fournisseurs</h2>
-                  </div>
+                <div className="flex justify-end">
                   <button onClick={loadSupplierOrders} className="rounded-full bg-white border border-[#eadfd4] px-3 py-2 text-xs font-black text-[#6b4a3d]">
                     {loadingSupplierOrders ? "Chargement…" : "↻"}
                   </button>
