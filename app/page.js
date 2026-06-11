@@ -2782,7 +2782,7 @@ export default function MokaOrderPad() {
     >
 
       {/* ── HEADER ─────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 bg-[#f5ede0]/96 backdrop-blur-md border-b border-[#ddc9b5] px-4 py-2.5 shadow-sm pt-safe">
+      <header className="sticky top-0 z-30 bg-[#f5ede0]/96 backdrop-blur-md border-b border-[#ddc9b5] px-4 pb-2.5 shadow-sm" style={{ paddingTop: "env(safe-area-inset-top)" }}>
         <div className="max-w-screen-2xl mx-auto flex items-center justify-between gap-3">
 
           {/* Brand gauche */}
@@ -3748,7 +3748,7 @@ export default function MokaOrderPad() {
       {isAdmin && adminSection !== "dashboard" && (
         <div className="fixed inset-0 z-40 bg-[#f5ede0] overflow-y-auto">
           {/* Admin panel header */}
-          <div className={`sticky top-0 z-10 bg-[#f5ede0]/95 backdrop-blur border-b border-[#e5d5c5] px-4 py-3 ${["products", "inventory"].includes(adminSection) ? "" : ""}`}>
+          <div className="sticky top-0 z-10 bg-[#f5ede0]/95 backdrop-blur border-b border-[#e5d5c5] px-4 pb-3" style={{ paddingTop: "env(safe-area-inset-top)" }}>
             <div className="max-w-screen-2xl mx-auto flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-[#2c1a10] flex items-center justify-center shrink-0">
