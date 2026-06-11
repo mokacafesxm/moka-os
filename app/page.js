@@ -383,6 +383,13 @@ export default function MokaOrderPad() {
   const [supplierOrdersFilter, setSupplierOrdersFilter] = useState("À commander");
   const [selectedSupplierOrder, setSelectedSupplierOrder] = useState("");
 
+  const [reportsData, setReportsData] = useState(null);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [reportsPeriode, setReportsPeriode] = useState("week");
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+
   const [settingsCache, setSettingsCache] = useState(() => {
     if (typeof window === "undefined") return {};
     try { return JSON.parse(localStorage.getItem("mokaSettingsCache") || "{}"); }
@@ -1354,6 +1361,57 @@ export default function MokaOrderPad() {
     if (!isAdmin || adminSection !== "orders") return;
     loadSupplierOrders();
   }, [isAdmin, adminSection]);
+
+  const loadReports = async (periode) => {
+    setReportsLoading(true);
+    try {
+      const p = periode || reportsPeriode;
+      const res = await fetch(`/api/reports?period=${p}&t=${Date.now()}`);
+      if (!res.ok) throw new Error(`Erreur reports ${res.status}`);
+      const data = await res.json();
+      setReportsData(data);
+    } catch (err) {
+      console.error("Erreur rapports:", err);
+    } finally {
+      setReportsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAdmin || adminSection !== "reports") return;
+    loadReports(reportsPeriode);
+  }, [isAdmin, adminSection]);
+
+  const sendChatMessage = async () => {
+    const trimmed = chatInput.trim();
+    if (!trimmed || chatLoading) return;
+    const newMsg = { role: "user", content: trimmed };
+    const updated = [...chatMessages, newMsg];
+    setChatMessages(updated);
+    setChatInput("");
+    setChatLoading(true);
+    try {
+      const res = await fetch("/api/reports/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: updated,
+          context: reportsData ? {
+            stock: reportsData.stock,
+            preps: reportsData.preps,
+            commandes: reportsData.commandes,
+          } : null,
+        }),
+      });
+      if (!res.ok) throw new Error("Erreur chat");
+      const { reply } = await res.json();
+      setChatMessages([...updated, { role: "assistant", content: reply }]);
+    } catch (err) {
+      setChatMessages([...updated, { role: "assistant", content: "Désolé, une erreur s'est produite. Réessaie." }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!isAdmin || adminSection !== "orders") return;
@@ -4129,14 +4187,289 @@ export default function MokaOrderPad() {
 
             {/* REPORTS PANEL */}
             {adminSection === "reports" && (
-              <div className="bg-white rounded-2xl p-12 border border-[#e5d5c5] shadow-sm text-center">
-                <div className="flex justify-center mb-4">
-                  <div className="w-16 h-16 rounded-2xl bg-[#f0e8dc] flex items-center justify-center">
-                    <svg className="w-8 h-8 text-[#9a7060]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
+              <div className="space-y-4">
+                {/* Header + Period selector */}
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <div className="text-xl font-black text-[#2c1a10]">Rapports</div>
+                    <p className="text-xs text-[#9a7060] mt-0.5">Données live depuis Notion</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {["today", "week", "month"].map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => { setReportsPeriode(p); loadReports(p); }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                          reportsPeriode === p
+                            ? "bg-[#2c1a10] text-[#f5ede0]"
+                            : "bg-white border border-[#e5d5c5] text-[#6b4a3d] hover:border-[#2c1a10]"
+                        }`}
+                      >
+                        {p === "today" ? "Aujourd'hui" : p === "week" ? "Cette semaine" : "Ce mois"}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => loadReports(reportsPeriode)}
+                      disabled={reportsLoading}
+                      className="w-8 h-8 rounded-xl bg-white border border-[#e5d5c5] flex items-center justify-center text-[#6b4a3d] hover:border-[#2c1a10] transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      <svg className={`w-3.5 h-3.5 ${reportsLoading ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                    </button>
                   </div>
                 </div>
-                <div className="text-lg font-black text-[#2c1a10]">Rapports</div>
-                <p className="text-xs text-[#9a7060] mt-1">À développer plus tard.</p>
+
+                {reportsLoading && !reportsData && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="bg-white rounded-2xl p-5 border border-[#e5d5c5] animate-pulse h-28" />
+                    ))}
+                  </div>
+                )}
+
+                {reportsData && (
+                  <>
+                    {/* Bento Row 1: KPI Cards */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {/* Stock critique */}
+                      <div className={`rounded-2xl p-5 border flex flex-col gap-1 ${
+                        reportsData.stock.critique > 0
+                          ? "bg-red-50 border-red-200"
+                          : "bg-emerald-50 border-emerald-200"
+                      }`}>
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-1 ${
+                          reportsData.stock.critique > 0 ? "bg-red-100" : "bg-emerald-100"
+                        }`}>
+                          <svg className={`w-5 h-5 ${reportsData.stock.critique > 0 ? "text-red-600" : "text-emerald-600"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2Z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                        </div>
+                        <div className={`text-3xl font-black ${reportsData.stock.critique > 0 ? "text-red-700" : "text-emerald-700"}`}>
+                          {reportsData.stock.critique}
+                        </div>
+                        <div className="text-xs font-bold text-[#6b4a3d]">Stock critique</div>
+                        <div className="text-[10px] text-[#9a7060]">{reportsData.stock.total} ingrédients total</div>
+                      </div>
+
+                      {/* Prépas à faire */}
+                      <div className={`rounded-2xl p-5 border flex flex-col gap-1 ${
+                        reportsData.preps.todo > 0 ? "bg-amber-50 border-amber-200" : "bg-white border-[#e5d5c5]"
+                      }`}>
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-1 ${
+                          reportsData.preps.todo > 0 ? "bg-amber-100" : "bg-[#f0e8dc]"
+                        }`}>
+                          <svg className={`w-5 h-5 ${reportsData.preps.todo > 0 ? "text-amber-600" : "text-[#9a7060]"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect width="6" height="4" x="9" y="3" rx="1"/><path d="m9 12 2 2 4-4"/></svg>
+                        </div>
+                        <div className={`text-3xl font-black ${reportsData.preps.todo > 0 ? "text-amber-700" : "text-[#2c1a10]"}`}>
+                          {reportsData.preps.todo}
+                        </div>
+                        <div className="text-xs font-bold text-[#6b4a3d]">Prépas à faire</div>
+                        <div className="text-[10px] text-[#9a7060]">{reportsData.preps.fait} faites</div>
+                      </div>
+
+                      {/* Commandes envoyées */}
+                      <div className="rounded-2xl p-5 border bg-white border-[#e5d5c5] flex flex-col gap-1">
+                        <div className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center mb-1">
+                          <svg className="w-5 h-5 text-[#6b4a3d]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+                        </div>
+                        <div className="text-3xl font-black text-[#2c1a10]">{reportsData.commandes.envoyees}</div>
+                        <div className="text-xs font-bold text-[#6b4a3d]">Commandes envoyées</div>
+                        <div className="text-[10px] text-[#9a7060]">{reportsData.commandes.aCommander} en attente</div>
+                      </div>
+
+                      {/* Staff actif */}
+                      <div className="rounded-2xl p-5 border bg-white border-[#e5d5c5] flex flex-col gap-1">
+                        <div className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center mb-1">
+                          <svg className="w-5 h-5 text-[#6b4a3d]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </div>
+                        <div className="text-3xl font-black text-[#2c1a10]">{reportsData.staff.actifs}</div>
+                        <div className="text-xs font-bold text-[#6b4a3d]">Staff actif</div>
+                        <div className="text-[10px] text-[#9a7060]">{reportsData.staff.total} au total</div>
+                      </div>
+                    </div>
+
+                    {/* Bento Row 2: Fournisseurs bar chart + Stock critique list */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {/* Commandes par fournisseur */}
+                      <div className="bg-white rounded-2xl p-5 border border-[#e5d5c5]">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-7 h-7 rounded-lg bg-[#f0e8dc] flex items-center justify-center">
+                            <svg className="w-4 h-4 text-[#6b4a3d]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
+                          </div>
+                          <div className="text-sm font-black text-[#2c1a10]">Commandes par fournisseur</div>
+                        </div>
+                        {reportsData.commandes.byFournisseur.length === 0 ? (
+                          <p className="text-xs text-[#9a7060] text-center py-4">Aucune commande sur cette période</p>
+                        ) : (
+                          <div className="space-y-2.5">
+                            {(() => {
+                              const max = Math.max(...reportsData.commandes.byFournisseur.map((f) => f.count), 1);
+                              return reportsData.commandes.byFournisseur.map((f) => (
+                                <div key={f.nom} className="flex items-center gap-3">
+                                  <div className="text-xs font-bold text-[#2c1a10] w-28 truncate shrink-0">{f.nom}</div>
+                                  <div className="flex-1 bg-[#f0e8dc] rounded-full h-2 overflow-hidden">
+                                    <div
+                                      className="h-full bg-[#2c1a10] rounded-full transition-all duration-500"
+                                      style={{ width: `${(f.count / max) * 100}%` }}
+                                    />
+                                  </div>
+                                  <div className="text-xs font-black text-[#6b4a3d] w-5 text-right shrink-0">{f.count}</div>
+                                </div>
+                              ));
+                            })()}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Stock critique */}
+                      <div className="bg-white rounded-2xl p-5 border border-[#e5d5c5]">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center">
+                            <svg className="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                          </div>
+                          <div className="text-sm font-black text-[#2c1a10]">Stock en alerte</div>
+                          {reportsData.stock.critique > 0 && (
+                            <span className="ml-auto text-[10px] font-black bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                              {reportsData.stock.critique} items
+                            </span>
+                          )}
+                        </div>
+                        {reportsData.stock.criticalItems.length === 0 ? (
+                          <div className="flex flex-col items-center py-4 gap-2">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                              <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            </div>
+                            <p className="text-xs font-bold text-emerald-700">Tout est OK !</p>
+                            <p className="text-[10px] text-[#9a7060]">Aucun stock critique</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {reportsData.stock.criticalItems.map((name) => (
+                              <div key={name} className="flex items-center gap-2 bg-red-50 rounded-xl px-3 py-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                                <span className="text-xs font-bold text-[#2c1a10] truncate">{name}</span>
+                              </div>
+                            ))}
+                            {reportsData.stock.critique > 5 && (
+                              <p className="text-[10px] text-[#9a7060] text-center pt-1">
+                                +{reportsData.stock.critique - 5} autres…
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Bento Row 3: Top prépas + MOKA AI chat */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {/* Top prépas */}
+                      <div className="bg-white rounded-2xl p-5 border border-[#e5d5c5]">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-7 h-7 rounded-lg bg-[#f0e8dc] flex items-center justify-center">
+                            <svg className="w-4 h-4 text-[#6b4a3d]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect width="6" height="4" x="9" y="3" rx="1"/></svg>
+                          </div>
+                          <div className="text-sm font-black text-[#2c1a10]">Prépas en cours</div>
+                          <span className="ml-auto text-[10px] font-black bg-[#f0e8dc] text-[#6b4a3d] px-2 py-0.5 rounded-full">
+                            {reportsData.preps.total} total
+                          </span>
+                        </div>
+                        {reportsData.preps.top.length === 0 ? (
+                          <p className="text-xs text-[#9a7060] text-center py-4">Aucune prépa</p>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {reportsData.preps.top.map((p) => (
+                              <div
+                                key={p.name}
+                                className={`rounded-xl px-3 py-2 text-xs font-bold truncate border ${
+                                  p.priority === "Urgente"
+                                    ? "bg-red-50 border-red-200 text-red-700"
+                                    : p.priority === "Haute"
+                                    ? "bg-amber-50 border-amber-200 text-amber-700"
+                                    : "bg-[#f7f3ef] border-[#e5d5c5] text-[#2c1a10]"
+                                }`}
+                              >
+                                {p.name}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* MOKA AI Chat */}
+                      <div className="bg-[#2c1a10] rounded-2xl p-5 flex flex-col gap-3 min-h-[260px]">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-[#f5ede0]/15 flex items-center justify-center">
+                            <svg className="w-4 h-4 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                          </div>
+                          <div className="text-sm font-black text-[#f5ede0]">MOKA AI</div>
+                          <span className="text-[9px] font-bold bg-[#f5ede0]/15 text-[#f5ede0]/70 px-2 py-0.5 rounded-full">Claude Haiku</span>
+                        </div>
+
+                        {/* Messages */}
+                        <div className="flex-1 overflow-y-auto space-y-2 max-h-[140px]" id="moka-chat-messages">
+                          {chatMessages.length === 0 && (
+                            <div className="space-y-1.5">
+                              {[
+                                "Quels produits sont en rupture ?",
+                                "Résume l'activité de la semaine",
+                                "Quelles prépas sont urgentes ?",
+                              ].map((s) => (
+                                <button
+                                  key={s}
+                                  onClick={() => { setChatInput(s); }}
+                                  className="w-full text-left text-[10px] text-[#f5ede0]/60 bg-[#f5ede0]/8 hover:bg-[#f5ede0]/15 rounded-xl px-3 py-2 transition-all cursor-pointer font-medium"
+                                >
+                                  {s}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {chatMessages.map((m, i) => (
+                            <div
+                              key={i}
+                              className={`text-xs rounded-xl px-3 py-2 max-w-[85%] ${
+                                m.role === "user"
+                                  ? "bg-[#f5ede0] text-[#2c1a10] ml-auto font-bold"
+                                  : "bg-[#f5ede0]/12 text-[#f5ede0] font-medium"
+                              }`}
+                            >
+                              {m.content}
+                            </div>
+                          ))}
+                          {chatLoading && (
+                            <div className="bg-[#f5ede0]/12 rounded-xl px-3 py-2 w-16 flex gap-1 items-center">
+                              {[0, 1, 2].map((i) => (
+                                <div key={i} className="w-1 h-1 rounded-full bg-[#f5ede0]/60 animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Input */}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={chatInput}
+                            onChange={(e) => setChatInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } }}
+                            placeholder="Pose une question…"
+                            className="flex-1 bg-[#f5ede0]/10 border border-[#f5ede0]/20 rounded-xl px-3 py-2 text-xs text-[#f5ede0] placeholder-[#f5ede0]/40 outline-none focus:border-[#f5ede0]/50 transition-all"
+                          />
+                          <button
+                            onClick={sendChatMessage}
+                            disabled={!chatInput.trim() || chatLoading}
+                            className="w-9 h-9 rounded-xl bg-[#f5ede0] flex items-center justify-center text-[#2c1a10] disabled:opacity-40 hover:bg-white transition-all cursor-pointer shrink-0"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {!reportsLoading && !reportsData && (
+                  <div className="bg-white rounded-2xl p-12 border border-[#e5d5c5] text-center">
+                    <p className="text-xs text-[#9a7060]">Impossible de charger les données. <button onClick={() => loadReports(reportsPeriode)} className="text-[#2c1a10] font-bold underline cursor-pointer">Réessayer</button></p>
+                  </div>
+                )}
               </div>
             )}
 
