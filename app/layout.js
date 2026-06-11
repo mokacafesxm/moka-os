@@ -41,7 +41,8 @@ export default function RootLayout({ children }) {
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="theme-color" content="#2c1a10" />
+        <meta name="theme-color" content="#f5ede0" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#2c1a10" media="(prefers-color-scheme: dark)" />
       </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

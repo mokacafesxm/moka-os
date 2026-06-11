@@ -2772,10 +2772,18 @@ export default function MokaOrderPad() {
   const isIpad = deviceType === "ipad";
 
   return (
-    <main className="min-h-screen bg-[#f5ede0] text-[#1a1008]" style={{fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"}}>
+    <main
+      className="min-h-screen bg-[#f5ede0] text-[#1a1008]"
+      style={{
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+        paddingBottom: isIphone
+          ? "calc(env(safe-area-inset-bottom) + 80px)"
+          : "7rem",
+      }}
+    >
 
       {/* ── HEADER ─────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 bg-[#f5ede0]/96 backdrop-blur-md border-b border-[#ddc9b5] px-4 py-2.5 shadow-sm">
+      <header className="sticky top-0 z-30 bg-[#f5ede0]/96 backdrop-blur-md border-b border-[#ddc9b5] px-4 py-2.5 shadow-sm pt-safe">
         <div className="max-w-screen-2xl mx-auto flex items-center justify-between gap-3">
 
           {/* Brand gauche */}
@@ -4669,7 +4677,7 @@ export default function MokaOrderPad() {
       {isAdmin && (
         <div
           className={`fixed left-1/2 bottom-3 -translate-x-1/2 z-50 bg-[#2c1a10]/95 backdrop-blur-md border border-[#3d2518] shadow-2xl rounded-2xl px-2 py-2 flex items-center gap-1 max-w-[96vw] transition-transform duration-300 ${navVisible ? "translate-y-0" : "translate-y-24"}`}
-          style={isIphone ? { paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" } : undefined}
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)", marginBottom: 0 }}
         >
           {[
             { id: "dashboard", label: "Dashboard", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg> },
