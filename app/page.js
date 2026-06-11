@@ -3777,7 +3777,7 @@ export default function MokaOrderPad() {
 
             {/* PRODUCTS PANEL */}
             {adminSection === "products" && (
-              <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden" style={{height: "calc(100vh - 100px)"}}>
+              <><div className="h-2" /><div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden" style={{height: "calc(100vh - 100px)"}}>
                 <div className="p-3 border-b border-[#e5d5c5] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div>
                     <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Base de données</div>
@@ -3890,12 +3890,13 @@ export default function MokaOrderPad() {
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </div></>
             )}
 
             {/* INVENTORY PANEL */}
             {adminSection === "inventory" && (
               <div className="space-y-4">
+                <div className="h-2" />
                 {/* KPI row */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
@@ -4353,6 +4354,7 @@ export default function MokaOrderPad() {
             {/* REPORTS PANEL */}
             {adminSection === "reports" && (
               <div className="space-y-4">
+                <div className="h-2" />
                 {/* Period selector */}
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
@@ -4655,7 +4657,8 @@ export default function MokaOrderPad() {
             {/* SETTINGS PANEL */}
             {adminSection === "settings" && (
               <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="h-2" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {[
                   { key: "suppliers", title: "Fournisseurs", desc: "Ajouter, modifier, désactiver", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
                   { key: "categories", title: "Catégories", desc: "Créer / organiser", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg> },
@@ -4719,12 +4722,13 @@ export default function MokaOrderPad() {
             }}
           >
             <div
-              className={`flex items-center justify-around transition-all duration-500 ease-out ${navWidth} py-3 rounded-full border border-white/40`}
+              className={`flex items-center justify-around transition-all duration-500 ease-out ${navWidth} py-3 rounded-full`}
               style={{
-                background: "rgba(245, 237, 224, 0.75)",
-                backdropFilter: "blur(20px) saturate(180%)",
-                WebkitBackdropFilter: "blur(20px) saturate(180%)",
-                boxShadow: "0 8px 32px rgba(44, 26, 16, 0.12), 0 1px 0 rgba(255,255,255,0.6) inset",
+                background: "rgba(255, 252, 248, 0.55)",
+                backdropFilter: "blur(24px) saturate(200%) brightness(1.1)",
+                WebkitBackdropFilter: "blur(24px) saturate(200%) brightness(1.1)",
+                boxShadow: "0 4px 24px rgba(44, 26, 16, 0.08), inset 0 1px 0 rgba(255,255,255,0.7)",
+                border: "1px solid rgba(255,255,255,0.5)",
               }}
             >
               {navItems.map(({ id, icon }) => (
