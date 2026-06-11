@@ -432,6 +432,7 @@ export default function MokaOrderPad() {
   const [confirmPin, setConfirmPin] = useState("");
   const [pinSaveMsg, setPinSaveMsg] = useState("");
   const [navVisible, setNavVisible] = useState(true);
+  const [navCompact, setNavCompact] = useState(false);
   const lastScrollY = useRef(0);
   const [deviceType, setDeviceType] = useState("desktop");
   const [showMobileCart, setShowMobileCart] = useState(false);
@@ -1396,13 +1397,16 @@ export default function MokaOrderPad() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const currentY = window.scrollY;
-      if (currentY > lastScrollY.current + 10) {
+      const y = window.scrollY;
+      const diff = y - lastScrollY.current;
+      if (diff > 8) {
         setNavVisible(false);
-      } else if (currentY < lastScrollY.current - 10) {
+        setNavCompact(true);
+      } else if (diff < -8) {
         setNavVisible(true);
+        setNavCompact(false);
       }
-      lastScrollY.current = currentY;
+      lastScrollY.current = y;
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
@@ -2842,25 +2846,24 @@ export default function MokaOrderPad() {
             {!isIphone && "Pointage"}
           </button>
 
-          {/* Paramètres — header iPhone uniquement */}
-          {isAdmin && isIphone && (
+          {/* Admin droite + Paramètres iPhone groupés */}
+          <div className="flex items-center gap-1.5">
+            {isAdmin && isIphone && (
+              <button
+                onClick={() => setAdminSection("settings")}
+                className={`h-9 w-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
+                  adminSection === "settings"
+                    ? "bg-[#5a7828] text-white border-[#5a7828]"
+                    : "bg-white text-[#6b4a3d] border-[#e5d5c5]"
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z"/>
+                  <path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+                </svg>
+              </button>
+            )}
             <button
-              onClick={() => setAdminSection("settings")}
-              className={`h-9 w-9 rounded-xl border shadow-sm flex items-center justify-center transition-all cursor-pointer ${
-                adminSection === "settings"
-                  ? "bg-[#5a7828] text-white border-[#5a7828]"
-                  : "bg-white text-[#6b4a3d] border-[#e5d5c5]"
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z"/>
-                <path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
-              </svg>
-            </button>
-          )}
-
-          {/* Admin droite */}
-          <button
             onClick={() => {
               if (isAdmin) {
                 setIsAdmin(false);
@@ -2883,6 +2886,7 @@ export default function MokaOrderPad() {
             )}
             {!isIphone && <span>{isAdmin ? "Admin ON" : "Admin"}</span>}
           </button>
+          </div>
         </div>
       </header>
 
@@ -3776,6 +3780,10 @@ export default function MokaOrderPad() {
             {/* PRODUCTS PANEL */}
             {adminSection === "products" && (
               <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden" style={{height: "calc(100vh - 100px)"}}>
+                <div className="px-4 pt-4 pb-0">
+                  <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">MÖKA OS · Admin</div>
+                  <h1 className="text-2xl font-black text-[#2c1a10] mt-0.5">Catalogue produits</h1>
+                </div>
                 <div className="p-3 border-b border-[#e5d5c5] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div>
                     <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Base de données</div>
@@ -3894,6 +3902,10 @@ export default function MokaOrderPad() {
             {/* INVENTORY PANEL */}
             {adminSection === "inventory" && (
               <div className="space-y-4">
+                <div>
+                  <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">MÖKA OS · Admin</div>
+                  <h1 className="text-2xl font-black text-[#2c1a10] mt-0.5">Inventaire</h1>
+                </div>
                 {/* KPI row */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
@@ -4351,7 +4363,11 @@ export default function MokaOrderPad() {
             {/* REPORTS PANEL */}
             {adminSection === "reports" && (
               <div className="space-y-4">
-                {/* Header + Period selector */}
+                <div>
+                  <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">MÖKA OS · Admin</div>
+                  <h1 className="text-2xl font-black text-[#2c1a10] mt-0.5">Rapports & IA</h1>
+                </div>
+                {/* Period selector */}
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <div className="text-xl font-black text-[#2c1a10]">Rapports</div>
@@ -4652,6 +4668,11 @@ export default function MokaOrderPad() {
 
             {/* SETTINGS PANEL */}
             {adminSection === "settings" && (
+              <div className="space-y-4">
+                <div>
+                  <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">MÖKA OS · Admin</div>
+                  <h1 className="text-2xl font-black text-[#2c1a10] mt-0.5">Paramètres</h1>
+                </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {[
                   { key: "suppliers", title: "Fournisseurs", desc: "Ajouter, modifier, désactiver", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
@@ -4683,41 +4704,64 @@ export default function MokaOrderPad() {
                   <p className="text-[11px] text-[#9a7060] mt-1">PIN admin & accès</p>
                 </button>
               </div>
+              </div>
             )}
           </div>
         </div>
       )}
 
-      {/* ── ADMIN BOTTOM NAV ─────────────────────────── */}
-      {isAdmin && (
-        <div
-          className={`fixed left-1/2 bottom-0 -translate-x-1/2 z-50 bg-[#2c1a10]/95 backdrop-blur border-t border-white/10 w-full flex items-center justify-around px-2 pt-2 transition-transform duration-300 ${navVisible ? "translate-y-0" : "translate-y-24"}`}
-          style={{ paddingBottom: "env(safe-area-inset-bottom)", bottom: 0 }}
-        >
-          {[
-            { id: "dashboard", label: "Dashboard", icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
-            { id: "products", label: "Produits", icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> },
-            { id: "inventory", label: "Inventaire", icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 12 2 2 4-4"/></svg> },
-            { id: "orders", label: "Commandes", icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> },
-            { id: "reports", label: "Rapports", icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
-            { id: "settings", label: "Paramètres", icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> },
-          ].filter(({ id }) => !(isIphone && id === "settings")).map(({ id, icon, label }) => (
-            <button
-              key={id}
-              onClick={() => setAdminSection(id)}
-              title={label}
-              className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl text-[9px] font-bold shrink-0 transition-all cursor-pointer min-w-[48px] ${
-                adminSection === id
-                  ? "bg-[#f5ede0] text-[#2c1a10]"
-                  : "text-[#a08070] hover:text-[#f5ede0] hover:bg-white/10"
-              }`}
-            >
-              {icon}
-              <span className="leading-none">{label}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* ── ADMIN BOTTOM NAV — pill Instagram ────────── */}
+      {isAdmin && (() => {
+        const dashboardSVG = <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>;
+        const productsSVG  = <><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>;
+        const inventorySVG = <><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 12 2 2 4-4"/></>;
+        const ordersSVG    = <><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></>;
+        const reportsSVG   = <><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>;
+        const settingsSVG  = <><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></>;
+        const navItems = [
+          { id: "dashboard", icon: dashboardSVG },
+          { id: "products",  icon: productsSVG  },
+          { id: "inventory", icon: inventorySVG },
+          { id: "orders",    icon: ordersSVG    },
+          { id: "reports",   icon: reportsSVG   },
+          ...(!isIphone ? [{ id: "settings", icon: settingsSVG }] : []),
+        ];
+        return (
+          <div
+            className="fixed z-50 transition-all duration-300 ease-out"
+            style={{
+              bottom: `calc(env(safe-area-inset-bottom) + 12px)`,
+              left: "50%",
+              transform: `translateX(-50%) translateY(${navVisible ? "0" : "100px"})`,
+            }}
+          >
+            <div className={`flex items-center transition-all duration-300 bg-[#f5ede0]/95 backdrop-blur-xl shadow-2xl border border-[#e5d5c5] ${
+              navCompact ? "rounded-full px-4 py-2.5 gap-4" : "rounded-2xl px-3 py-2 gap-1"
+            }`}>
+              {navItems.map(({ id, icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setAdminSection(id)}
+                  className={`relative flex items-center justify-center cursor-pointer transition-all duration-200 ${
+                    navCompact ? "w-8 h-8" : "w-10 h-10 rounded-xl"
+                  } ${
+                    adminSection === id
+                      ? navCompact ? "text-[#2c1a10] scale-110" : "bg-[#2c1a10] text-[#f5ede0]"
+                      : "text-[#9a7060] hover:text-[#2c1a10]"
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={adminSection === id ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+                    {icon}
+                  </svg>
+                  {adminSection === id && !navCompact && (
+                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#f5ede0]" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── SETTINGS DATABASE MODAL ──────────────────── */}
       {settingsPanel && (
