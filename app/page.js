@@ -895,8 +895,9 @@ export default function MokaOrderPad() {
     const list = ordStatusFilter === "Tous" ? supplierOrders : supplierOrders.filter((o) => o.statut === ordStatusFilter);
     return [...list].sort((a, b) => String(b.dateCreation || "").localeCompare(String(a.dateCreation || "")));
   }, [supplierOrders, ordStatusFilter]);
-  const ordCriticalCount = ordNormalizedStock.filter((i) => String(i.status).toLowerCase().includes("critique")).length;
-  const ordAlertCount = ordNormalizedStock.filter((i) => { const s = String(i.status).toLowerCase(); return s.includes("stock bas") || s.includes("alerte") || s.includes("commander"); }).length;
+  const ordCriticalCount = stockLive.filter((item) => String(getStockStatus(item)).toLowerCase().includes("critique") && !isPrepaCategory(item)).length;
+  const ordACommanderCount = supplierOrders.filter((o) => o.statut === "À commander").length;
+  const ordEnvoyeCount = supplierOrders.filter((o) => o.statut === "Envoyé").length;
   const ordSupplierContact = (settingsCache.suppliers || []).find((s) => ordGetSupplierName(s) === ordSelectedSupplier);
   const ordIncludedItems = ordSupplierProducts.filter((p) => composeCart[p.id]?.included);
   const composeCartGroups = useMemo(() => {
@@ -1291,8 +1292,8 @@ export default function MokaOrderPad() {
       statut: orderValue(order, ["statut", "Statut", "property_statut"], "À commander"),
       source: orderValue(order, ["source", "Source", "property_source"], "OrderPad"),
       staff: orderValue(order, ["staff", "Staff", "property_staff"], "—"),
-      dateCreation: orderValue(order, ["dateCreation", "Date création", "property_date_cr_ation", "property_date_creation"], ""),
-      dateEnvoi: orderValue(order, ["dateEnvoi", "Envoyé le", "property_date_envoi", "property_envoy_le"], ""),
+      dateCreation: orderValue(order, ["date", "dateCreation", "Date création", "property_date_cr_ation", "property_date_creation"], ""),
+      dateEnvoi: orderValue(order, ["dateEnvoi", "date_envoi", "Envoyé le", "property_date_envoi", "property_envoy_le"], ""),
       message: orderValue(order, ["message", "Message envoyé", "property_message_envoy", "property_message_envoye", "commentaire"], ""),
     };
   };
@@ -3830,9 +3831,30 @@ export default function MokaOrderPad() {
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
-                  <OrdKpi title="🔴 Critiques" value={ordCriticalCount} desc="À commander maintenant" color="text-red-600" />
-                  <OrdKpi title="🟠 Alertes" value={ordAlertCount} desc="Stock bas bientôt" color="text-orange-500" />
-                  <OrdKpi title="📦 Historique" value={supplierOrders.length} desc="Commandes enregistrées" color="text-[#6f8f32]" />
+                  <button onClick={() => { setActiveTab("stock"); }} className="rounded-[1.1rem] bg-red-50 border border-red-100 p-3 shadow-sm text-left cursor-pointer hover:bg-red-100 transition-colors">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <div className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                      <div className="text-[11px] font-black text-red-600">Critiques</div>
+                    </div>
+                    <div className="text-2xl font-black text-red-600">{ordCriticalCount}</div>
+                    <div className="text-[10px] text-red-400 mt-0.5">produits stock</div>
+                  </button>
+                  <button onClick={() => { setOrderView("history"); setOrdStatusFilter("À commander"); }} className="rounded-[1.1rem] bg-orange-50 border border-orange-100 p-3 shadow-sm text-left cursor-pointer hover:bg-orange-100 transition-colors">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <div className="w-2 h-2 rounded-full bg-orange-400 shrink-0" />
+                      <div className="text-[11px] font-black text-orange-500">À commander</div>
+                    </div>
+                    <div className="text-2xl font-black text-orange-500">{ordACommanderCount}</div>
+                    <div className="text-[10px] text-orange-400 mt-0.5">commandes en attente</div>
+                  </button>
+                  <button onClick={() => { setOrderView("history"); setOrdStatusFilter("Envoyé"); }} className="rounded-[1.1rem] bg-[#f0f7e5] border border-[#c8dfa0] p-3 shadow-sm text-left cursor-pointer hover:bg-[#e4f2d4] transition-colors">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <div className="w-2 h-2 rounded-full bg-[#5a7828] shrink-0" />
+                      <div className="text-[11px] font-black text-[#5a7828]">Envoyées</div>
+                    </div>
+                    <div className="text-2xl font-black text-[#5a7828]">{ordEnvoyeCount}</div>
+                    <div className="text-[10px] text-[#7a9840] mt-0.5">commandes envoyées</div>
+                  </button>
                 </div>
 
                 <div className="flex gap-2 overflow-x-auto pb-1">
@@ -3986,35 +4008,65 @@ export default function MokaOrderPad() {
                   </div>
                 )}
 
-                {orderView === "history" && (
-                  <div className="space-y-3">
-                    <div className="flex gap-2 overflow-x-auto pb-1">
-                      {["Tous", "À commander", "Envoyé", "Reçu", "Annulé"].map((s) => (
-                        <button key={s} onClick={() => setOrdStatusFilter(s)} className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap transition ${ordStatusFilter === s ? "bg-[#6f8f32] text-white" : "bg-white border border-[#eadfd4] text-[#6b4a3d]"}`}>
-                          {s}
-                        </button>
+                {orderView === "history" && (() => {
+                  const formatDateSXM = (d) => {
+                    if (!d) return "—";
+                    const dt = new Date(d);
+                    if (isNaN(dt)) return "—";
+                    return dt.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "America/Puerto_Rico" });
+                  };
+                  const groupByMonth = (orders) => {
+                    const groups = {};
+                    orders.forEach((order) => {
+                      const d = new Date(order.dateCreation || order.dateEnvoi || "");
+                      const key = isNaN(d) ? "Sans date" : d.toLocaleDateString("fr-FR", { month: "long", year: "numeric", timeZone: "America/Puerto_Rico" });
+                      if (!groups[key]) groups[key] = [];
+                      groups[key].push(order);
+                    });
+                    return Object.entries(groups).sort(([a], [b]) => {
+                      if (a === "Sans date") return 1;
+                      if (b === "Sans date") return -1;
+                      return new Date("1 " + b) - new Date("1 " + a);
+                    });
+                  };
+                  const grouped = groupByMonth(ordFilteredOrders);
+                  return (
+                    <div className="space-y-1">
+                      <div className="flex gap-2 overflow-x-auto pb-1">
+                        {["Tous", "À commander", "Envoyé", "Reçu", "Annulé"].map((s) => (
+                          <button key={s} onClick={() => setOrdStatusFilter(s)} className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap transition ${ordStatusFilter === s ? "bg-[#6f8f32] text-white" : "bg-white border border-[#eadfd4] text-[#6b4a3d]"}`}>
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="text-xs text-[#a97862] font-bold pb-1">{ordFilteredOrders.length} commande{ordFilteredOrders.length !== 1 ? "s" : ""}</div>
+                      {grouped.map(([mois, orders]) => (
+                        <div key={mois}>
+                          <div className="text-xs font-black text-[#9a7060] uppercase tracking-wide px-1 py-2 mt-3 first:mt-0">{mois}</div>
+                          <div className="space-y-2">
+                            {orders.map((order) => (
+                              <div key={order.id} className="bg-white rounded-[1.1rem] border border-[#eadfd4] shadow-sm overflow-hidden">
+                                <div className="px-4 py-3 flex items-start justify-between gap-3">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <OrdStatusBadge status={order.statut} />
+                                      <span className="text-[11px] text-[#a97862]">{formatDateSXM(order.dateCreation || order.dateEnvoi)}</span>
+                                    </div>
+                                    <div className="font-black text-sm text-[#3b241b] truncate">{order.produit}</div>
+                                    <div className="text-[11px] text-[#a97862] mt-0.5 truncate">{order.fournisseur}</div>
+                                  </div>
+                                  <button onClick={() => setOrderDetail(order)} className="shrink-0 text-xs font-black text-[#6f8f32] border border-[#6f8f32] px-3 py-1.5 rounded-xl cursor-pointer">
+                                    Détail →
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
-                    <div className="text-xs text-[#a97862] font-bold">{ordFilteredOrders.length} commandes</div>
-                    {ordFilteredOrders.map((order) => (
-                      <div key={order.id} className="bg-white rounded-[1.1rem] border border-[#eadfd4] shadow-sm overflow-hidden">
-                        <div className="px-4 py-3 flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <OrdStatusBadge status={order.statut} />
-                              <span className="text-[11px] text-[#a97862]">{String(order.dateCreation || "").slice(0, 10) || "Sans date"} · {order.staff}</span>
-                            </div>
-                            <div className="font-black text-sm text-[#3b241b]">{order.produit}</div>
-                            <div className="text-[11px] text-[#a97862] mt-1 truncate">{order.fournisseur}</div>
-                          </div>
-                          <button onClick={() => setOrderDetail(order)} className="shrink-0 text-xs font-black text-[#6f8f32] border border-[#6f8f32] px-3 py-1.5 rounded-xl">
-                            Détail →
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  );
+                })()}
 
                 {orderView === "suppliers" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
