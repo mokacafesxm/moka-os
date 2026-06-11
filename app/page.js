@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const PRODUCTS_URL = "/api/products";
 
@@ -423,6 +423,16 @@ export default function MokaOrderPad() {
   const [creatingSettingsForm, setCreatingSettingsForm] = useState({});
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPin, setAdminPin] = useState("");
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [adminPinEnabled, setAdminPinEnabled] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("mokaAdminEnabled") !== "false";
+  });
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [pinSaveMsg, setPinSaveMsg] = useState("");
+  const [navVisible, setNavVisible] = useState(true);
+  const lastScrollY = useRef(0);
 
   const [showClockModal, setShowClockModal] = useState(false);
   const [clockNow, setClockNow] = useState(new Date());
@@ -1382,6 +1392,20 @@ export default function MokaOrderPad() {
     loadReports(reportsPeriode);
   }, [isAdmin, adminSection]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      if (currentY > lastScrollY.current + 10) {
+        setNavVisible(false);
+      } else if (currentY < lastScrollY.current - 10) {
+        setNavVisible(true);
+      }
+      lastScrollY.current = currentY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const sendChatMessage = async () => {
     const trimmed = chatInput.trim();
     if (!trimmed || chatLoading) return;
@@ -1831,7 +1855,10 @@ export default function MokaOrderPad() {
   };
 
   const unlockAdmin = () => {
-    if (adminPin === "3578") {
+    const adminEnabled = localStorage.getItem("mokaAdminEnabled") !== "false";
+    if (!adminEnabled) { alert("Mode admin désactivé ❌"); return; }
+    const savedPin = localStorage.getItem("mokaPinCode") || "3578";
+    if (adminPin === savedPin) {
       setIsAdmin(true);
       setShowAdminModal(false);
       setAdminPin("");
@@ -4508,6 +4535,17 @@ export default function MokaOrderPad() {
                     <p className="text-[11px] text-[#9a7060] mt-1">{desc}</p>
                   </button>
                 ))}
+                {/* Sécurité tile */}
+                <button
+                  onClick={() => { setShowSecurityModal(true); setPinSaveMsg(""); setNewPin(""); setConfirmPin(""); }}
+                  className="bg-white rounded-2xl p-5 border border-[#e5d5c5] shadow-sm text-left hover:shadow-md hover:border-[#d0c0b0] transition-all cursor-pointer active:scale-[0.98] group"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-[#f0e8dc] flex items-center justify-center text-[#6b4a3d] mb-3 group-hover:bg-[#2c1a10] group-hover:text-[#f5ede0] transition-all">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  </div>
+                  <div className="text-base font-black text-[#2c1a10]">Sécurité</div>
+                  <p className="text-[11px] text-[#9a7060] mt-1">PIN admin & accès</p>
+                </button>
               </div>
             )}
           </div>
@@ -4516,7 +4554,7 @@ export default function MokaOrderPad() {
 
       {/* ── ADMIN BOTTOM NAV ─────────────────────────── */}
       {isAdmin && (
-        <div className="fixed left-1/2 bottom-4 -translate-x-1/2 z-50 bg-[#2c1a10]/95 backdrop-blur-md border border-[#3d2518] shadow-2xl rounded-2xl px-2 py-2 flex items-center gap-1 max-w-[96vw]">
+        <div className={`fixed left-1/2 bottom-3 -translate-x-1/2 z-50 bg-[#2c1a10]/95 backdrop-blur-md border border-[#3d2518] shadow-2xl rounded-2xl px-2 py-2 flex items-center gap-1 max-w-[96vw] transition-transform duration-300 ${navVisible ? "translate-y-0" : "translate-y-24"}`}>
           {[
             { id: "dashboard", label: "Dashboard", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg> },
             { id: "products", label: "Produits", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg> },
@@ -5262,6 +5300,92 @@ export default function MokaOrderPad() {
                   </div>
                 );
               })}
+          </div>
+        </div>
+      )}
+
+      {/* ── SECURITY MODAL ───────────────────────────── */}
+      {showSecurityModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl border border-[#e5d5c5] w-full max-w-sm p-6 relative">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#2c1a10] via-[#6b4a3d] to-[#5a7828] rounded-t-3xl" />
+            <button onClick={() => setShowSecurityModal(false)} className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#6b4a3d] hover:bg-[#e5d5c5] transition-all cursor-pointer">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+            </button>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-11 h-11 rounded-2xl bg-[#2c1a10] flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <div>
+                <div className="text-base font-black text-[#2c1a10]">Sécurité & Accès Admin</div>
+                <p className="text-[11px] text-[#9a7060]">PIN et activation du mode admin</p>
+              </div>
+            </div>
+
+            {/* Toggle mode admin */}
+            <div className="bg-[#f7f3ef] rounded-2xl p-4 mb-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-black text-[#2c1a10]">Mode admin activé</div>
+                  <p className="text-[10px] text-[#9a7060] mt-0.5">Si désactivé, le mode admin ne peut pas être ouvert</p>
+                </div>
+                <button
+                  onClick={() => {
+                    const next = !adminPinEnabled;
+                    setAdminPinEnabled(next);
+                    localStorage.setItem("mokaAdminEnabled", String(next));
+                  }}
+                  className={`relative w-12 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${adminPinEnabled ? "bg-[#5a7828]" : "bg-[#d5c5b5]"}`}
+                >
+                  <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${adminPinEnabled ? "translate-x-6" : "translate-x-0.5"}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Change PIN */}
+            <div className="bg-[#f7f3ef] rounded-2xl p-4 space-y-3">
+              <div className="text-sm font-black text-[#2c1a10]">Changer le code PIN</div>
+              <div>
+                <label className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Nouveau code (4 chiffres)</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={newPin}
+                  onChange={(e) => { setNewPin(e.target.value.replace(/\D/g, "")); setPinSaveMsg(""); }}
+                  placeholder="••••"
+                  className="mt-1 w-full bg-white border border-[#e5d5c5] rounded-xl px-3 py-2.5 text-sm text-[#2c1a10] font-mono tracking-[0.4em] outline-none focus:border-[#2c1a10] transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Confirmer le code</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={confirmPin}
+                  onChange={(e) => { setConfirmPin(e.target.value.replace(/\D/g, "")); setPinSaveMsg(""); }}
+                  placeholder="••••"
+                  className="mt-1 w-full bg-white border border-[#e5d5c5] rounded-xl px-3 py-2.5 text-sm text-[#2c1a10] font-mono tracking-[0.4em] outline-none focus:border-[#2c1a10] transition-all"
+                />
+              </div>
+              {pinSaveMsg && (
+                <p className={`text-xs font-bold ${pinSaveMsg.startsWith("✅") ? "text-[#5a7828]" : "text-red-600"}`}>{pinSaveMsg}</p>
+              )}
+              <button
+                onClick={() => {
+                  if (newPin.length !== 4) { setPinSaveMsg("Le code doit faire 4 chiffres."); return; }
+                  if (newPin !== confirmPin) { setPinSaveMsg("Les codes ne correspondent pas."); return; }
+                  localStorage.setItem("mokaPinCode", newPin);
+                  setPinSaveMsg("✅ Code mis à jour");
+                  setNewPin("");
+                  setConfirmPin("");
+                }}
+                className="w-full bg-[#2c1a10] text-[#f5ede0] rounded-xl py-2.5 text-sm font-black hover:bg-[#3d2518] transition-all cursor-pointer active:scale-[0.98]"
+              >
+                Enregistrer
+              </button>
+            </div>
           </div>
         </div>
       )}
