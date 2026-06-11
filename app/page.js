@@ -433,6 +433,8 @@ export default function MokaOrderPad() {
   const [pinSaveMsg, setPinSaveMsg] = useState("");
   const [navVisible, setNavVisible] = useState(true);
   const lastScrollY = useRef(0);
+  const [deviceType, setDeviceType] = useState("desktop");
+  const [showMobileCart, setShowMobileCart] = useState(false);
 
   const [showClockModal, setShowClockModal] = useState(false);
   const [clockNow, setClockNow] = useState(new Date());
@@ -1404,6 +1406,18 @@ export default function MokaOrderPad() {
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const detect = () => {
+      const w = window.innerWidth;
+      if (w < 430) setDeviceType("iphone");
+      else if (w <= 1024) setDeviceType("ipad");
+      else setDeviceType("desktop");
+    };
+    detect();
+    window.addEventListener("resize", detect);
+    return () => window.removeEventListener("resize", detect);
   }, []);
 
   const sendChatMessage = async () => {
@@ -2754,6 +2768,9 @@ export default function MokaOrderPad() {
     }
   };
 
+  const isIphone = deviceType === "iphone";
+  const isIpad = deviceType === "ipad";
+
   return (
     <main className="min-h-screen bg-[#f5ede0] text-[#1a1008]" style={{fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"}}>
 
@@ -2762,9 +2779,9 @@ export default function MokaOrderPad() {
         <div className="max-w-screen-2xl mx-auto flex items-center justify-between gap-3">
 
           {/* Brand gauche */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="w-10 h-10 rounded-2xl bg-[#2c1a10] flex items-center justify-center shadow-md">
-              <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-[#f5ede0]" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className={`rounded-2xl bg-[#2c1a10] flex items-center justify-center shadow-md ${isIphone ? "w-8 h-8" : "w-10 h-10"}`}>
+              <svg viewBox="0 0 24 24" fill="none" className={`text-[#f5ede0] ${isIphone ? "w-4 h-4" : "w-5 h-5"}`} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17 8h1a4 4 0 0 1 0 8h-1"/>
                 <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/>
                 <line x1="6" x2="6" y1="2" y2="4"/>
@@ -2772,10 +2789,12 @@ export default function MokaOrderPad() {
                 <line x1="14" x2="14" y1="2" y2="4"/>
               </svg>
             </div>
-            <div>
-              <div className="font-black text-[#2c1a10] text-base leading-none tracking-tight">MÖKA</div>
-              <div className="text-[10px] text-[#9a7060] tracking-[0.25em] uppercase mt-0.5">Order Pad</div>
-            </div>
+            {!isIphone && (
+              <div>
+                <div className="font-black text-[#2c1a10] text-base leading-none tracking-tight">MÖKA</div>
+                <div className="text-[10px] text-[#9a7060] tracking-[0.25em] uppercase mt-0.5">Order Pad</div>
+              </div>
+            )}
           </div>
 
           {/* Centre : Pointage */}
@@ -2808,13 +2827,13 @@ export default function MokaOrderPad() {
                   .finally(() => setLoadingClockStaff(false));
               }
             }}
-            className="relative h-10 px-4 rounded-xl bg-white border-2 border-[#e85d8a] text-[#e85d8a] font-black text-sm shadow-sm ring-2 ring-[#e85d8a]/25 hover:bg-[#fff0f5] transition-all cursor-pointer flex items-center gap-2"
+            className={`relative rounded-xl bg-white border-2 border-[#e85d8a] text-[#e85d8a] font-black text-sm shadow-sm ring-2 ring-[#e85d8a]/25 hover:bg-[#fff0f5] transition-all cursor-pointer flex items-center gap-2 ${isIphone ? "h-9 px-2.5" : "h-10 px-4"}`}
           >
             <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#e85d8a] animate-ping opacity-75" />
             <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/><path d="M9.5 2.5h5"/><path d="M12 2v2.5"/>
             </svg>
-            Pointage
+            {!isIphone && "Pointage"}
           </button>
 
           {/* Admin droite */}
@@ -2828,7 +2847,7 @@ export default function MokaOrderPad() {
                 setShowAdminModal(true);
               }
             }}
-            className={`h-10 px-3.5 rounded-xl font-bold text-xs border shadow-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer ${
+            className={`rounded-xl font-bold text-xs border shadow-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer ${isIphone ? "h-9 px-2.5" : "h-10 px-3.5"} ${
               isAdmin
                 ? "bg-[#5a7828] text-white border-[#5a7828] hover:bg-[#4e6a22]"
                 : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:bg-[#f0e4d4]"
@@ -2839,7 +2858,7 @@ export default function MokaOrderPad() {
             ) : (
               <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             )}
-            <span>{isAdmin ? "Admin ON" : "Admin"}</span>
+            {!isIphone && <span>{isAdmin ? "Admin ON" : "Admin"}</span>}
           </button>
         </div>
       </header>
@@ -2853,7 +2872,7 @@ export default function MokaOrderPad() {
               setActiveTab("orderpad");
               if (!activeCategory && categories[0]) setActiveCategory(categories[0]);
             }}
-            className={`h-10 px-4 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer flex items-center gap-2 ${
+            className={`${isIphone ? "h-8 px-3 text-[11px]" : "h-10 px-4 text-xs"} rounded-xl font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === "orderpad"
                 ? "bg-[#2c1a10] text-white shadow-md"
                 : "text-[#6b4a3d] hover:bg-[#f0e4d4]"
@@ -2865,7 +2884,7 @@ export default function MokaOrderPad() {
 
           <button
             onClick={() => setActiveTab("stock")}
-            className={`h-10 px-4 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-2 cursor-pointer ${
+            className={`${isIphone ? "h-8 px-3 text-[11px]" : "h-10 px-4 text-xs"} rounded-xl font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === "stock"
                 ? "bg-[#2c1a10] text-white shadow-md"
                 : "text-[#6b4a3d] hover:bg-[#f0e4d4]"
@@ -2878,7 +2897,7 @@ export default function MokaOrderPad() {
 
           <button
             onClick={() => setActiveTab("preps")}
-            className={`h-10 px-4 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-2 cursor-pointer ${
+            className={`${isIphone ? "h-8 px-3 text-[11px]" : "h-10 px-4 text-xs"} rounded-xl font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-2 cursor-pointer ${
               activeTab === "preps"
                 ? "bg-[#2c1a10] text-white shadow-md"
                 : "text-[#6b4a3d] hover:bg-[#f0e4d4]"
@@ -2935,7 +2954,7 @@ export default function MokaOrderPad() {
 
           {/* ── MAIN SECTION ─────────────────────────── */}
           <section className={
-            isAdmin && adminSection !== "dashboard" && ["products", "inventory", "settings", "orders", "reports"].includes(adminSection)
+            (isAdmin && adminSection !== "dashboard" && ["products", "inventory", "settings", "orders", "reports"].includes(adminSection)) || isIphone
               ? "col-span-12"
               : "col-span-12 sm:col-span-8 xl:col-span-9"
           }>
@@ -3458,7 +3477,7 @@ export default function MokaOrderPad() {
           </section>
 
           {/* ── CART / ASIDE ─────────────────────────── */}
-          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 ${(activeTab === "stock" && stockView === "stock") || (isAdmin && adminSection !== "dashboard" && ["products", "inventory", "settings", "orders", "reports"].includes(adminSection)) ? "hidden" : ""}`}>
+          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 ${isIphone || (activeTab === "stock" && stockView === "stock") || (isAdmin && adminSection !== "dashboard" && ["products", "inventory", "settings", "orders", "reports"].includes(adminSection)) ? "hidden" : ""}`}>
             <div className="bg-white rounded-2xl border border-[#ddc9b5] shadow-md sm:sticky sm:top-[72px] overflow-hidden">
               {/* Cart header */}
               <div className="px-4 py-3.5 border-b border-[#f0e8dc] bg-[#faf5ef]">
@@ -3606,6 +3625,100 @@ export default function MokaOrderPad() {
           </aside>
         </div>
       </div>
+
+      {/* ── MOBILE CART FAB (iPhone) ─────────────────── */}
+      {isIphone && cartItems.length > 0 && !showMobileCart && (
+        <button
+          onClick={() => setShowMobileCart(true)}
+          className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-[#5a7828] text-white shadow-xl flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+          <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">{cartItems.length}</span>
+        </button>
+      )}
+
+      {/* ── MOBILE CART DRAWER (iPhone) ──────────────── */}
+      {isIphone && showMobileCart && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="flex-1 bg-black/50" onClick={() => setShowMobileCart(false)} />
+          <div className="bg-white rounded-t-3xl shadow-2xl max-h-[80vh] overflow-y-auto" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+            <div className="w-10 h-1 bg-[#e5d5c5] rounded-full mx-auto mt-3 mb-1" />
+            {/* Cart header */}
+            <div className="px-4 py-3 border-b border-[#f0e8dc] bg-[#faf5ef] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-xl bg-[#2c1a10] flex items-center justify-center">
+                  <svg className="w-3.5 h-3.5 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+                </div>
+                <div className="text-sm font-black text-[#2c1a10]">
+                  {activeTab === "stock" ? "Envoyer en prépa" : activeTab === "preps" ? "Confirmer la prépa" : "Action du jour"}
+                </div>
+              </div>
+              <button onClick={() => setShowMobileCart(false)} className="w-7 h-7 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#6b4a3d] cursor-pointer">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              {/* Staff selector */}
+              <div>
+                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Membre du staff</label>
+                <select
+                  value={selectedStaff}
+                  onChange={(e) => setSelectedStaff(e.target.value)}
+                  className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-3 py-2.5 text-sm font-semibold text-[#2c1a10] outline-none cursor-pointer"
+                >
+                  <option value="">Sélectionner…</option>
+                  {staff.map((member) => (
+                    <option key={member.id || getStaffName(member)} value={member.id || getStaffName(member)}>
+                      {getStaffName(member)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {/* Cart items */}
+              <div>
+                {cartItems.length > 0 && (
+                  <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-2 flex items-center justify-between">
+                    <span>Sélection</span>
+                    <span className="bg-[#2c1a10] text-[#f5ede0] rounded-full w-5 h-5 flex items-center justify-center text-[9px] font-black">{cartItems.length}</span>
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  {cartItems.map((item) => (
+                    <div key={item.id} className="flex justify-between gap-2 items-center px-3 py-2.5 rounded-xl bg-[#faf5ef] border border-[#ede0d0]">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-black text-[#2c1a10] truncate">{item.name}</div>
+                        <div className="text-[10px] text-[#9a7060]">{item.type === "prep" ? "Préparation interne" : getSupplier(item)}</div>
+                      </div>
+                      <div className="text-xs font-black text-[#4a6620] whitespace-nowrap shrink-0 bg-[#f0f7e5] px-2 py-0.5 rounded-md border border-[#c8dfa0]">{item.qty} {item.unit}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Send button */}
+              <button
+                onClick={() => { sendToMokaOS(); setShowMobileCart(false); }}
+                disabled={cartItems.length === 0 || sending}
+                className={`w-full py-3.5 rounded-xl text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                  cartItems.length === 0
+                    ? "bg-[#ede0d4] text-[#b09080] cursor-not-allowed"
+                    : "bg-[#2c1a10] text-[#f5ede0] shadow-lg hover:bg-[#1e100a] active:scale-[0.98]"
+                }`}
+              >
+                {sending ? (
+                  <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Envoi…</>
+                ) : activeTab === "stock" ? (
+                  <>Envoyer en préparation</>
+                ) : activeTab === "preps" ? (
+                  <>Confirmer comme fait</>
+                ) : (
+                  <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Envoyer vers MOKA-OS</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── ADMIN PANEL (fullscreen overlay) ────────── */}
       {isAdmin && adminSection !== "dashboard" && (
@@ -4554,7 +4667,10 @@ export default function MokaOrderPad() {
 
       {/* ── ADMIN BOTTOM NAV ─────────────────────────── */}
       {isAdmin && (
-        <div className={`fixed left-1/2 bottom-3 -translate-x-1/2 z-50 bg-[#2c1a10]/95 backdrop-blur-md border border-[#3d2518] shadow-2xl rounded-2xl px-2 py-2 flex items-center gap-1 max-w-[96vw] transition-transform duration-300 ${navVisible ? "translate-y-0" : "translate-y-24"}`}>
+        <div
+          className={`fixed left-1/2 bottom-3 -translate-x-1/2 z-50 bg-[#2c1a10]/95 backdrop-blur-md border border-[#3d2518] shadow-2xl rounded-2xl px-2 py-2 flex items-center gap-1 max-w-[96vw] transition-transform duration-300 ${navVisible ? "translate-y-0" : "translate-y-24"}`}
+          style={isIphone ? { paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" } : undefined}
+        >
           {[
             { id: "dashboard", label: "Dashboard", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg> },
             { id: "products", label: "Produits", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg> },
