@@ -5442,18 +5442,29 @@ export default function MokaOrderPad() {
         <div className="fixed inset-0 z-50 bg-[#f5ede0] overflow-y-auto">
 
           {/* Header sticky */}
-          <div className="sticky top-0 bg-[#f5ede0] border-b border-[#e5d5c5] px-4 py-4 flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-black text-[#2c1a10]">⏱ Pointage</h1>
-              <div className="text-[#e85d8a] font-bold tabular-nums text-sm">
-                {clockNow.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
-                {" · "}
-                {clockNow.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+          <div
+            className="sticky top-0 z-10 bg-[#f5ede0]/95 backdrop-blur border-b border-[#e5d5c5] px-4 pb-3 shrink-0"
+            style={{ paddingTop: "env(safe-area-inset-top)" }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">MÖKA OS</div>
+                <h1 className="text-xl font-black text-[#2c1a10]">⏱ Pointage</h1>
+                <div className="text-xs text-[#e85d8a] font-bold mt-0.5 tabular-nums">
+                  {clockNow.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                  {" · "}
+                  {clockNow.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                </div>
               </div>
+              <button
+                onClick={() => setShowClockModal(false)}
+                className="w-10 h-10 rounded-2xl bg-white border border-[#e5d5c5] flex items-center justify-center text-[#9a7060] hover:bg-[#f0e4d4] transition-colors cursor-pointer shadow-sm"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
             </div>
-            <button onClick={() => setShowClockModal(false)} className="w-12 h-12 rounded-2xl bg-white border border-[#e5d5c5] flex items-center justify-center text-2xl cursor-pointer hover:bg-[#f0e8dc] transition-colors">
-              ×
-            </button>
           </div>
 
           {/* Staff cards */}
