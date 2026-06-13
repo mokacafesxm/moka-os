@@ -953,7 +953,7 @@ export default function MokaOrderPad() {
   };
 
   const sendClockAction = async (member, action) => {
-    const staffId = member.id || getStaffName(member);
+    const staffId = getStaffName(member);
     const staffName = getStaffName(member);
 
     setClockSending(true);
@@ -1436,6 +1436,10 @@ export default function MokaOrderPad() {
         .then(r => r.json())
         .then(data => { const list = normalizeArray(data, "preps"); setPreps(list); localStorage.setItem("mokaPrepsCache", JSON.stringify(list)); })
         .catch(() => {});
+      fetch("/api/clock-status")
+        .then(r => r.json())
+        .then(statuses => { if (Object.keys(statuses).length > 0) setClockStatuses(statuses); })
+        .catch(() => {});
       setLastSync(new Date());
     };
     const interval = setInterval(poll, 30000);
@@ -1456,6 +1460,10 @@ export default function MokaOrderPad() {
       fetch(PREPS_URL)
         .then(r => r.json())
         .then(data => { const list = normalizeArray(data, "preps"); setPreps(list); })
+        .catch(() => {});
+      fetch("/api/clock-status")
+        .then(r => r.json())
+        .then(statuses => { if (Object.keys(statuses).length > 0) setClockStatuses(statuses); })
         .catch(() => {});
       setLastSync(new Date());
     };
@@ -2878,6 +2886,13 @@ export default function MokaOrderPad() {
                   .catch(() => {})
                   .finally(() => setLoadingClockStaff(false));
               }
+              // Charge les statuts du jour depuis Notion
+              fetch("/api/clock-status")
+                .then(r => r.json())
+                .then(statuses => {
+                  if (Object.keys(statuses).length > 0) setClockStatuses(statuses);
+                })
+                .catch(() => {});
             }}
             className={`relative rounded-xl bg-white border-2 border-[#e85d8a] text-[#e85d8a] font-black text-sm shadow-sm ring-2 ring-[#e85d8a]/25 hover:bg-[#fff0f5] transition-all cursor-pointer flex items-center gap-2 ${isIphone ? "h-9 px-2.5" : "h-10 px-4"}`}
           >
@@ -5457,7 +5472,7 @@ export default function MokaOrderPad() {
                 </div>
               )}
               {(staff.length ? staff : (settingsCache.staff || [])).map((member) => {
-                const staffId = member.id || getStaffName(member);
+                const staffId = getStaffName(member);
                 const staffName = getStaffName(member);
                 const status = clockStatuses[staffId] || "absent";
                 const statusConfig = {
