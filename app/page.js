@@ -436,6 +436,7 @@ export default function MokaOrderPad() {
   const lastScrollY = useRef(0);
   const [deviceType, setDeviceType] = useState("desktop");
   const [showMobileCart, setShowMobileCart] = useState(false);
+  const [lastSync, setLastSync] = useState(new Date());
 
   const [showClockModal, setShowClockModal] = useState(false);
   const [clockNow, setClockNow] = useState(new Date());
@@ -1419,6 +1420,47 @@ export default function MokaOrderPad() {
     detect();
     window.addEventListener("resize", detect);
     return () => window.removeEventListener("resize", detect);
+  }, []);
+
+  useEffect(() => {
+    const poll = () => {
+      fetch(STAFF_URL)
+        .then(r => r.json())
+        .then(data => { const list = normalizeArray(data, "staff"); if (list.length) setStaff(list); })
+        .catch(() => {});
+      fetch(STOCK_URL)
+        .then(r => r.json())
+        .then(data => { const fresh = normalizeArray(data, "stock"); setStockLive(fresh); localStorage.setItem("mokaStockCache", JSON.stringify(fresh)); })
+        .catch(() => {});
+      fetch(PREPS_URL)
+        .then(r => r.json())
+        .then(data => { const list = normalizeArray(data, "preps"); setPreps(list); localStorage.setItem("mokaPrepsCache", JSON.stringify(list)); })
+        .catch(() => {});
+      setLastSync(new Date());
+    };
+    const interval = setInterval(poll, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      fetch(STAFF_URL)
+        .then(r => r.json())
+        .then(data => { const list = normalizeArray(data, "staff"); if (list.length) setStaff(list); })
+        .catch(() => {});
+      fetch(STOCK_URL)
+        .then(r => r.json())
+        .then(data => { const fresh = normalizeArray(data, "stock"); setStockLive(fresh); })
+        .catch(() => {});
+      fetch(PREPS_URL)
+        .then(r => r.json())
+        .then(data => { const list = normalizeArray(data, "preps"); setPreps(list); })
+        .catch(() => {});
+      setLastSync(new Date());
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
   const sendChatMessage = async () => {
@@ -2800,6 +2842,9 @@ export default function MokaOrderPad() {
               <div>
                 <div className="font-black text-[#2c1a10] text-base leading-none tracking-tight">MÖKA</div>
                 <div className="text-[10px] text-[#9a7060] tracking-[0.25em] uppercase mt-0.5">Order Pad</div>
+                <div className="text-[9px] text-[#9a7060]">
+                  Sync {lastSync.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Puerto_Rico" })}
+                </div>
               </div>
             )}
           </div>
