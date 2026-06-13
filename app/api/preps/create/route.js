@@ -10,7 +10,7 @@ export async function POST(request) {
     const items = Array.isArray(body) ? body : [body];
 
     const results = await Promise.all(items.map(async (item) => {
-      const { produit, quantite, unite, priorite, statut, staffName, staffId, source, dueDate } = item;
+      const { produit, quantite, unite, priorite, statut, staffName, staffId, source, dueDate, station } = item;
 
       const properties = {
         "Action":            titleProp(`Préparer ${produit || "Préparation"}`),
@@ -19,6 +19,7 @@ export async function POST(request) {
         "Priorité":          selectProp(priorite || "Normale"),
         "Statut":            selectProp(statut || "À faire"),
         "Source alerte":     selectProp(source || "Stock Live"),
+        "Station":           selectProp(station || "Cuisine"),
         "Staff":             textProp(staffName || ""),
         "Commentaire":       textProp("Créé depuis Stock Live MOKA OS"),
       };

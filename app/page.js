@@ -437,6 +437,14 @@ export default function MokaOrderPad() {
   const [deviceType, setDeviceType] = useState("desktop");
   const [showMobileCart, setShowMobileCart] = useState(false);
   const [lastSync, setLastSync] = useState(new Date());
+  const [prepsStation, setPrepsStation] = useState("all");
+  const [showNewPrepModal, setShowNewPrepModal] = useState(false);
+  const [newPrepForm, setNewPrepForm] = useState({
+    produit: "", quantite: 1, unite: "kg", priorite: "Normale",
+    station: "Cuisine", dueDate: new Date().toISOString().slice(0, 10), staffName: "",
+  });
+  const [newPrepSearch, setNewPrepSearch] = useState("");
+  const [savingNewPrep, setSavingNewPrep] = useState(false);
 
   const [showClockModal, setShowClockModal] = useState(false);
   const [clockNow, setClockNow] = useState(new Date());
@@ -650,6 +658,26 @@ export default function MokaOrderPad() {
       return getDate(a).localeCompare(getDate(b));
     });
   }, [preps]);
+
+  const filteredPreps = useMemo(() => {
+    if (prepsStation === "all") return preps;
+    return preps.filter((p) => {
+      const s = String(p.station || p.type || p.category || "").toLowerCase();
+      return prepsStation === "bar" ? s.includes("bar") : s.includes("cuisine") || !s.includes("bar");
+    });
+  }, [preps, prepsStation]);
+
+  const prepsByStatus = useMemo(() => ({
+    urgent: filteredPreps.filter((p) =>
+      String(getPrepPriority(p)).toLowerCase().includes("haute") &&
+      getPrepStatus(p).toLowerCase() === "à faire"
+    ),
+    todo: filteredPreps.filter((p) =>
+      !String(getPrepPriority(p)).toLowerCase().includes("haute") &&
+      getPrepStatus(p).toLowerCase() === "à faire"
+    ),
+    done: filteredPreps.filter((p) => getPrepStatus(p).toLowerCase() === "fait"),
+  }), [filteredPreps]);
 
   const addProduct = (product) => {
     setCart((prev) => ({
@@ -2822,6 +2850,74 @@ export default function MokaOrderPad() {
   const isIphone = deviceType === "iphone";
   const isIpad = deviceType === "ipad";
 
+  const renderPrepCard = (prep) => {
+    const id = prep.id || getPrepName(prep);
+    const selected = !!cart[id];
+    const qty = getPrepQuantity(prep);
+    const unit = getPrepUnit(prep);
+    const status = getPrepStatus(prep);
+    const priority = getPrepPriority(prep);
+    const isUrgent = String(priority).toLowerCase().includes("urgent") || String(priority).toLowerCase().includes("haute");
+
+    return (
+      <div key={id} className={`rounded-2xl border overflow-hidden transition-all duration-200 cursor-pointer active:scale-[0.98] ${
+        selected ? "bg-[#4a6620] text-white border-[#4a6620] shadow-xl ring-2 ring-[#5a7828]/40"
+                 : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:shadow-lg hover:border-[#c8b8a8]"
+      }`}>
+        {isUrgent && <div className="h-1.5 bg-gradient-to-r from-orange-500 to-amber-400" />}
+        <button onClick={() => selected ? removeItem(id) : addPrep(prep)} className="w-full text-left p-4 cursor-pointer">
+          <div className="flex items-start justify-between gap-2 mb-2.5">
+            <div className="flex-1 min-w-0">
+              {isUrgent && (
+                <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold mb-1.5 ${
+                  selected ? "bg-white/20 text-white" : "bg-orange-50 text-orange-700 border border-orange-200"
+                }`}>
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  {priority}
+                </div>
+              )}
+              <h3 className="text-sm font-black leading-tight">{getPrepName(prep)}</h3>
+              {prep.assignedTo && <div className={`text-[10px] mt-0.5 ${selected ? "text-white/60" : "text-[#9a7060]"}`}>→ {prep.assignedTo}</div>}
+            </div>
+            {!isUrgent && <div className={`text-[10px] text-right shrink-0 ${selected ? "text-white/60" : "text-[#9a7060]"}`}>{priority}</div>}
+          </div>
+          <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/10 border border-white/20" : "bg-[#faf5ef] border border-[#ede0d0]"}`}>
+            <div className={`text-[10px] font-semibold mb-0.5 uppercase tracking-wide ${selected ? "text-white/60" : "text-[#9a7060]"}`}>Quantité</div>
+            <div className="text-xl font-black">{qty} <span className={`text-sm font-semibold ${selected ? "text-white/70" : "text-[#6b4a3d]"}`}>{unit}</span></div>
+            <div className={`text-[10px] mt-1 font-medium ${selected ? "text-white/50" : "text-[#9a7060]"}`}>{status}</div>
+            {getPrepDueDate(prep) && (
+              <div className={`text-[10px] mt-0.5 flex items-center gap-1 ${selected ? "text-white/50" : "text-[#9a7060]"}`}>
+                <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                {getPrepDueDate(prep).split("-").reverse().join("/")}
+              </div>
+            )}
+          </div>
+          <div className={`flex items-center justify-between text-xs font-semibold ${selected ? "text-white/70" : "text-[#9a7060]"}`}>
+            <span className="flex items-center gap-1">
+              {selected ? <><svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Ajouté</> : "Toucher pour ajouter"}
+            </span>
+            <span className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-sm ${
+              selected ? "bg-white/20" : "bg-[#f0f7e5] text-[#5a7828] border border-[#c8dfa0]"
+            }`}>
+              {selected
+                ? <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+              }
+            </span>
+          </div>
+        </button>
+        {isAdmin && (
+          <button onClick={() => openSettings(prep)} className={`flex w-full items-center gap-1.5 px-4 pb-3 text-[10px] font-bold text-left cursor-pointer transition-colors ${
+            selected ? "text-white/60 hover:text-white" : "text-[#9a7060] hover:text-[#2c1a10]"
+          }`}>
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            Réglages
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <main
       className="min-h-screen bg-[#f5ede0] text-[#1a1008]"
@@ -3439,7 +3535,19 @@ export default function MokaOrderPad() {
 
             {/* ── PREPS TAB ──── */}
             {activeTab === "preps" && (
-              <>
+              <div className="space-y-4">
+                {/* Toggle Bar / Cuisine */}
+                <div className="flex bg-white rounded-2xl p-1 border border-[#e5d5c5] shadow-sm gap-1">
+                  {[["all", "🍽️ Tout"], ["bar", "☕ Bar"], ["cuisine", "👨‍🍳 Cuisine"]].map(([val, label]) => (
+                    <button key={val} onClick={() => setPrepsStation(val)}
+                      className={`flex-1 py-2.5 rounded-xl text-xs font-black cursor-pointer transition-all ${
+                        prepsStation === val ? "bg-[#2c1a10] text-white shadow-md" : "text-[#9a7060] hover:bg-[#faf5ef]"
+                      }`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
                 {loadingPreps ? (
                   <div className="bg-white rounded-2xl p-12 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
                     <div className="flex justify-center mb-3">
@@ -3447,116 +3555,61 @@ export default function MokaOrderPad() {
                     </div>
                     <div className="font-semibold text-sm">Chargement des préparations…</div>
                   </div>
-                ) : preps.length === 0 ? (
-                  <div className="bg-white rounded-2xl p-12 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
-                    <div className="flex justify-center mb-3">
-                      <svg className="w-8 h-8 text-[#5a7828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    </div>
-                    <div className="font-semibold text-sm">Aucune préparation à faire.</div>
-                  </div>
                 ) : (
-                  <div className="space-y-6">
-                    {groupedPreps.map(([category, prepsInGroup]) => (
-                      <div key={category}>
-                        <div className="flex items-center gap-3 mb-3">
-                          <span className={`text-sm font-black ${
-                            category.includes("aujourd'hui") ? "text-red-600" :
-                            category.includes("demain") ? "text-orange-500" : "text-[#2c1a10]"
-                          }`}>{category}</span>
-                          <div className="flex-1 h-px bg-[#e0d0c0]" />
-                          <span className="text-[11px] font-semibold text-[#9a7060]">{prepsInGroup.length}</span>
+                  <>
+                    {/* Urgentes */}
+                    {prepsByStatus.urgent.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                          <span className="text-xs font-black text-red-600 uppercase tracking-wide">Urgent — {prepsByStatus.urgent.length}</span>
+                          <div className="flex-1 h-px bg-red-100" />
                         </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-                          {prepsInGroup.map((prep) => {
-                            const id = prep.id || getPrepName(prep);
-                            const selected = !!cart[id];
-                            const qty = getPrepQuantity(prep);
-                            const unit = getPrepUnit(prep);
-                            const status = getPrepStatus(prep);
-                            const priority = getPrepPriority(prep);
-                            const isUrgent = String(priority).toLowerCase().includes("urgent") || String(priority).toLowerCase().includes("haute");
-
-                            return (
-                              <div
-                                key={id}
-                                className={`rounded-2xl border overflow-hidden transition-all duration-200 cursor-pointer active:scale-[0.98] ${
-                                  selected
-                                    ? "bg-[#4a6620] text-white border-[#4a6620] shadow-xl ring-2 ring-[#5a7828]/40"
-                                    : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:shadow-lg hover:border-[#c8b8a8]"
-                                }`}
-                              >
-                                {isUrgent && <div className="h-1.5 bg-gradient-to-r from-orange-500 to-amber-400" />}
-
-                                <button
-                                  onClick={() => selected ? removeItem(id) : addPrep(prep)}
-                                  className="w-full text-left p-4 cursor-pointer"
-                                >
-                                  <div className="flex items-start justify-between gap-2 mb-2.5">
-                                    <div className="flex-1 min-w-0">
-                                      {isUrgent && (
-                                        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold mb-1.5 ${
-                                          selected ? "bg-white/20 text-white" : "bg-orange-50 text-orange-700 border border-orange-200"
-                                        }`}>
-                                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                                          {priority}
-                                        </div>
-                                      )}
-                                      <h3 className="text-sm font-black leading-tight">{getPrepName(prep)}</h3>
-                                    </div>
-                                    {!isUrgent && <div className={`text-[10px] text-right shrink-0 ${selected ? "text-white/60" : "text-[#9a7060]"}`}>{priority}</div>}
-                                  </div>
-
-                                  <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/10 border border-white/20" : "bg-[#faf5ef] border border-[#ede0d0]"}`}>
-                                    <div className={`text-[10px] font-semibold mb-0.5 uppercase tracking-wide ${selected ? "text-white/60" : "text-[#9a7060]"}`}>Quantité</div>
-                                    <div className="text-xl font-black">{qty} <span className={`text-sm font-semibold ${selected ? "text-white/70" : "text-[#6b4a3d]"}`}>{unit}</span></div>
-                                    <div className={`text-[10px] mt-1 font-medium ${selected ? "text-white/50" : "text-[#9a7060]"}`}>{status}</div>
-                                    {getPrepDueDate(prep) && (
-                                      <div className={`text-[10px] mt-0.5 flex items-center gap-1 ${selected ? "text-white/50" : "text-[#9a7060]"}`}>
-                                        <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-                                        {getPrepDueDate(prep).split("-").reverse().join("/")}
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  <div className={`flex items-center justify-between text-xs font-semibold ${selected ? "text-white/70" : "text-[#9a7060]"}`}>
-                                    <span className="flex items-center gap-1">
-                                      {selected ? (
-                                        <><svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Ajouté</>
-                                      ) : "Toucher pour ajouter"}
-                                    </span>
-                                    <span className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-sm ${
-                                      selected ? "bg-white/20" : "bg-[#f0f7e5] text-[#5a7828] border border-[#c8dfa0]"
-                                    }`}>
-                                      {selected ? (
-                                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                      ) : (
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
-                                      )}
-                                    </span>
-                                  </div>
-                                </button>
-
-                                {isAdmin && (
-                                  <button
-                                    onClick={() => openSettings(prep)}
-                                    className={`flex w-full items-center gap-1.5 px-4 pb-3 text-[10px] font-bold text-left cursor-pointer transition-colors ${
-                                      selected ? "text-white/60 hover:text-white" : "text-[#9a7060] hover:text-[#2c1a10]"
-                                    }`}
-                                  >
-                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-                                    Réglages
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                          {prepsByStatus.urgent.map((prep) => renderPrepCard(prep))}
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    )}
+
+                    {/* À faire */}
+                    {prepsByStatus.todo.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-black text-[#2c1a10] uppercase tracking-wide">À faire — {prepsByStatus.todo.length}</span>
+                          <div className="flex-1 h-px bg-[#e5d5c5]" />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                          {prepsByStatus.todo.map((prep) => renderPrepCard(prep))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Faites */}
+                    {prepsByStatus.done.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-bold text-[#9a7060] uppercase tracking-wide">✅ Faites — {prepsByStatus.done.length}</span>
+                          <div className="flex-1 h-px bg-[#e5d5c5]" />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 opacity-60">
+                          {prepsByStatus.done.map((prep) => renderPrepCard(prep))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Empty */}
+                    {filteredPreps.length === 0 && (
+                      <div className="bg-white rounded-2xl p-12 text-center border border-[#e5d5c5] shadow-sm">
+                        <div className="text-4xl mb-3">✅</div>
+                        <div className="font-black text-[#2c1a10]">Tout est prêt !</div>
+                        <div className="text-sm text-[#9a7060] mt-1">
+                          Aucune prépa en attente{prepsStation !== "all" ? ` au ${prepsStation}` : ""}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
-              </>
+              </div>
             )}
           </section>
 
@@ -3709,6 +3762,27 @@ export default function MokaOrderPad() {
           </aside>
         </div>
       </div>
+
+      {/* ── NOUVELLE PRÉPA FAB ──────────────────────── */}
+      {activeTab === "preps" && (
+        <button
+          onClick={() => {
+            setNewPrepForm((prev) => ({
+              ...prev,
+              staffName: selectedStaffName || "",
+              station: prepsStation === "bar" ? "Bar" : "Cuisine",
+            }));
+            setShowNewPrepModal(true);
+          }}
+          className="fixed z-40 flex items-center gap-2 px-4 py-3 bg-[#5a7828] text-white rounded-2xl shadow-xl font-black text-sm cursor-pointer active:scale-95 transition-transform"
+          style={{ bottom: `calc(env(safe-area-inset-bottom) + 80px)`, right: "16px" }}
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Nouvelle prépa
+        </button>
+      )}
 
       {/* ── MOBILE CART FAB (iPhone) ─────────────────── */}
       {isIphone && cartItems.length > 0 && !showMobileCart && (
@@ -5433,6 +5507,165 @@ export default function MokaOrderPad() {
             >
               {savingProductDb ? "Enregistrement…" : "Enregistrer les modifications ✅"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── NOUVELLE PRÉPA MODAL ─────────────────────── */}
+      {showNewPrepModal && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="flex-1 bg-black/50" onClick={() => setShowNewPrepModal(false)} />
+          <div className="bg-[#f5ede0] rounded-t-3xl shadow-2xl overflow-y-auto"
+            style={{ maxHeight: "85vh", paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}>
+            <div className="w-10 h-1 bg-[#e5d5c5] rounded-full mx-auto mt-3 mb-1" />
+            <div className="px-5 py-4 border-b border-[#e5d5c5]">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-black text-[#2c1a10]">+ Nouvelle prépa</h2>
+                <button onClick={() => setShowNewPrepModal(false)}
+                  className="w-8 h-8 rounded-xl bg-white border border-[#e5d5c5] flex items-center justify-center text-[#9a7060] cursor-pointer text-lg">
+                  ×
+                </button>
+              </div>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              {/* Produit */}
+              <div>
+                <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Produit à préparer</label>
+                <input value={newPrepForm.produit}
+                  onChange={e => setNewPrepForm(p => ({ ...p, produit: e.target.value }))}
+                  placeholder="Ex: Guacamole, Sauce Caesar..."
+                  className="mt-1 w-full bg-white border border-[#e5d5c5] rounded-xl px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]" />
+                {newPrepForm.produit.length > 0 && (
+                  <div className="mt-1 bg-white border border-[#e5d5c5] rounded-xl overflow-hidden shadow-sm">
+                    {stockLive
+                      .filter(p => isPrepaCategory(p) && getStockName(p).toLowerCase().includes(newPrepForm.produit.toLowerCase()))
+                      .slice(0, 5)
+                      .map(p => (
+                        <button key={p.id || getStockName(p)}
+                          onClick={() => setNewPrepForm(prev => ({
+                            ...prev, produit: getStockName(p),
+                            quantite: p.quantitePrep || p.suggested || 1,
+                            unite: p.uniteStock || p.unit || "kg",
+                          }))}
+                          className="w-full text-left px-4 py-2.5 text-sm text-[#2c1a10] hover:bg-[#faf5ef] border-b border-[#f5ede0] last:border-0 cursor-pointer">
+                          {getStockName(p)}
+                          <span className="text-[#9a7060] text-xs ml-2">{p.quantitePrep || p.suggested || "?"} {p.uniteStock || p.unit || "kg"}</span>
+                        </button>
+                      ))
+                    }
+                  </div>
+                )}
+              </div>
+
+              {/* Quantité + Unité */}
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Quantité</label>
+                  <input type="number" min="0.1" step="0.1" value={newPrepForm.quantite}
+                    onChange={e => setNewPrepForm(p => ({ ...p, quantite: Number(e.target.value) }))}
+                    className="mt-1 w-full bg-white border border-[#e5d5c5] rounded-xl px-4 py-3 text-sm font-black text-[#2c1a10] outline-none focus:border-[#5a7828]" />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Unité</label>
+                  <select value={newPrepForm.unite}
+                    onChange={e => setNewPrepForm(p => ({ ...p, unite: e.target.value }))}
+                    className="mt-1 w-full bg-white border border-[#e5d5c5] rounded-xl px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]">
+                    {["kg","g","L","ml","pièce","portion","batch","sachet","barquette","boîte"].map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Station */}
+              <div>
+                <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Station</label>
+                <div className="flex gap-2 mt-1">
+                  {["Bar", "Cuisine"].map(s => (
+                    <button key={s} onClick={() => setNewPrepForm(p => ({ ...p, station: s }))}
+                      className={`flex-1 py-3 rounded-xl text-sm font-black cursor-pointer transition-all ${
+                        newPrepForm.station === s ? "bg-[#2c1a10] text-white" : "bg-white border border-[#e5d5c5] text-[#6b4a3d]"
+                      }`}>
+                      {s === "Bar" ? "☕ Bar" : "👨‍🍳 Cuisine"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Priorité */}
+              <div>
+                <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Priorité</label>
+                <div className="flex gap-2 mt-1">
+                  {["Normale", "Haute"].map(p => (
+                    <button key={p} onClick={() => setNewPrepForm(prev => ({ ...prev, priorite: p }))}
+                      className={`flex-1 py-2.5 rounded-xl text-sm font-black cursor-pointer transition-all ${
+                        newPrepForm.priorite === p
+                          ? p === "Haute" ? "bg-orange-500 text-white" : "bg-[#5a7828] text-white"
+                          : "bg-white border border-[#e5d5c5] text-[#6b4a3d]"
+                      }`}>
+                      {p === "Haute" ? "⚡ Urgente" : "✓ Normale"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Assigner à */}
+              <div>
+                <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Assigner à</label>
+                <select value={newPrepForm.staffName}
+                  onChange={e => setNewPrepForm(p => ({ ...p, staffName: e.target.value }))}
+                  className="mt-1 w-full bg-white border border-[#e5d5c5] rounded-xl px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]">
+                  <option value="">Non assigné</option>
+                  {staff.map(s => (
+                    <option key={s.id || getStaffName(s)} value={getStaffName(s)}>{getStaffName(s)}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date */}
+              <div>
+                <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Pour quand</label>
+                <input type="date" value={newPrepForm.dueDate}
+                  onChange={e => setNewPrepForm(p => ({ ...p, dueDate: e.target.value }))}
+                  className="mt-1 w-full bg-white border border-[#e5d5c5] rounded-xl px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]" />
+              </div>
+
+              {/* Créer */}
+              <button
+                onClick={async () => {
+                  if (!newPrepForm.produit) return;
+                  setSavingNewPrep(true);
+                  try {
+                    await fetch(CREATE_PREP_URL, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify([{
+                        produit: newPrepForm.produit,
+                        quantite: newPrepForm.quantite,
+                        unite: newPrepForm.unite,
+                        priorite: newPrepForm.priorite,
+                        statut: "À faire",
+                        staffName: newPrepForm.staffName,
+                        station: newPrepForm.station,
+                        source: "Manuel",
+                        dueDate: newPrepForm.dueDate,
+                        date: new Date().toISOString(),
+                      }]),
+                    });
+                    setShowNewPrepModal(false);
+                    setNewPrepForm({ produit: "", quantite: 1, unite: "kg", priorite: "Normale", station: "Cuisine", dueDate: new Date().toISOString().slice(0, 10), staffName: "" });
+                    setTimeout(() => loadPreps(), 1500);
+                  } catch {
+                    alert("Erreur création prépa ❌");
+                  } finally {
+                    setSavingNewPrep(false);
+                  }
+                }}
+                disabled={!newPrepForm.produit || savingNewPrep}
+                className="w-full py-4 rounded-2xl bg-[#5a7828] text-white font-black text-base cursor-pointer hover:bg-[#4e6a22] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                {savingNewPrep ? "Création..." : "✅ Créer la prépa"}
+              </button>
+            </div>
           </div>
         </div>
       )}

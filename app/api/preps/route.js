@@ -6,10 +6,7 @@ export async function OPTIONS() {
 
 export async function GET() {
   try {
-    const pages = await queryDatabase(DB.PREPS, {
-      property: "Statut",
-      select: { equals: "À faire" },
-    });
+    const pages = await queryDatabase(DB.PREPS, null, null, 200);
 
     const preps = pages
       .map((page) => {
@@ -22,8 +19,9 @@ export async function GET() {
           priority: getSelect(p, "Priorité"),
           status: getSelect(p, "Statut"),
           dueDate: getDate(p, "Date prévue"),
-          assignedTo: getText(p, "Staff"),
+          assignedTo: getText(p, "Staff") || getSelect(p, "Staff") || "",
           type: getSelect(p, "Type"),
+          station: getSelect(p, "Station") || getSelect(p, "Type") || "Cuisine",
           comment: getText(p, "Commentaire"),
         };
       })
