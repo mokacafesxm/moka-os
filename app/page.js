@@ -681,12 +681,12 @@ export default function MokaOrderPad() {
 
   const prepProducts = useMemo(() => {
     return stockLive.filter((p) => {
-      const cat = String(p.category || p.categorie || "").toLowerCase();
-      const subcat = String(p.sousCategorie || p.subcategory || "").toLowerCase();
+      const cat = String(p.category || p.categorie || "").toLowerCase().trim();
+      const subcat = String(p.sousCategorie || p.subcategory || p.sous_categorie || p.sousCategory || "").toUpperCase().trim();
       const isPrepa = cat.includes("prepa") || cat.includes("prépa");
       if (!isPrepa) return false;
-      if (newPrepForm.station === "Bar") return subcat.includes("bar") || subcat === "";
-      if (newPrepForm.station === "Cuisine") return !subcat.includes("bar");
+      if (newPrepForm.station === "Bar") return subcat === "BAR" || subcat === "";
+      if (newPrepForm.station === "Cuisine") return subcat === "CUISINE" || subcat === "";
       return true;
     }).sort((a, b) => getStockName(a).localeCompare(getStockName(b), "fr"));
   }, [stockLive, newPrepForm.station]);
