@@ -303,6 +303,16 @@ function isUrgentStock(item) {
   return s.includes("critique") || s.includes("stock bas") || s.includes("alerte") || s.includes("commander");
 }
 
+const ZONE_GROUPS = [
+  { key: "frigo", label: "Frigo", icon: "🧊", match: (z) => z.toLowerCase().includes("frigo") && !z.toLowerCase().includes("prépa") && !z.toLowerCase().includes("prepa") && !z.toLowerCase().includes("congel") },
+  { key: "congelateur", label: "Congélateur", icon: "❄️", match: (z) => z.toLowerCase().includes("congel") || z.toLowerCase().includes("congél") },
+  { key: "bar", label: "Bar", icon: "☕", match: (z) => z.toLowerCase() === "bar" || z.toLowerCase() === "bar/dry" || z.toLowerCase() === "frigo bar" },
+  { key: "dry", label: "Dry Storage", icon: "📦", match: (z) => z.toLowerCase().includes("dry") && !z.toLowerCase().includes("frigo") },
+  { key: "prepas", label: "Frigo Prépas", icon: "👨‍🍳", match: (z) => z.toLowerCase().includes("prépa") || z.toLowerCase().includes("prepa") },
+  { key: "pain", label: "Boulangerie", icon: "🍞", match: (z) => z.toLowerCase().includes("pain") },
+  { key: "autre", label: "Sans zone", icon: "📍", match: (z) => !z || z === "Sans zone" },
+];
+
 export default function MokaOrderPad() {
   const [activeTab, setActiveTab] = useState("orderpad");
 
@@ -482,6 +492,15 @@ export default function MokaOrderPad() {
   const [ordStatusFilter, setOrdStatusFilter] = useState("Tous");
   const [composeCart, setComposeCart] = useState({});
   const [stockStatusFilter, setStockStatusFilter] = useState("all");
+  const [stockViewMode, setStockViewMode] = useState("zone");
+  const [collapsedZones, setCollapsedZones] = useState(new Set(["autre"]));
+  const toggleZone = (key) => {
+    setCollapsedZones(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
   const [toasts, setToasts] = useState([]);
 
   const showToast = (message, type = "success") => {
@@ -835,10 +854,15 @@ export default function MokaOrderPad() {
       return !activeStockCategory || cat === activeStockCategory;
     });
 
+    const isNotPrepa = (item) => {
+      const cat = String(item.category || item.categorie || "").toLowerCase();
+      return !cat.includes("prepa") && !cat.includes("prépa");
+    };
+
     if (stockStatusFilter === "critical")
-      filtered = filtered.filter(i => String(getStockStatus(i)).toLowerCase().includes("critique"));
+      filtered = filtered.filter(i => String(getStockStatus(i)).toLowerCase().includes("critique") && isNotPrepa(i));
     else if (stockStatusFilter === "low")
-      filtered = filtered.filter(i => String(getStockStatus(i)).toLowerCase().includes("stock bas"));
+      filtered = filtered.filter(i => String(getStockStatus(i)).toLowerCase().includes("stock bas") && isNotPrepa(i));
     else if (stockStatusFilter === "ok")
       filtered = filtered.filter(i => {
         const s = String(getStockStatus(i)).toLowerCase();
@@ -871,6 +895,29 @@ export default function MokaOrderPad() {
       const ib = categoryOrder.indexOf(b);
       return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
     });
+  }, [stockVisibleItems, stockView]);
+
+  const stockByZone = useMemo(() => {
+    if (stockView !== "stock") return null;
+    const groups = {};
+    ZONE_GROUPS.forEach(g => { groups[g.key] = []; });
+    stockVisibleItems.forEach(item => {
+      const zone = String(item.zone || "").trim();
+      const group = ZONE_GROUPS.find(g => g.match(zone));
+      const key = group?.key || "autre";
+      groups[key].push(item);
+    });
+    const priorityScore = (item) => {
+      const s = String(getStockStatus(item)).toLowerCase();
+      if (s.includes("critique")) return 0;
+      if (s.includes("stock bas") || s.includes("alerte")) return 1;
+      if (s.includes("configurer")) return 3;
+      return 2;
+    };
+    Object.keys(groups).forEach(key => {
+      groups[key].sort((a, b) => priorityScore(a) - priorityScore(b));
+    });
+    return groups;
   }, [stockVisibleItems, stockView]);
 
   const prepCount = preps.filter(
@@ -3234,8 +3281,25 @@ export default function MokaOrderPad() {
                         ))}
                       </div>
 
-                      {/* Category pills for stock view */}
+                      {/* Zone / Catégorie toggle */}
                       {stockView === "stock" && (
+                        <div className="flex bg-white rounded-2xl p-1 border border-[#e5d5c5] shadow-sm gap-1">
+                          {[["zone", "📍 Par zone"], ["categorie", "🏷️ Par catégorie"]].map(([val, label]) => (
+                            <button key={val}
+                              onClick={() => setStockViewMode(val)}
+                              className={`flex-1 py-2 rounded-xl text-xs font-black cursor-pointer transition-all ${
+                                stockViewMode === val
+                                  ? "bg-[#2c1a10] text-white shadow-md"
+                                  : "text-[#9a7060] hover:bg-[#faf5ef]"
+                              }`}>
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Category pills — uniquement en mode catégorie */}
+                      {stockView === "stock" && stockViewMode === "categorie" && (
                         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                           {stockCategories.filter((cat) => String(cat).trim().toLowerCase() !== "tous").map((cat) => (
                             <button
@@ -3283,148 +3347,184 @@ export default function MokaOrderPad() {
                       )}
                     </div>
 
-                    {/* Stock cards */}
-                    <div className="space-y-6">
-                      {groupedStockItems.map(([category, items]) => (
-                        <div key={category}>
-                          <div className="flex items-center gap-3 mb-3">
-                            <span className="text-sm font-black text-[#2c1a10]">
-                              {stockView === "prepa" ? "👨‍🍳 Prépas" : `${categoryEmojis[category] || "📌"} ${category}`}
-                            </span>
-                            <div className="flex-1 h-px bg-[#e0d0c0]" />
-                            <span className="text-[11px] font-semibold text-[#9a7060]">{items.length}</span>
-                          </div>
-
-                          {isIphone && stockView === "stock" ? (
-                            /* ── iPhone compact list view ── */
-                            <div className="space-y-2">
-                              {items.map((item) => {
-                                const stockId = item.id || getStockName(item);
-                                const status = getStockStatus(item);
-                                const isCritical = String(status).toLowerCase().includes("critique");
-                                const isLow = String(status).toLowerCase().includes("stock bas");
-                                return (
-                                  <div key={stockId}
-                                    onClick={() => openStockReceive(item, "add")}
-                                    className={`flex items-center gap-3 px-4 py-3.5 bg-white rounded-2xl border transition-all active:scale-[0.98] cursor-pointer ${
-                                      isCritical ? "border-l-4 border-l-red-400 border-[#fde8e8]" :
-                                      isLow ? "border-l-4 border-l-orange-400 border-[#fef3e2]" :
-                                      "border-[#e5d5c5]"
-                                    }`}
-                                  >
-                                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                                      isCritical ? "bg-red-500" :
-                                      isLow ? "bg-orange-400" :
-                                      String(status).toLowerCase().includes("configurer") ? "bg-gray-300" :
-                                      "bg-[#5a7828]"
-                                    }`}/>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="text-sm font-black text-[#2c1a10] truncate">{getStockName(item)}</div>
-                                      <div className="text-[10px] text-[#9a7060] font-medium">
-                                        {getStockCategory(item)}{item.sousCategorie ? ` · ${item.sousCategorie}` : ""}
-                                      </div>
+                    {/* Stock view — par zone ou par catégorie */}
+                    {stockView === "stock" && stockViewMode === "zone" && stockByZone ? (
+                      /* ── Vue par zone ── */
+                      <div className="space-y-3">
+                        {ZONE_GROUPS.map(group => {
+                          const items = stockByZone[group.key] || [];
+                          if (items.length === 0) return null;
+                          const critCount = items.filter(i => String(getStockStatus(i)).toLowerCase().includes("critique")).length;
+                          const lowCount = items.filter(i => String(getStockStatus(i)).toLowerCase().includes("stock bas")).length;
+                          const isCollapsed = collapsedZones.has(group.key);
+                          return (
+                            <div key={group.key} className="bg-white rounded-2xl border border-[#e5d5c5] overflow-hidden shadow-sm">
+                              <button
+                                onClick={() => toggleZone(group.key)}
+                                className="w-full flex items-center justify-between px-4 py-3.5 cursor-pointer hover:bg-[#faf5ef] transition-colors"
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <span className="text-lg">{group.icon}</span>
+                                  <div className="text-left">
+                                    <div className="text-sm font-black text-[#2c1a10]">{group.label}</div>
+                                    <div className="text-[10px] text-[#9a7060] font-medium">
+                                      {items.length} produit{items.length > 1 ? "s" : ""}
+                                      {critCount > 0 && <span className="ml-1.5 text-red-500 font-bold">· {critCount} critique{critCount > 1 ? "s" : ""}</span>}
+                                      {lowCount > 0 && !critCount && <span className="ml-1.5 text-orange-500 font-bold">· {lowCount} bas</span>}
                                     </div>
-                                    <div className="text-right shrink-0">
-                                      <div className={`text-base font-black ${isCritical ? "text-red-600" : isLow ? "text-orange-500" : "text-[#2c1a10]"}`}>
-                                        {getStockQty(item) || "—"}
-                                        <span className="text-xs font-semibold text-[#9a7060] ml-0.5">{getStockDisplayUnit(item)}</span>
-                                      </div>
-                                      {!String(status).toLowerCase().includes("configurer") && (
-                                        <div className={`text-[9px] font-bold ${isCritical ? "text-red-500" : isLow ? "text-orange-400" : "text-[#5a7828]"}`}>
-                                          {isCritical ? "CRITIQUE" : isLow ? "BAS" : "OK"}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); openStockReceive(item, "add"); }}
-                                      className="w-9 h-9 rounded-xl bg-[#f0f7e5] border border-[#c8dfa0] flex items-center justify-center shrink-0 active:bg-[#e0f0d0] cursor-pointer"
-                                    >
-                                      <svg className="w-4 h-4 text-[#5a7828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                                      </svg>
-                                    </button>
                                   </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            /* ── iPad / desktop card grid ── */
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-                              {items.map((item) => {
-                                const stockId = item.id || getStockName(item);
-                                const selected = stockView === "prepa" && !!cart[stockId];
-                                const status = getStockStatus(item);
-                                const isCritical = String(status).toLowerCase().includes("critique");
-                                const isLow = String(status).toLowerCase().includes("stock bas");
-
-                                return (
-                                  <div
-                                    key={stockId}
-                                    onClick={() => {
-                                      if (stockView === "stock") { openStockReceive(item, "add"); return; }
-                                      selected ? removeItem(stockId) : addStockPrep(item);
-                                    }}
-                                    className={`rounded-2xl border transition-all duration-200 overflow-hidden cursor-pointer active:scale-[0.98] ${
-                                      selected
-                                        ? "bg-[#4a6620] text-white border-[#4a6620] shadow-xl ring-2 ring-[#5a7828]/40"
-                                        : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:shadow-lg hover:border-[#c8b8a8]"
-                                    }`}
-                                  >
-                                    <div className={`h-1.5 ${isCritical ? "bg-gradient-to-r from-red-600 to-red-400" : isLow ? "bg-gradient-to-r from-orange-500 to-amber-400" : selected ? "bg-white/30" : "bg-gradient-to-r from-[#5a7828] to-[#7aa830]"}`} />
-                                    <div className="p-4">
-                                      <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold mb-2.5 ${
-                                        isCritical
-                                          ? selected ? "bg-white/20 text-white" : "bg-red-50 text-red-700 border border-red-200"
-                                          : isLow
-                                          ? selected ? "bg-white/20 text-white" : "bg-orange-50 text-orange-700 border border-orange-200"
-                                          : selected ? "bg-white/20 text-white" : "bg-[#f0f7e5] text-[#4a6620] border border-[#c8dfa0]"
-                                      }`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isCritical ? "bg-red-500" : isLow ? "bg-orange-500" : selected ? "bg-white" : "bg-[#5a7828]"}`}></span>
-                                        {status}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {critCount > 0 && <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">{critCount}</span>}
+                                  {lowCount > 0 && <span className="w-5 h-5 rounded-full bg-orange-400 text-white text-[10px] font-black flex items-center justify-center">{lowCount}</span>}
+                                  <svg className={`w-4 h-4 text-[#9a7060] transition-transform duration-200 ${isCollapsed ? "" : "rotate-180"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/>
+                                  </svg>
+                                </div>
+                              </button>
+                              {!isCollapsed && (
+                                <div className="divide-y divide-[#f5ede0]">
+                                  {items.map(item => {
+                                    const stockId = item.id || getStockName(item);
+                                    const status = getStockStatus(item);
+                                    const isCritical = String(status).toLowerCase().includes("critique");
+                                    const isLow = String(status).toLowerCase().includes("stock bas");
+                                    const qty = getStockQty(item);
+                                    const unit = getStockDisplayUnit(item);
+                                    return (
+                                      <div key={stockId} className="flex items-center gap-3 px-4 py-3 hover:bg-[#faf5ef] transition-colors">
+                                        <div className={`w-2 h-2 rounded-full shrink-0 ${isCritical ? "bg-red-500" : isLow ? "bg-orange-400" : String(status).toLowerCase().includes("configurer") ? "bg-gray-300" : "bg-[#5a7828]"}`}/>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-sm font-bold text-[#2c1a10] truncate">{getStockName(item)}</div>
+                                          {isCritical && <div className="text-[10px] text-red-500 font-bold">CRITIQUE — À commander</div>}
+                                          {isLow && !isCritical && <div className="text-[10px] text-orange-500 font-bold">Stock bas</div>}
+                                        </div>
+                                        <div className={`text-sm font-black shrink-0 ${isCritical ? "text-red-600" : isLow ? "text-orange-500" : "text-[#2c1a10]"}`}>
+                                          {qty || "—"}{unit && <span className="text-xs font-semibold text-[#9a7060] ml-0.5">{unit}</span>}
+                                        </div>
+                                        <button onClick={(e) => { e.stopPropagation(); openStockReceive(item, "add"); }}
+                                          className="w-8 h-8 rounded-xl bg-[#f0f7e5] border border-[#c8dfa0] flex items-center justify-center shrink-0 cursor-pointer active:bg-[#e0f0d0] transition-colors">
+                                          <svg className="w-3.5 h-3.5 text-[#5a7828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); openStockReceive(item, "replace"); }}
+                                          className="w-8 h-8 rounded-xl bg-[#faf5ef] border border-[#e5d5c5] flex items-center justify-center shrink-0 cursor-pointer active:bg-[#f0e8dc] transition-colors">
+                                          <svg className="w-3.5 h-3.5 text-[#9a7060]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path strokeLinecap="round" strokeLinejoin="round" d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                        </button>
                                       </div>
-                                      <h3 className="text-sm font-black leading-tight mb-3">{getStockName(item)}</h3>
-                                      <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/10 border border-white/20" : "bg-[#faf5ef] border border-[#ede0d0]"}`}>
-                                        <div className={`text-[10px] font-semibold mb-1 uppercase tracking-wide ${selected ? "text-white/60" : "text-[#9a7060]"}`}>{isPrepStock(item) ? "Portions restantes" : "En stock"}</div>
-                                        <div className="text-xl font-black">{isPrepStock(item) ? getStockPortions(item) : `${getStockQty(item)}${getStockDisplayUnit(item) ? " " + getStockDisplayUnit(item) : ""}`}</div>
-                                        {getStockZone(item) && (
-                                          <div className={`text-[10px] mt-1 flex items-center gap-1 ${selected ? "text-white/50" : "text-[#9a7060]"}`}>
-                                            <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-                                            {getStockZone(item)}
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      /* ── Vue par catégorie ── */
+                      <div className="space-y-6">
+                        {groupedStockItems.map(([category, items]) => (
+                          <div key={category}>
+                            <div className="flex items-center gap-3 mb-3">
+                              <span className="text-sm font-black text-[#2c1a10]">
+                                {stockView === "prepa" ? "👨‍🍳 Prépas" : `${categoryEmojis[category] || "📌"} ${category}`}
+                              </span>
+                              <div className="flex-1 h-px bg-[#e0d0c0]" />
+                              <span className="text-[11px] font-semibold text-[#9a7060]">{items.length}</span>
+                            </div>
+                            {isIphone && stockView === "stock" ? (
+                              <div className="space-y-2">
+                                {items.map((item) => {
+                                  const stockId = item.id || getStockName(item);
+                                  const status = getStockStatus(item);
+                                  const isCritical = String(status).toLowerCase().includes("critique");
+                                  const isLow = String(status).toLowerCase().includes("stock bas");
+                                  return (
+                                    <div key={stockId} onClick={() => openStockReceive(item, "add")}
+                                      className={`flex items-center gap-3 px-4 py-3.5 bg-white rounded-2xl border transition-all active:scale-[0.98] cursor-pointer ${isCritical ? "border-l-4 border-l-red-400 border-[#fde8e8]" : isLow ? "border-l-4 border-l-orange-400 border-[#fef3e2]" : "border-[#e5d5c5]"}`}
+                                    >
+                                      <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isCritical ? "bg-red-500" : isLow ? "bg-orange-400" : String(status).toLowerCase().includes("configurer") ? "bg-gray-300" : "bg-[#5a7828]"}`}/>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-black text-[#2c1a10] truncate">{getStockName(item)}</div>
+                                        <div className="text-[10px] text-[#9a7060] font-medium">{getStockCategory(item)}{item.sousCategorie ? ` · ${item.sousCategorie}` : ""}</div>
+                                      </div>
+                                      <div className="text-right shrink-0">
+                                        <div className={`text-base font-black ${isCritical ? "text-red-600" : isLow ? "text-orange-500" : "text-[#2c1a10]"}`}>
+                                          {getStockQty(item) || "—"}<span className="text-xs font-semibold text-[#9a7060] ml-0.5">{getStockDisplayUnit(item)}</span>
+                                        </div>
+                                        {!String(status).toLowerCase().includes("configurer") && (
+                                          <div className={`text-[9px] font-bold ${isCritical ? "text-red-500" : isLow ? "text-orange-400" : "text-[#5a7828]"}`}>
+                                            {isCritical ? "CRITIQUE" : isLow ? "BAS" : "OK"}
                                           </div>
                                         )}
                                       </div>
-                                      {stockView === "stock" ? (
-                                        <div className="flex items-center justify-center gap-2">
-                                          <button type="button" onClick={(e) => { e.stopPropagation(); openStockReceive(item, "add"); }}
-                                            className="flex-1 rounded-xl bg-[#f0f7e5] border border-[#c8dfa0] px-3 py-2.5 text-left hover:bg-[#e5f0d5] transition-colors cursor-pointer flex items-center gap-2">
-                                            <svg className="w-3.5 h-3.5 text-[#5a7828] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/><circle cx="18.5" cy="15.5" r="2.5"/><path d="M20.27 17.27 22 19"/></svg>
-                                            <div><div className="text-[10px] font-bold text-[#5a7828] uppercase tracking-wide">Réception</div><div className="text-xs font-black text-[#2c1a10]">Ajouter du stock</div></div>
-                                          </button>
-                                          <button type="button" onClick={(e) => { e.stopPropagation(); openStockReceive(item, "replace"); }}
-                                            className="rounded-xl bg-[#faf5ef] border border-[#e5d5c5] px-3 py-2.5 hover:bg-[#f0e8dc] transition-colors cursor-pointer flex items-center gap-1.5">
-                                            <svg className="w-3.5 h-3.5 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                            <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide whitespace-nowrap">Corriger</div>
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <div className={`flex items-center justify-between text-xs font-semibold ${selected ? "text-white/70" : "text-[#9a7060]"}`}>
-                                          <span className="flex items-center gap-1">
-                                            {selected ? (<><svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Sélectionné</>) : "Toucher pour préparer"}
-                                          </span>
-                                          <span className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-sm ${selected ? "bg-white/20" : "bg-[#f0f7e5] border border-[#c8dfa0]"}`}>
-                                            {selected ? (<svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>) : (<svg className="w-4 h-4 text-[#5a7828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>)}
-                                          </span>
-                                        </div>
-                                      )}
+                                      <button onClick={(e) => { e.stopPropagation(); openStockReceive(item, "add"); }} className="w-9 h-9 rounded-xl bg-[#f0f7e5] border border-[#c8dfa0] flex items-center justify-center shrink-0 active:bg-[#e0f0d0] cursor-pointer">
+                                        <svg className="w-4 h-4 text-[#5a7828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                      </button>
                                     </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+                                {items.map((item) => {
+                                  const stockId = item.id || getStockName(item);
+                                  const selected = stockView === "prepa" && !!cart[stockId];
+                                  const status = getStockStatus(item);
+                                  const isCritical = String(status).toLowerCase().includes("critique");
+                                  const isLow = String(status).toLowerCase().includes("stock bas");
+                                  return (
+                                    <div key={stockId}
+                                      onClick={() => { if (stockView === "stock") { openStockReceive(item, "add"); return; } selected ? removeItem(stockId) : addStockPrep(item); }}
+                                      className={`rounded-2xl border transition-all duration-200 overflow-hidden cursor-pointer active:scale-[0.98] ${selected ? "bg-[#4a6620] text-white border-[#4a6620] shadow-xl ring-2 ring-[#5a7828]/40" : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:shadow-lg hover:border-[#c8b8a8]"}`}
+                                    >
+                                      <div className={`h-1.5 ${isCritical ? "bg-gradient-to-r from-red-600 to-red-400" : isLow ? "bg-gradient-to-r from-orange-500 to-amber-400" : selected ? "bg-white/30" : "bg-gradient-to-r from-[#5a7828] to-[#7aa830]"}`} />
+                                      <div className="p-4">
+                                        <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold mb-2.5 ${isCritical ? selected ? "bg-white/20 text-white" : "bg-red-50 text-red-700 border border-red-200" : isLow ? selected ? "bg-white/20 text-white" : "bg-orange-50 text-orange-700 border border-orange-200" : selected ? "bg-white/20 text-white" : "bg-[#f0f7e5] text-[#4a6620] border border-[#c8dfa0]"}`}>
+                                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isCritical ? "bg-red-500" : isLow ? "bg-orange-500" : selected ? "bg-white" : "bg-[#5a7828]"}`}></span>
+                                          {status}
+                                        </div>
+                                        <h3 className="text-sm font-black leading-tight mb-3">{getStockName(item)}</h3>
+                                        <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/10 border border-white/20" : "bg-[#faf5ef] border border-[#ede0d0]"}`}>
+                                          <div className={`text-[10px] font-semibold mb-1 uppercase tracking-wide ${selected ? "text-white/60" : "text-[#9a7060]"}`}>{isPrepStock(item) ? "Portions restantes" : "En stock"}</div>
+                                          <div className="text-xl font-black">{isPrepStock(item) ? getStockPortions(item) : `${getStockQty(item)}${getStockDisplayUnit(item) ? " " + getStockDisplayUnit(item) : ""}`}</div>
+                                          {getStockZone(item) && (
+                                            <div className={`text-[10px] mt-1 flex items-center gap-1 ${selected ? "text-white/50" : "text-[#9a7060]"}`}>
+                                              <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                                              {getStockZone(item)}
+                                            </div>
+                                          )}
+                                        </div>
+                                        {stockView === "stock" ? (
+                                          <div className="flex items-center justify-center gap-2">
+                                            <button type="button" onClick={(e) => { e.stopPropagation(); openStockReceive(item, "add"); }} className="flex-1 rounded-xl bg-[#f0f7e5] border border-[#c8dfa0] px-3 py-2.5 text-left hover:bg-[#e5f0d5] transition-colors cursor-pointer flex items-center gap-2">
+                                              <svg className="w-3.5 h-3.5 text-[#5a7828] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/><circle cx="18.5" cy="15.5" r="2.5"/><path d="M20.27 17.27 22 19"/></svg>
+                                              <div><div className="text-[10px] font-bold text-[#5a7828] uppercase tracking-wide">Réception</div><div className="text-xs font-black text-[#2c1a10]">Ajouter du stock</div></div>
+                                            </button>
+                                            <button type="button" onClick={(e) => { e.stopPropagation(); openStockReceive(item, "replace"); }} className="rounded-xl bg-[#faf5ef] border border-[#e5d5c5] px-3 py-2.5 hover:bg-[#f0e8dc] transition-colors cursor-pointer flex items-center gap-1.5">
+                                              <svg className="w-3.5 h-3.5 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                              <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide whitespace-nowrap">Corriger</div>
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          <div className={`flex items-center justify-between text-xs font-semibold ${selected ? "text-white/70" : "text-[#9a7060]"}`}>
+                                            <span className="flex items-center gap-1">
+                                              {selected ? (<><svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Sélectionné</>) : "Toucher pour préparer"}
+                                            </span>
+                                            <span className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-sm ${selected ? "bg-white/20" : "bg-[#f0f7e5] border border-[#c8dfa0]"}`}>
+                                              {selected ? (<svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>) : (<svg className="w-4 h-4 text-[#5a7828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>)}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </>
