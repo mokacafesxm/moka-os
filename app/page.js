@@ -681,9 +681,9 @@ export default function MokaOrderPad() {
 
   const prepProducts = useMemo(() => {
     return productsDb.filter((p) => {
-      const cat = String(p.categorie || p.category || "").toUpperCase().trim();
-      const subcat = String(p.sousCategorie || p.subcategory || "").toUpperCase().trim();
-      const isPrepa = cat.includes("PREPA") || cat.includes("PRÉPA");
+      const cat = String(p.categorie || p.category || "").toUpperCase();
+      const subcat = String(p.sousCategorie || p.subcategory || "").toUpperCase();
+      const isPrepa = cat === "PREPA" || cat === "PRÉPA" || cat.includes("PREPA");
       if (!isPrepa) return false;
       if (newPrepForm.station === "Bar") return subcat === "BAR";
       if (newPrepForm.station === "Cuisine") return subcat === "CUISINE";
