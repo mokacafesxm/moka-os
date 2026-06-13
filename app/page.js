@@ -5542,164 +5542,165 @@ export default function MokaOrderPad() {
 
       {/* ── NOUVELLE PRÉPA MODAL ─────────────────────── */}
       {showNewPrepModal && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
-          <div className="flex-1 bg-black/50" onClick={() => setShowNewPrepModal(false)} />
-          <div className="bg-[#f5ede0] rounded-t-3xl shadow-2xl overflow-y-auto"
-            style={{ maxHeight: "85vh", paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}>
-            <div className="w-10 h-1 bg-[#e5d5c5] rounded-full mx-auto mt-3 mb-1" />
-            <div className="px-5 py-4 border-b border-[#e5d5c5]">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-black text-[#2c1a10]">+ Nouvelle prépa</h2>
-                <button onClick={() => setShowNewPrepModal(false)}
-                  className="w-8 h-8 rounded-xl bg-white border border-[#e5d5c5] flex items-center justify-center text-[#9a7060] cursor-pointer text-lg">
-                  ×
+        <div className="fixed inset-0 z-50 flex flex-col bg-[#f5ede0]"
+             style={{ paddingTop: "env(safe-area-inset-top)" }}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#e5d5c5] shrink-0">
+            <h2 className="text-base font-black text-[#2c1a10]">+ Nouvelle prépa</h2>
+            <button onClick={() => setShowNewPrepModal(false)}
+              className="w-8 h-8 rounded-xl bg-white border border-[#e5d5c5] flex items-center justify-center cursor-pointer">
+              <svg className="w-4 h-4 text-[#9a7060]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          {/* Contenu — pas de scroll, tout visible */}
+          <div className="flex-1 flex flex-col px-4 py-3 gap-3 overflow-hidden">
+
+            {/* Station */}
+            <div className="flex gap-2">
+              {["Bar", "Cuisine"].map(s => (
+                <button key={s}
+                  onClick={() => setNewPrepForm(p => ({ ...p, station: s, produit: "", quantite: 1, unite: "kg" }))}
+                  className={`flex-1 py-2 rounded-xl text-xs font-black cursor-pointer transition-all ${
+                    newPrepForm.station === s ? "bg-[#2c1a10] text-white" : "bg-white border border-[#e5d5c5] text-[#6b4a3d]"
+                  }`}>
+                  {s === "Bar" ? "☕ Bar" : "👨‍🍳 Cuisine"}
                 </button>
+              ))}
+            </div>
+
+            {/* Produit */}
+            <div>
+              <label className="text-[9px] font-black text-[#9a7060] uppercase tracking-wide">Produit</label>
+              <select
+                value={newPrepForm.produit}
+                onChange={e => {
+                  const selected = prepProducts.find(p => (p.ingredient || p.name || "") === e.target.value);
+                  setNewPrepForm(prev => ({
+                    ...prev,
+                    produit: e.target.value,
+                    quantite: selected?.quantiteCommandeSuggeree || selected?.suggested || 1,
+                    unite: selected?.uniteStock || selected?.unit || "kg",
+                  }));
+                }}
+                className="mt-0.5 w-full bg-white border border-[#e5d5c5] rounded-xl px-3 py-2.5 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]">
+                <option value="">-- Choisir ({newPrepForm.station}) --</option>
+                {prepProducts.map(p => {
+                  const nom = p.ingredient || p.name || "";
+                  const qte = p.quantiteCommandeSuggeree || p.suggested || "";
+                  const unit = p.uniteStock || p.unit || "";
+                  return (
+                    <option key={p.id} value={nom}>
+                      {nom}{qte ? ` — ${qte} ${unit}` : ""}
+                    </option>
+                  );
+                })}
+              </select>
+              {prepProducts.length === 0 && (
+                <div className="mt-0.5 text-[10px] text-orange-500">
+                  Aucune prépa {newPrepForm.station} — vérifier Notion
+                </div>
+              )}
+            </div>
+
+            {/* Quantité + Unité */}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="text-[9px] font-black text-[#9a7060] uppercase tracking-wide">Quantité</label>
+                <input type="number" min="0.1" step="0.1" value={newPrepForm.quantite}
+                  onChange={e => setNewPrepForm(p => ({ ...p, quantite: Number(e.target.value) }))}
+                  className="mt-0.5 w-full bg-white border border-[#e5d5c5] rounded-xl px-3 py-2.5 text-sm font-black text-[#2c1a10] outline-none focus:border-[#5a7828]" />
+              </div>
+              <div className="flex-1">
+                <label className="text-[9px] font-black text-[#9a7060] uppercase tracking-wide">Unité</label>
+                <select value={newPrepForm.unite}
+                  onChange={e => setNewPrepForm(p => ({ ...p, unite: e.target.value }))}
+                  className="mt-0.5 w-full bg-white border border-[#e5d5c5] rounded-xl px-3 py-2.5 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]">
+                  {["kg","g","L","ml","pièce","portion","batch","sachet","barquette","boîte"].map(u => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
               </div>
             </div>
-            <div className="px-5 py-4 space-y-4">
-              {/* Station — EN PREMIER pour filtrer le select produit */}
-              <div>
-                <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Station</label>
-                <div className="flex gap-2 mt-1">
-                  {["Bar", "Cuisine"].map(s => (
-                    <button key={s} onClick={() => setNewPrepForm(p => ({ ...p, station: s, produit: "" }))}
-                      className={`flex-1 py-3 rounded-xl text-sm font-black cursor-pointer transition-all ${
-                        newPrepForm.station === s ? "bg-[#2c1a10] text-white" : "bg-white border border-[#e5d5c5] text-[#6b4a3d]"
-                      }`}>
-                      {s === "Bar" ? "☕ Bar" : "👨‍🍳 Cuisine"}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
-              {/* Produit — select filtré par station */}
-              <div>
-                <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Produit à préparer</label>
-                <select
-                  value={newPrepForm.produit}
-                  onChange={e => {
-                    const selected = prepProducts.find(p => (p.ingredient || p.name || "") === e.target.value);
-                    setNewPrepForm(prev => ({
-                      ...prev,
-                      produit: e.target.value,
-                      quantite: selected?.quantiteCommandeSuggeree || selected?.suggested || 1,
-                      unite: selected?.uniteStock || selected?.unit || "kg",
-                    }));
-                  }}
-                  className="mt-1 w-full bg-white border border-[#e5d5c5] rounded-xl px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]">
-                  <option value="">-- Choisir une préparation {newPrepForm.station} --</option>
-                  {prepProducts.map(p => {
-                    const nom = p.ingredient || p.name || "";
-                    const qte = p.quantiteCommandeSuggeree || p.suggested || "";
-                    const unit = p.uniteStock || p.unit || "";
-                    return (
-                      <option key={p.id} value={nom}>
-                        {nom}{qte ? ` — ${qte} ${unit}` : ""}
-                      </option>
-                    );
-                  })}
-                </select>
-                {prepProducts.length === 0 && (
-                  <div className="mt-1 text-xs text-[#9a7060] px-1">
-                    Aucune prépa trouvée pour {newPrepForm.station}. Vérifie la catégorie "Prépa" + sous-catégorie Bar/Cuisine dans Notion.
-                  </div>
-                )}
-              </div>
+            {/* Priorité */}
+            <div className="flex gap-2">
+              {["Normale", "Haute"].map(p => (
+                <button key={p}
+                  onClick={() => setNewPrepForm(prev => ({ ...prev, priorite: p }))}
+                  className={`flex-1 py-2 rounded-xl text-xs font-black cursor-pointer transition-all ${
+                    newPrepForm.priorite === p
+                      ? p === "Haute" ? "bg-orange-500 text-white" : "bg-[#5a7828] text-white"
+                      : "bg-white border border-[#e5d5c5] text-[#6b4a3d]"
+                  }`}>
+                  {p === "Haute" ? "⚡ Urgente" : "✓ Normale"}
+                </button>
+              ))}
+            </div>
 
-              {/* Quantité + Unité (pré-remplis) */}
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Quantité</label>
-                  <input type="number" min="0.1" step="0.1" value={newPrepForm.quantite}
-                    onChange={e => setNewPrepForm(p => ({ ...p, quantite: Number(e.target.value) }))}
-                    className="mt-1 w-full bg-white border border-[#e5d5c5] rounded-xl px-4 py-3 text-sm font-black text-[#2c1a10] outline-none focus:border-[#5a7828]" />
-                </div>
-                <div className="flex-1">
-                  <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Unité</label>
-                  <select value={newPrepForm.unite}
-                    onChange={e => setNewPrepForm(p => ({ ...p, unite: e.target.value }))}
-                    className="mt-1 w-full bg-white border border-[#e5d5c5] rounded-xl px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]">
-                    {["kg","g","L","ml","pièce","portion","batch","sachet","barquette","boîte"].map(u => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Priorité */}
-              <div>
-                <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Priorité</label>
-                <div className="flex gap-2 mt-1">
-                  {["Normale", "Haute"].map(p => (
-                    <button key={p} onClick={() => setNewPrepForm(prev => ({ ...prev, priorite: p }))}
-                      className={`flex-1 py-2.5 rounded-xl text-sm font-black cursor-pointer transition-all ${
-                        newPrepForm.priorite === p
-                          ? p === "Haute" ? "bg-orange-500 text-white" : "bg-[#5a7828] text-white"
-                          : "bg-white border border-[#e5d5c5] text-[#6b4a3d]"
-                      }`}>
-                      {p === "Haute" ? "⚡ Urgente" : "✓ Normale"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Assigner à */}
-              <div>
-                <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Assigner à</label>
+            {/* Assigner + Date */}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="text-[9px] font-black text-[#9a7060] uppercase tracking-wide">Assigner à</label>
                 <select value={newPrepForm.staffName}
                   onChange={e => setNewPrepForm(p => ({ ...p, staffName: e.target.value }))}
-                  className="mt-1 w-full bg-white border border-[#e5d5c5] rounded-xl px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]">
+                  className="mt-0.5 w-full bg-white border border-[#e5d5c5] rounded-xl px-3 py-2.5 text-xs text-[#2c1a10] outline-none focus:border-[#5a7828]">
                   <option value="">Non assigné</option>
                   {staff.map(s => (
                     <option key={s.id || getStaffName(s)} value={getStaffName(s)}>{getStaffName(s)}</option>
                   ))}
                 </select>
               </div>
-
-              {/* Date */}
-              <div>
-                <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Pour quand</label>
+              <div className="flex-1">
+                <label className="text-[9px] font-black text-[#9a7060] uppercase tracking-wide">Pour quand</label>
                 <input type="date" value={newPrepForm.dueDate}
                   onChange={e => setNewPrepForm(p => ({ ...p, dueDate: e.target.value }))}
-                  className="mt-1 w-full bg-white border border-[#e5d5c5] rounded-xl px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]" />
+                  className="mt-0.5 w-full bg-white border border-[#e5d5c5] rounded-xl px-3 py-2.5 text-xs text-[#2c1a10] outline-none focus:border-[#5a7828]" />
               </div>
-
-              {/* Créer */}
-              <button
-                onClick={async () => {
-                  if (!newPrepForm.produit) return;
-                  setSavingNewPrep(true);
-                  try {
-                    await fetch(CREATE_PREP_URL, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify([{
-                        produit: newPrepForm.produit,
-                        quantite: newPrepForm.quantite,
-                        unite: newPrepForm.unite,
-                        priorite: newPrepForm.priorite,
-                        statut: "À faire",
-                        staffName: newPrepForm.staffName,
-                        station: newPrepForm.station,
-                        source: "Manuel",
-                        dueDate: newPrepForm.dueDate,
-                        date: new Date().toISOString(),
-                      }]),
-                    });
-                    setShowNewPrepModal(false);
-                    setNewPrepForm({ produit: "", quantite: 1, unite: "kg", priorite: "Normale", station: "Cuisine", dueDate: new Date().toISOString().slice(0, 10), staffName: "" });
-                    setTimeout(() => loadPreps(), 1500);
-                  } catch {
-                    alert("Erreur création prépa ❌");
-                  } finally {
-                    setSavingNewPrep(false);
-                  }
-                }}
-                disabled={!newPrepForm.produit || savingNewPrep}
-                className="w-full py-4 rounded-2xl bg-[#5a7828] text-white font-black text-base cursor-pointer hover:bg-[#4e6a22] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                {savingNewPrep ? "Création..." : "✅ Créer la prépa"}
-              </button>
             </div>
+
+          </div>
+
+          {/* Bouton Créer — toujours visible en bas */}
+          <div className="px-4 py-3 border-t border-[#e5d5c5] shrink-0"
+               style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}>
+            <button
+              onClick={async () => {
+                if (!newPrepForm.produit) return;
+                setSavingNewPrep(true);
+                try {
+                  const res = await fetch(CREATE_PREP_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify([{
+                      produit: newPrepForm.produit,
+                      quantite: newPrepForm.quantite,
+                      unite: newPrepForm.unite,
+                      priorite: newPrepForm.priorite,
+                      statut: "À faire",
+                      staffName: newPrepForm.staffName,
+                      station: newPrepForm.station,
+                      source: "Manuel",
+                      dueDate: newPrepForm.dueDate,
+                      date: new Date().toISOString(),
+                    }]),
+                  });
+                  if (!res.ok) throw new Error("Erreur serveur");
+                  setShowNewPrepModal(false);
+                  setNewPrepForm({ produit: "", quantite: 1, unite: "kg", priorite: "Normale", station: "Cuisine", dueDate: new Date().toISOString().slice(0, 10), staffName: "" });
+                  setTimeout(() => loadPreps(), 1500);
+                } catch (err) {
+                  alert("Erreur : " + err.message);
+                } finally {
+                  setSavingNewPrep(false);
+                }
+              }}
+              disabled={!newPrepForm.produit || savingNewPrep}
+              className="w-full py-3.5 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer hover:bg-[#4e6a22] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              {savingNewPrep ? "Création..." : "✅ Créer la prépa"}
+            </button>
           </div>
         </div>
       )}
