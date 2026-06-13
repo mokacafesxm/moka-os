@@ -16,6 +16,8 @@ export async function GET() {
         name: getTitle(p, "Produit"),
         category: getText(p, "Categorie"),
         categorie: getText(p, "Categorie"),
+        sousCategorie: getSelect(p, "Sous-categorie") || getText(p, "Sous-categorie") || getSelect(p, "Sous_categorie") || getText(p, "Sous_catégorie") || "",
+        subcategory: getSelect(p, "Sous-categorie") || getText(p, "Sous-categorie") || getSelect(p, "Sous_categorie") || getText(p, "Sous_catégorie") || "",
         statut: getFormula(p, "Statut"),
         portionsRestantes: getFormula(p, "Portions restantes") || getNumber(p, "Portions restantes"),
         quantiteStock: getNumber(p, "Quantite_stock"),

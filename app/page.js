@@ -679,6 +679,18 @@ export default function MokaOrderPad() {
     done: filteredPreps.filter((p) => getPrepStatus(p).toLowerCase() === "fait"),
   }), [filteredPreps]);
 
+  const prepProducts = useMemo(() => {
+    return stockLive.filter((p) => {
+      const cat = String(p.category || p.categorie || "").toLowerCase();
+      const subcat = String(p.sousCategorie || p.subcategory || "").toLowerCase();
+      const isPrepa = cat.includes("prepa") || cat.includes("prépa");
+      if (!isPrepa) return false;
+      if (newPrepForm.station === "Bar") return subcat.includes("bar") || subcat === "";
+      if (newPrepForm.station === "Cuisine") return !subcat.includes("bar");
+      return true;
+    }).sort((a, b) => getStockName(a).localeCompare(getStockName(b), "fr"));
+  }, [stockLive, newPrepForm.station]);
+
   const addProduct = (product) => {
     setCart((prev) => ({
       ...prev,
@@ -5528,36 +5540,54 @@ export default function MokaOrderPad() {
               </div>
             </div>
             <div className="px-5 py-4 space-y-4">
-              {/* Produit */}
+              {/* Station — EN PREMIER pour filtrer le select produit */}
+              <div>
+                <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Station</label>
+                <div className="flex gap-2 mt-1">
+                  {["Bar", "Cuisine"].map(s => (
+                    <button key={s} onClick={() => setNewPrepForm(p => ({ ...p, station: s, produit: "" }))}
+                      className={`flex-1 py-3 rounded-xl text-sm font-black cursor-pointer transition-all ${
+                        newPrepForm.station === s ? "bg-[#2c1a10] text-white" : "bg-white border border-[#e5d5c5] text-[#6b4a3d]"
+                      }`}>
+                      {s === "Bar" ? "☕ Bar" : "👨‍🍳 Cuisine"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Produit — select filtré par station */}
               <div>
                 <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Produit à préparer</label>
-                <input value={newPrepForm.produit}
-                  onChange={e => setNewPrepForm(p => ({ ...p, produit: e.target.value }))}
-                  placeholder="Ex: Guacamole, Sauce Caesar..."
-                  className="mt-1 w-full bg-white border border-[#e5d5c5] rounded-xl px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]" />
-                {newPrepForm.produit.length > 0 && (
-                  <div className="mt-1 bg-white border border-[#e5d5c5] rounded-xl overflow-hidden shadow-sm">
-                    {stockLive
-                      .filter(p => isPrepaCategory(p) && getStockName(p).toLowerCase().includes(newPrepForm.produit.toLowerCase()))
-                      .slice(0, 5)
-                      .map(p => (
-                        <button key={p.id || getStockName(p)}
-                          onClick={() => setNewPrepForm(prev => ({
-                            ...prev, produit: getStockName(p),
-                            quantite: p.quantitePrep || p.suggested || 1,
-                            unite: p.uniteStock || p.unit || "kg",
-                          }))}
-                          className="w-full text-left px-4 py-2.5 text-sm text-[#2c1a10] hover:bg-[#faf5ef] border-b border-[#f5ede0] last:border-0 cursor-pointer">
-                          {getStockName(p)}
-                          <span className="text-[#9a7060] text-xs ml-2">{p.quantitePrep || p.suggested || "?"} {p.uniteStock || p.unit || "kg"}</span>
-                        </button>
-                      ))
-                    }
+                <select
+                  value={newPrepForm.produit}
+                  onChange={e => {
+                    const sel = prepProducts.find(p => getStockName(p) === e.target.value);
+                    setNewPrepForm(prev => ({
+                      ...prev,
+                      produit: e.target.value,
+                      quantite: sel?.quantitePrep || sel?.suggested || sel?.quantiteStock || 1,
+                      unite: sel?.uniteStock || sel?.unit || "kg",
+                    }));
+                  }}
+                  className="mt-1 w-full bg-white border border-[#e5d5c5] rounded-xl px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]">
+                  <option value="">-- Choisir une préparation --</option>
+                  {prepProducts.map(p => (
+                    <option key={p.id || getStockName(p)} value={getStockName(p)}>
+                      {getStockName(p)}
+                      {(p.quantitePrep || p.suggested || p.quantiteStock)
+                        ? ` — ${p.quantitePrep || p.suggested || p.quantiteStock} ${p.uniteStock || p.unit || ""}`
+                        : ""}
+                    </option>
+                  ))}
+                </select>
+                {prepProducts.length === 0 && (
+                  <div className="mt-1 text-xs text-[#9a7060] px-1">
+                    Aucune prépa trouvée pour {newPrepForm.station}. Vérifie la catégorie "Prépa" + sous-catégorie Bar/Cuisine dans Notion.
                   </div>
                 )}
               </div>
 
-              {/* Quantité + Unité */}
+              {/* Quantité + Unité (pré-remplis) */}
               <div className="flex gap-3">
                 <div className="flex-1">
                   <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Quantité</label>
@@ -5574,21 +5604,6 @@ export default function MokaOrderPad() {
                       <option key={u} value={u}>{u}</option>
                     ))}
                   </select>
-                </div>
-              </div>
-
-              {/* Station */}
-              <div>
-                <label className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Station</label>
-                <div className="flex gap-2 mt-1">
-                  {["Bar", "Cuisine"].map(s => (
-                    <button key={s} onClick={() => setNewPrepForm(p => ({ ...p, station: s }))}
-                      className={`flex-1 py-3 rounded-xl text-sm font-black cursor-pointer transition-all ${
-                        newPrepForm.station === s ? "bg-[#2c1a10] text-white" : "bg-white border border-[#e5d5c5] text-[#6b4a3d]"
-                      }`}>
-                      {s === "Bar" ? "☕ Bar" : "👨‍🍳 Cuisine"}
-                    </button>
-                  ))}
                 </div>
               </div>
 
