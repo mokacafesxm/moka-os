@@ -680,16 +680,18 @@ export default function MokaOrderPad() {
   }), [filteredPreps]);
 
   const prepProducts = useMemo(() => {
-    return stockLive.filter((p) => {
-      const cat = String(p.category || p.categorie || "").toLowerCase().trim();
-      const subcat = String(p.sousCategorie || p.subcategory || p.sous_categorie || p.sousCategory || "").toUpperCase().trim();
-      const isPrepa = cat.includes("prepa") || cat.includes("prépa");
+    return productsDb.filter((p) => {
+      const cat = String(p.categorie || p.category || "").toUpperCase().trim();
+      const subcat = String(p.sousCategorie || p.subcategory || "").toUpperCase().trim();
+      const isPrepa = cat.includes("PREPA") || cat.includes("PRÉPA");
       if (!isPrepa) return false;
-      if (newPrepForm.station === "Bar") return subcat === "BAR" || subcat === "";
-      if (newPrepForm.station === "Cuisine") return subcat === "CUISINE" || subcat === "";
+      if (newPrepForm.station === "Bar") return subcat === "BAR";
+      if (newPrepForm.station === "Cuisine") return subcat === "CUISINE";
       return true;
-    }).sort((a, b) => getStockName(a).localeCompare(getStockName(b), "fr"));
-  }, [stockLive, newPrepForm.station]);
+    }).sort((a, b) =>
+      String(a.ingredient || a.name || "").localeCompare(String(b.ingredient || b.name || ""), "fr")
+    );
+  }, [productsDb, newPrepForm.station]);
 
   const addProduct = (product) => {
     setCart((prev) => ({
@@ -5561,24 +5563,27 @@ export default function MokaOrderPad() {
                 <select
                   value={newPrepForm.produit}
                   onChange={e => {
-                    const sel = prepProducts.find(p => getStockName(p) === e.target.value);
+                    const sel = prepProducts.find(p => String(p.ingredient || p.name || "") === e.target.value);
                     setNewPrepForm(prev => ({
                       ...prev,
                       produit: e.target.value,
-                      quantite: sel?.quantitePrep || sel?.suggested || sel?.quantiteStock || 1,
+                      quantite: sel?.quantiteCommandeSuggeree || sel?.suggested || 1,
                       unite: sel?.uniteStock || sel?.unit || "kg",
                     }));
                   }}
                   className="mt-1 w-full bg-white border border-[#e5d5c5] rounded-xl px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]">
                   <option value="">-- Choisir une préparation --</option>
-                  {prepProducts.map(p => (
-                    <option key={p.id || getStockName(p)} value={getStockName(p)}>
-                      {getStockName(p)}
-                      {(p.quantitePrep || p.suggested || p.quantiteStock)
-                        ? ` — ${p.quantitePrep || p.suggested || p.quantiteStock} ${p.uniteStock || p.unit || ""}`
-                        : ""}
-                    </option>
-                  ))}
+                  {prepProducts.map(p => {
+                    const nom = String(p.ingredient || p.name || "");
+                    return (
+                      <option key={p.id || nom} value={nom}>
+                        {nom}
+                        {(p.quantiteCommandeSuggeree || p.suggested)
+                          ? ` — ${p.quantiteCommandeSuggeree || p.suggested} ${p.uniteStock || p.unit || ""}`
+                          : ""}
+                      </option>
+                    );
+                  })}
                 </select>
                 {prepProducts.length === 0 && (
                   <div className="mt-1 text-xs text-[#9a7060] px-1">

@@ -16,10 +16,7 @@ export async function OPTIONS() {
 export async function GET() {
   try {
     const [pages, supplierMap] = await Promise.all([
-      queryDatabase(DB.INGREDIENTS, {
-        property: "Visible_OrderPad",
-        checkbox: { equals: true },
-      }),
+      queryDatabase(DB.INGREDIENTS, null, null, 300),
       buildSupplierMap(),
     ]);
 
