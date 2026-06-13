@@ -481,6 +481,16 @@ export default function MokaOrderPad() {
   const [orderNotes, setOrderNotes] = useState("");
   const [ordStatusFilter, setOrdStatusFilter] = useState("Tous");
   const [composeCart, setComposeCart] = useState({});
+  const [stockStatusFilter, setStockStatusFilter] = useState("all");
+  const [toasts, setToasts] = useState([]);
+
+  const showToast = (message, type = "success") => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3000);
+  };
 
   const loadPreps = () => {
     setLoadingPreps(true);
@@ -820,13 +830,31 @@ export default function MokaOrderPad() {
     if (stockView === "prepa") return stockPreps;
 
     const q = stockSearch.trim().toLowerCase();
-    if (q) return stockProducts;
-
-    return stockProducts.filter((item) => {
+    let filtered = q ? stockProducts : stockProducts.filter((item) => {
       const cat = getStockCategory(item);
       return !activeStockCategory || cat === activeStockCategory;
     });
-  }, [stockView, stockPreps, stockProducts, activeStockCategory, stockSearch]);
+
+    if (stockStatusFilter === "critical")
+      filtered = filtered.filter(i => String(getStockStatus(i)).toLowerCase().includes("critique"));
+    else if (stockStatusFilter === "low")
+      filtered = filtered.filter(i => String(getStockStatus(i)).toLowerCase().includes("stock bas"));
+    else if (stockStatusFilter === "ok")
+      filtered = filtered.filter(i => {
+        const s = String(getStockStatus(i)).toLowerCase();
+        return !s.includes("critique") && !s.includes("stock bas") && !s.includes("configurer");
+      });
+
+    const priorityScore = (item) => {
+      const s = String(getStockStatus(item)).toLowerCase();
+      if (s.includes("critique")) return 0;
+      if (s.includes("stock bas") || s.includes("alerte")) return 1;
+      if (s.includes("configurer")) return 3;
+      return 2;
+    };
+
+    return filtered.sort((a, b) => priorityScore(a) - priorityScore(b));
+  }, [stockView, stockPreps, stockProducts, activeStockCategory, stockSearch, stockStatusFilter]);
 
   const groupedStockItems = useMemo(() => {
     const groups = {};
@@ -1027,7 +1055,7 @@ export default function MokaOrderPad() {
       });
     } catch (error) {
       console.error(error);
-      alert("Erreur pointage ❌");
+      showToast("Erreur pointage", "error");
     } finally {
       setClockSending(false);
     }
@@ -1067,7 +1095,7 @@ export default function MokaOrderPad() {
       });
     } catch (error) {
       console.error(error);
-      if (!cached || !cached.length) alert("Erreur chargement paramètres ❌");
+      if (!cached || !cached.length) showToast("Erreur chargement paramètres", "error");
     } finally {
       setLoadingSettingsPanel(false);
     }
@@ -1165,7 +1193,7 @@ export default function MokaOrderPad() {
     if (!settingsPanel) return;
 
     if (!String(creatingSettingsForm.nom || "").trim()) {
-      alert("Nom obligatoire ❌");
+      showToast("Nom obligatoire", "error");
       return;
     }
 
@@ -1202,10 +1230,10 @@ export default function MokaOrderPad() {
       });
 
       setCreatingSettingsItem(false);
-      alert("Élément créé ✅");
+      showToast("Élément créé");
     } catch (error) {
       console.error(error);
-      alert("Erreur création database ❌");
+      showToast("Erreur création database", "error");
     } finally {
       setSavingSettingsPanel(false);
     }
@@ -1259,10 +1287,10 @@ export default function MokaOrderPad() {
         return next;
       });
       setEditingSettingsItem(null);
-      alert("Modification enregistrée ✅");
+      showToast("Modification enregistrée");
     } catch (error) {
       console.error(error);
-      alert("Erreur modification database ❌");
+      showToast("Erreur modification database", "error");
     } finally {
       setSavingSettingsPanel(false);
     }
@@ -1298,10 +1326,10 @@ export default function MokaOrderPad() {
         }
         return next;
       });
-      alert("Élément désactivé ✅");
+      showToast("Élément désactivé");
     } catch (error) {
       console.error(error);
-      alert("Erreur désactivation ❌");
+      showToast("Erreur désactivation", "error");
     }
   };
 
@@ -1605,7 +1633,7 @@ export default function MokaOrderPad() {
       }
     } catch (error) {
       console.error(error);
-      if (!cached.length && !silent) alert("Erreur chargement base produits ❌");
+      if (!cached.length && !silent) showToast("Erreur chargement base produits", "error");
     } finally {
       setSyncingProductsDb(false);
       setLoadingProductsDb(false);
@@ -1734,7 +1762,7 @@ export default function MokaOrderPad() {
 
   const saveProductDbCreate = async () => {
     if (!String(creatingProductDbForm.ingredient || "").trim()) {
-      alert("Nom ingrédient obligatoire ❌");
+      showToast("Nom ingrédient obligatoire", "error");
       return;
     }
 
@@ -1784,11 +1812,11 @@ export default function MokaOrderPad() {
 
       setCreatingProductDb(false);
       setActiveTab("orderpad");
-      alert("Produit ajouté ✅");
+      showToast("Produit ajouté");
       setTimeout(async () => { await loadProductsDatabase(false); await refreshOrderPadProducts(); }, 2500);
     } catch (error) {
       console.error(error);
-      alert("Erreur création produit ❌");
+      showToast("Erreur création produit", "error");
     } finally {
       setSavingProductDb(false);
     }
@@ -1855,7 +1883,7 @@ export default function MokaOrderPad() {
   const saveProductDbEdit = async () => {
     console.log("💾 saveProductDbEdit", { id: editingProductDbForm.id, ingredient: editingProductDbForm.ingredient, fournisseurId: editingProductDbForm.fournisseurId, fournisseurDefaut: editingProductDbForm.fournisseurDefaut });
     if (!editingProductDbForm.id) {
-      alert("❌ ID produit manquant — impossible de sauvegarder");
+      showToast("ID produit manquant", "error");
       return;
     }
 
@@ -1906,11 +1934,11 @@ export default function MokaOrderPad() {
       }
 
       setEditingProductDb(null);
-      alert("Produit modifié ✅");
+      showToast("Produit modifié");
       setTimeout(async () => { await loadProductsDatabase(false); await refreshOrderPadProducts(); }, 2500);
     } catch (error) {
       console.error(error);
-      alert("Erreur modification produit ❌");
+      showToast("Erreur modification produit", "error");
     } finally {
       setSavingProductDb(false);
     }
@@ -1940,24 +1968,24 @@ export default function MokaOrderPad() {
         localStorage.setItem("mokaProductsDbCache", JSON.stringify(updated));
       }
 
-      alert("Produit supprimé ✅");
+      showToast("Produit supprimé");
     } catch (error) {
       console.error(error);
-      alert("Erreur suppression produit ❌");
+      showToast("Erreur suppression produit", "error");
     }
   };
 
   const unlockAdmin = () => {
     const adminEnabled = localStorage.getItem("mokaAdminEnabled") !== "false";
-    if (!adminEnabled) { alert("Mode admin désactivé ❌"); return; }
+    if (!adminEnabled) { showToast("Mode admin désactivé", "error"); return; }
     const savedPin = localStorage.getItem("mokaPinCode") || "3578";
     if (adminPin === savedPin) {
       setIsAdmin(true);
       setShowAdminModal(false);
       setAdminPin("");
-      alert("Mode admin activé ✅");
+      showToast("Mode admin activé");
     } else {
-      alert("Code admin incorrect ❌");
+      showToast("Code admin incorrect", "error");
     }
   };
 
@@ -2009,12 +2037,12 @@ export default function MokaOrderPad() {
     const isNewProduct = !!settingsItem?.isNew;
 
     if (!isNewProduct && !settingsForm.id) {
-      alert("ID produit introuvable ❌");
+      showToast("ID produit introuvable", "error");
       return;
     }
 
     if (isNewProduct && !String(settingsForm.name || "").trim()) {
-      alert("Nom produit obligatoire ❌");
+      showToast("Nom produit obligatoire", "error");
       return;
     }
 
@@ -2179,7 +2207,7 @@ export default function MokaOrderPad() {
       }
       console.log("[saveSettings] Webhook réponse:", responseData);
 
-      alert(isNewProduct ? "Produit créé ✅" : "Réglages produit mis à jour ✅");
+      showToast(isNewProduct ? "Produit créé" : "Réglages mis à jour");
       setSettingsItem(null);
 
       console.log("[saveSettings] Sync post-sauvegarde: mise à jour productsDb + OrderPad + stockLive…");
@@ -2232,7 +2260,7 @@ export default function MokaOrderPad() {
       }
     } catch (error) {
       console.error(error);
-      alert(!isNewProduct ? "Affichage mis à jour, mais webhook lent/erreur ⚠️" : "Erreur : produit non créé ❌");
+      showToast(!isNewProduct ? "Affichage mis à jour (webhook lent)" : "Erreur : produit non créé", !isNewProduct ? "warning" : "error");
       if (!isNewProduct) setSettingsItem(null);
     } finally {
       setSavingSettings(false);
@@ -2407,13 +2435,16 @@ export default function MokaOrderPad() {
     setStockReceiveWeight("");
     setStockReceiveUnit(item?.uniteStock || item?.unit || item?.unite || "kg");
     setStockReceiveMode(mode);
+    setTimeout(() => {
+      document.getElementById("stockReceiveInput")?.focus();
+    }, 100);
   };
 
   const saveStockReceive = async () => {
     if (!stockReceiveItem) return;
 
     if (!stockReceiveWeight) {
-      alert("Entre la quantité ❌");
+      showToast("Entre la quantité", "error");
       return;
     }
 
@@ -2435,7 +2466,7 @@ export default function MokaOrderPad() {
 
       setStockReceiveItem(null);
       setStockReceiveWeight("");
-      alert(stockReceiveMode === "replace" ? "Stock corrigé ✅" : "Stock reçu ajouté ✅");
+      showToast(stockReceiveMode === "replace" ? "Stock corrigé" : "Stock reçu ajouté");
 
       fetch(STOCK_URL)
         .then((res) => res.json())
@@ -2448,7 +2479,7 @@ export default function MokaOrderPad() {
         });
     } catch (error) {
       console.error(error);
-      alert("Erreur ajout réception stock ❌");
+      showToast("Erreur ajout réception stock", "error");
     } finally {
       setSavingStockReceive(false);
     }
@@ -2458,7 +2489,7 @@ export default function MokaOrderPad() {
     if (!inventoryItem) return;
 
     if (!inventoryWeight) {
-      alert("Entre un poids total mesuré ❌");
+      showToast("Entre un poids total mesuré", "error");
       return;
     }
 
@@ -2480,7 +2511,7 @@ export default function MokaOrderPad() {
 
       setInventoryItem(null);
       setInventoryWeight("");
-      alert("Stock mis à jour ✅");
+      showToast("Stock mis à jour");
 
       fetch(STOCK_URL)
         .then((res) => res.json())
@@ -2493,7 +2524,7 @@ export default function MokaOrderPad() {
         });
     } catch (error) {
       console.error(error);
-      alert("Erreur mise à jour stock ❌");
+      showToast("Erreur mise à jour stock", "error");
     } finally {
       setSavingInventory(false);
     }
@@ -2614,7 +2645,7 @@ export default function MokaOrderPad() {
       setInvoiceResults(results);
     } catch (err) {
       console.error("❌ Erreur:", err);
-      alert("Erreur : " + err.message);
+      showToast("Erreur : " + err.message, "error");
     } finally {
       setInvoiceAnalyzing(false);
     }
@@ -2632,7 +2663,7 @@ export default function MokaOrderPad() {
           body: JSON.stringify({ id: item.matched.id, poidsTotal: item.quantite, Unite: item.unite, mode: "add" })
         })
       ));
-      alert(`✅ ${toSave.length} produit(s) ajouté(s) au stock !`);
+      showToast(`${toSave.length} produit(s) ajouté(s) au stock`);
       setInvoiceModal(false);
       setInvoiceResults([]);
       setInvoiceImage(null);
@@ -2645,7 +2676,7 @@ export default function MokaOrderPad() {
           if (typeof window !== "undefined") localStorage.setItem("mokaStockCache", JSON.stringify(freshStock));
         });
     } catch (err) {
-      alert("Erreur enregistrement stock ❌");
+      showToast("Erreur enregistrement stock", "error");
     } finally {
       setInvoiceSaving(false);
     }
@@ -2730,7 +2761,7 @@ export default function MokaOrderPad() {
     if (cartItems.length === 0) return;
 
     if (!selectedStaff) {
-      alert("Sélectionne un membre du staff avant d’envoyer ❌");
+      showToast("Sélectionne un membre du staff avant d’envoyer", "error");
       return;
     }
 
@@ -2772,7 +2803,7 @@ export default function MokaOrderPad() {
 
         setCart({});
         loadPreps();
-        alert("Préparation ajoutée ✅");
+        showToast("Préparation ajoutée");
         return;
       }
 
@@ -2797,7 +2828,7 @@ export default function MokaOrderPad() {
 
         setCart({});
         loadPreps();
-        alert("Préparation confirmée comme faite ✅");
+        showToast("Préparation confirmée");
         return;
       }
 
@@ -2830,10 +2861,10 @@ export default function MokaOrderPad() {
       }
 
       setCart({});
-      alert("Commande envoyée vers MOKA-OS ✅");
+      showToast("Commande envoyée vers MOKA-OS");
     } catch (error) {
       console.error(error);
-      alert("Erreur : la commande n'a pas été envoyée ❌");
+      showToast("Erreur : la commande n'a pas été envoyée", "error");
     } finally {
       setSending(false);
     }
@@ -3028,7 +3059,7 @@ export default function MokaOrderPad() {
               if (isAdmin) {
                 setIsAdmin(false);
                 setAdminSection("dashboard");
-                alert("Mode admin désactivé");
+                showToast("Mode admin désactivé", "warning");
               } else {
                 setShowAdminModal(true);
               }
@@ -3221,6 +3252,35 @@ export default function MokaOrderPad() {
                           ))}
                         </div>
                       )}
+
+                      {/* Status filter pills */}
+                      {stockView === "stock" && (
+                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                          {[
+                            ["all", "Tout", null],
+                            ["critical", "🔴 Critiques", stockKpis.critical],
+                            ["low", "🟠 Bas", stockKpis.alert],
+                            ["ok", "🟢 OK", null],
+                          ].map(([val, label, count]) => (
+                            <button key={val}
+                              onClick={() => setStockStatusFilter(val)}
+                              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all whitespace-nowrap ${
+                                stockStatusFilter === val
+                                  ? "bg-[#2c1a10] text-white shadow-md"
+                                  : "bg-white border border-[#e5d5c5] text-[#6b4a3d]"
+                              }`}>
+                              {label}
+                              {count > 0 && (
+                                <span className={`w-4 h-4 rounded-full text-[10px] font-black flex items-center justify-center ${
+                                  stockStatusFilter === val ? "bg-white/20" : "bg-[#f0e8dc]"
+                                }`}>
+                                  {count}
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Stock cards */}
@@ -3235,101 +3295,133 @@ export default function MokaOrderPad() {
                             <span className="text-[11px] font-semibold text-[#9a7060]">{items.length}</span>
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-                            {items.map((item) => {
-                              const stockId = item.id || getStockName(item);
-                              const selected = stockView === "prepa" && !!cart[stockId];
-                              const status = getStockStatus(item);
-                              const isCritical = String(status).toLowerCase().includes("critique");
-                              const isLow = String(status).toLowerCase().includes("stock bas");
-
-                              return (
-                                <div
-                                  key={stockId}
-                                  onClick={() => {
-                                    if (stockView === "stock") { openStockReceive(item, "add"); return; }
-                                    selected ? removeItem(stockId) : addStockPrep(item);
-                                  }}
-                                  className={`rounded-2xl border transition-all duration-200 overflow-hidden cursor-pointer active:scale-[0.98] ${
-                                    selected
-                                      ? "bg-[#4a6620] text-white border-[#4a6620] shadow-xl ring-2 ring-[#5a7828]/40"
-                                      : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:shadow-lg hover:border-[#c8b8a8]"
-                                  }`}
-                                >
-                                  {/* Status bar */}
-                                  <div className={`h-1.5 ${isCritical ? "bg-gradient-to-r from-red-600 to-red-400" : isLow ? "bg-gradient-to-r from-orange-500 to-amber-400" : selected ? "bg-white/30" : "bg-gradient-to-r from-[#5a7828] to-[#7aa830]"}`} />
-
-                                  <div className="p-4">
-                                    {/* Status badge */}
-                                    <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold mb-2.5 ${
-                                      isCritical
-                                        ? selected ? "bg-white/20 text-white" : "bg-red-50 text-red-700 border border-red-200"
-                                        : isLow
-                                        ? selected ? "bg-white/20 text-white" : "bg-orange-50 text-orange-700 border border-orange-200"
-                                        : selected ? "bg-white/20 text-white" : "bg-[#f0f7e5] text-[#4a6620] border border-[#c8dfa0]"
-                                    }`}>
-                                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isCritical ? "bg-red-500" : isLow ? "bg-orange-500" : selected ? "bg-white" : "bg-[#5a7828]"}`}></span>
-                                      {status}
+                          {isIphone && stockView === "stock" ? (
+                            /* ── iPhone compact list view ── */
+                            <div className="space-y-2">
+                              {items.map((item) => {
+                                const stockId = item.id || getStockName(item);
+                                const status = getStockStatus(item);
+                                const isCritical = String(status).toLowerCase().includes("critique");
+                                const isLow = String(status).toLowerCase().includes("stock bas");
+                                return (
+                                  <div key={stockId}
+                                    onClick={() => openStockReceive(item, "add")}
+                                    className={`flex items-center gap-3 px-4 py-3.5 bg-white rounded-2xl border transition-all active:scale-[0.98] cursor-pointer ${
+                                      isCritical ? "border-l-4 border-l-red-400 border-[#fde8e8]" :
+                                      isLow ? "border-l-4 border-l-orange-400 border-[#fef3e2]" :
+                                      "border-[#e5d5c5]"
+                                    }`}
+                                  >
+                                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                                      isCritical ? "bg-red-500" :
+                                      isLow ? "bg-orange-400" :
+                                      String(status).toLowerCase().includes("configurer") ? "bg-gray-300" :
+                                      "bg-[#5a7828]"
+                                    }`}/>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm font-black text-[#2c1a10] truncate">{getStockName(item)}</div>
+                                      <div className="text-[10px] text-[#9a7060] font-medium">
+                                        {getStockCategory(item)}{item.sousCategorie ? ` · ${item.sousCategorie}` : ""}
+                                      </div>
                                     </div>
-
-                                    <h3 className="text-sm font-black leading-tight mb-3">{getStockName(item)}</h3>
-
-                                    {/* Stock info */}
-                                    <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/10 border border-white/20" : "bg-[#faf5ef] border border-[#ede0d0]"}`}>
-                                      <div className={`text-[10px] font-semibold mb-1 uppercase tracking-wide ${selected ? "text-white/60" : "text-[#9a7060]"}`}>{isPrepStock(item) ? "Portions restantes" : "En stock"}</div>
-                                      <div className="text-xl font-black">{isPrepStock(item) ? getStockPortions(item) : `${getStockQty(item)}${getStockDisplayUnit(item) ? " " + getStockDisplayUnit(item) : ""}`}</div>
-                                      {getStockZone(item) && (
-                                        <div className={`text-[10px] mt-1 flex items-center gap-1 ${selected ? "text-white/50" : "text-[#9a7060]"}`}>
-                                          <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-                                          {getStockZone(item)}
+                                    <div className="text-right shrink-0">
+                                      <div className={`text-base font-black ${isCritical ? "text-red-600" : isLow ? "text-orange-500" : "text-[#2c1a10]"}`}>
+                                        {getStockQty(item) || "—"}
+                                        <span className="text-xs font-semibold text-[#9a7060] ml-0.5">{getStockDisplayUnit(item)}</span>
+                                      </div>
+                                      {!String(status).toLowerCase().includes("configurer") && (
+                                        <div className={`text-[9px] font-bold ${isCritical ? "text-red-500" : isLow ? "text-orange-400" : "text-[#5a7828]"}`}>
+                                          {isCritical ? "CRITIQUE" : isLow ? "BAS" : "OK"}
                                         </div>
                                       )}
                                     </div>
-
-                                    {stockView === "stock" ? (
-                                      <div className="flex items-center justify-center gap-2">
-                                        <button
-                                          type="button"
-                                          onClick={(e) => { e.stopPropagation(); openStockReceive(item, "add"); }}
-                                          className="flex-1 rounded-xl bg-[#f0f7e5] border border-[#c8dfa0] px-3 py-2.5 text-left hover:bg-[#e5f0d5] transition-colors cursor-pointer flex items-center gap-2"
-                                        >
-                                          <svg className="w-3.5 h-3.5 text-[#5a7828] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/><circle cx="18.5" cy="15.5" r="2.5"/><path d="M20.27 17.27 22 19"/></svg>
-                                          <div>
-                                            <div className="text-[10px] font-bold text-[#5a7828] uppercase tracking-wide">Réception</div>
-                                            <div className="text-xs font-black text-[#2c1a10]">Ajouter du stock</div>
-                                          </div>
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => { e.stopPropagation(); openStockReceive(item, "replace"); }}
-                                          className="rounded-xl bg-[#faf5ef] border border-[#e5d5c5] px-3 py-2.5 hover:bg-[#f0e8dc] transition-colors cursor-pointer flex items-center gap-1.5"
-                                        >
-                                          <svg className="w-3.5 h-3.5 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                          <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide whitespace-nowrap">Corriger</div>
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <div className={`flex items-center justify-between text-xs font-semibold ${selected ? "text-white/70" : "text-[#9a7060]"}`}>
-                                        <span className="flex items-center gap-1">
-                                          {selected ? (
-                                            <><svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Sélectionné</>
-                                          ) : "Toucher pour préparer"}
-                                        </span>
-                                        <span className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-sm ${selected ? "bg-white/20" : "bg-[#f0f7e5] border border-[#c8dfa0]"}`}>
-                                          {selected ? (
-                                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                          ) : (
-                                            <svg className="w-4 h-4 text-[#5a7828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
-                                          )}
-                                        </span>
-                                      </div>
-                                    )}
-
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); openStockReceive(item, "add"); }}
+                                      className="w-9 h-9 rounded-xl bg-[#f0f7e5] border border-[#c8dfa0] flex items-center justify-center shrink-0 active:bg-[#e0f0d0] cursor-pointer"
+                                    >
+                                      <svg className="w-4 h-4 text-[#5a7828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                                      </svg>
+                                    </button>
                                   </div>
-                                </div>
-                              );
-                            })}
-                          </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            /* ── iPad / desktop card grid ── */
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+                              {items.map((item) => {
+                                const stockId = item.id || getStockName(item);
+                                const selected = stockView === "prepa" && !!cart[stockId];
+                                const status = getStockStatus(item);
+                                const isCritical = String(status).toLowerCase().includes("critique");
+                                const isLow = String(status).toLowerCase().includes("stock bas");
+
+                                return (
+                                  <div
+                                    key={stockId}
+                                    onClick={() => {
+                                      if (stockView === "stock") { openStockReceive(item, "add"); return; }
+                                      selected ? removeItem(stockId) : addStockPrep(item);
+                                    }}
+                                    className={`rounded-2xl border transition-all duration-200 overflow-hidden cursor-pointer active:scale-[0.98] ${
+                                      selected
+                                        ? "bg-[#4a6620] text-white border-[#4a6620] shadow-xl ring-2 ring-[#5a7828]/40"
+                                        : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:shadow-lg hover:border-[#c8b8a8]"
+                                    }`}
+                                  >
+                                    <div className={`h-1.5 ${isCritical ? "bg-gradient-to-r from-red-600 to-red-400" : isLow ? "bg-gradient-to-r from-orange-500 to-amber-400" : selected ? "bg-white/30" : "bg-gradient-to-r from-[#5a7828] to-[#7aa830]"}`} />
+                                    <div className="p-4">
+                                      <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold mb-2.5 ${
+                                        isCritical
+                                          ? selected ? "bg-white/20 text-white" : "bg-red-50 text-red-700 border border-red-200"
+                                          : isLow
+                                          ? selected ? "bg-white/20 text-white" : "bg-orange-50 text-orange-700 border border-orange-200"
+                                          : selected ? "bg-white/20 text-white" : "bg-[#f0f7e5] text-[#4a6620] border border-[#c8dfa0]"
+                                      }`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isCritical ? "bg-red-500" : isLow ? "bg-orange-500" : selected ? "bg-white" : "bg-[#5a7828]"}`}></span>
+                                        {status}
+                                      </div>
+                                      <h3 className="text-sm font-black leading-tight mb-3">{getStockName(item)}</h3>
+                                      <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/10 border border-white/20" : "bg-[#faf5ef] border border-[#ede0d0]"}`}>
+                                        <div className={`text-[10px] font-semibold mb-1 uppercase tracking-wide ${selected ? "text-white/60" : "text-[#9a7060]"}`}>{isPrepStock(item) ? "Portions restantes" : "En stock"}</div>
+                                        <div className="text-xl font-black">{isPrepStock(item) ? getStockPortions(item) : `${getStockQty(item)}${getStockDisplayUnit(item) ? " " + getStockDisplayUnit(item) : ""}`}</div>
+                                        {getStockZone(item) && (
+                                          <div className={`text-[10px] mt-1 flex items-center gap-1 ${selected ? "text-white/50" : "text-[#9a7060]"}`}>
+                                            <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                                            {getStockZone(item)}
+                                          </div>
+                                        )}
+                                      </div>
+                                      {stockView === "stock" ? (
+                                        <div className="flex items-center justify-center gap-2">
+                                          <button type="button" onClick={(e) => { e.stopPropagation(); openStockReceive(item, "add"); }}
+                                            className="flex-1 rounded-xl bg-[#f0f7e5] border border-[#c8dfa0] px-3 py-2.5 text-left hover:bg-[#e5f0d5] transition-colors cursor-pointer flex items-center gap-2">
+                                            <svg className="w-3.5 h-3.5 text-[#5a7828] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/><circle cx="18.5" cy="15.5" r="2.5"/><path d="M20.27 17.27 22 19"/></svg>
+                                            <div><div className="text-[10px] font-bold text-[#5a7828] uppercase tracking-wide">Réception</div><div className="text-xs font-black text-[#2c1a10]">Ajouter du stock</div></div>
+                                          </button>
+                                          <button type="button" onClick={(e) => { e.stopPropagation(); openStockReceive(item, "replace"); }}
+                                            className="rounded-xl bg-[#faf5ef] border border-[#e5d5c5] px-3 py-2.5 hover:bg-[#f0e8dc] transition-colors cursor-pointer flex items-center gap-1.5">
+                                            <svg className="w-3.5 h-3.5 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                            <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide whitespace-nowrap">Corriger</div>
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className={`flex items-center justify-between text-xs font-semibold ${selected ? "text-white/70" : "text-[#9a7060]"}`}>
+                                          <span className="flex items-center gap-1">
+                                            {selected ? (<><svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Sélectionné</>) : "Toucher pour préparer"}
+                                          </span>
+                                          <span className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-sm ${selected ? "bg-white/20" : "bg-[#f0f7e5] border border-[#c8dfa0]"}`}>
+                                            {selected ? (<svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>) : (<svg className="w-4 h-4 text-[#5a7828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>)}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -4097,7 +4189,7 @@ export default function MokaOrderPad() {
                         </button>
                         <button
                           className="h-8 px-3 rounded-lg bg-[#faf5ef] border border-[#e5d5c5] text-xs font-bold text-[#6b4a3d] hover:bg-[#f0e4d4] transition-colors cursor-pointer"
-                          onClick={() => alert("Bientôt : photo Z de caisse + IA décompte ventes")}
+                          onClick={() => showToast("Bientôt : photo Z de caisse + IA décompte ventes", "warning")}
                         >
                           🧾 Scanner Z
                         </button>
@@ -5159,6 +5251,8 @@ export default function MokaOrderPad() {
                 {stockReceiveMode === "replace" ? "Quantité totale réelle (remplace le stock)" : "Quantité reçue à ajouter"}
               </label>
               <input
+                id="stockReceiveInput"
+                autoFocus
                 type="number"
                 step="0.01"
                 value={stockReceiveWeight}
@@ -5684,7 +5778,7 @@ export default function MokaOrderPad() {
                   setNewPrepForm({ produit: "", quantite: 1, unite: "kg", priorite: "Normale", station: "Cuisine", dueDate: new Date().toISOString().slice(0, 10), staffName: "" });
                   setTimeout(() => loadPreps(), 1500);
                 } catch (err) {
-                  alert("Erreur : " + err.message);
+                  showToast("Erreur : " + err.message, "error");
                 } finally {
                   setSavingNewPrep(false);
                 }
@@ -6093,6 +6187,24 @@ export default function MokaOrderPad() {
         </div>
       )}
 
+      {/* ── TOASTS ─────────────────────────────────────── */}
+      <div className="fixed right-4 z-[90] flex flex-col gap-2 pointer-events-none"
+           style={{ bottom: "calc(env(safe-area-inset-bottom) + 80px)" }}>
+        {toasts.map(toast => (
+          <div key={toast.id}
+            className={`flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl text-white text-sm font-bold pointer-events-auto ${
+              toast.type === "error"
+                ? "bg-red-500"
+                : toast.type === "warning"
+                ? "bg-orange-500"
+                : "bg-[#5a7828]"
+            }`}>
+            <span>{toast.type === "error" ? "❌" : toast.type === "warning" ? "⚠️" : "✅"}</span>
+            {toast.message}
+          </div>
+        ))}
+      </div>
+
     </main>
   );
 }
@@ -6358,7 +6470,7 @@ function OrdDetailModal({ orderDetail, supplier, setOrderDetail }) {
               const wa = ordGetSupplierWhatsapp(supplier);
               if (wa) window.open(`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`);
             }} className="flex-1 py-3 rounded-[1rem] bg-green-50 border border-green-200 text-green-700 font-black text-xs">💬 WhatsApp</button>
-            <button onClick={() => navigator.clipboard?.writeText(message).then(() => alert("Copié !"))} className="flex-1 py-3 rounded-[1rem] bg-[#f4eee7] text-[#3b241b] font-black text-xs">📋 Copier</button>
+            <button onClick={() => navigator.clipboard?.writeText(message).then(() => showToast("Copié !"))} className="flex-1 py-3 rounded-[1rem] bg-[#f4eee7] text-[#3b241b] font-black text-xs">📋 Copier</button>
           </div>
         )}
       </div>
