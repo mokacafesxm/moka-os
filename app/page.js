@@ -2425,13 +2425,9 @@ export default function MokaOrderPad() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: stockReceiveItem.id,
-          ingredientId: stockReceiveItem.ingredientId || "",
-          Produit: getStockName(stockReceiveItem),
-          PoidsTotal: Number(stockReceiveWeight),
+          poidsTotal: Number(stockReceiveWeight),
           mode: stockReceiveMode,
-          Unite: stockReceiveUnit || stockReceiveItem.unit || "kg",
-          Utilisateur: selectedStaffName || "MOKA OS",
-          Source: stockReceiveMode === "replace" ? "Correction inventaire" : "Réception fournisseur",
+          Unite: stockReceiveUnit || stockReceiveItem.uniteStock || stockReceiveItem.unit || "kg",
         }),
       });
 
@@ -2474,13 +2470,9 @@ export default function MokaOrderPad() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: inventoryItem.id,
-          ingredientId: inventoryItem.ingredientId || "",
-          Produit: getStockName(inventoryItem),
-          PoidsTotal: Number(inventoryWeight),
+          poidsTotal: Number(inventoryWeight),
           mode: "replace",
           Unite: inventoryUnit,
-          Utilisateur: selectedStaffName || "MOKA OS",
-          Source: "Inventaire admin",
         }),
       });
 
