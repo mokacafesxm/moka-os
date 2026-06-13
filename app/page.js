@@ -3781,8 +3781,22 @@ export default function MokaOrderPad() {
       {/* ── NOUVELLE PRÉPA FAB ──────────────────────── */}
       {activeTab === "preps" && (
         <button
-          onClick={() => {
-            setNewPrepForm((prev) => ({
+          onClick={async () => {
+            const prepCount = productsDb.filter(p =>
+              String(p.categorie || p.category || "").toUpperCase() === "PREPA"
+            ).length;
+            if (prepCount === 0) {
+              try {
+                const res = await fetch(PRODUCTS_URL + "?t=" + Date.now());
+                const data = await res.json();
+                const list = Array.isArray(data) ? data : data?.products || [];
+                if (list.length > 0) {
+                  setProductsDb(list);
+                  localStorage.setItem("mokaProductsDbCache", JSON.stringify(list));
+                }
+              } catch {}
+            }
+            setNewPrepForm(prev => ({
               ...prev,
               staffName: selectedStaffName || "",
               station: prepsStation === "bar" ? "Bar" : "Cuisine",
