@@ -679,20 +679,6 @@ export default function MokaOrderPad() {
     done: filteredPreps.filter((p) => getPrepStatus(p).toLowerCase() === "fait"),
   }), [filteredPreps]);
 
-  const prepProducts = useMemo(() => {
-    return productsDb.filter((p) => {
-      const cat = String(p.categorie || p.category || "").toUpperCase();
-      const subcat = String(p.sousCategorie || p.subcategory || "").toUpperCase();
-      const isPrepa = cat === "PREPA" || cat === "PRÉPA" || cat.includes("PREPA");
-      if (!isPrepa) return false;
-      if (newPrepForm.station === "Bar") return subcat === "BAR";
-      if (newPrepForm.station === "Cuisine") return subcat === "CUISINE";
-      return true;
-    }).sort((a, b) =>
-      String(a.ingredient || a.name || "").localeCompare(String(b.ingredient || b.name || ""), "fr")
-    );
-  }, [productsDb, newPrepForm.station]);
-
   const addProduct = (product) => {
     setCart((prev) => ({
       ...prev,
@@ -2931,6 +2917,21 @@ export default function MokaOrderPad() {
       </div>
     );
   };
+
+  const prepProducts = useMemo(() => {
+    return productsDb
+      .filter(p => {
+        const cat = String(p.categorie || p.category || "").trim();
+        const subcat = String(p.sousCategorie || p.subcategory || "").trim();
+        if (cat !== "PREPA") return false;
+        if (newPrepForm.station === "Bar") return subcat === "BAR";
+        if (newPrepForm.station === "Cuisine") return subcat === "CUISINE";
+        return true;
+      })
+      .sort((a, b) =>
+        String(a.ingredient || a.name || "").localeCompare(String(b.ingredient || b.name || ""), "fr")
+      );
+  }, [productsDb, newPrepForm.station]);
 
   return (
     <main
@@ -5563,24 +5564,23 @@ export default function MokaOrderPad() {
                 <select
                   value={newPrepForm.produit}
                   onChange={e => {
-                    const sel = prepProducts.find(p => String(p.ingredient || p.name || "") === e.target.value);
+                    const selected = prepProducts.find(p => (p.ingredient || p.name || "") === e.target.value);
                     setNewPrepForm(prev => ({
                       ...prev,
                       produit: e.target.value,
-                      quantite: sel?.quantiteCommandeSuggeree || sel?.suggested || 1,
-                      unite: sel?.uniteStock || sel?.unit || "kg",
+                      quantite: selected?.quantiteCommandeSuggeree || selected?.suggested || 1,
+                      unite: selected?.uniteStock || selected?.unit || "kg",
                     }));
                   }}
                   className="mt-1 w-full bg-white border border-[#e5d5c5] rounded-xl px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]">
-                  <option value="">-- Choisir une préparation --</option>
+                  <option value="">-- Choisir une préparation {newPrepForm.station} --</option>
                   {prepProducts.map(p => {
-                    const nom = String(p.ingredient || p.name || "");
+                    const nom = p.ingredient || p.name || "";
+                    const qte = p.quantiteCommandeSuggeree || p.suggested || "";
+                    const unit = p.uniteStock || p.unit || "";
                     return (
-                      <option key={p.id || nom} value={nom}>
-                        {nom}
-                        {(p.quantiteCommandeSuggeree || p.suggested)
-                          ? ` — ${p.quantiteCommandeSuggeree || p.suggested} ${p.uniteStock || p.unit || ""}`
-                          : ""}
+                      <option key={p.id} value={nom}>
+                        {nom}{qte ? ` — ${qte} ${unit}` : ""}
                       </option>
                     );
                   })}
