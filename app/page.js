@@ -482,6 +482,9 @@ export default function MokaOrderPad() {
     return saved.statuses || {};
   });
   const [clockSending, setClockSending] = useState(false);
+  const [lastKnownDateSXM, setLastKnownDateSXM] = useState(
+    new Date().toLocaleDateString("en-CA", { timeZone: "America/Puerto_Rico" })
+  );
 
   const [orderView, setOrderView] = useState("urgent");
   const [orderCart, setOrderCart] = useState({});
@@ -510,6 +513,9 @@ export default function MokaOrderPad() {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 3000);
   };
+
+  const getTodaySXM = () =>
+    new Date().toLocaleDateString("en-CA", { timeZone: "America/Puerto_Rico" });
 
   const loadPreps = () => {
     setLoadingPreps(true);
@@ -1527,6 +1533,15 @@ export default function MokaOrderPad() {
 
   useEffect(() => {
     const poll = () => {
+      const todaySXM = getTodaySXM();
+      if (todaySXM !== lastKnownDateSXM) {
+        setClockStatuses({});
+        setLastKnownDateSXM(todaySXM);
+        fetch("/api/clock-status")
+          .then(r => r.json())
+          .then(statuses => setClockStatuses(statuses))
+          .catch(() => {});
+      }
       fetch(STAFF_URL)
         .then(r => r.json())
         .then(data => { const list = normalizeArray(data, "staff"); if (list.length) setStaff(list); })
@@ -1548,6 +1563,21 @@ export default function MokaOrderPad() {
     const interval = setInterval(poll, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const checkMidnight = setInterval(() => {
+      const todaySXM = getTodaySXM();
+      if (todaySXM !== lastKnownDateSXM) {
+        setClockStatuses({});
+        setLastKnownDateSXM(todaySXM);
+        fetch("/api/clock-status")
+          .then(r => r.json())
+          .then(statuses => setClockStatuses(statuses))
+          .catch(() => {});
+      }
+    }, 60000);
+    return () => clearInterval(checkMidnight);
+  }, [lastKnownDateSXM]);
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -4883,6 +4913,31 @@ export default function MokaOrderPad() {
                           </div>
                         )}
                       </div>
+                    </div>
+
+                    {/* Heures travaillées par staff */}
+                    <div className="bg-white rounded-2xl p-5 border border-[#e5d5c5] shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-black text-[#2c1a10]">⏱ Heures travaillées</h3>
+                        <span className="text-[10px] font-bold text-[#9a7060] bg-[#faf5ef] px-2 py-1 rounded-lg">
+                          {reportsPeriode === "tout" ? "Tout" : reportsPeriode === "mois" ? "Ce mois" : "7 jours"}
+                        </span>
+                      </div>
+                      {reportsData.staff.heures?.length === 0 ? (
+                        <div className="text-center text-[#9a7060] text-xs py-8">Aucune donnée de pointage</div>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {reportsData.staff.heures?.map(({ nom, heures }) => (
+                            <div key={nom} className="bg-gradient-to-br from-[#faf5ef] to-[#f0e8dc] rounded-xl p-3 border border-[#e5d5c5]">
+                              <div className="w-7 h-7 rounded-lg bg-[#2c1a10] flex items-center justify-center text-white text-[10px] font-black mb-2">
+                                {nom.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="text-xl font-black text-[#2c1a10]">{heures}h</div>
+                              <div className="text-[10px] font-bold text-[#9a7060] truncate">{nom}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Bento Row 3: Top prépas + MOKA AI chat */}

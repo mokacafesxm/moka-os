@@ -30,12 +30,27 @@ export async function GET(request) {
     const period = searchParams.get("period") || "week";
     const filter = periodFilter(period);
 
-    const [stockPages, prepsPages, besoinsPages, staffPages, fournisseurPages] = await Promise.all([
+    const nowSXM = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Puerto_Rico" }));
+    let periodStart;
+    if (period === "today") {
+      periodStart = new Date(nowSXM); periodStart.setHours(0, 0, 0, 0);
+    } else if (period === "week") {
+      periodStart = new Date(nowSXM);
+      const day = nowSXM.getDay();
+      periodStart.setDate(nowSXM.getDate() - (day === 0 ? 6 : day - 1));
+      periodStart.setHours(0, 0, 0, 0);
+    } else {
+      periodStart = new Date(nowSXM.getFullYear(), nowSXM.getMonth(), 1);
+    }
+    const filterByDate = (dateStr) => dateStr && new Date(dateStr) >= periodStart;
+
+    const [stockPages, prepsPages, besoinsPages, staffPages, fournisseurPages, clockPages] = await Promise.all([
       queryDatabase(DB.STOCK, null, null, 200),
       queryDatabase(DB.PREPS, null, null, 200),
       queryDatabase(DB.BESOINS, filter, [{ property: "Date création", direction: "descending" }], 200),
       queryDatabase(DB.STAFF, null, null, 50),
       queryDatabase(DB.FOURNISSEURS, null, null, 50),
+      queryDatabase(DB.POINTAGES, { property: "Date et heure", date: { on_or_after: periodStart.toISOString() } }, [{ property: "Date et heure", direction: "ascending" }], 500),
     ]);
 
     // ── Stock KPIs ──────────────────────────────────────────────
@@ -105,6 +120,53 @@ export async function GET(request) {
 
     const staffActifs = staffList.filter((s) => s.actif);
 
+    // ── Heures travaillées ───────────────────────────────────────
+    const clockEvents = clockPages.map(p => ({
+      staff: getText(p.properties, "Staff") || "",
+      action: getSelect(p.properties, "Action") || "",
+      date: getDate(p.properties, "Date et heure") || "",
+    })).filter(e => e.staff && e.date && filterByDate(e.date));
+
+    const eventsByStaffDay = {};
+    clockEvents.forEach(e => {
+      const day = e.date.slice(0, 10);
+      const key = `${e.staff}__${day}`;
+      if (!eventsByStaffDay[key]) eventsByStaffDay[key] = [];
+      eventsByStaffDay[key].push(e);
+    });
+
+    const hoursWorkedByStaff = {};
+    Object.entries(eventsByStaffDay).forEach(([key, events]) => {
+      const [staffName] = key.split("__");
+      const sorted = events.sort((a, b) => new Date(a.date) - new Date(b.date));
+      let totalMs = 0;
+      let arrivalTime = null;
+      let pauseStart = null;
+      sorted.forEach(e => {
+        const action = e.action.toLowerCase();
+        const time = new Date(e.date);
+        if (action === "arrivée") {
+          arrivalTime = time;
+        } else if (action === "départ pause" && arrivalTime) {
+          totalMs += time - arrivalTime;
+          pauseStart = time;
+          arrivalTime = null;
+        } else if (action === "retour pause" && pauseStart) {
+          arrivalTime = time;
+          pauseStart = null;
+        } else if (action === "départ" && arrivalTime) {
+          totalMs += time - arrivalTime;
+          arrivalTime = null;
+        }
+      });
+      if (!hoursWorkedByStaff[staffName]) hoursWorkedByStaff[staffName] = 0;
+      hoursWorkedByStaff[staffName] += totalMs / (1000 * 60 * 60);
+    });
+
+    const staffHoursStats = Object.entries(hoursWorkedByStaff)
+      .map(([nom, heures]) => ({ nom, heures: Math.round(heures * 10) / 10 }))
+      .sort((a, b) => b.heures - a.heures);
+
     return Response.json({
       period,
       ca: null,
@@ -133,6 +195,7 @@ export async function GET(request) {
         actifs: staffActifs.length,
         presences: staffActifs,
         list: staffList,
+        heures: staffHoursStats,
       },
     }, { headers: corsHeaders });
   } catch (err) {
