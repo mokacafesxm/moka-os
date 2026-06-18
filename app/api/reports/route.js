@@ -135,32 +135,38 @@ export async function GET(request) {
       eventsByStaffDay[key].push(e);
     });
 
+    const calculateWorkedHours = (events) => {
+      let totalMs = 0;
+      let state = "out";
+      let lastTimestamp = null;
+      events.forEach(e => {
+        const action = e.action.toLowerCase();
+        const t = new Date(e.date);
+        if (action === "arrivée") {
+          if (state === "out") { state = "working"; lastTimestamp = t; }
+        } else if (action === "départ pause") {
+          if (state === "working" && lastTimestamp) {
+            totalMs += t - lastTimestamp;
+            state = "paused";
+            lastTimestamp = t;
+          }
+        } else if (action === "retour pause") {
+          if (state === "paused") { state = "working"; lastTimestamp = t; }
+        } else if (action === "départ") {
+          if (state === "working" && lastTimestamp) totalMs += t - lastTimestamp;
+          state = "out";
+          lastTimestamp = null;
+        }
+      });
+      return totalMs / (1000 * 60 * 60);
+    };
+
     const hoursWorkedByStaff = {};
     Object.entries(eventsByStaffDay).forEach(([key, events]) => {
       const [staffName] = key.split("__");
       const sorted = events.sort((a, b) => new Date(a.date) - new Date(b.date));
-      let totalMs = 0;
-      let arrivalTime = null;
-      let pauseStart = null;
-      sorted.forEach(e => {
-        const action = e.action.toLowerCase();
-        const time = new Date(e.date);
-        if (action === "arrivée") {
-          arrivalTime = time;
-        } else if (action === "départ pause" && arrivalTime) {
-          totalMs += time - arrivalTime;
-          pauseStart = time;
-          arrivalTime = null;
-        } else if (action === "retour pause" && pauseStart) {
-          arrivalTime = time;
-          pauseStart = null;
-        } else if (action === "départ" && arrivalTime) {
-          totalMs += time - arrivalTime;
-          arrivalTime = null;
-        }
-      });
       if (!hoursWorkedByStaff[staffName]) hoursWorkedByStaff[staffName] = 0;
-      hoursWorkedByStaff[staffName] += totalMs / (1000 * 60 * 60);
+      hoursWorkedByStaff[staffName] += calculateWorkedHours(sorted);
     });
 
     const staffHoursStats = Object.entries(hoursWorkedByStaff)
