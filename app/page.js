@@ -518,7 +518,7 @@ export default function MokaOrderPad() {
     new Date().toLocaleDateString("en-CA", { timeZone: "America/Puerto_Rico" })
   );
 
-  const [orderView, setOrderView] = useState("urgent");
+  const [orderView, setOrderView] = useState("compose");
   const [orderCart, setOrderCart] = useState({});
   const [ordSelectedSupplier, setOrdSelectedSupplier] = useState("");
   const [orderDetail, setOrderDetail] = useState(null);
@@ -1719,6 +1719,21 @@ export default function MokaOrderPad() {
     const suppliers = settingsCache.suppliers || [];
     if (suppliers.length) setOrdSelectedSupplier(ordGetSupplierName(suppliers[0]));
   }, [isAdmin, adminSection, settingsCache.suppliers]);
+
+  useEffect(() => {
+    if (!ordSelectedSupplier || !ordSupplierProducts.length) return;
+    setComposeCart((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      ordSupplierProducts.forEach((p) => {
+        if (!(p.id in next)) {
+          next[p.id] = { ...p, qty: p.suggested, included: isUrgentStock(p), fournisseurId: ordSupplierContact?.id || null, fournisseurNom: ordSelectedSupplier };
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [ordSelectedSupplier, ordSupplierProducts]);
 
   const supplierOrdersVisible = supplierOrders.filter((order) => {
     if (supplierOrdersFilter === "Tous") return true;
@@ -4498,191 +4513,120 @@ export default function MokaOrderPad() {
 
             {/* ORDERS PANEL */}
             {adminSection === "orders" && (
-              <div className="space-y-4">
-                <div className="flex justify-end">
-                  <button onClick={loadSupplierOrders} className="rounded-full bg-white border border-[#eadfd4] px-3 py-2 text-xs font-black text-[#6b4a3d]">
-                    {loadingSupplierOrders ? "Chargement…" : "↻"}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  <button onClick={() => { setActiveTab("stock"); }} className="rounded-[1.1rem] bg-red-50 border border-red-100 p-3 shadow-sm text-left cursor-pointer hover:bg-red-100 transition-colors">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <div className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                      <div className="text-[11px] font-black text-red-600">Critiques</div>
-                    </div>
-                    <div className="text-2xl font-black text-red-600">{ordCriticalCount}</div>
-                    <div className="text-[10px] text-red-400 mt-0.5">produits stock</div>
-                  </button>
-                  <button onClick={() => { setOrderView("history"); setOrdStatusFilter("À commander"); }} className="rounded-[1.1rem] bg-orange-50 border border-orange-100 p-3 shadow-sm text-left cursor-pointer hover:bg-orange-100 transition-colors">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <div className="w-2 h-2 rounded-full bg-orange-400 shrink-0" />
-                      <div className="text-[11px] font-black text-orange-500">À commander</div>
-                    </div>
-                    <div className="text-2xl font-black text-orange-500">{ordACommanderCount}</div>
-                    <div className="text-[10px] text-orange-400 mt-0.5">commandes en attente</div>
-                  </button>
-                  <button onClick={() => { setOrderView("history"); setOrdStatusFilter("Envoyé"); }} className="rounded-[1.1rem] bg-[#f0f7e5] border border-[#c8dfa0] p-3 shadow-sm text-left cursor-pointer hover:bg-[#e4f2d4] transition-colors">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <div className="w-2 h-2 rounded-full bg-[#5a7828] shrink-0" />
-                      <div className="text-[11px] font-black text-[#5a7828]">Envoyées</div>
-                    </div>
-                    <div className="text-2xl font-black text-[#5a7828]">{ordEnvoyeCount}</div>
-                    <div className="text-[10px] text-[#7a9840] mt-0.5">commandes envoyées</div>
-                  </button>
-                </div>
-
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {[
-                    { id: "urgent", icon: "🚨", label: "Urgences", count: ordUrgentItems.length },
-                    { id: "compose", icon: "📝", label: "Composer", count: null },
-                    { id: "history", icon: "📜", label: "Historique", count: supplierOrders.length },
-                    { id: "suppliers", icon: "🏢", label: "Fournisseurs", count: (settingsCache.suppliers || []).length },
-                  ].map((tab) => (
-                    <button key={tab.id} onClick={() => setOrderView(tab.id)} className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition ${orderView === tab.id ? "bg-[#6f8f32] text-white shadow-md" : "bg-white text-[#6b4a3d] border border-[#eadfd4]"}`}>
-                      {tab.icon} {tab.label}
-                      {tab.count !== null && <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${orderView === tab.id ? "bg-white/20 text-white" : "bg-[#f4eee7] text-[#a97862]"}`}>{tab.count}</span>}
-                    </button>
-                  ))}
-                </div>
-
-                {orderView === "urgent" && (
-                  <div className="space-y-5">
-                    {ordCartItems.length > 0 && (
-                      <div className="bg-[#fffaf3] rounded-[1.1rem] p-4 text-[#3b241b] border border-[#eadfd4] shadow-sm">
-                        <div className="flex justify-between items-center mb-3">
-                          <div className="font-black text-sm">Panier commande</div>
-                          <span className="text-xs text-[#a97862]">{ordCartItems.length} produit{ordCartItems.length > 1 ? "s" : ""}</span>
-                        </div>
-                        <div className="space-y-2">
-                          {ordCartItems.map((item) => (
-                            <div key={item.id} className="flex items-center justify-between gap-3 bg-[#f7efe4] rounded-xl px-3 py-2">
-                              <div className="flex-1 min-w-0">
-                                <div className="text-xs font-black truncate">{item.name}</div>
-                                <div className="text-[10px] text-[#a97862]">{item.fournisseur}</div>
-                              </div>
-                              <OrdStepper value={item.qty} onChange={(v) => updateOrderCartQty(item.id, v)} min={1} unit={item.unit} />
-                              <button onClick={() => removeFromOrderCart(item.id)} className="text-[#a97862] hover:text-[#3b241b] text-lg font-black leading-none">×</button>
-                            </div>
-                          ))}
-                        </div>
-                        <button onClick={() => setOrderView("compose")} className="mt-3 w-full py-3 rounded-xl bg-[#6f8f32] text-white font-black text-sm">
-                          Composer et envoyer →
-                        </button>
-                      </div>
-                    )}
-                    {ordUrgentBySupplier.map(([supplier, items]) => (
-                      <div key={supplier}>
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="text-sm font-black text-[#3b241b]">🏢 {supplier}</div>
-                          <div className="flex-1 h-px bg-[#dccbbb]" />
-                          <button onClick={() => items.forEach((i) => addToOrderCart(i))} className="text-xs font-black text-[#6f8f32] border border-[#6f8f32] px-3 py-1 rounded-full">
-                            Tout ajouter
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {items.map((item) => {
-                            const inCart = !!orderCart[item.id];
-                            const isCrit = String(item.status).toLowerCase().includes("critique");
-                            return (
-                              <div key={item.id} className={`rounded-[1.25rem] border overflow-hidden transition ${inCart ? "bg-[#eef5df] border-[#6f8f32]" : "bg-white border-[#eadfd4]"}`}>
-                                <div className={`h-1.5 ${isCrit ? "bg-red-500" : "bg-orange-400"}`} />
-                                <div className="p-4">
-                                  <div className="flex justify-between items-start gap-2">
-                                    <div>
-                                      <div className={`text-[11px] font-black mb-0.5 ${inCart ? "text-[#a97862]" : isCrit ? "text-red-600" : "text-orange-500"}`}>
-                                        {isCrit ? "🔴 Critique" : "🟠 Stock bas"}
-                                      </div>
-                                      <div className="font-black text-[#3b241b]">{item.name}</div>
-                                      <div className="text-[11px] mt-0.5 text-[#a97862]">
-                                        {item.portionsRestantes} portions restantes · seuil {item.seuilCritique || "—"}
-                                      </div>
-                                    </div>
-                                    {inCart && <OrdStepper value={orderCart[item.id].qty} onChange={(v) => updateOrderCartQty(item.id, v)} min={1} unit={item.unit} />}
-                                  </div>
-                                  {!inCart ? (
-                                    <button onClick={() => addToOrderCart(item)} className="mt-3 w-full py-2 rounded-xl border-2 border-[#6f8f32] text-[#6f8f32] font-black text-xs">
-                                      + Ajouter ({item.suggested} {item.unit})
-                                    </button>
-                                  ) : (
-                                    <button onClick={() => removeFromOrderCart(item.id)} className="mt-2 w-full py-1.5 rounded-xl bg-white text-[#6f8f32] border border-[#6f8f32] font-black text-xs">
-                                      ✓ Dans le panier · Retirer
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+              <div className="min-h-[calc(100vh-120px)] relative">
+                {/* ── Header: 2-tab switcher + refresh ── */}
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="flex gap-1.5 bg-white/60 rounded-2xl p-1.5 border border-[#e5d5c5] shadow-sm flex-1">
+                    {[["compose","📝 Composer"],["history","📜 Historique"]].map(([id,label]) => (
+                      <button key={id} onClick={() => setOrderView(id)}
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-black cursor-pointer transition-all flex items-center justify-center gap-1.5 ${orderView === id ? "bg-[#2c1a10] text-white shadow-md" : "text-[#6b4a3d] hover:bg-[#f0e4d4]"}`}>
+                        {label}
+                        {id === "history" && supplierOrders.length > 0 && (
+                          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${orderView === id ? "bg-white/20" : "bg-[#f0e4d4]"}`}>{supplierOrders.length}</span>
+                        )}
+                      </button>
                     ))}
-                    {!loadingStock && ordUrgentItems.length === 0 && (
-                      <div className="bg-white border border-[#eadfd4] rounded-[1.2rem] p-6 text-sm font-bold text-[#a97862]">
-                        Aucun stock critique ou bas pour le moment.
-                      </div>
-                    )}
                   </div>
-                )}
+                  <button onClick={loadSupplierOrders}
+                    className="w-10 h-10 shrink-0 rounded-xl bg-white border border-[#e5d5c5] text-[#6b4a3d] hover:bg-[#faf5ef] cursor-pointer flex items-center justify-center text-base transition-colors">
+                    {loadingSupplierOrders ? <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> : "↻"}
+                  </button>
+                </div>
 
+                {/* ── VUE COMPOSER ── */}
                 {orderView === "compose" && (
-                  <div className="space-y-4">
-                    {composeCartTotal > 0 && (
-                      <div className="text-xs font-bold text-[#6f8f32] bg-[#f0f7e8] border border-[#c5dfa0] rounded-xl px-3 py-2">
-                        {composeCartGroups.length} fournisseur{composeCartGroups.length > 1 ? "s" : ""} · {composeCartTotal} produit{composeCartTotal > 1 ? "s" : ""} sélectionné{composeCartTotal > 1 ? "s" : ""}
-                      </div>
-                    )}
-                    <div>
-                      <div className="text-xs font-black text-[#a97862] mb-2">Sélectionner un fournisseur</div>
-                      <div className="flex gap-2 overflow-x-auto pb-1">
-                        {(settingsCache.suppliers || []).map((s) => {
-                          const name = ordGetSupplierName(s);
-                          const count = Object.values(composeCart).filter((i) => i.included && (i.fournisseurId === s.id || i.fournisseurNom === name)).length;
-                          return (
-                            <button key={s.id || name} onClick={() => setOrdSelectedSupplier(name)} className={`px-4 py-2 rounded-full text-xs font-black whitespace-nowrap transition flex items-center gap-1.5 ${ordSelectedSupplier === name ? "bg-[#6f8f32] text-white" : "bg-white border border-[#eadfd4] text-[#6b4a3d]"}`}>
-                              {name}
-                              {count > 0 && <span className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-black ${ordSelectedSupplier === name ? "bg-white/30 text-white" : "bg-[#6f8f32] text-white"}`}>{count}</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    {ordSupplierContact && <OrdSupplierContactCard supplier={ordSupplierContact} />}
-                    <div className="bg-white rounded-[1.1rem] border border-[#eadfd4] shadow-sm overflow-hidden">
-                      <div className="px-4 py-3 border-b border-[#eadfd4] flex justify-between items-center">
-                        <div className="text-sm font-black text-[#3b241b]">Produits à commander</div>
-                        <div className="text-xs text-[#a97862] font-bold">{ordIncludedItems.length} sélectionnés</div>
-                      </div>
-                      <div className="divide-y divide-[#eadfd4]">
-                        {ordSupplierProducts.map((p) => {
-                          const item = composeCart[p.id] || { ...p, qty: p.suggested, included: false };
-                          const isCrit = String(p.status).toLowerCase().includes("critique");
-                          const isLow = isUrgentStock(p) && !isCrit;
-                          return (
-                            <div key={p.id} className={`px-4 py-3 flex items-center gap-3 transition ${!item.included ? "opacity-50" : ""}`}>
-                              <OrdToggle checked={item.included} onChange={(v) => setComposeCart((prev) => ({ ...prev, [p.id]: { ...item, included: v, fournisseurId: ordSupplierContact?.id || null, fournisseurNom: ordSelectedSupplier } }))} />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm font-black text-[#3b241b] truncate">{p.name}</div>
-                                {(isCrit || isLow) && <div className={`text-[11px] font-bold ${isCrit ? "text-red-600" : "text-orange-500"}`}>{isCrit ? "🔴 Critique" : "🟠 Stock bas"}</div>}
+                  <div className="space-y-3 pb-28">
+                    {/* Étape 1 — Sélection fournisseur */}
+                    <div className="space-y-2">
+                      {(settingsCache.suppliers || []).length === 0 && (
+                        <div className="bg-white rounded-2xl border border-[#e5d5c5] p-8 text-center text-sm text-[#9a7060]">
+                          Aucun fournisseur configuré dans les paramètres.
+                        </div>
+                      )}
+                      {(settingsCache.suppliers || []).map((s) => {
+                        const name = ordGetSupplierName(s);
+                        const phone = ordGetSupplierWhatsapp(s) || ordGetSupplierPhone(s);
+                        const urgentCount = ordUrgentItems.filter((i) => i.fournisseur === name).length;
+                        const isSelected = ordSelectedSupplier === name;
+                        return (
+                          <button key={s.id || name}
+                            onClick={() => { setOrdSelectedSupplier(name); setComposeCart({}); }}
+                            className={`w-full rounded-2xl border px-4 py-4 text-left transition-all cursor-pointer ${isSelected ? "bg-[#2c1a10] border-[#2c1a10] text-white shadow-md" : "bg-white border-[#e5d5c5] shadow-sm hover:border-[#c8a882] hover:shadow-md"}`}>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="font-black text-base leading-tight">{name}</div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {urgentCount > 0 && (
+                                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-500 text-white">
+                                    {urgentCount} urgent{urgentCount > 1 ? "s" : ""}
+                                  </span>
+                                )}
+                                {isSelected && (
+                                  <svg className="w-5 h-5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                )}
                               </div>
-                              <OrdStepper value={item.qty} onChange={(v) => setComposeCart((prev) => ({ ...prev, [p.id]: { ...item, qty: v } }))} min={0} unit={p.unit} />
                             </div>
-                          );
-                        })}
-                        {!loadingProductsDb && ordSupplierProducts.length === 0 && (
-                          <div className="p-5 text-sm font-bold text-[#a97862]">Aucun produit relié à ce fournisseur dans la base ingrédients.</div>
+                            {phone && (
+                              <div className={`text-[11px] mt-1 ${isSelected ? "text-white/60" : "text-[#9a7060]"}`}>
+                                💬 {phone}
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Étape 2 — Liste produits (quand fournisseur sélectionné) */}
+                    {ordSelectedSupplier && (
+                      <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden">
+                        <div className="px-4 py-3 border-b border-[#e5d5c5] flex items-center justify-between">
+                          <div className="text-sm font-black text-[#2c1a10]">Produits à commander</div>
+                          <div className="text-xs text-[#9a7060] font-bold">{ordIncludedItems.length}/{ordSupplierProducts.length} sélectionnés</div>
+                        </div>
+                        {loadingProductsDb ? (
+                          <div className="p-6 text-center text-sm text-[#9a7060]">Chargement…</div>
+                        ) : ordSupplierProducts.length === 0 ? (
+                          <div className="p-5 text-sm text-[#9a7060]">Aucun produit lié à ce fournisseur dans la base.</div>
+                        ) : (
+                          <div className="divide-y divide-[#f5ede0]">
+                            {[...ordSupplierProducts].sort((a, b) => {
+                              const aU = isUrgentStock(a) ? 0 : 1;
+                              const bU = isUrgentStock(b) ? 0 : 1;
+                              return aU - bU;
+                            }).map((p) => {
+                              const item = composeCart[p.id] || { ...p, qty: p.suggested, included: isUrgentStock(p) };
+                              const isCrit = String(p.status).toLowerCase().includes("critique");
+                              const isLow = isUrgentStock(p) && !isCrit;
+                              return (
+                                <div key={p.id} className={`px-4 py-3 flex items-center gap-3 transition-colors ${!item.included ? "opacity-40" : ""}`}>
+                                  <OrdToggle checked={item.included}
+                                    onChange={(v) => setComposeCart((prev) => ({ ...prev, [p.id]: { ...item, included: v, fournisseurId: ordSupplierContact?.id || null, fournisseurNom: ordSelectedSupplier } }))} />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-black text-[#2c1a10] truncate">{p.name}</div>
+                                    {isCrit && <div className="text-[10px] font-bold text-red-600">🔴 Critique</div>}
+                                    {isLow && <div className="text-[10px] font-bold text-orange-500">🟠 Stock bas</div>}
+                                  </div>
+                                  <OrdStepper value={item.qty}
+                                    onChange={(v) => setComposeCart((prev) => ({ ...prev, [p.id]: { ...item, qty: v } }))}
+                                    min={0} unit={p.unit} />
+                                </div>
+                              );
+                            })}
+                          </div>
                         )}
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-black text-[#a97862] mb-1.5">Notes (optionnel)</label>
-                      <textarea value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} placeholder="Ex : livraison matin SVP, emballage sous-vide..." className="w-full rounded-[1rem] border border-[#eadfd4] bg-white px-4 py-3 text-sm text-[#3b241b] outline-none resize-none placeholder:text-[#c8b4a8]" rows={2} />
-                    </div>
-                    <button onClick={() => setShowMultiPanelModal(true)} disabled={composeCartTotal === 0} className="w-full py-4 rounded-[1rem] bg-[#6f8f32] text-white font-black shadow-md disabled:opacity-40 disabled:cursor-not-allowed">
-                      📦 Préparer les commandes ({composeCartGroups.length} fournisseur{composeCartGroups.length > 1 ? "s" : ""})
-                    </button>
+                    )}
+
+                    {/* Étape 3 — Notes (quand au moins 1 produit coché) */}
+                    {ordIncludedItems.length > 0 && (
+                      <textarea value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)}
+                        placeholder="Livraison matin, emballage sous-vide…"
+                        className="w-full rounded-2xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm text-[#2c1a10] outline-none resize-none placeholder:text-[#b09080] focus:border-[#c8a882] transition"
+                        rows={2} />
+                    )}
                   </div>
                 )}
 
+                {/* ── VUE HISTORIQUE ── */}
                 {orderView === "history" && (() => {
                   const formatDateSXM = (d) => {
                     if (!d) return "—";
@@ -4706,31 +4650,36 @@ export default function MokaOrderPad() {
                   };
                   const grouped = groupByMonth(ordFilteredOrders);
                   return (
-                    <div className="space-y-1">
-                      <div className="flex gap-2 overflow-x-auto pb-1">
+                    <div className="space-y-2">
+                      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                         {["Tous", "À commander", "Envoyé", "Reçu", "Annulé"].map((s) => (
-                          <button key={s} onClick={() => setOrdStatusFilter(s)} className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap transition ${ordStatusFilter === s ? "bg-[#6f8f32] text-white" : "bg-white border border-[#eadfd4] text-[#6b4a3d]"}`}>
+                          <button key={s} onClick={() => setOrdStatusFilter(s)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition cursor-pointer ${ordStatusFilter === s ? "bg-[#2c1a10] text-white" : "bg-white border border-[#e5d5c5] text-[#6b4a3d] hover:bg-[#faf5ef]"}`}>
                             {s}
                           </button>
                         ))}
                       </div>
-                      <div className="text-xs text-[#a97862] font-bold pb-1">{ordFilteredOrders.length} commande{ordFilteredOrders.length !== 1 ? "s" : ""}</div>
+                      <div className="text-[11px] text-[#9a7060] font-bold">{ordFilteredOrders.length} commande{ordFilteredOrders.length !== 1 ? "s" : ""}</div>
+                      {ordFilteredOrders.length === 0 && (
+                        <div className="bg-white rounded-2xl border border-[#e5d5c5] p-8 text-center text-sm text-[#9a7060]">Aucune commande.</div>
+                      )}
                       {grouped.map(([mois, orders]) => (
                         <div key={mois}>
-                          <div className="text-xs font-black text-[#9a7060] uppercase tracking-wide px-1 py-2 mt-3 first:mt-0">{mois}</div>
+                          <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide px-1 py-2 mt-3 first:mt-0">{mois}</div>
                           <div className="space-y-2">
                             {orders.map((order) => (
-                              <div key={order.id} className="bg-white rounded-[1.1rem] border border-[#eadfd4] shadow-sm overflow-hidden">
+                              <div key={order.id} className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden">
                                 <div className="px-4 py-3 flex items-start justify-between gap-3">
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
                                       <OrdStatusBadge status={order.statut} />
-                                      <span className="text-[11px] text-[#a97862]">{formatDateSXM(order.dateCreation || order.dateEnvoi)}</span>
+                                      <span className="text-[10px] text-[#9a7060]">{formatDateSXM(order.dateCreation || order.dateEnvoi)}</span>
                                     </div>
-                                    <div className="font-black text-sm text-[#3b241b] truncate">{order.produit}</div>
-                                    <div className="text-[11px] text-[#a97862] mt-0.5 truncate">{order.fournisseur}</div>
+                                    <div className="font-black text-sm text-[#2c1a10] truncate">{order.produit}</div>
+                                    <div className="text-[11px] text-[#9a7060] mt-0.5 truncate">{order.fournisseur}</div>
                                   </div>
-                                  <button onClick={() => setOrderDetail(order)} className="shrink-0 text-xs font-black text-[#6f8f32] border border-[#6f8f32] px-3 py-1.5 rounded-xl cursor-pointer">
+                                  <button onClick={() => setOrderDetail(order)}
+                                    className="shrink-0 text-xs font-black text-[#5a7828] border border-[#5a7828] px-3 py-1.5 rounded-xl cursor-pointer hover:bg-[#f0f7e5] transition-colors">
                                     Détail →
                                   </button>
                                 </div>
@@ -4743,65 +4692,25 @@ export default function MokaOrderPad() {
                   );
                 })()}
 
-                {orderView === "suppliers" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {(settingsCache.suppliers || []).map((supplier) => {
-                      const name = ordGetSupplierName(supplier);
-                      const supplierUrgents = ordUrgentItems.filter((p) => p.fournisseur === name);
-                      return (
-                        <div key={supplier.id || name} className="bg-white rounded-[1.25rem] border border-[#eadfd4] shadow-sm p-4">
-                          <div className="flex justify-between items-start gap-2 mb-3">
-                            <div>
-                              <div className="font-black text-[#3b241b]">{name}</div>
-                              <div className="text-[11px] text-[#a97862] mt-0.5">{supplierUrgents.length} produit(s) à commander</div>
-                            </div>
-                            {supplierUrgents.length > 0 && (
-                              <span className="text-xs bg-red-100 text-red-700 font-black px-2 py-0.5 rounded-full">Urgent</span>
-                            )}
-                          </div>
-                          <OrdSupplierContactCard supplier={supplier} compact />
-                          {supplierUrgents.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-[#eadfd4]">
-                              <div className="text-[10px] font-black text-[#a97862] mb-1.5">PRODUITS À COMMANDER</div>
-                              <div className="space-y-1">
-                                {supplierUrgents.slice(0, 4).map((p) => (
-                                  <div key={p.id} className="flex items-center gap-2 text-[11px]">
-                                    <OrdStatusBadge status={p.status} />
-                                    <span className="font-bold text-[#3b241b]">{p.name}</span>
-                                    <span className="text-[#a97862]">→ {p.suggested} {p.unit}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          <button onClick={() => { setOrdSelectedSupplier(name); setOrderView("compose"); }} className="w-full mt-3 py-2 rounded-xl bg-[#6f8f32] text-white font-black text-xs">
-                            Commander
-                          </button>
-                        </div>
-                      );
-                    })}
+                {/* ── Sticky CTA ── */}
+                {orderView === "compose" && ordIncludedItems.length > 0 && (
+                  <div className="fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-[#f5ede0]/95 backdrop-blur-sm border-t border-[#e5d5c5]" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}>
+                    <button onClick={() => setShowMultiPanelModal(true)}
+                      className="w-full py-4 rounded-2xl bg-[#5a7828] text-white font-black text-sm shadow-lg active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2">
+                      <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                      Préparer le message → {ordIncludedItems.length} produit{ordIncludedItems.length > 1 ? "s" : ""}
+                    </button>
                   </div>
                 )}
 
+                {/* ── Modals ── */}
                 {showMultiPanelModal && (
-                  <OrdMultiPanelModal
-                    groups={composeCartGroups}
-                    onClose={() => setShowMultiPanelModal(false)}
-                    onAllSent={async () => {
-                      setShowMultiPanelModal(false);
-                      setComposeCart({});
-                      setOrdSelectedSupplier("");
-                      await loadSupplierOrders();
-                      setOrderView("history");
-                    }}
-                  />
+                  <OrdMultiPanelModal groups={composeCartGroups} onClose={() => setShowMultiPanelModal(false)}
+                    onAllSent={async () => { setShowMultiPanelModal(false); setComposeCart({}); setOrdSelectedSupplier(""); await loadSupplierOrders(); setOrderView("history"); }} />
                 )}
                 {orderDetail && (
-                  <OrdDetailModal
-                    orderDetail={orderDetail}
-                    setOrderDetail={setOrderDetail}
-                    supplier={(settingsCache.suppliers || []).find((s) => ordGetSupplierName(s) === orderDetail.fournisseur)}
-                  />
+                  <OrdDetailModal orderDetail={orderDetail} setOrderDetail={setOrderDetail}
+                    supplier={(settingsCache.suppliers || []).find((s) => ordGetSupplierName(s) === orderDetail.fournisseur)} />
                 )}
               </div>
             )}
