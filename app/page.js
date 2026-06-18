@@ -44,8 +44,29 @@ const categoryEmojis = {
   Autres: "✨",
 };
 
+const getSmartCategoryEmoji = (name) => {
+  const n = name.toLowerCase();
+  if (n.includes("bar") || n.includes("café") || n.includes("cafe")) return "☕";
+  if (n.includes("boisson") || n.includes("jus") || n.includes("smoothie")) return "🥤";
+  if (n.includes("viande") || n.includes("poulet") || n.includes("protéine") || n.includes("protein")) return "🍗";
+  if (n.includes("laitier") || n.includes("lait") || n.includes("fromage") || n.includes("crème")) return "🥛";
+  if (n.includes("fruit") || n.includes("légume") || n.includes("legume") || n.includes("végétal")) return "🥑";
+  if (n.includes("boulang") || n.includes("pain") || n.includes("viennois")) return "🥖";
+  if (n.includes("épice") || n.includes("epice") || n.includes("herbe") || n.includes("condiment")) return "🌿";
+  if (n.includes("surgelé") || n.includes("surgele") || n.includes("congelé")) return "❄️";
+  if (n.includes("sec") || n.includes("épicerie") || n.includes("epicerie") || n.includes("dry")) return "📦";
+  if (n.includes("dessert") || n.includes("sucré") || n.includes("sucre") || n.includes("pâtisserie")) return "🍰";
+  if (n.includes("packaging") || n.includes("emballage")) return "🛍️";
+  if (n.includes("nettoyage") || n.includes("entretien") || n.includes("hygiène")) return "🧽";
+  if (n.includes("alcool") || n.includes("vin") || n.includes("bière") || n.includes("spiritueux")) return "🍷";
+  if (n.includes("poisson") || n.includes("fruit de mer") || n.includes("seafood")) return "🐟";
+  if (n.includes("sauce") || n.includes("huile") || n.includes("vinaigre")) return "🫙";
+  if (n.includes("céréale") || n.includes("cereale") || n.includes("farine") || n.includes("riz")) return "🌾";
+  return "✨";
+};
+
 const categoryOrder = [
-  
+
   "Bar",
   "Boissons",
   "Protéines",
@@ -3205,6 +3226,24 @@ export default function MokaOrderPad() {
 
       <div className="max-w-screen-2xl mx-auto px-3 py-3">
 
+        {/* ── ADMIN KPI CARDS ──────────────────────────── */}
+        {isAdmin && (
+          <div className="flex flex-row gap-2 w-full mb-4">
+            {[
+              { label: "Critiques",  value: stockKpis.critical,    color: "text-red-600",     onClick: () => setActiveTab("stock") },
+              { label: "Alertes",    value: stockKpis.alert,       color: "text-orange-600",  onClick: () => setActiveTab("stock") },
+              { label: "Prépas",     value: prepCount,             color: "text-[#4a6620]",   onClick: () => setActiveTab("preps") },
+              { label: "Commandes",  value: supplierOrders.length, color: "text-[#2c1a10]",   onClick: () => setAdminSection("orders") },
+            ].map(({ label, value, color, onClick }) => (
+              <button key={label} onClick={onClick}
+                className="flex-1 px-3 py-2 rounded-xl border border-[#e5d5c5] bg-white/70 text-left cursor-pointer hover:shadow-md active:scale-[0.98] transition-all shadow-sm">
+                <div className={`text-lg font-black ${color}`}>{value}</div>
+                <div className="text-[10px] font-bold text-[#9a7060]">{label}</div>
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* ── TABS ────────────────────────────────────── */}
         <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 scrollbar-hide bg-white/60 rounded-2xl p-1.5 border border-[#e5d5c5] shadow-sm w-fit">
           <button
@@ -3253,43 +3292,6 @@ export default function MokaOrderPad() {
           </button>
         </div>
 
-        {/* ── ADMIN KPI CARDS ──────────────────────────── */}
-        {isAdmin && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            {[
-              {
-                label: "Critiques", value: stockKpis.critical, color: "text-red-600", bg: "bg-red-50 border-red-200", onClick: () => setActiveTab("stock"),
-                icon: <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
-              },
-              {
-                label: "Alertes stock", value: stockKpis.alert, color: "text-orange-600", bg: "bg-orange-50 border-orange-200", onClick: () => setActiveTab("stock"),
-                icon: <svg className="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" x2="21" y1="6" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-              },
-              {
-                label: "Prépas à faire", value: prepCount, color: "text-[#4a6620]", bg: "bg-[#f0f7e5] border-[#c8dfa0]", onClick: () => setActiveTab("preps"),
-                icon: <svg className="w-4 h-4 text-[#5a7828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" x2="18" y1="17" y2="17"/></svg>
-              },
-              {
-                label: "Commandes", value: supplierOrders.length, color: "text-[#2c1a10]", bg: "bg-white border-[#e5d5c5]", onClick: () => setAdminSection("orders"),
-                subtitle: ordACommanderCount > 0 ? `${ordACommanderCount} en attente` : "Voir les commandes",
-                icon: <svg className="w-4 h-4 text-[#9a7060]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" x2="21" y1="6" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-              },
-            ].map(({ label, value, color, bg, onClick, icon, subtitle }) => (
-              <button
-                key={label}
-                onClick={onClick || undefined}
-                className={`rounded-2xl p-4 border text-left shadow-sm transition-all ${bg} ${onClick ? "cursor-pointer hover:shadow-md active:scale-[0.98]" : "cursor-default"}`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">{label}</span>
-                  {icon}
-                </div>
-                <div className={`text-3xl font-black ${color}`}>{value}</div>
-                {subtitle && <div className="text-[10px] text-[#9a7060] mt-1">{subtitle}</div>}
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* ── MAIN GRID ────────────────────────────────── */}
         <div className="grid grid-cols-12 gap-3 items-start">
@@ -3646,7 +3648,10 @@ export default function MokaOrderPad() {
 
                   {/* Category circles */}
                   <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                    {categories.filter((cat) => String(cat).trim().toLowerCase() !== "tous").map((cat) => {
+                    {categories.filter((cat) => {
+                      const cl = String(cat).trim().toLowerCase();
+                      return cl !== "tous" && !cl.includes("prépa") && !cl.includes("prepa");
+                    }).map((cat) => {
                       const isActive = activeCategory === cat;
                       const cartCount = Object.values(cart).filter(item => (item.category || "Autres") === cat).length;
                       return (
@@ -3658,7 +3663,7 @@ export default function MokaOrderPad() {
                           <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl border-2 transition-all ${
                             isActive ? "bg-[#2c1a10] border-[#2c1a10]" : "bg-white border-[#e5d5c5]"
                           }`}>
-                            {categoryEmojis[cat] || "📌"}
+                            {getSmartCategoryEmoji(cat)}
                           </div>
                           <span className={`text-[10px] font-black text-center truncate w-16 ${isActive ? "text-[#2c1a10]" : "text-[#6b4a3d]"}`}>{cat}</span>
                           {cartCount > 0 && (
