@@ -3247,13 +3247,13 @@ export default function MokaOrderPad() {
         )}
 
         {/* ── TABS ────────────────────────────────────── */}
-        <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 scrollbar-hide bg-white/60 rounded-2xl p-1.5 border border-[#e5d5c5] shadow-sm w-fit">
+        <div className="flex gap-1.5 mb-4 bg-white/60 rounded-2xl p-1.5 border border-[#e5d5c5] shadow-sm w-full">
           <button
             onClick={() => {
               setActiveTab("orderpad");
               if (!activeCategory && categories[0]) setActiveCategory(categories[0]);
             }}
-            className={`${isIphone ? "h-8 px-3 text-[11px]" : "h-10 px-4 text-xs"} rounded-xl font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer flex items-center gap-2 ${
+            className={`${isIphone ? "h-8 text-[11px]" : "h-10 text-xs"} flex-1 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer flex items-center justify-center gap-2 ${
               activeTab === "orderpad"
                 ? "bg-[#2c1a10] text-white shadow-md"
                 : "text-[#6b4a3d] hover:bg-[#f0e4d4]"
@@ -3265,7 +3265,7 @@ export default function MokaOrderPad() {
 
           <button
             onClick={() => setActiveTab("stock")}
-            className={`${isIphone ? "h-8 px-3 text-[11px]" : "h-10 px-4 text-xs"} rounded-xl font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-2 cursor-pointer ${
+            className={`${isIphone ? "h-8 text-[11px]" : "h-10 text-xs"} flex-1 rounded-xl font-bold whitespace-nowrap transition-all flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === "stock"
                 ? "bg-[#2c1a10] text-white shadow-md"
                 : "text-[#6b4a3d] hover:bg-[#f0e4d4]"
@@ -3278,7 +3278,7 @@ export default function MokaOrderPad() {
 
           <button
             onClick={() => setActiveTab("preps")}
-            className={`${isIphone ? "h-8 px-3 text-[11px]" : "h-10 px-4 text-xs"} rounded-xl font-bold whitespace-nowrap shrink-0 transition-all flex items-center gap-2 cursor-pointer ${
+            className={`${isIphone ? "h-8 text-[11px]" : "h-10 text-xs"} flex-1 rounded-xl font-bold whitespace-nowrap transition-all flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === "preps"
                 ? "bg-[#2c1a10] text-white shadow-md"
                 : "text-[#6b4a3d] hover:bg-[#f0e4d4]"
