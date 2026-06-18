@@ -3262,7 +3262,7 @@ export default function MokaOrderPad() {
         )}
 
         {/* ── TABS ────────────────────────────────────── */}
-        <div className="flex gap-1.5 mb-4 bg-white/60 rounded-2xl p-1.5 border border-[#e5d5c5] shadow-sm w-full">
+        <div className="flex gap-1.5 mb-4 backdrop-blur-xl bg-white/40 rounded-2xl p-1.5 border border-white/30 shadow-md w-full">
           <button
             onClick={() => {
               setActiveTab("orderpad");
@@ -3270,8 +3270,8 @@ export default function MokaOrderPad() {
             }}
             className={`${isIphone ? "h-8 text-[11px]" : "h-10 text-xs"} flex-1 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer flex items-center justify-center gap-2 ${
               activeTab === "orderpad"
-                ? "bg-[#2c1a10] text-white shadow-md"
-                : "text-[#6b4a3d] hover:bg-[#f0e4d4]"
+                ? "bg-white/80 text-[#2c1a10] shadow-md"
+                : "text-[#6b4a3d] hover:bg-white/40"
             }`}
           >
             <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
@@ -3282,8 +3282,8 @@ export default function MokaOrderPad() {
             onClick={() => setActiveTab("stock")}
             className={`${isIphone ? "h-8 text-[11px]" : "h-10 text-xs"} flex-1 rounded-xl font-bold whitespace-nowrap transition-all flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === "stock"
-                ? "bg-[#2c1a10] text-white shadow-md"
-                : "text-[#6b4a3d] hover:bg-[#f0e4d4]"
+                ? "bg-white/80 text-[#2c1a10] shadow-md"
+                : "text-[#6b4a3d] hover:bg-white/40"
             }`}
           >
             <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
@@ -3295,8 +3295,8 @@ export default function MokaOrderPad() {
             onClick={() => setActiveTab("preps")}
             className={`${isIphone ? "h-8 text-[11px]" : "h-10 text-xs"} flex-1 rounded-xl font-bold whitespace-nowrap transition-all flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === "preps"
-                ? "bg-[#2c1a10] text-white shadow-md"
-                : "text-[#6b4a3d] hover:bg-[#f0e4d4]"
+                ? "bg-white/80 text-[#2c1a10] shadow-md"
+                : "text-[#6b4a3d] hover:bg-white/40"
             }`}
           >
             <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" x2="18" y1="17" y2="17"/></svg>
@@ -3342,7 +3342,7 @@ export default function MokaOrderPad() {
                     {/* Search + filters bar */}
                     <div className="bg-white rounded-2xl p-3 border border-[#e5d5c5] shadow-sm space-y-3">
                       {/* Search input */}
-                      <div className="flex items-center gap-2 bg-[#faf5ef] border border-[#d8c8b8] rounded-xl px-3 py-2">
+                      <div className="flex items-center gap-2 backdrop-blur-sm bg-white/60 border border-white/50 rounded-xl px-3 py-2">
                         <svg className="w-4 h-4 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                         <input
                           value={stockSearch}
@@ -3414,7 +3414,7 @@ export default function MokaOrderPad() {
                               className={`h-7 px-3 rounded-lg whitespace-nowrap text-xs font-bold shrink-0 transition-all cursor-pointer ${
                                 activeStockCategory === cat
                                   ? "bg-[#5a7828] text-white"
-                                  : "bg-[#faf5ef] text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
+                                  : "backdrop-blur-sm bg-white/50 text-[#6b4a3d] border border-white/40 hover:bg-white/70"
                               }`}
                             >
                               {categoryEmojis[cat] || "📌"} {cat}
@@ -3471,7 +3471,7 @@ export default function MokaOrderPad() {
                             : zoneName === "Sans zone" ? "📍"
                             : "🗄️";
                           return (
-                            <div key={zoneName} className="bg-white rounded-2xl border border-[#e5d5c5] overflow-hidden shadow-sm">
+                            <div key={zoneName} className="backdrop-blur-sm bg-white/70 border border-white/50 overflow-hidden shadow-sm rounded-2xl">
                               <button
                                 onClick={() => toggleZone(zoneName)}
                                 className="w-full flex items-center justify-between px-4 py-3.5 cursor-pointer hover:bg-[#faf5ef] transition-colors"
@@ -3648,7 +3648,7 @@ export default function MokaOrderPad() {
               <>
                 {/* Search + category filters */}
                 <div className="bg-white rounded-2xl p-3 mb-4 border border-[#e5d5c5] shadow-sm space-y-3">
-                  <div className="flex items-center gap-2 bg-[#faf5ef] border border-[#d8c8b8] rounded-xl px-3 py-2">
+                  <div className="flex items-center gap-2 backdrop-blur-sm bg-white/60 border border-white/50 rounded-xl px-3 py-2">
                     <svg className="w-4 h-4 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     <input
                       value={search}
@@ -3701,7 +3701,7 @@ export default function MokaOrderPad() {
                         className={`h-7 px-3 rounded-md text-[11px] font-bold shrink-0 transition-all cursor-pointer ${
                           !activeSubCategory
                             ? "bg-[#2c1a10] text-white"
-                            : "bg-[#faf5ef] text-[#8b6f61] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
+                            : "backdrop-blur-sm bg-white/50 text-[#8b6f61] border border-white/40 hover:bg-white/70"
                         }`}
                       >
                         Tous
@@ -3713,7 +3713,7 @@ export default function MokaOrderPad() {
                           className={`h-7 px-3 rounded-md whitespace-nowrap text-[11px] font-bold shrink-0 transition-all cursor-pointer ${
                             activeSubCategory === sub
                               ? "bg-[#2c1a10] text-white"
-                              : "bg-[#faf5ef] text-[#8b6f61] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
+                              : "backdrop-blur-sm bg-white/50 text-[#8b6f61] border border-white/40 hover:bg-white/70"
                           }`}
                         >
                           {sub}
@@ -4259,12 +4259,12 @@ export default function MokaOrderPad() {
 
             {/* PRODUCTS PANEL */}
             {adminSection === "products" && (
-              <><div className="h-2" /><div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden" style={{height: "calc(100vh - 100px)"}}>
+              <><div className="h-2" /><div className="backdrop-blur-sm bg-white/70 border border-white/50 shadow-sm overflow-hidden rounded-2xl" style={{height: "calc(100vh - 100px)"}}>
                 {/* Single unified filter bar */}
                 <div className="p-3 border-b border-[#e5d5c5] space-y-2">
                   {/* Search + action buttons */}
                   <div className="flex gap-2">
-                    <div className="flex items-center gap-2 bg-[#faf5ef] border border-[#d8c8b8] rounded-xl px-3 py-2 flex-1">
+                    <div className="flex items-center gap-2 backdrop-blur-sm bg-white/60 border border-white/50 rounded-xl px-3 py-2 flex-1 focus-within:bg-white/80 focus-within:border-white/70 transition-all">
                       <svg className="w-4 h-4 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                       <input value={productsDbSearch} onChange={(e) => setProductsDbSearch(e.target.value)} placeholder="Rechercher un produit…" className="w-full bg-transparent outline-none text-[#2c1a10] placeholder:text-[#b09080] text-sm"/>
                       {productsDbSearch && <button onClick={() => setProductsDbSearch("")} className="text-[#9a7060] cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg></button>}
@@ -4359,7 +4359,7 @@ export default function MokaOrderPad() {
                 <div className="flex gap-3">
                   <button
                     onClick={() => { setInvoiceModal(true); setInvoiceResults([]); setInvoiceImageUrl(""); setInvoiceImage(null); }}
-                    className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 bg-white rounded-2xl border border-[#e5d5c5] shadow-sm hover:bg-[#faf5ef] active:scale-95 transition-all cursor-pointer"
+                    className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 backdrop-blur-sm bg-white/70 border border-white/50 shadow-sm hover:bg-white/90 hover:shadow-md active:scale-[0.97] transition-all duration-200 cursor-pointer rounded-2xl"
                   >
                     <span className="text-2xl">📸</span>
                     <span className="text-xs font-black text-[#2c1a10]">Scanner facture</span>
@@ -4367,7 +4367,7 @@ export default function MokaOrderPad() {
                   </button>
                   <button
                     onClick={() => showToast("Bientôt : photo Z de caisse + IA décompte ventes", "warning")}
-                    className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 bg-white rounded-2xl border border-[#e5d5c5] shadow-sm hover:bg-[#faf5ef] active:scale-95 transition-all cursor-pointer"
+                    className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 backdrop-blur-sm bg-white/70 border border-white/50 shadow-sm hover:bg-white/90 hover:shadow-md active:scale-[0.97] transition-all duration-200 cursor-pointer rounded-2xl"
                   >
                     <span className="text-2xl">🧾</span>
                     <span className="text-xs font-black text-[#2c1a10]">Scanner Z caisse</span>
@@ -4375,10 +4375,10 @@ export default function MokaOrderPad() {
                   </button>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden">
+                <div className="backdrop-blur-sm bg-white/70 border border-white/50 shadow-sm overflow-hidden rounded-2xl">
                   <div className="p-3 border-b border-[#e5d5c5] space-y-2">
                     {/* Search */}
-                    <div className="flex items-center gap-2 bg-[#faf5ef] border border-[#d8c8b8] rounded-xl px-3 py-2">
+                    <div className="flex items-center gap-2 backdrop-blur-sm bg-white/60 border border-white/50 rounded-xl px-3 py-2">
                       <svg className="w-4 h-4 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                       <input value={stockSearch} onChange={(e) => setStockSearch(e.target.value)}
                         placeholder={inventoryView === "stock" ? "Rechercher un produit stock…" : "Rechercher une prépa…"}
@@ -4415,7 +4415,7 @@ export default function MokaOrderPad() {
                     <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
                       {inventoryCategories.map((cat) => (
                         <button key={cat} onClick={() => setInventoryCategory(cat)}
-                          className={`h-7 px-3 rounded-lg whitespace-nowrap text-xs font-bold shrink-0 transition-all cursor-pointer ${inventoryCategory === cat ? "bg-[#5a7828] text-white" : "bg-[#faf5ef] text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"}`}>
+                          className={`h-7 px-3 rounded-lg whitespace-nowrap text-xs font-bold shrink-0 transition-all cursor-pointer ${inventoryCategory === cat ? "bg-[#5a7828] text-white" : "backdrop-blur-sm bg-white/50 text-[#6b4a3d] border border-white/40 hover:bg-white/70"}`}>
                           {cat === "Tous" ? "Tous" : `${getSmartCategoryEmoji(cat)} ${cat}`}
                         </button>
                       ))}
@@ -4528,7 +4528,7 @@ export default function MokaOrderPad() {
                     ))}
                   </div>
                   <button onClick={loadSupplierOrders}
-                    className="w-10 h-10 shrink-0 rounded-xl bg-white border border-[#e5d5c5] text-[#6b4a3d] hover:bg-[#faf5ef] cursor-pointer flex items-center justify-center text-base transition-colors">
+                    className="w-10 h-10 shrink-0 rounded-xl backdrop-blur-sm bg-white/50 border border-white/40 text-[#6b4a3d] hover:bg-white/70 cursor-pointer flex items-center justify-center text-base transition-colors">
                     {loadingSupplierOrders ? <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> : "↻"}
                   </button>
                 </div>
@@ -4577,7 +4577,7 @@ export default function MokaOrderPad() {
 
                     {/* Étape 2 — Liste produits (quand fournisseur sélectionné) */}
                     {ordSelectedSupplier && (
-                      <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden">
+                      <div className="backdrop-blur-sm bg-white/70 border border-white/50 shadow-sm overflow-hidden rounded-2xl">
                         <div className="px-4 py-3 border-b border-[#e5d5c5] flex items-center justify-between">
                           <div className="text-sm font-black text-[#2c1a10]">Produits à commander</div>
                           <div className="text-xs text-[#9a7060] font-bold">{ordIncludedItems.length}/{ordSupplierProducts.length} sélectionnés</div>
@@ -4654,7 +4654,7 @@ export default function MokaOrderPad() {
                       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                         {["Tous", "À commander", "Envoyé", "Reçu", "Annulé"].map((s) => (
                           <button key={s} onClick={() => setOrdStatusFilter(s)}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition cursor-pointer ${ordStatusFilter === s ? "bg-[#2c1a10] text-white" : "bg-white border border-[#e5d5c5] text-[#6b4a3d] hover:bg-[#faf5ef]"}`}>
+                            className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition cursor-pointer ${ordStatusFilter === s ? "bg-[#2c1a10] text-white" : "backdrop-blur-sm bg-white/50 border border-white/40 text-[#6b4a3d] hover:bg-white/70"}`}>
                             {s}
                           </button>
                         ))}
@@ -4668,7 +4668,7 @@ export default function MokaOrderPad() {
                           <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide px-1 py-2 mt-3 first:mt-0">{mois}</div>
                           <div className="space-y-2">
                             {orders.map((order) => (
-                              <div key={order.id} className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden">
+                              <div key={order.id} className="backdrop-blur-sm bg-white/70 border border-white/50 shadow-sm overflow-hidden rounded-2xl">
                                 <div className="px-4 py-3 flex items-start justify-between gap-3">
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
@@ -4694,7 +4694,7 @@ export default function MokaOrderPad() {
 
                 {/* ── Sticky CTA ── */}
                 {orderView === "compose" && ordIncludedItems.length > 0 && (
-                  <div className="fixed bottom-0 left-0 right-0 z-30 px-4 py-3 bg-[#f5ede0]/95 backdrop-blur-sm border-t border-[#e5d5c5]" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}>
+                  <div className="fixed bottom-0 left-0 right-0 z-30 px-4 py-3 backdrop-blur-2xl bg-white/40 border-t border-white/50 shadow-2xl" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}>
                     <button onClick={() => setShowMultiPanelModal(true)}
                       className="w-full py-4 rounded-2xl bg-[#5a7828] text-white font-black text-sm shadow-lg active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2">
                       <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -5045,8 +5045,8 @@ export default function MokaOrderPad() {
 
             {/* Modal détail heures staff */}
             {selectedStaffHours && (
-              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={() => setSelectedStaffHours(null)}>
-                <div onClick={e => e.stopPropagation()} className="bg-[#f5ede0] rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-md max-h-[80vh] overflow-y-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}>
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setSelectedStaffHours(null)}>
+                <div onClick={e => e.stopPropagation()} className="backdrop-blur-2xl bg-white/90 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-white/50 w-full sm:max-w-md max-h-[80vh] overflow-y-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}>
                   <div className="w-10 h-1 bg-[#e5d5c5] rounded-full mx-auto mt-3 mb-1 sm:hidden"/>
                   <div className="px-5 py-4 border-b border-[#e5d5c5] flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -5151,13 +5151,13 @@ export default function MokaOrderPad() {
             }}
           >
             <div
-              className={`flex items-center justify-around transition-all duration-500 ease-out ${navWidth} py-3 rounded-full`}
+              className={`flex items-center justify-around transition-all duration-500 ease-out ${navWidth} py-3 rounded-[2rem]`}
               style={{
-                background: "rgba(255, 252, 248, 0.55)",
-                backdropFilter: "blur(24px) saturate(200%) brightness(1.1)",
-                WebkitBackdropFilter: "blur(24px) saturate(200%) brightness(1.1)",
-                boxShadow: "0 4px 24px rgba(44, 26, 16, 0.08), inset 0 1px 0 rgba(255,255,255,0.7)",
-                border: "1px solid rgba(255,255,255,0.5)",
+                background: "rgba(255, 252, 248, 0.30)",
+                backdropFilter: "blur(32px) saturate(220%) brightness(1.15)",
+                WebkitBackdropFilter: "blur(32px) saturate(220%) brightness(1.15)",
+                boxShadow: "0 8px 32px rgba(44, 26, 16, 0.12), inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -1px 0 rgba(255,255,255,0.2)",
+                border: "1px solid rgba(255,255,255,0.4)",
               }}
             >
               {navItems.map(({ id, icon }) => (
@@ -5165,11 +5165,11 @@ export default function MokaOrderPad() {
                   key={id}
                   onClick={() => setAdminSection(id)}
                   className={`relative flex items-center justify-center w-10 h-10 rounded-full cursor-pointer transition-all duration-200 active:scale-90 ${
-                    adminSection === id ? "bg-[#2c1a10]" : "hover:bg-[#2c1a10]/8"
+                    adminSection === id ? "bg-white/50 shadow-inner" : "hover:bg-white/30"
                   }`}
                 >
                   <svg
-                    className={`transition-all duration-200 ${navCompact ? "w-4 h-4" : "w-5 h-5"} ${adminSection === id ? "text-[#f5ede0]" : "text-[#9a7060]"}`}
+                    className={`transition-all duration-200 ${navCompact ? "w-4 h-4" : "w-5 h-5"} ${adminSection === id ? "text-[#2c1a10]" : "text-[#9a7060]"}`}
                     fill="none" viewBox="0 0 24 24"
                     stroke="currentColor"
                     strokeWidth={adminSection === id ? 2.2 : 1.8}
@@ -5189,8 +5189,8 @@ export default function MokaOrderPad() {
 
       {/* ── SETTINGS DATABASE MODAL ──────────────────── */}
       {settingsPanel && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="backdrop-blur-2xl bg-white/90 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-white/50 w-full sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="p-4 border-b border-[#e5d5c5] flex justify-between items-center shrink-0">
               <div>
                 <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Paramètres</div>
@@ -5341,7 +5341,7 @@ export default function MokaOrderPad() {
             <button
               onClick={saveSettingsDatabaseCreate}
               disabled={savingSettingsPanel}
-              className="w-full mt-5 py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-md hover:bg-[#4e6a22] transition-colors disabled:opacity-50 cursor-pointer"
+              className="w-full mt-5 py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-lg hover:bg-[#4e6a22] active:scale-[0.96] transition-all duration-100 disabled:opacity-50 cursor-pointer"
             >
               {savingSettingsPanel ? "Création…" : "Créer ✅"}
             </button>
@@ -5394,7 +5394,7 @@ export default function MokaOrderPad() {
             <button
               onClick={saveSettingsDatabaseItem}
               disabled={savingSettingsPanel}
-              className="w-full mt-5 py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-md hover:bg-[#4e6a22] transition-colors disabled:opacity-50 cursor-pointer"
+              className="w-full mt-5 py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-lg hover:bg-[#4e6a22] active:scale-[0.96] transition-all duration-100 disabled:opacity-50 cursor-pointer"
             >
               {savingSettingsPanel ? "Enregistrement…" : "Enregistrer ✅"}
             </button>
@@ -5460,7 +5460,7 @@ export default function MokaOrderPad() {
             <button
               onClick={saveStockReceive}
               disabled={savingStockReceive}
-              className="w-full py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-md hover:bg-[#4e6a22] transition-colors disabled:opacity-50 cursor-pointer"
+              className="w-full py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-lg hover:bg-[#4e6a22] active:scale-[0.96] transition-all duration-100 disabled:opacity-50 cursor-pointer"
             >
               {savingStockReceive ? "Enregistrement…" : stockReceiveMode === "replace" ? "Corriger le stock ✅" : "Ajouter au stock ✅"}
             </button>
@@ -5514,7 +5514,7 @@ export default function MokaOrderPad() {
             <button
               onClick={saveInventoryAdjust}
               disabled={savingInventory}
-              className="w-full py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-md hover:bg-[#4e6a22] transition-colors disabled:opacity-50 cursor-pointer"
+              className="w-full py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-lg hover:bg-[#4e6a22] active:scale-[0.96] transition-all duration-100 disabled:opacity-50 cursor-pointer"
             >
               {savingInventory ? "Mise à jour…" : "Mettre à jour le stock ✅"}
             </button>
@@ -5524,8 +5524,8 @@ export default function MokaOrderPad() {
 
       {/* ── PRODUCT SETTINGS MODAL (quick edit) ──────── */}
       {settingsItem && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto p-5">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="backdrop-blur-2xl bg-white/90 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-white/50 w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto p-5">
             <div className="flex justify-between gap-4 items-start mb-5">
               <div>
                 <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">{settingsItem?.isNew ? "Nouveau produit" : "Réglages produit"}</div>
@@ -5686,7 +5686,7 @@ export default function MokaOrderPad() {
             <button
               onClick={saveProductDbCreate}
               disabled={savingProductDb}
-              className="w-full mt-5 py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-md hover:bg-[#4e6a22] transition-colors disabled:opacity-50 cursor-pointer"
+              className="w-full mt-5 py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-lg hover:bg-[#4e6a22] active:scale-[0.96] transition-all duration-100 disabled:opacity-50 cursor-pointer"
             >
               {savingProductDb ? "Création…" : "Créer le produit ✅"}
             </button>
@@ -5800,7 +5800,7 @@ export default function MokaOrderPad() {
             <button
               onClick={saveProductDbEdit}
               disabled={savingProductDb}
-              className="w-full mt-5 py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-md hover:bg-[#4e6a22] transition-colors disabled:opacity-50 cursor-pointer"
+              className="w-full mt-5 py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-lg hover:bg-[#4e6a22] active:scale-[0.96] transition-all duration-100 disabled:opacity-50 cursor-pointer"
             >
               {savingProductDb ? "Enregistrement…" : "Enregistrer les modifications ✅"}
             </button>
@@ -6052,7 +6052,7 @@ export default function MokaOrderPad() {
                       <button
                         disabled={clockSending}
                         onClick={() => sendClockAction(member, "Arrivée")}
-                        className="w-full h-14 rounded-2xl bg-[#5a7828] text-white font-black text-base hover:bg-[#4e6a22] active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+                        className="w-full h-14 rounded-2xl bg-[#5a7828] text-white font-black text-base shadow-lg hover:bg-[#4e6a22] active:scale-[0.96] transition-all duration-100 disabled:opacity-50 cursor-pointer"
                       >
                         ✓ Arrivée
                       </button>
@@ -6079,7 +6079,7 @@ export default function MokaOrderPad() {
                       <button
                         disabled={clockSending}
                         onClick={() => sendClockAction(member, "Retour pause")}
-                        className="w-full h-14 rounded-2xl bg-[#5a7828] text-white font-black text-base hover:bg-[#4e6a22] active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+                        className="w-full h-14 rounded-2xl bg-[#5a7828] text-white font-black text-base shadow-lg hover:bg-[#4e6a22] active:scale-[0.96] transition-all duration-100 disabled:opacity-50 cursor-pointer"
                       >
                         ↩ Retour
                       </button>
@@ -6099,7 +6099,7 @@ export default function MokaOrderPad() {
       {/* ── SECURITY MODAL ───────────────────────────── */}
       {showSecurityModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl border border-[#e5d5c5] w-full max-w-sm p-6 relative">
+          <div className="backdrop-blur-2xl bg-white/90 rounded-3xl shadow-2xl border border-white/50 w-full max-w-sm p-6 relative">
             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#2c1a10] via-[#6b4a3d] to-[#5a7828] rounded-t-3xl" />
             <button onClick={() => setShowSecurityModal(false)} className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#6b4a3d] hover:bg-[#e5d5c5] transition-all cursor-pointer">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
@@ -6519,8 +6519,8 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex flex-col">
-      <div className="flex items-center justify-between px-5 py-4 bg-white border-b border-[#eadfd4] shrink-0">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex flex-col">
+      <div className="flex items-center justify-between px-5 py-4 backdrop-blur-xl bg-white/90 border-b border-white/50 shrink-0">
         <div>
           <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">Commandes</div>
           <h2 className="text-lg font-black text-[#3b241b]">{n} fournisseur{n > 1 ? "s" : ""} à contacter</h2>
@@ -6597,8 +6597,8 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
 function OrdPreviewModal({ buildMessage, selectedSupplier, supplier, setShowPreview, onSent }) {
   const message = buildMessage();
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-3">
-      <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-full max-w-lg max-h-[85vh] overflow-y-auto p-5">
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-3">
+      <div className="backdrop-blur-2xl bg-white/90 rounded-[1.4rem] shadow-xl border border-white/50 w-full max-w-lg max-h-[85vh] overflow-y-auto p-5">
         <div className="flex justify-between items-start gap-4 mb-4">
           <div>
             <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">Prévisualisation</div>
@@ -6636,8 +6636,8 @@ function OrdDetailModal({ orderDetail, supplier, setOrderDetail }) {
   const dateStr = String(orderDetail.dateCreation || "").slice(0, 10);
   const message = orderDetail.message || "";
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-3">
-      <div className="bg-white rounded-[1.4rem] shadow-xl border border-[#eadfd4] w-full max-w-lg max-h-[85vh] overflow-y-auto p-5">
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-3">
+      <div className="backdrop-blur-2xl bg-white/90 rounded-[1.4rem] shadow-xl border border-white/50 w-full max-w-lg max-h-[85vh] overflow-y-auto p-5">
         <div className="flex justify-between items-start gap-4 mb-4">
           <div>
             <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">Détail commande</div>
