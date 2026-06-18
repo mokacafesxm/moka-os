@@ -149,39 +149,38 @@ export async function GET(request) {
     console.log(`📊 Jours-staff distincts: ${Object.keys(eventsByStaffDay).length}`);
 
     const calculateWorkedHours = (events) => {
-      let totalMs = 0;
-      let state = "out";
-      let lastTimestamp = null;
-      let incomplete = false;
-      events.forEach(e => {
-        const action = e.action.toLowerCase();
-        const t = new Date(e.date);
-        if (action === "arrivée") {
-          if (state === "out") { state = "working"; lastTimestamp = t; }
-        } else if (action === "départ pause") {
-          if (state === "working" && lastTimestamp) {
-            totalMs += t - lastTimestamp;
-            state = "paused";
-            lastTimestamp = null;
-          }
-        } else if (action === "retour pause") {
-          if (state === "paused") { state = "working"; lastTimestamp = t; }
-        } else if (action === "départ") {
-          if (state === "working" && lastTimestamp) totalMs += t - lastTimestamp;
-          state = "out";
-          lastTimestamp = null;
+      const sorted = events
+        .filter(e => e.date)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      const arrivee = sorted.find(e => e.action.toLowerCase().trim() === "arrivée");
+      const departs = sorted.filter(e => e.action.toLowerCase().trim() === "départ");
+      const depart = departs[departs.length - 1];
+
+      if (!arrivee || !depart) return { hours: 0, incomplete: true };
+
+      const brut = new Date(depart.date) - new Date(arrivee.date);
+
+      let pauseMs = 0;
+      let pauseStart = null;
+      sorted.forEach(e => {
+        const action = e.action.toLowerCase().trim();
+        if (action === "départ pause") {
+          pauseStart = new Date(e.date);
+        } else if (action === "retour pause" && pauseStart) {
+          pauseMs += new Date(e.date) - pauseStart;
+          pauseStart = null;
         }
       });
-      if (state === "working") incomplete = true;
-      return { hours: totalMs / (1000 * 60 * 60), incomplete };
+
+      return { hours: Math.max(0, (brut - pauseMs) / (1000 * 60 * 60)), incomplete: false };
     };
 
     const hoursWorkedByStaff = {};
     const hoursDetailByStaff = {};
     Object.entries(eventsByStaffDay).forEach(([key, events]) => {
       const [staffName, day] = key.split("__");
-      const sorted = events.sort((a, b) => new Date(a.date) - new Date(b.date));
-      const { hours, incomplete } = calculateWorkedHours(sorted);
+      const { hours, incomplete } = calculateWorkedHours(events);
       if (!hoursWorkedByStaff[staffName]) hoursWorkedByStaff[staffName] = 0;
       hoursWorkedByStaff[staffName] += hours;
       if (!hoursDetailByStaff[staffName]) hoursDetailByStaff[staffName] = [];
