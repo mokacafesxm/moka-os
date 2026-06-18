@@ -229,6 +229,13 @@ function getStaffName(member) {
   );
 }
 
+const formatHeures = (decimal) => {
+  const h = Math.floor(decimal);
+  const m = Math.round((decimal - h) * 60);
+  if (m === 0) return `${h}h`;
+  return `${h}h${String(m).padStart(2, "0")}`;
+};
+
 function getPrepName(prep) {
   const raw = prep?.name || prep?.action || prep?.produit ||
               prep?.prep || prep?.preparation || prep?.Préparation ||
@@ -4928,7 +4935,7 @@ export default function MokaOrderPad() {
                               <div className="w-7 h-7 rounded-lg bg-[#2c1a10] flex items-center justify-center text-white text-[10px] font-black mb-2">
                                 {nom.charAt(0).toUpperCase()}
                               </div>
-                              <div className="text-xl font-black text-[#2c1a10]">{heures}h</div>
+                              <div className="text-xl font-black text-[#2c1a10]">{formatHeures(heures)}</div>
                               <div className="text-[10px] font-bold text-[#9a7060] truncate">{nom}</div>
                             </div>
                           ))}
@@ -5064,7 +5071,7 @@ export default function MokaOrderPad() {
                       </div>
                       <div>
                         <div className="text-base font-black text-[#2c1a10]">{selectedStaffHours.nom}</div>
-                        <div className="text-xs text-[#9a7060] font-semibold">{selectedStaffHours.heures}h au total</div>
+                        <div className="text-xs text-[#9a7060] font-semibold">{formatHeures(selectedStaffHours.heures)} au total</div>
                       </div>
                     </div>
                     <button onClick={() => setSelectedStaffHours(null)} className="w-8 h-8 rounded-xl bg-white border border-[#e5d5c5] flex items-center justify-center cursor-pointer">×</button>
@@ -5083,7 +5090,7 @@ export default function MokaOrderPad() {
                               <div className="text-[10px] text-orange-500 font-bold">⚠️ Pointage incomplet (pas de départ)</div>
                             )}
                           </div>
-                          <div className="text-sm font-black text-[#5a7828]">{heures}h</div>
+                          <div className="text-sm font-black text-[#5a7828]">{formatHeures(heures)}</div>
                         </div>
                       ))
                     )}
