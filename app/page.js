@@ -3228,10 +3228,11 @@ export default function MokaOrderPad() {
                 icon: <svg className="w-4 h-4 text-[#5a7828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" x2="18" y1="17" y2="17"/></svg>
               },
               {
-                label: "Produits suivis", value: stockKpis.total, color: "text-[#2c1a10]", bg: "bg-white border-[#e5d5c5]", onClick: null,
-                icon: <svg className="w-4 h-4 text-[#9a7060]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
+                label: "Commandes", value: supplierOrders.length, color: "text-[#2c1a10]", bg: "bg-white border-[#e5d5c5]", onClick: () => setAdminSection("orders"),
+                subtitle: ordACommanderCount > 0 ? `${ordACommanderCount} en attente` : "Voir les commandes",
+                icon: <svg className="w-4 h-4 text-[#9a7060]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" x2="21" y1="6" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
               },
-            ].map(({ label, value, color, bg, onClick, icon }) => (
+            ].map(({ label, value, color, bg, onClick, icon, subtitle }) => (
               <button
                 key={label}
                 onClick={onClick || undefined}
@@ -3242,6 +3243,7 @@ export default function MokaOrderPad() {
                   {icon}
                 </div>
                 <div className={`text-3xl font-black ${color}`}>{value}</div>
+                {subtitle && <div className="text-[10px] text-[#9a7060] mt-1">{subtitle}</div>}
               </button>
             ))}
           </div>
