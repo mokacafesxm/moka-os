@@ -703,11 +703,31 @@ export default function MokaOrderPad() {
     });
   }, [preps]);
 
+  const prepsCategories = useMemo(() => {
+    const cats = new Set();
+    preps.forEach(p => {
+      const c = (p.station || p.type || p.category || "").trim();
+      if (c) cats.add(c);
+    });
+    return [...cats].sort();
+  }, [preps]);
+
+  const prepsTodoByCategory = useMemo(() => {
+    const counts = {};
+    preps.forEach(p => {
+      if (getPrepStatus(p).toLowerCase() === "à faire") {
+        const c = (p.station || p.type || p.category || "").trim();
+        if (c) counts[c] = (counts[c] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [preps]);
+
   const filteredPreps = useMemo(() => {
-    if (prepsStation === "all") return preps;
-    return preps.filter((p) => {
-      const s = String(p.station || p.type || p.category || "").toLowerCase();
-      return prepsStation === "bar" ? s.includes("bar") : s.includes("cuisine") || !s.includes("bar");
+    if (!prepsStation || prepsStation === "all") return preps;
+    return preps.filter(p => {
+      const c = (p.station || p.type || p.category || "").trim();
+      return c.toLowerCase() === prepsStation.toLowerCase();
     });
   }, [preps, prepsStation]);
 
@@ -722,6 +742,22 @@ export default function MokaOrderPad() {
     ),
     done: filteredPreps.filter((p) => getPrepStatus(p).toLowerCase() === "fait"),
   }), [filteredPreps]);
+
+  useEffect(() => {
+    if (!prepsCategories.length) return;
+    setPrepsStation(prev => {
+      if (prev && prepsCategories.includes(prev)) return prev;
+      const urgentCat = prepsCategories.find(cat =>
+        preps.some(p => {
+          const c = (p.station || p.type || p.category || "").trim();
+          return c === cat &&
+            String(getPrepPriority(p)).toLowerCase().includes("haute") &&
+            getPrepStatus(p).toLowerCase() === "à faire";
+        })
+      );
+      return urgentCat || prepsCategories[0];
+    });
+  }, [prepsCategories]);
 
   const addProduct = (product) => {
     setCart((prev) => ({
@@ -3783,16 +3819,25 @@ export default function MokaOrderPad() {
             {/* ── PREPS TAB ──── */}
             {activeTab === "preps" && (
               <div className="space-y-4">
-                {/* Toggle Bar / Cuisine */}
-                <div className="flex bg-white rounded-2xl p-1 border border-[#e5d5c5] shadow-sm gap-1">
-                  {[["all", "🍽️ Tout"], ["bar", "☕ Bar"], ["cuisine", "👨‍🍳 Cuisine"]].map(([val, label]) => (
-                    <button key={val} onClick={() => setPrepsStation(val)}
-                      className={`flex-1 py-2.5 rounded-xl text-xs font-black cursor-pointer transition-all ${
-                        prepsStation === val ? "bg-[#2c1a10] text-white shadow-md" : "text-[#9a7060] hover:bg-[#faf5ef]"
-                      }`}>
-                      {label}
-                    </button>
-                  ))}
+                {/* Filtres catégorie */}
+                <div className="flex gap-2 flex-wrap">
+                  {prepsCategories.map(cat => {
+                    const todoCount = prepsTodoByCategory[cat] || 0;
+                    const isActive = prepsStation === cat;
+                    return (
+                      <button key={cat} onClick={() => setPrepsStation(cat)}
+                        className={`relative py-2 px-4 rounded-xl text-xs font-black cursor-pointer transition-all ${
+                          isActive ? "bg-[#2c1a10] text-white shadow-md" : "bg-white border border-[#e5d5c5] text-[#2c1a10] hover:bg-[#faf5ef]"
+                        }`}>
+                        {cat}
+                        {todoCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
+                            {todoCount}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {loadingPreps ? (
@@ -3850,7 +3895,7 @@ export default function MokaOrderPad() {
                         <div className="text-4xl mb-3">✅</div>
                         <div className="font-black text-[#2c1a10]">Tout est prêt !</div>
                         <div className="text-sm text-[#9a7060] mt-1">
-                          Aucune prépa en attente{prepsStation !== "all" ? ` au ${prepsStation}` : ""}
+                          Aucune prépa en attente{prepsStation ? ` en ${prepsStation}` : ""}
                         </div>
                       </div>
                     )}
@@ -4031,7 +4076,7 @@ export default function MokaOrderPad() {
             setNewPrepForm(prev => ({
               ...prev,
               staffName: selectedStaffName || "",
-              station: prepsStation === "bar" ? "Bar" : "Cuisine",
+              station: prepsStation || prepsCategories[0] || "Bar",
             }));
             setShowNewPrepModal(true);
           }}
