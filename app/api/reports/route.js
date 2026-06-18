@@ -31,7 +31,7 @@ export async function GET(request) {
     const filter = periodFilter(period);
 
     const nowSXM = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Puerto_Rico" }));
-    let periodStart;
+    let periodStart = null;
     if (period === "today") {
       periodStart = new Date(nowSXM); periodStart.setHours(0, 0, 0, 0);
     } else if (period === "week") {
@@ -39,10 +39,10 @@ export async function GET(request) {
       const day = nowSXM.getDay();
       periodStart.setDate(nowSXM.getDate() - (day === 0 ? 6 : day - 1));
       periodStart.setHours(0, 0, 0, 0);
-    } else {
+    } else if (period !== "tout") {
       periodStart = new Date(nowSXM.getFullYear(), nowSXM.getMonth(), 1);
     }
-    const filterByDate = (dateStr) => dateStr && new Date(dateStr) >= periodStart;
+    // pour "tout" : periodStart reste null → aucun filtre date
 
     const [stockPages, prepsPages, besoinsPages, staffPages, fournisseurPages, clockPages] = await Promise.all([
       queryDatabase(DB.STOCK, null, null, 200),
@@ -50,7 +50,12 @@ export async function GET(request) {
       queryDatabase(DB.BESOINS, filter, [{ property: "Date création", direction: "descending" }], 200),
       queryDatabase(DB.STAFF, null, null, 50),
       queryDatabase(DB.FOURNISSEURS, null, null, 50),
-      queryDatabase(DB.POINTAGES, { property: "Date et heure", date: { on_or_after: periodStart.toISOString() } }, [{ property: "Date et heure", direction: "ascending" }], 500),
+      queryDatabase(
+        DB.POINTAGES,
+        periodStart ? { property: "Date et heure", date: { on_or_after: periodStart.toISOString() } } : null,
+        [{ property: "Date et heure", direction: "ascending" }],
+        500
+      ),
     ]);
 
     // ── Stock KPIs ──────────────────────────────────────────────
@@ -125,7 +130,10 @@ export async function GET(request) {
       staff: getText(p.properties, "Staff") || "",
       action: getSelect(p.properties, "Action") || "",
       date: getDate(p.properties, "Date et heure") || "",
-    })).filter(e => e.staff && e.date && filterByDate(e.date));
+    })).filter(e => e.staff && e.date);
+
+    console.log(`📊 Total pointages chargés: ${clockPages.length}`);
+    console.log(`📊 Événements valides après filtre: ${clockEvents.length}`);
 
     const getDaySXM = (isoDate) =>
       new Date(isoDate).toLocaleDateString("en-CA", { timeZone: "America/Puerto_Rico" });
@@ -137,6 +145,8 @@ export async function GET(request) {
       if (!eventsByStaffDay[key]) eventsByStaffDay[key] = [];
       eventsByStaffDay[key].push(e);
     });
+
+    console.log(`📊 Jours-staff distincts: ${Object.keys(eventsByStaffDay).length}`);
 
     const calculateWorkedHours = (events) => {
       let totalMs = 0;
@@ -185,6 +195,8 @@ export async function GET(request) {
         detail: (hoursDetailByStaff[nom] || []).sort((a, b) => new Date(b.date) - new Date(a.date)),
       }))
       .sort((a, b) => b.heures - a.heures);
+
+    console.log(`📊 Heures finales par staff:`, staffHoursStats.map(s => `${s.nom}: ${s.heures}h`).join(", "));
 
     return Response.json({
       period,
