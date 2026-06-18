@@ -12,10 +12,14 @@ export async function POST(request) {
       return Response.json({ error: "staffName and action required" }, { status: 400, headers: corsHeaders });
     }
 
+    const nowSXM = new Date().toLocaleString("sv-SE", {
+      timeZone: "America/Puerto_Rico",
+    }).replace(" ", "T") + "-04:00";
+
     await createPage(DB.POINTAGES, {
       "Staff":          textProp(staffName),
       "Action":         selectProp(action),
-      "Date et heure":  dateProp(new Date().toISOString()),
+      "Date et heure":  dateProp(nowSXM),
     });
 
     return Response.json({ success: true }, { headers: corsHeaders });
