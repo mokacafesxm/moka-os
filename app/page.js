@@ -459,6 +459,7 @@ export default function MokaOrderPad() {
   const [showClockModal, setShowClockModal] = useState(false);
   const [clockNow, setClockNow] = useState(new Date());
   const [loadingClockStaff, setLoadingClockStaff] = useState(false);
+  const [clockStatusLoading, setClockStatusLoading] = useState(false);
   const [clockStatuses, setClockStatuses] = useState(() => {
     if (typeof window === "undefined") return {};
 
@@ -1746,9 +1747,37 @@ export default function MokaOrderPad() {
     }
   }, [isAdmin, adminSection]);
 
+  const openClockModal = async () => {
+    setShowClockModal(true);
+    setClockStatusLoading(true);
+    try {
+      if (!staff.length) {
+        const res = await fetch(STAFF_URL);
+        const data = await res.json();
+        setStaff(normalizeArray(data, "staff"));
+      }
+      const res = await fetch("/api/clock-status?t=" + Date.now());
+      const statuses = await res.json();
+      setClockStatuses(statuses);
+    } catch {}
+    finally { setClockStatusLoading(false); }
+  };
+
   useEffect(() => {
     if (!showClockModal) return;
     const interval = setInterval(() => setClockNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, [showClockModal]);
+
+  useEffect(() => {
+    if (!showClockModal) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/clock-status?t=" + Date.now());
+        const statuses = await res.json();
+        setClockStatuses(statuses);
+      } catch {}
+    }, 15000);
     return () => clearInterval(interval);
   }, [showClockModal]);
 
@@ -3071,41 +3100,7 @@ export default function MokaOrderPad() {
 
           {/* Centre : Pointage */}
           <button
-            onClick={() => {
-              setShowClockModal(true);
-              if (!staff.length && settingsCache.staff?.length) {
-                setStaff(settingsCache.staff);
-                setLoadingClockStaff(false);
-                return;
-              }
-              if (!staff.length) {
-                setLoadingClockStaff(true);
-                fetch(SETTINGS_URL, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ resource: "staff", action: "list" }),
-                })
-                  .then((r) => r.text())
-                  .then((text) => {
-                    try {
-                      const data = JSON.parse(text);
-                      const list = Array.isArray(data)
-                        ? data
-                        : normalizeArray(data, "staff");
-                      if (list.length) setStaff(list);
-                    } catch {}
-                  })
-                  .catch(() => {})
-                  .finally(() => setLoadingClockStaff(false));
-              }
-              // Charge les statuts du jour depuis Notion
-              fetch("/api/clock-status")
-                .then(r => r.json())
-                .then(statuses => {
-                  if (Object.keys(statuses).length > 0) setClockStatuses(statuses);
-                })
-                .catch(() => {});
-            }}
+            onClick={openClockModal}
             className={`relative rounded-xl bg-white border-2 border-[#e85d8a] text-[#e85d8a] font-black text-sm shadow-sm ring-2 ring-[#e85d8a]/25 hover:bg-[#fff0f5] transition-all cursor-pointer flex items-center gap-2 ${isIphone ? "h-9 px-2.5" : "h-10 px-4"}`}
           >
             <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#e85d8a] animate-ping opacity-75" />
@@ -6016,6 +6011,13 @@ export default function MokaOrderPad() {
               </button>
             </div>
           </div>
+
+          {clockStatusLoading && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-orange-50 border-b border-orange-100">
+              <div className="w-3 h-3 rounded-full border-2 border-orange-400 border-t-transparent animate-spin"/>
+              <span className="text-xs text-orange-600 font-semibold">Synchronisation en cours...</span>
+            </div>
+          )}
 
           {/* Staff cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">

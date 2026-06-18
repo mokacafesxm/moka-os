@@ -6,15 +6,15 @@ export async function OPTIONS() {
 
 export async function GET() {
   try {
-    const todayStart = new Date(
-      new Date().toLocaleString("en-US", { timeZone: "America/Puerto_Rico" })
-    );
-    todayStart.setHours(0, 0, 0, 0);
+    const todaySXM = new Date().toLocaleDateString("en-CA", {
+      timeZone: "America/Puerto_Rico",
+    });
+    const startOfDaySXM = new Date(todaySXM + "T00:00:00-04:00").toISOString();
 
     const pages = await queryDatabase(DB.POINTAGES, {
       property: "Date et heure",
-      date: { on_or_after: todayStart.toISOString() },
-    });
+      date: { on_or_after: startOfDaySXM },
+    }, [{ property: "Date et heure", direction: "ascending" }], 500);
 
     const statusMap = {};
 
