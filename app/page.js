@@ -4535,52 +4535,58 @@ export default function MokaOrderPad() {
 
                 {/* ── VUE COMPOSER ── */}
                 {orderView === "compose" && (
-                  <div className="space-y-3 pb-28">
-                    {/* Étape 1 — Sélection fournisseur */}
-                    <div className="space-y-2">
-                      {(settingsCache.suppliers || []).length === 0 && (
-                        <div className="bg-white rounded-2xl border border-[#e5d5c5] p-8 text-center text-sm text-[#9a7060]">
+                  <div className="space-y-4 pb-28">
+                    {/* Fournisseurs — bulles scrollables */}
+                    <div>
+                      <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide mb-2">Fournisseur</div>
+                      {(settingsCache.suppliers || []).length === 0 ? (
+                        <div className="backdrop-blur-sm bg-white/70 border border-white/50 rounded-2xl p-8 text-center text-sm text-[#9a7060]">
                           Aucun fournisseur configuré dans les paramètres.
                         </div>
+                      ) : (
+                        <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-hide px-1">
+                          {(settingsCache.suppliers || []).map((s) => {
+                            const name = ordGetSupplierName(s);
+                            const urgentCount = ordUrgentItems.filter((i) => i.fournisseur === name).length;
+                            const isSelected = ordSelectedSupplier === name;
+                            return (
+                              <button key={s.id || name}
+                                onClick={() => { setOrdSelectedSupplier(name); setComposeCart({}); }}
+                                className="flex flex-col items-center gap-1.5 shrink-0 w-20 cursor-pointer">
+                                <div className="relative">
+                                  <div className={`w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all duration-200 ${
+                                    isSelected
+                                      ? "bg-[#2c1a10] border-[#2c1a10] shadow-lg"
+                                      : "bg-white/70 backdrop-blur-sm border-[#e5d5c5] hover:border-[#c8a882] hover:shadow-md"
+                                  }`}>
+                                    <span className={`text-xl font-black ${isSelected ? "text-white" : "text-[#2c1a10]"}`}>
+                                      {name.charAt(0).toUpperCase()}
+                                    </span>
+                                  </div>
+                                  {urgentCount > 0 && (
+                                    <span className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
+                                      {urgentCount}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className={`text-[10px] text-center leading-tight w-20 truncate transition-all ${isSelected ? "text-[#2c1a10] font-black" : "text-[#6b4a3d] font-bold"}`}>
+                                  {name}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       )}
-                      {(settingsCache.suppliers || []).map((s) => {
-                        const name = ordGetSupplierName(s);
-                        const phone = ordGetSupplierWhatsapp(s) || ordGetSupplierPhone(s);
-                        const urgentCount = ordUrgentItems.filter((i) => i.fournisseur === name).length;
-                        const isSelected = ordSelectedSupplier === name;
-                        return (
-                          <button key={s.id || name}
-                            onClick={() => { setOrdSelectedSupplier(name); setComposeCart({}); }}
-                            className={`w-full rounded-2xl border px-4 py-4 text-left transition-all cursor-pointer ${isSelected ? "bg-[#2c1a10] border-[#2c1a10] text-white shadow-md" : "bg-white border-[#e5d5c5] shadow-sm hover:border-[#c8a882] hover:shadow-md"}`}>
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="font-black text-base leading-tight">{name}</div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                {urgentCount > 0 && (
-                                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-500 text-white">
-                                    {urgentCount} urgent{urgentCount > 1 ? "s" : ""}
-                                  </span>
-                                )}
-                                {isSelected && (
-                                  <svg className="w-5 h-5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                )}
-                              </div>
-                            </div>
-                            {phone && (
-                              <div className={`text-[11px] mt-1 ${isSelected ? "text-white/60" : "text-[#9a7060]"}`}>
-                                💬 {phone}
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
                     </div>
 
-                    {/* Étape 2 — Liste produits (quand fournisseur sélectionné) */}
+                    {/* Produits du fournisseur sélectionné */}
                     {ordSelectedSupplier && (
-                      <div className="backdrop-blur-sm bg-white/70 border border-white/50 shadow-sm overflow-hidden rounded-2xl">
+                      <div className="backdrop-blur-sm bg-white/80 border border-[#e5d5c5] rounded-2xl overflow-hidden">
                         <div className="px-4 py-3 border-b border-[#e5d5c5] flex items-center justify-between">
-                          <div className="text-sm font-black text-[#2c1a10]">Produits à commander</div>
-                          <div className="text-xs text-[#9a7060] font-bold">{ordIncludedItems.length}/{ordSupplierProducts.length} sélectionnés</div>
+                          <div>
+                            <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Produits — {ordSelectedSupplier}</div>
+                            <div className="text-xs text-[#9a7060] mt-0.5">{ordIncludedItems.length}/{ordSupplierProducts.length} sélectionnés</div>
+                          </div>
                         </div>
                         {loadingProductsDb ? (
                           <div className="p-6 text-center text-sm text-[#9a7060]">Chargement…</div>
@@ -4616,11 +4622,11 @@ export default function MokaOrderPad() {
                       </div>
                     )}
 
-                    {/* Étape 3 — Notes (quand au moins 1 produit coché) */}
+                    {/* Notes */}
                     {ordIncludedItems.length > 0 && (
                       <textarea value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)}
                         placeholder="Livraison matin, emballage sous-vide…"
-                        className="w-full rounded-2xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm text-[#2c1a10] outline-none resize-none placeholder:text-[#b09080] focus:border-[#c8a882] transition"
+                        className="w-full rounded-2xl border border-[#e5d5c5] bg-white/80 backdrop-blur-sm px-4 py-3 text-sm text-[#2c1a10] outline-none resize-none placeholder:text-[#b09080] focus:border-[#c8a882] transition"
                         rows={2} />
                     )}
                   </div>
@@ -5140,48 +5146,56 @@ export default function MokaOrderPad() {
           { id: "reports",   icon: reportsSVG   },
           ...(!isIphone ? [{ id: "settings", icon: settingsSVG }] : []),
         ];
-        const navWidth = navCompact ? "w-auto px-5" : "w-[280px]";
+        const navLabels = { dashboard: "Accueil", products: "Produits", inventory: "Stock", orders: "Commandes", reports: "Rapports", settings: "Réglages" };
         return (
           <div
-            className="fixed z-50 transition-all duration-500 ease-out"
+            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[90] transition-all duration-500 ease-out"
             style={{
-              bottom: `calc(env(safe-area-inset-bottom) + 16px)`,
-              left: "50%",
-              transform: `translateX(-50%) translateY(${navVisible ? "0" : "calc(100% + 20px)"})`,
+              transform: `translateX(-50%) translateY(${navVisible ? "0" : "calc(100% + 32px)"})`,
+              paddingBottom: "env(safe-area-inset-bottom)",
             }}
           >
             <div
-              className={`flex items-center justify-around transition-all duration-500 ease-out ${navWidth} py-3 rounded-[2rem]`}
+              className="relative flex items-center gap-1 px-3 py-2 rounded-[2rem]"
               style={{
-                background: "rgba(255, 252, 248, 0.30)",
-                backdropFilter: "blur(32px) saturate(220%) brightness(1.15)",
-                WebkitBackdropFilter: "blur(32px) saturate(220%) brightness(1.15)",
-                boxShadow: "0 8px 32px rgba(44, 26, 16, 0.12), inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -1px 0 rgba(255,255,255,0.2)",
-                border: "1px solid rgba(255,255,255,0.4)",
+                background: "rgba(255, 252, 248, 0.25)",
+                backdropFilter: "blur(40px) saturate(180%) brightness(1.12)",
+                WebkitBackdropFilter: "blur(40px) saturate(180%) brightness(1.12)",
+                boxShadow: "0 8px 32px rgba(44, 26, 16, 0.14), inset 0 1px 0 rgba(255,255,255,0.8)",
+                border: "1px solid rgba(255,255,255,0.40)",
               }}
             >
-              {navItems.map(({ id, icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setAdminSection(id)}
-                  className={`relative flex items-center justify-center w-10 h-10 rounded-full cursor-pointer transition-all duration-200 active:scale-90 ${
-                    adminSection === id ? "bg-white/50 shadow-inner" : "hover:bg-white/30"
-                  }`}
-                >
-                  <svg
-                    className={`transition-all duration-200 ${navCompact ? "w-4 h-4" : "w-5 h-5"} ${adminSection === id ? "text-[#2c1a10]" : "text-[#9a7060]"}`}
-                    fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={adminSection === id ? 2.2 : 1.8}
-                    strokeLinecap="round" strokeLinejoin="round"
+              {/* top glow line */}
+              <div className="absolute top-0 inset-x-4 h-px bg-white/60 rounded-full pointer-events-none" />
+              {navItems.map(({ id, icon }) => {
+                const isActive = adminSection === id;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => setAdminSection(id)}
+                    className={`relative flex flex-col items-center justify-center gap-0.5 rounded-2xl cursor-pointer transition-all duration-200 active:scale-90 ${
+                      navCompact ? "w-10 h-10" : "w-12 h-12"
+                    } ${
+                      isActive
+                        ? "bg-white/50 backdrop-blur-sm shadow-inner text-[#2c1a10]"
+                        : "bg-transparent text-[#9a7060] hover:bg-white/30"
+                    }`}
                   >
-                    {icon}
-                  </svg>
-                  {adminSection === id && !navCompact && (
-                    <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#2c1a10] opacity-40" />
-                  )}
-                </button>
-              ))}
+                    <svg
+                      className="w-5 h-5 shrink-0 transition-all duration-200"
+                      fill="none" viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={isActive ? 2.2 : 1.8}
+                      strokeLinecap="round" strokeLinejoin="round"
+                    >
+                      {icon}
+                    </svg>
+                    {isActive && !navCompact && (
+                      <span className="text-[9px] font-bold leading-none">{navLabels[id] || id}</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         );
