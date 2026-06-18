@@ -3299,7 +3299,11 @@ export default function MokaOrderPad() {
         <div className="grid grid-cols-12 gap-3 items-start">
 
           {/* ── MAIN SECTION ─────────────────────────── */}
-          <section className="col-span-12">
+          <section className={
+            (isAdmin && adminSection !== "dashboard" && ["products", "inventory", "settings", "orders", "reports"].includes(adminSection)) || isIphone
+              ? "col-span-12"
+              : "col-span-12 sm:col-span-8 xl:col-span-9"
+          }>
 
             {/* ── STOCK TAB ──── */}
             {activeTab === "stock" && (
@@ -3929,7 +3933,7 @@ export default function MokaOrderPad() {
           </section>
 
           {/* ── CART / ASIDE ─────────────────────────── */}
-          <aside className="hidden">
+          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 ${isIphone || (activeTab === "stock" && stockView === "stock") || (isAdmin && adminSection !== "dashboard" && ["products", "inventory", "settings", "orders", "reports"].includes(adminSection)) ? "hidden" : ""}`}>
             <div className="bg-white rounded-2xl border border-[#ddc9b5] shadow-md sm:sticky sm:top-[72px] overflow-hidden">
               {/* Cart header */}
               <div className="px-4 py-3.5 border-b border-[#f0e8dc] bg-[#faf5ef]">
@@ -4113,8 +4117,8 @@ export default function MokaOrderPad() {
         </button>
       )}
 
-      {/* ── CART FAB ─────────────────── */}
-      {cartItems.length > 0 && !showMobileCart && (
+      {/* ── MOBILE CART FAB (iPhone) ─────────────────── */}
+      {isIphone && cartItems.length > 0 && !showMobileCart && (
         <button
           onClick={() => setShowMobileCart(true)}
           className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-[#5a7828] text-white shadow-xl flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
@@ -4125,8 +4129,8 @@ export default function MokaOrderPad() {
         </button>
       )}
 
-      {/* ── CART DRAWER ──────────────── */}
-      {showMobileCart && (
+      {/* ── MOBILE CART DRAWER (iPhone) ──────────────── */}
+      {isIphone && showMobileCart && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           <div className="flex-1 bg-black/50" onClick={() => setShowMobileCart(false)} />
           <div className="bg-white rounded-t-3xl shadow-2xl max-h-[80vh] overflow-y-auto" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
