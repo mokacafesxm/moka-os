@@ -458,6 +458,7 @@ export default function MokaOrderPad() {
   const [productsDbSearch, setProductsDbSearch] = useState("");
   const [productsDbCategory, setProductsDbCategory] = useState("Tous");
   const [productsDbViewMode, setProductsDbViewMode] = useState("categorie");
+  const [inventoryViewMode, setInventoryViewMode] = useState("zone");
   const [creatingSettingsItem, setCreatingSettingsItem] = useState(false);
   const [creatingSettingsForm, setCreatingSettingsForm] = useState({});
   const [showAdminModal, setShowAdminModal] = useState(false);
@@ -4294,49 +4295,37 @@ export default function MokaOrderPad() {
             {/* PRODUCTS PANEL */}
             {adminSection === "products" && (
               <><div className="h-2" /><div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden" style={{height: "calc(100vh - 100px)"}}>
-                <div className="p-3 border-b border-[#e5d5c5] flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                  <div>
-                    <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Base de données</div>
-                    <h2 className="text-base font-black text-[#2c1a10]">Catalogue matières premières</h2>
-                    <p className="text-[11px] text-[#9a7060]">Affichage complet de la database produits Notion.</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => loadProductsDatabase(false)}
-                      className="h-9 px-3 rounded-xl bg-[#faf5ef] border border-[#e5d5c5] text-xs font-bold text-[#6b4a3d] hover:bg-[#f0e4d4] transition-colors cursor-pointer flex items-center gap-1.5"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
-                      Actualiser
-                    </button>
-                    <button
-                      onClick={openProductDbCreate}
-                      className="h-9 px-3 rounded-xl bg-[#2c1a10] text-[#f5ede0] text-xs font-bold hover:bg-[#1e100a] transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
-                      Nouveau produit
-                    </button>
-                  </div>
-                </div>
-
-                {/* Search + toggle + category filters */}
+                {/* Single unified filter bar */}
                 <div className="p-3 border-b border-[#e5d5c5] space-y-2">
-                  <div className="flex items-center gap-2 bg-[#faf5ef] border border-[#d8c8b8] rounded-xl px-3 py-2">
-                    <svg className="w-4 h-4 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    <input value={productsDbSearch} onChange={(e) => setProductsDbSearch(e.target.value)} placeholder="Rechercher un produit..." className="w-full bg-transparent outline-none text-[#2c1a10] placeholder:text-[#b09080] text-sm"/>
-                    {productsDbSearch && <button onClick={() => setProductsDbSearch("")} className="text-[#9a7060] cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg></button>}
+                  {/* Search + action buttons */}
+                  <div className="flex gap-2">
+                    <div className="flex items-center gap-2 bg-[#faf5ef] border border-[#d8c8b8] rounded-xl px-3 py-2 flex-1">
+                      <svg className="w-4 h-4 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                      <input value={productsDbSearch} onChange={(e) => setProductsDbSearch(e.target.value)} placeholder="Rechercher un produit…" className="w-full bg-transparent outline-none text-[#2c1a10] placeholder:text-[#b09080] text-sm"/>
+                      {productsDbSearch && <button onClick={() => setProductsDbSearch("")} className="text-[#9a7060] cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg></button>}
+                    </div>
+                    <button onClick={() => loadProductsDatabase(false)} className="h-10 px-3 rounded-xl bg-[#faf5ef] border border-[#e5d5c5] text-[#6b4a3d] hover:bg-[#f0e4d4] transition-colors cursor-pointer shrink-0">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                    </button>
+                    <button onClick={openProductDbCreate} className="h-10 px-3 rounded-xl bg-[#2c1a10] text-[#f5ede0] hover:bg-[#1e100a] transition-colors cursor-pointer shadow-sm shrink-0 flex items-center gap-1.5 text-xs font-black">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+                      Nouveau
+                    </button>
                   </div>
-                  <div className="flex gap-1 bg-[#faf5ef] rounded-xl p-1 border border-[#e5d5c5]">
-                    {[["categorie","🏷️ Catégorie"],["zone","📍 Zone"]].map(([val,label]) => (
+                  {/* Zone / Catégorie toggle */}
+                  <div className="flex bg-[#faf5ef] rounded-xl p-1 border border-[#e5d5c5] gap-1">
+                    {[["categorie","🏷️ Par catégorie"],["zone","📍 Par zone"]].map(([val,label]) => (
                       <button key={val} onClick={() => setProductsDbViewMode(val)}
-                        className={`flex-1 py-1.5 rounded-lg text-[11px] font-black cursor-pointer transition-all ${productsDbViewMode === val ? "bg-[#2c1a10] text-white shadow-sm" : "text-[#9a7060]"}`}>
+                        className={`flex-1 py-2 rounded-lg text-xs font-black cursor-pointer transition-all ${productsDbViewMode === val ? "bg-[#2c1a10] text-white shadow-sm" : "text-[#9a7060] hover:text-[#2c1a10]"}`}>
                         {label}
                       </button>
                     ))}
                   </div>
-                  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                  {/* Category pills */}
+                  <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
                     {productsDbCategories.filter(c => {const cl=c.toLowerCase(); return cl !== "tous" ? !cl.includes("prépa") && !cl.includes("prepa") : true;}).map((cat) => (
                       <button key={cat} onClick={() => setProductsDbCategory(cat)}
-                        className={`h-8 px-3 rounded-xl whitespace-nowrap text-xs font-bold shrink-0 transition-all cursor-pointer ${productsDbCategory === cat ? "bg-[#2c1a10] text-white" : "bg-white text-[#2c1a10] border border-[#e5d5c5] hover:bg-[#faf5ef]"}`}>
+                        className={`h-7 px-3 rounded-lg whitespace-nowrap text-xs font-bold shrink-0 transition-all cursor-pointer ${productsDbCategory === cat ? "bg-[#5a7828] text-white" : "bg-white text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#faf5ef]"}`}>
                         {cat === "Tous" ? "Tous" : `${getSmartCategoryEmoji(cat)} ${cat}`}
                       </button>
                     ))}
@@ -4401,56 +4390,89 @@ export default function MokaOrderPad() {
             {adminSection === "inventory" && (
               <div className="space-y-3">
                 <div className="h-2" />
-                <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden" style={{height: "calc(100vh - 160px)"}}>
+                {/* 2 boutons majeurs */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setInvoiceModal(true); setInvoiceResults([]); setInvoiceImageUrl(""); setInvoiceImage(null); }}
+                    className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 bg-white rounded-2xl border border-[#e5d5c5] shadow-sm hover:bg-[#faf5ef] active:scale-95 transition-all cursor-pointer"
+                  >
+                    <span className="text-2xl">📸</span>
+                    <span className="text-xs font-black text-[#2c1a10]">Scanner facture</span>
+                    <span className="text-[10px] text-[#9a7060]">IA → mise à jour stock</span>
+                  </button>
+                  <button
+                    onClick={() => showToast("Bientôt : photo Z de caisse + IA décompte ventes", "warning")}
+                    className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 bg-white rounded-2xl border border-[#e5d5c5] shadow-sm hover:bg-[#faf5ef] active:scale-95 transition-all cursor-pointer"
+                  >
+                    <span className="text-2xl">🧾</span>
+                    <span className="text-xs font-black text-[#2c1a10]">Scanner Z caisse</span>
+                    <span className="text-[10px] text-[#9a7060]">IA → décompte ventes</span>
+                  </button>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden">
                   <div className="p-3 border-b border-[#e5d5c5] space-y-2">
-                    {/* View toggle — pills full-width */}
-                    <div className="flex gap-2">
-                      {[{ key: "stock", label: "Stock" }, { key: "prepa", label: "Prépas" }].map(({ key, label }) => (
-                        <button key={key}
-                          onClick={() => { setInventoryView(key); setInventoryCategory("Tous"); setInventoryStatusFilter("Tous"); }}
-                          className={`relative flex-1 py-3 rounded-2xl text-sm font-black cursor-pointer transition-all ${inventoryView === key ? "bg-[#2c1a10] text-white shadow-md" : "bg-[#faf5ef] border border-[#e5d5c5] text-[#2c1a10] hover:bg-[#f0e4d4]"}`}>
-                          {label}
-                          {key === "stock" && stockKpis.critical > 0 && (
-                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">{stockKpis.critical}</span>
-                          )}
-                        </button>
-                      ))}
-                      <button className="h-11 px-3 rounded-xl bg-[#faf5ef] border border-[#e5d5c5] text-xs font-bold text-[#6b4a3d] hover:bg-[#f0e4d4] transition-colors cursor-pointer whitespace-nowrap"
-                        onClick={() => { setInvoiceModal(true); setInvoiceResults([]); setInvoiceImageUrl(""); setInvoiceImage(null); }}>
-                        📸 Facture
-                      </button>
-                    </div>
-
-                    {/* Status filter pills */}
-                    <div className="flex gap-1.5">
-                      {[
-                        { filter: "Tous", label: "Tous" },
-                        { filter: "Critiques", label: "🔴 Critiques", count: inventoryBaseItems.filter(i => String(getStockStatus(i)).toLowerCase().includes("critique")).length },
-                        { filter: "Stock bas", label: "🟠 Stock bas", count: inventoryBaseItems.filter(i => { const s = String(getStockStatus(i)).toLowerCase(); return s.includes("stock bas") || s.includes("alerte") || s.includes("à commander"); }).length },
-                      ].map(({ filter, label, count }) => (
-                        <button key={filter}
-                          onClick={() => setInventoryStatusFilter(inventoryStatusFilter === filter && filter !== "Tous" ? "Tous" : filter)}
-                          className={`flex-1 py-1.5 rounded-xl text-[11px] font-bold cursor-pointer transition-all ${inventoryStatusFilter === filter ? "bg-[#2c1a10] text-white" : "bg-[#faf5ef] border border-[#e5d5c5] text-[#6b4a3d] hover:bg-[#f0e4d4]"}`}>
-                          {label}{count !== undefined && count > 0 ? ` (${count})` : ""}
-                        </button>
-                      ))}
-                    </div>
-
                     {/* Search */}
                     <div className="flex items-center gap-2 bg-[#faf5ef] border border-[#d8c8b8] rounded-xl px-3 py-2">
                       <svg className="w-4 h-4 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                       <input value={stockSearch} onChange={(e) => setStockSearch(e.target.value)}
-                        placeholder={inventoryView === "stock" ? "Produit, zone, statut…" : "Prépa, zone, statut…"}
-                        className="w-full bg-transparent outline-none text-[#2c1a10] placeholder:text-[#b09080] text-sm"/>
-                      {stockSearch && <button onClick={() => setStockSearch("")} className="text-[#9a7060] cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg></button>}
+                        placeholder={inventoryView === "stock" ? "Rechercher un produit stock…" : "Rechercher une prépa…"}
+                        className="w-full bg-transparent outline-none text-[#2c1a10] placeholder:text-[#b09080] text-sm font-medium"/>
+                      {stockSearch && <button onClick={() => setStockSearch("")} className="text-[#9a7060] cursor-pointer hover:text-[#2c1a10] transition-colors"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg></button>}
+                    </div>
+
+                    {/* View toggle — pills full-width */}
+                    <div className="flex w-full gap-2">
+                      {[{ key: "stock", label: "Stock" }, { key: "prepa", label: "Prépas" }].map(({ key, label }) => (
+                        <button key={key}
+                          onClick={() => { setInventoryView(key); setInventoryCategory("Tous"); setInventoryStatusFilter("Tous"); }}
+                          className={`relative flex-1 py-3 rounded-2xl text-sm font-black cursor-pointer transition-all ${inventoryView === key ? "bg-[#2c1a10] text-white shadow-md" : "bg-white border border-[#e5d5c5] text-[#2c1a10] hover:bg-[#faf5ef]"}`}>
+                          {label}
+                          {key === "stock" && stockKpis.critical > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse">{stockKpis.critical}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Zone / Catégorie toggle */}
+                    <div className="flex bg-white rounded-2xl p-1 border border-[#e5d5c5] shadow-sm gap-1">
+                      {[["zone","📍 Par zone"],["categorie","🏷️ Par catégorie"]].map(([val,label]) => (
+                        <button key={val}
+                          onClick={() => { setInventoryViewMode(val); setInventoryCategory("Tous"); }}
+                          className={`flex-1 py-2 rounded-xl text-xs font-black cursor-pointer transition-all ${inventoryViewMode === val ? "bg-[#2c1a10] text-white shadow-md" : "text-[#9a7060] hover:bg-[#faf5ef]"}`}>
+                          {label}
+                        </button>
+                      ))}
                     </div>
 
                     {/* Category pills */}
-                    <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
+                    <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
                       {inventoryCategories.map((cat) => (
                         <button key={cat} onClick={() => setInventoryCategory(cat)}
-                          className={`h-8 px-3 rounded-xl whitespace-nowrap text-xs font-bold shrink-0 transition-all cursor-pointer ${inventoryCategory === cat ? "bg-[#2c1a10] text-white" : "bg-white text-[#2c1a10] border border-[#e5d5c5] hover:bg-[#faf5ef]"}`}>
+                          className={`h-7 px-3 rounded-lg whitespace-nowrap text-xs font-bold shrink-0 transition-all cursor-pointer ${inventoryCategory === cat ? "bg-[#5a7828] text-white" : "bg-[#faf5ef] text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"}`}>
                           {cat === "Tous" ? "Tous" : `${getSmartCategoryEmoji(cat)} ${cat}`}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Status filter pills */}
+                    <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
+                      {[
+                        ["all", "Tout", null],
+                        ["critical", "🔴 Critiques", inventoryBaseItems.filter(i => String(getStockStatus(i)).toLowerCase().includes("critique")).length],
+                        ["low", "🟠 Stock bas", inventoryBaseItems.filter(i => { const s = String(getStockStatus(i)).toLowerCase(); return s.includes("stock bas") || s.includes("alerte") || s.includes("à commander"); }).length],
+                        ["ok", "🟢 OK", null],
+                      ].map(([val, label, count]) => (
+                        <button key={val}
+                          onClick={() => setInventoryStatusFilter(val === "all" ? "Tous" : val === "critical" ? "Critiques" : val === "low" ? "Stock bas" : "OK")}
+                          className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-all whitespace-nowrap ${
+                            (val === "all" && inventoryStatusFilter === "Tous") || (val === "critical" && inventoryStatusFilter === "Critiques") || (val === "low" && inventoryStatusFilter === "Stock bas") || (val === "ok" && inventoryStatusFilter === "OK")
+                              ? "bg-[#2c1a10] text-white shadow-md"
+                              : "bg-white border border-[#e5d5c5] text-[#6b4a3d]"
+                          }`}>
+                          {label}
+                          {count > 0 && <span className="bg-white/20 px-1 rounded-md text-[9px] font-black">{count}</span>}
                         </button>
                       ))}
                     </div>
@@ -4462,39 +4484,63 @@ export default function MokaOrderPad() {
                     </div>
                   </div>
 
-                  {/* Card list */}
-                  <div className="overflow-auto divide-y divide-[#f5ede0]" style={{maxHeight: "calc(100vh - 360px)"}}>
-                    {inventoryFilteredStock.map((item, index) => {
-                      const status = getStockStatus(item);
-                      const statusLower = String(status).toLowerCase();
-                      const isCritical = statusLower.includes("critique");
-                      const isLow = statusLower.includes("stock bas") || statusLower.includes("alerte") || statusLower.includes("à commander");
-                      const qty = inventoryView === "stock"
-                        ? `${getStockQty(item)}${getStockDisplayUnit(item) ? " " + getStockDisplayUnit(item) : ""}`
-                        : `${getStockPortions(item)} portions`;
-                      return (
-                        <div key={item.id || index} className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-[#faf5ef] transition-colors">
-                          <div className={`w-2 h-2 rounded-full shrink-0 ${isCritical ? "bg-red-500" : isLow ? "bg-orange-400" : statusLower.includes("configurer") ? "bg-gray-300" : "bg-[#5a7828]"}`}/>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-bold text-[#2c1a10] truncate">{getStockName(item)}</div>
-                            <div className="text-[10px] text-[#9a7060]">
-                              {getSmartCategoryEmoji(getStockCategory(item))} {getStockCategory(item)}
-                              {getStockZone(item) ? ` · 📍 ${getStockZone(item)}` : ""}
-                            </div>
-                            {isCritical && <div className="text-[10px] text-red-500 font-bold">CRITIQUE — À commander</div>}
-                            {isLow && !isCritical && <div className="text-[10px] text-orange-500 font-bold">Stock bas</div>}
-                          </div>
-                          <div className={`text-sm font-black shrink-0 ${isCritical ? "text-red-600" : isLow ? "text-orange-500" : "text-[#2c1a10]"}`}>{qty}</div>
-                          <div className="flex gap-1 shrink-0">
-                            <button onClick={() => openInventoryAdjust(item)} className="h-7 px-2.5 rounded-xl bg-[#5a7828] text-white text-[10px] font-black hover:bg-[#4e6a22] transition-colors cursor-pointer">Ajuster</button>
-                            <button onClick={() => deleteProductDb(item)} className="h-7 px-2.5 rounded-xl bg-red-50 border border-red-100 text-red-600 text-[10px] font-black hover:bg-red-100 transition-colors cursor-pointer">✕</button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {inventoryFilteredStock.length === 0 && (
+                  {/* Card list — groupé par zone ou catégorie */}
+                  <div className="overflow-auto" style={{maxHeight: "calc(100vh - 420px)"}}>
+                    {inventoryFilteredStock.length === 0 ? (
                       <div className="text-center text-[#9a7060] text-sm py-12">Aucun élément</div>
-                    )}
+                    ) : (() => {
+                      const renderCard = (item, index) => {
+                        const status = getStockStatus(item);
+                        const statusLower = String(status).toLowerCase();
+                        const isCritical = statusLower.includes("critique");
+                        const isLow = statusLower.includes("stock bas") || statusLower.includes("alerte") || statusLower.includes("à commander");
+                        const qty = inventoryView === "stock"
+                          ? `${getStockQty(item)}${getStockDisplayUnit(item) ? " " + getStockDisplayUnit(item) : ""}`
+                          : `${getStockPortions(item)} portions`;
+                        return (
+                          <div key={item.id || index} className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-[#faf5ef] transition-colors border-b border-[#f5ede0]">
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${isCritical ? "bg-red-500" : isLow ? "bg-orange-400" : statusLower.includes("configurer") ? "bg-gray-300" : "bg-[#5a7828]"}`}/>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-bold text-[#2c1a10] truncate">{getStockName(item)}</div>
+                              <div className="text-[10px] text-[#9a7060]">
+                                {inventoryViewMode === "zone"
+                                  ? <>{getSmartCategoryEmoji(getStockCategory(item))} {getStockCategory(item)}</>
+                                  : <>📍 {getStockZone(item) || "Sans zone"}</>
+                                }
+                              </div>
+                              {isCritical && <div className="text-[10px] text-red-500 font-bold">CRITIQUE — À commander</div>}
+                              {isLow && !isCritical && <div className="text-[10px] text-orange-500 font-bold">Stock bas</div>}
+                            </div>
+                            <div className={`text-sm font-black shrink-0 ${isCritical ? "text-red-600" : isLow ? "text-orange-500" : "text-[#2c1a10]"}`}>{qty}</div>
+                            <div className="flex gap-1 shrink-0">
+                              <button onClick={() => openInventoryAdjust(item)} className="h-7 px-2.5 rounded-xl bg-[#5a7828] text-white text-[10px] font-black hover:bg-[#4e6a22] transition-colors cursor-pointer">Ajuster</button>
+                              <button onClick={() => deleteProductDb(item)} className="h-7 px-2.5 rounded-xl bg-red-50 border border-red-100 text-red-600 text-[10px] font-black hover:bg-red-100 transition-colors cursor-pointer">✕</button>
+                            </div>
+                          </div>
+                        );
+                      };
+                      const groups = {};
+                      inventoryFilteredStock.forEach(item => {
+                        const key = inventoryViewMode === "zone"
+                          ? (String(getStockZone(item) || "Sans zone").trim() || "Sans zone")
+                          : (getStockCategory(item) || "Autres");
+                        if (!groups[key]) groups[key] = [];
+                        groups[key].push(item);
+                      });
+                      const sortedKeys = Object.keys(groups).sort((a, b) => {
+                        if (a === "Sans zone" || a === "Autres") return 1;
+                        if (b === "Sans zone" || b === "Autres") return -1;
+                        return a.localeCompare(b, "fr");
+                      });
+                      return sortedKeys.map(groupKey => (
+                        <div key={groupKey}>
+                          <div className="px-4 py-2 bg-[#faf5ef] border-b border-[#e5d5c5] text-[10px] font-black text-[#9a7060] uppercase tracking-wide sticky top-0 z-10">
+                            {inventoryViewMode === "zone" ? "📍" : getSmartCategoryEmoji(groupKey)} {groupKey} — {groups[groupKey].length}
+                          </div>
+                          {groups[groupKey].map((item, idx) => renderCard(item, idx))}
+                        </div>
+                      ));
+                    })()}
                   </div>
                 </div>
               </div>
