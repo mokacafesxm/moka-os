@@ -457,6 +457,7 @@ export default function MokaOrderPad() {
   const [creatingProductPhotoFile, setCreatingProductPhotoFile] = useState("");
   const [productsDbSearch, setProductsDbSearch] = useState("");
   const [productsDbCategory, setProductsDbCategory] = useState("Tous");
+  const [productsDbViewMode, setProductsDbViewMode] = useState("categorie");
   const [creatingSettingsItem, setCreatingSettingsItem] = useState(false);
   const [creatingSettingsForm, setCreatingSettingsForm] = useState({});
   const [showAdminModal, setShowAdminModal] = useState(false);
@@ -3303,6 +3304,56 @@ export default function MokaOrderPad() {
               : "col-span-12 sm:col-span-8 xl:col-span-9"
           }>
 
+            {/* ── DASHBOARD BENTO ──── */}
+            {isAdmin && adminSection === "dashboard" && (
+              <div className="mb-4 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Critical stock */}
+                  <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm p-4">
+                    <div className="text-[10px] font-black text-red-600 uppercase tracking-wide mb-3">🔴 Stock critique</div>
+                    {stockLive.filter(i => !isPrepStock(i) && String(getStockStatus(i)).toLowerCase().includes("critique")).slice(0, 5).map(item => (
+                      <div key={item.id || getStockName(item)} className="flex items-center justify-between py-1.5 border-b border-[#f5ede0] last:border-0">
+                        <span className="text-xs font-bold text-[#2c1a10] truncate">{getStockName(item)}</span>
+                        <span className="text-[10px] font-black text-red-500 ml-2 shrink-0">{getStockQty(item)}{getStockDisplayUnit(item) ? " " + getStockDisplayUnit(item) : ""}</span>
+                      </div>
+                    ))}
+                    {stockKpis.critical === 0 && <div className="text-xs text-[#9a7060] text-center py-2">✅ Aucun produit critique</div>}
+                  </div>
+
+                  {/* Pending orders */}
+                  <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm p-4">
+                    <div className="text-[10px] font-black text-orange-600 uppercase tracking-wide mb-3">📦 Commandes à passer</div>
+                    {supplierOrders.filter(o => o.statut === "À commander").slice(0, 5).map((o, i) => (
+                      <div key={o.id || i} className="flex items-center justify-between py-1.5 border-b border-[#f5ede0] last:border-0">
+                        <span className="text-xs font-bold text-[#2c1a10] truncate">{o.ingredient || o.name || "—"}</span>
+                        <span className="text-[10px] text-[#9a7060] ml-2 shrink-0">{o.fournisseur || "—"}</span>
+                      </div>
+                    ))}
+                    {supplierOrders.filter(o => o.statut === "À commander").length === 0 && <div className="text-xs text-[#9a7060] text-center py-2">✅ Rien à commander</div>}
+                  </div>
+
+                  {/* Staff today */}
+                  <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm p-4">
+                    <div className="text-[10px] font-black text-[#5a7828] uppercase tracking-wide mb-3">👥 Équipe aujourd'hui</div>
+                    {(staff.length ? staff : (settingsCache?.staff || [])).map(member => {
+                      const name = getStaffName(member);
+                      const cs = clockStatuses[name] || "absent";
+                      const cfg = { present: { label: "Présent", cls: "text-[#5a7828]", dot: "bg-[#5a7828]" }, pause: { label: "En pause", cls: "text-orange-500", dot: "bg-orange-400" }, done: { label: "Terminé", cls: "text-[#9a7060]", dot: "bg-[#9a7060]" }, absent: { label: "Absent", cls: "text-[#b09080]", dot: "bg-[#d5c5b5]" } }[cs] || { label: "Absent", cls: "text-[#b09080]", dot: "bg-[#d5c5b5]" };
+                      return (
+                        <div key={name} className="flex items-center justify-between py-1.5 border-b border-[#f5ede0] last:border-0">
+                          <span className="text-xs font-bold text-[#2c1a10]">{name}</span>
+                          <div className="flex items-center gap-1.5">
+                            <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`}/>
+                            <span className={`text-[10px] font-bold ${cfg.cls}`}>{cfg.label}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* ── STOCK TAB ──── */}
             {activeTab === "stock" && (
               <>
@@ -4267,240 +4318,183 @@ export default function MokaOrderPad() {
                   </div>
                 </div>
 
-                {/* Search + category filters */}
-                <div className="p-3 border-b border-[#e5d5c5] flex flex-col sm:flex-row gap-3">
-                  <div className="flex items-center gap-2 bg-[#faf5ef] border border-[#d8c8b8] rounded-xl px-3 py-2 flex-1">
+                {/* Search + toggle + category filters */}
+                <div className="p-3 border-b border-[#e5d5c5] space-y-2">
+                  <div className="flex items-center gap-2 bg-[#faf5ef] border border-[#d8c8b8] rounded-xl px-3 py-2">
                     <svg className="w-4 h-4 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    <input
-                      value={productsDbSearch}
-                      onChange={(e) => setProductsDbSearch(e.target.value)}
-                      placeholder="Rechercher un produit..."
-                      className="w-full bg-transparent outline-none text-[#2c1a10] placeholder:text-[#b09080] text-sm"
-                    />
+                    <input value={productsDbSearch} onChange={(e) => setProductsDbSearch(e.target.value)} placeholder="Rechercher un produit..." className="w-full bg-transparent outline-none text-[#2c1a10] placeholder:text-[#b09080] text-sm"/>
+                    {productsDbSearch && <button onClick={() => setProductsDbSearch("")} className="text-[#9a7060] cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg></button>}
                   </div>
-                  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                    {productsDbCategories.map((cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => setProductsDbCategory(cat)}
-                        className={`h-9 px-3 rounded-xl whitespace-nowrap text-xs font-bold shrink-0 transition-all cursor-pointer ${
-                          productsDbCategory === cat
-                            ? "bg-[#2c1a10] text-white"
-                            : "bg-[#faf5ef] text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
-                        }`}
-                      >
-                        {cat === "Tous" ? "Tous" : `${categoryEmojis[cat] || "📌"} ${cat}`}
+                  <div className="flex gap-1 bg-[#faf5ef] rounded-xl p-1 border border-[#e5d5c5]">
+                    {[["categorie","🏷️ Catégorie"],["zone","📍 Zone"]].map(([val,label]) => (
+                      <button key={val} onClick={() => setProductsDbViewMode(val)}
+                        className={`flex-1 py-1.5 rounded-lg text-[11px] font-black cursor-pointer transition-all ${productsDbViewMode === val ? "bg-[#2c1a10] text-white shadow-sm" : "text-[#9a7060]"}`}>
+                        {label}
                       </button>
                     ))}
                   </div>
+                  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                    {productsDbCategories.filter(c => {const cl=c.toLowerCase(); return cl !== "tous" ? !cl.includes("prépa") && !cl.includes("prepa") : true;}).map((cat) => (
+                      <button key={cat} onClick={() => setProductsDbCategory(cat)}
+                        className={`h-8 px-3 rounded-xl whitespace-nowrap text-xs font-bold shrink-0 transition-all cursor-pointer ${productsDbCategory === cat ? "bg-[#2c1a10] text-white" : "bg-white text-[#2c1a10] border border-[#e5d5c5] hover:bg-[#faf5ef]"}`}>
+                        {cat === "Tous" ? "Tous" : `${getSmartCategoryEmoji(cat)} ${cat}`}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="text-[11px] font-semibold text-[#9a7060] flex items-center gap-2">
+                    {loadingProductsDb ? "Chargement…" : `${filteredProductsDb.length} produit${filteredProductsDb.length > 1 ? "s" : ""}`}
+                    {syncingProductsDb && !loadingProductsDb && <span className="animate-pulse">· Sync…</span>}
+                  </div>
                 </div>
 
-                <div className="text-[11px] font-semibold text-[#9a7060] px-3 py-1.5 border-b border-[#f0e8dc] flex items-center gap-2">
-                  {loadingProductsDb ? "Chargement…" : `${filteredProductsDb.length} produit${filteredProductsDb.length > 1 ? "s" : ""}`}
-                  {syncingProductsDb && !loadingProductsDb && (
-                    <span className="text-[10px] text-[#9a7060] animate-pulse">Synchronisation…</span>
-                  )}
-                </div>
-
-                <div className="overflow-auto flex-1" style={{maxHeight: "calc(100vh - 260px)"}}>
-                  <table className="w-full text-xs">
-                    <thead className="bg-[#faf5ef] text-[#9a7060] sticky top-0 z-10">
-                      <tr>
-                        <th className="text-left px-3 py-2.5 font-bold min-w-[160px]">Produit</th>
-                        <th className="text-left px-3 py-2.5 font-bold">Visible</th>
-                        <th className="text-left px-3 py-2.5 font-bold">Catégorie</th>
-                        <th className="text-left px-3 py-2.5 font-bold">Sous-cat.</th>
-                        <th className="text-left px-3 py-2.5 font-bold">Fournisseur</th>
-                        <th className="text-left px-3 py-2.5 font-bold">Zone</th>
-                        <th className="text-left px-3 py-2.5 font-bold">Unité</th>
-                        <th className="text-left px-3 py-2.5 font-bold">Portion</th>
-                        <th className="text-left px-3 py-2.5 font-bold">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredProductsDb.map((item, index) => (
-                        <tr key={item.id || index} className="border-t border-[#f0e8dc] hover:bg-[#faf5ef] transition-colors">
-                          <td className="px-3 py-2.5 font-bold text-[#2c1a10]">{item.ingredient || item.name || "—"}</td>
-                          <td className="px-3 py-2.5">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                              item.visibleOrderPad !== false ? "bg-[#f0f7e5] text-[#5a7828]" : "bg-red-50 text-red-600"
-                            }`}>
-                              {item.visibleOrderPad !== false ? "Oui" : "Non"}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5 text-[#6b4a3d]">{categoryEmojis[item.categorie || item.category] || "📌"} {item.categorie || item.category || "—"}</td>
-                          <td className="px-3 py-2.5 text-[#6b4a3d]">{item.sousCategorie || item.subcategory || "—"}</td>
-                          <td className="px-3 py-2.5 text-[#6b4a3d]">{getProductsDbSupplierName(item)}</td>
-                          <td className="px-3 py-2.5 text-[#6b4a3d]">{item.zoneStockage || item.zone || "—"}</td>
-                          <td className="px-3 py-2.5 text-[#6b4a3d]">{item.uniteStock || item.unit || "—"}</td>
-                          <td className="px-3 py-2.5 font-bold text-[#2c1a10]">{item.portionGrammes || item.portion || 0}</td>
-                          <td className="px-3 py-2.5">
-                            <div className="flex gap-1.5">
-                              <button
-                                onClick={() => openProductDbEdit(item)}
-                                className="h-7 px-2.5 rounded-lg bg-[#5a7828] text-white text-[11px] font-bold hover:bg-[#4e6a22] transition-colors cursor-pointer"
-                              >
-                                Modifier
-                              </button>
-                              <button
-                                onClick={() => deleteProductDb(item)}
-                                className="h-7 px-2.5 rounded-lg bg-red-50 border border-red-100 text-red-600 text-[11px] font-bold hover:bg-red-100 transition-colors cursor-pointer"
-                              >
-                                Supprimer
-                              </button>
+                <div className="overflow-auto" style={{maxHeight: "calc(100vh - 300px)"}}>
+                  {(() => {
+                    const groups = {};
+                    filteredProductsDb.forEach(item => {
+                      const key = productsDbViewMode === "zone"
+                        ? (String(item.zoneStockage || item.zone || "Sans zone").trim() || "Sans zone")
+                        : (item.categorie || item.category || "Autres");
+                      if (!groups[key]) groups[key] = [];
+                      groups[key].push(item);
+                    });
+                    const sortedKeys = Object.keys(groups).sort((a, b) => {
+                      if (a === "Sans zone" || a === "Autres") return 1;
+                      if (b === "Sans zone" || b === "Autres") return -1;
+                      return a.localeCompare(b, "fr");
+                    });
+                    return sortedKeys.map(groupKey => (
+                      <div key={groupKey}>
+                        <div className="px-4 py-2 bg-[#faf5ef] border-b border-[#e5d5c5] text-[10px] font-black text-[#9a7060] uppercase tracking-wide sticky top-0 z-10">
+                          {productsDbViewMode === "zone" ? "📍" : getSmartCategoryEmoji(groupKey)} {groupKey} — {groups[groupKey].length}
+                        </div>
+                        {groups[groupKey].map((item, idx) => (
+                          <div key={item.id || idx} className="flex items-start gap-3 px-4 py-3 border-b border-[#f5ede0] hover:bg-[#faf5ef] transition-colors">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-black text-[#2c1a10]">{item.ingredient || item.name || "—"}</span>
+                                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${item.visibleOrderPad !== false ? "bg-[#f0f7e5] text-[#5a7828]" : "bg-gray-100 text-gray-500"}`}>
+                                  {item.visibleOrderPad !== false ? "Visible" : "Masqué"}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-[10px] text-[#6b4a3d]">
+                                <span>{getSmartCategoryEmoji(item.categorie || item.category || "")} {item.categorie || item.category || "—"}</span>
+                                {(item.zoneStockage || item.zone) && <span>📍 {item.zoneStockage || item.zone}</span>}
+                                {getProductsDbSupplierName(item) && <span>🏪 {getProductsDbSupplierName(item)}</span>}
+                                {(item.uniteStock || item.unit) && <span>📏 {item.uniteStock || item.unit}</span>}
+                                {(item.portionGrammes || item.portion) ? <span>⚖️ {item.portionGrammes || item.portion}g</span> : null}
+                              </div>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                            <div className="flex gap-1 shrink-0">
+                              <button onClick={() => openProductDbEdit(item)} className="h-7 px-2.5 rounded-xl bg-[#5a7828] text-white text-[10px] font-black hover:bg-[#4e6a22] transition-colors cursor-pointer">✏️</button>
+                              <button onClick={() => deleteProductDb(item)} className="h-7 px-2.5 rounded-xl bg-red-50 border border-red-100 text-red-600 text-[10px] font-black hover:bg-red-100 transition-colors cursor-pointer">✕</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ));
+                  })()}
                 </div>
               </div></>
             )}
 
             {/* INVENTORY PANEL */}
             {adminSection === "inventory" && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="h-2" />
-                {/* KPI row */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    { label: "Produits suivis", value: inventoryBaseItems.length, filter: "Tous", color: "text-[#2c1a10]", bg: "bg-white border-[#e5d5c5]", active: inventoryStatusFilter === "Tous" },
-                    { label: "OK", value: inventoryBaseItems.filter((i) => { const s = String(getStockStatus(i)).toLowerCase(); return !s.includes("critique") && !s.includes("stock bas") && !s.includes("alerte") && !s.includes("à commander"); }).length, filter: "OK", color: "text-[#5a7828]", bg: "bg-[#f0f7e5] border-[#c8dfa0]", active: inventoryStatusFilter === "OK" },
-                    { label: "Stock bas", value: inventoryBaseItems.filter((i) => { const s = String(getStockStatus(i)).toLowerCase(); return s.includes("stock bas") || s.includes("alerte") || s.includes("à commander"); }).length, filter: "Stock bas", color: "text-orange-500", bg: "bg-orange-50 border-orange-100", active: inventoryStatusFilter === "Stock bas" },
-                    { label: "Critiques", value: inventoryBaseItems.filter((i) => String(getStockStatus(i)).toLowerCase().includes("critique")).length, filter: "Critiques", color: "text-red-600", bg: "bg-red-50 border-red-100", active: inventoryStatusFilter === "Critiques" },
-                  ].map(({ label, value, filter, color, bg, active }) => (
-                    <button
-                      key={label}
-                      onClick={() => setInventoryStatusFilter(inventoryStatusFilter === filter && filter !== "Tous" ? "Tous" : filter)}
-                      className={`rounded-xl p-3 border text-left shadow-sm transition-all cursor-pointer hover:shadow-md ${bg} ${active && filter !== "Tous" ? "ring-2 ring-offset-1 ring-[#2c1a10]/20" : ""}`}
-                    >
-                      <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1">{label}</div>
-                      <div className={`text-2xl font-black ${color}`}>{value}</div>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Inventory table */}
-                <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden" style={{height: "calc(100vh - 220px)"}}>
-                  <div className="p-3 border-b border-[#e5d5c5]">
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {/* View toggle */}
+                <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden" style={{height: "calc(100vh - 160px)"}}>
+                  <div className="p-3 border-b border-[#e5d5c5] space-y-2">
+                    {/* View toggle — pills full-width */}
+                    <div className="flex gap-2">
                       {[{ key: "stock", label: "Stock" }, { key: "prepa", label: "Prépas" }].map(({ key, label }) => (
-                        <button
-                          key={key}
+                        <button key={key}
                           onClick={() => { setInventoryView(key); setInventoryCategory("Tous"); setInventoryStatusFilter("Tous"); }}
-                          className={`h-8 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                            inventoryView === key ? "bg-[#2c1a10] text-white" : "bg-[#faf5ef] text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
-                          }`}
-                        >
+                          className={`relative flex-1 py-3 rounded-2xl text-sm font-black cursor-pointer transition-all ${inventoryView === key ? "bg-[#2c1a10] text-white shadow-md" : "bg-[#faf5ef] border border-[#e5d5c5] text-[#2c1a10] hover:bg-[#f0e4d4]"}`}>
                           {label}
+                          {key === "stock" && stockKpis.critical > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">{stockKpis.critical}</span>
+                          )}
                         </button>
                       ))}
+                      <button className="h-11 px-3 rounded-xl bg-[#faf5ef] border border-[#e5d5c5] text-xs font-bold text-[#6b4a3d] hover:bg-[#f0e4d4] transition-colors cursor-pointer whitespace-nowrap"
+                        onClick={() => { setInvoiceModal(true); setInvoiceResults([]); setInvoiceImageUrl(""); setInvoiceImage(null); }}>
+                        📸 Facture
+                      </button>
+                    </div>
 
-                      <div className="ml-auto flex gap-2">
-                        <button
-                          className="h-8 px-3 rounded-lg bg-[#faf5ef] border border-[#e5d5c5] text-xs font-bold text-[#6b4a3d] hover:bg-[#f0e4d4] transition-colors cursor-pointer"
-                          onClick={() => { setInvoiceModal(true); setInvoiceResults([]); setInvoiceImageUrl(""); setInvoiceImage(null); }}
-                        >
-                          📸 Scanner facture
+                    {/* Status filter pills */}
+                    <div className="flex gap-1.5">
+                      {[
+                        { filter: "Tous", label: "Tous" },
+                        { filter: "Critiques", label: "🔴 Critiques", count: inventoryBaseItems.filter(i => String(getStockStatus(i)).toLowerCase().includes("critique")).length },
+                        { filter: "Stock bas", label: "🟠 Stock bas", count: inventoryBaseItems.filter(i => { const s = String(getStockStatus(i)).toLowerCase(); return s.includes("stock bas") || s.includes("alerte") || s.includes("à commander"); }).length },
+                      ].map(({ filter, label, count }) => (
+                        <button key={filter}
+                          onClick={() => setInventoryStatusFilter(inventoryStatusFilter === filter && filter !== "Tous" ? "Tous" : filter)}
+                          className={`flex-1 py-1.5 rounded-xl text-[11px] font-bold cursor-pointer transition-all ${inventoryStatusFilter === filter ? "bg-[#2c1a10] text-white" : "bg-[#faf5ef] border border-[#e5d5c5] text-[#6b4a3d] hover:bg-[#f0e4d4]"}`}>
+                          {label}{count !== undefined && count > 0 ? ` (${count})` : ""}
                         </button>
-                        <button
-                          className="h-8 px-3 rounded-lg bg-[#faf5ef] border border-[#e5d5c5] text-xs font-bold text-[#6b4a3d] hover:bg-[#f0e4d4] transition-colors cursor-pointer"
-                          onClick={() => showToast("Bientôt : photo Z de caisse + IA décompte ventes", "warning")}
-                        >
-                          🧾 Scanner Z
-                        </button>
-                      </div>
+                      ))}
                     </div>
 
                     {/* Search */}
                     <div className="flex items-center gap-2 bg-[#faf5ef] border border-[#d8c8b8] rounded-xl px-3 py-2">
                       <svg className="w-4 h-4 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                      <input
-                        value={stockSearch}
-                        onChange={(e) => setStockSearch(e.target.value)}
-                        placeholder={inventoryView === "stock" ? "Rechercher un produit, zone, statut..." : "Rechercher une prépa, zone, statut..."}
-                        className="w-full bg-transparent outline-none text-[#2c1a10] placeholder:text-[#b09080] text-sm"
-                      />
+                      <input value={stockSearch} onChange={(e) => setStockSearch(e.target.value)}
+                        placeholder={inventoryView === "stock" ? "Produit, zone, statut…" : "Prépa, zone, statut…"}
+                        className="w-full bg-transparent outline-none text-[#2c1a10] placeholder:text-[#b09080] text-sm"/>
+                      {stockSearch && <button onClick={() => setStockSearch("")} className="text-[#9a7060] cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg></button>}
                     </div>
 
                     {/* Category pills */}
-                    <div className="flex gap-2 mt-2 overflow-x-auto pb-1 scrollbar-hide">
+                    <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
                       {inventoryCategories.map((cat) => (
-                        <button
-                          key={cat}
-                          onClick={() => setInventoryCategory(cat)}
-                          className={`h-7 px-3 rounded-lg whitespace-nowrap text-[11px] font-bold shrink-0 transition-all cursor-pointer ${
-                            inventoryCategory === cat
-                              ? "bg-[#2c1a10] text-white"
-                              : "bg-[#faf5ef] text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
-                          }`}
-                        >
-                          {cat === "Tous" ? "Tous" : `${categoryEmojis[cat] || "📌"} ${cat}`}
+                        <button key={cat} onClick={() => setInventoryCategory(cat)}
+                          className={`h-8 px-3 rounded-xl whitespace-nowrap text-xs font-bold shrink-0 transition-all cursor-pointer ${inventoryCategory === cat ? "bg-[#2c1a10] text-white" : "bg-white text-[#2c1a10] border border-[#e5d5c5] hover:bg-[#faf5ef]"}`}>
+                          {cat === "Tous" ? "Tous" : `${getSmartCategoryEmoji(cat)} ${cat}`}
                         </button>
                       ))}
                     </div>
 
-                    <div className="text-[11px] font-semibold text-[#9a7060] mt-1.5">
+                    <div className="text-[11px] font-semibold text-[#9a7060]">
                       {inventoryFilteredStock.length} élément{inventoryFilteredStock.length > 1 ? "s" : ""}
                       {inventoryStatusFilter !== "Tous" && ` · ${inventoryStatusFilter}`}
                       {inventoryCategory !== "Tous" && ` · ${inventoryCategory}`}
                     </div>
                   </div>
 
-                  <div className="overflow-auto" style={{maxHeight: "calc(100vh - 380px)"}}>
-                    <table className="w-full text-xs">
-                      <thead className="bg-[#faf5ef] text-[#9a7060] sticky top-0 z-10">
-                        <tr>
-                          <th className="text-left px-3 py-2.5 font-bold min-w-[160px]">{inventoryView === "stock" ? "Produit" : "Prépa"}</th>
-                          <th className="text-left px-3 py-2.5 font-bold">Catégorie</th>
-                          <th className="text-left px-3 py-2.5 font-bold">Zone</th>
-                          <th className="text-left px-3 py-2.5 font-bold">{inventoryView === "stock" ? "En stock" : "Portions"}</th>
-                          <th className="text-left px-3 py-2.5 font-bold">Statut</th>
-                          <th className="text-left px-3 py-2.5 font-bold">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {inventoryFilteredStock.map((item, index) => {
-                          const status = getStockStatus(item);
-                          const statusLower = String(status).toLowerCase();
-                          const isCritical = statusLower.includes("critique");
-                          const isLow = statusLower.includes("stock bas") || statusLower.includes("alerte") || statusLower.includes("à commander");
-                          return (
-                            <tr key={item.id || index} className="border-t border-[#f0e8dc] hover:bg-[#faf5ef] transition-colors">
-                              <td className="px-3 py-2.5 font-bold text-[#2c1a10]">{getStockName(item)}</td>
-                              <td className="px-3 py-2.5 text-[#6b4a3d]">{categoryEmojis[getStockCategory(item)] || "📌"} {getStockCategory(item)}</td>
-                              <td className="px-3 py-2.5 text-[#6b4a3d]">{getStockZone(item) || "—"}</td>
-                              <td className="px-3 py-2.5 font-black text-[#2c1a10]">{inventoryView === "stock" ? `${getStockQty(item)}${getStockDisplayUnit(item) ? " " + getStockDisplayUnit(item) : ""}` : `${getStockPortions(item)} portions`}</td>
-                              <td className="px-3 py-2.5">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                                  isCritical ? "bg-red-50 text-red-600" : isLow ? "bg-orange-50 text-orange-600" : "bg-[#f0f7e5] text-[#5a7828]"
-                                }`}>
-                                  {status}
-                                </span>
-                              </td>
-                              <td className="px-3 py-2.5">
-                                <div className="flex gap-1.5">
-                                  <button
-                                    onClick={() => openInventoryAdjust(item)}
-                                    className="h-7 px-2.5 rounded-lg bg-[#5a7828] text-white text-[11px] font-bold hover:bg-[#4e6a22] transition-colors cursor-pointer"
-                                  >
-                                    Ajuster
-                                  </button>
-                                  <button
-                                    onClick={() => deleteProductDb(item)}
-                                    className="h-7 px-2.5 rounded-lg bg-red-50 border border-red-100 text-red-600 text-[11px] font-bold hover:bg-red-100 transition-colors cursor-pointer"
-                                  >
-                                    Supprimer
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                  {/* Card list */}
+                  <div className="overflow-auto divide-y divide-[#f5ede0]" style={{maxHeight: "calc(100vh - 360px)"}}>
+                    {inventoryFilteredStock.map((item, index) => {
+                      const status = getStockStatus(item);
+                      const statusLower = String(status).toLowerCase();
+                      const isCritical = statusLower.includes("critique");
+                      const isLow = statusLower.includes("stock bas") || statusLower.includes("alerte") || statusLower.includes("à commander");
+                      const qty = inventoryView === "stock"
+                        ? `${getStockQty(item)}${getStockDisplayUnit(item) ? " " + getStockDisplayUnit(item) : ""}`
+                        : `${getStockPortions(item)} portions`;
+                      return (
+                        <div key={item.id || index} className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-[#faf5ef] transition-colors">
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${isCritical ? "bg-red-500" : isLow ? "bg-orange-400" : statusLower.includes("configurer") ? "bg-gray-300" : "bg-[#5a7828]"}`}/>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-bold text-[#2c1a10] truncate">{getStockName(item)}</div>
+                            <div className="text-[10px] text-[#9a7060]">
+                              {getSmartCategoryEmoji(getStockCategory(item))} {getStockCategory(item)}
+                              {getStockZone(item) ? ` · 📍 ${getStockZone(item)}` : ""}
+                            </div>
+                            {isCritical && <div className="text-[10px] text-red-500 font-bold">CRITIQUE — À commander</div>}
+                            {isLow && !isCritical && <div className="text-[10px] text-orange-500 font-bold">Stock bas</div>}
+                          </div>
+                          <div className={`text-sm font-black shrink-0 ${isCritical ? "text-red-600" : isLow ? "text-orange-500" : "text-[#2c1a10]"}`}>{qty}</div>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => openInventoryAdjust(item)} className="h-7 px-2.5 rounded-xl bg-[#5a7828] text-white text-[10px] font-black hover:bg-[#4e6a22] transition-colors cursor-pointer">Ajuster</button>
+                            <button onClick={() => deleteProductDb(item)} className="h-7 px-2.5 rounded-xl bg-red-50 border border-red-100 text-red-600 text-[10px] font-black hover:bg-red-100 transition-colors cursor-pointer">✕</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {inventoryFilteredStock.length === 0 && (
+                      <div className="text-center text-[#9a7060] text-sm py-12">Aucun élément</div>
+                    )}
                   </div>
                 </div>
               </div>
