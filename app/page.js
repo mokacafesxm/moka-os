@@ -3305,56 +3305,6 @@ export default function MokaOrderPad() {
               : "col-span-12 sm:col-span-8 xl:col-span-9"
           }>
 
-            {/* ── DASHBOARD BENTO ──── */}
-            {isAdmin && adminSection === "dashboard" && (
-              <div className="mb-4 space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* Critical stock */}
-                  <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm p-4">
-                    <div className="text-[10px] font-black text-red-600 uppercase tracking-wide mb-3">🔴 Stock critique</div>
-                    {stockLive.filter(i => !isPrepStock(i) && String(getStockStatus(i)).toLowerCase().includes("critique")).slice(0, 5).map(item => (
-                      <div key={item.id || getStockName(item)} className="flex items-center justify-between py-1.5 border-b border-[#f5ede0] last:border-0">
-                        <span className="text-xs font-bold text-[#2c1a10] truncate">{getStockName(item)}</span>
-                        <span className="text-[10px] font-black text-red-500 ml-2 shrink-0">{getStockQty(item)}{getStockDisplayUnit(item) ? " " + getStockDisplayUnit(item) : ""}</span>
-                      </div>
-                    ))}
-                    {stockKpis.critical === 0 && <div className="text-xs text-[#9a7060] text-center py-2">✅ Aucun produit critique</div>}
-                  </div>
-
-                  {/* Pending orders */}
-                  <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm p-4">
-                    <div className="text-[10px] font-black text-orange-600 uppercase tracking-wide mb-3">📦 Commandes à passer</div>
-                    {supplierOrders.filter(o => o.statut === "À commander").slice(0, 5).map((o, i) => (
-                      <div key={o.id || i} className="flex items-center justify-between py-1.5 border-b border-[#f5ede0] last:border-0">
-                        <span className="text-xs font-bold text-[#2c1a10] truncate">{o.ingredient || o.name || "—"}</span>
-                        <span className="text-[10px] text-[#9a7060] ml-2 shrink-0">{o.fournisseur || "—"}</span>
-                      </div>
-                    ))}
-                    {supplierOrders.filter(o => o.statut === "À commander").length === 0 && <div className="text-xs text-[#9a7060] text-center py-2">✅ Rien à commander</div>}
-                  </div>
-
-                  {/* Staff today */}
-                  <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm p-4">
-                    <div className="text-[10px] font-black text-[#5a7828] uppercase tracking-wide mb-3">👥 Équipe aujourd'hui</div>
-                    {(staff.length ? staff : (settingsCache?.staff || [])).map(member => {
-                      const name = getStaffName(member);
-                      const cs = clockStatuses[name] || "absent";
-                      const cfg = { present: { label: "Présent", cls: "text-[#5a7828]", dot: "bg-[#5a7828]" }, pause: { label: "En pause", cls: "text-orange-500", dot: "bg-orange-400" }, done: { label: "Terminé", cls: "text-[#9a7060]", dot: "bg-[#9a7060]" }, absent: { label: "Absent", cls: "text-[#b09080]", dot: "bg-[#d5c5b5]" } }[cs] || { label: "Absent", cls: "text-[#b09080]", dot: "bg-[#d5c5b5]" };
-                      return (
-                        <div key={name} className="flex items-center justify-between py-1.5 border-b border-[#f5ede0] last:border-0">
-                          <span className="text-xs font-bold text-[#2c1a10]">{name}</span>
-                          <div className="flex items-center gap-1.5">
-                            <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`}/>
-                            <span className={`text-[10px] font-bold ${cfg.cls}`}>{cfg.label}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* ── STOCK TAB ──── */}
             {activeTab === "stock" && (
               <>
