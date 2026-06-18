@@ -127,9 +127,12 @@ export async function GET(request) {
       date: getDate(p.properties, "Date et heure") || "",
     })).filter(e => e.staff && e.date && filterByDate(e.date));
 
+    const getDaySXM = (isoDate) =>
+      new Date(isoDate).toLocaleDateString("en-CA", { timeZone: "America/Puerto_Rico" });
+
     const eventsByStaffDay = {};
     clockEvents.forEach(e => {
-      const day = e.date.slice(0, 10);
+      const day = getDaySXM(e.date);
       const key = `${e.staff}__${day}`;
       if (!eventsByStaffDay[key]) eventsByStaffDay[key] = [];
       eventsByStaffDay[key].push(e);
