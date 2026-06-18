@@ -3339,23 +3339,33 @@ export default function MokaOrderPad() {
                       </div>
 
                       {/* View toggle */}
-                      <div className="flex gap-2">
-                        {[
-                          { key: "prepa", label: "Prépas", onSelect: () => setStockView("prepa") },
-                          { key: "stock", label: "Stock", onSelect: () => { setStockView("stock"); if (stockCategories[0]) setActiveStockCategory(stockCategories[0]); } },
-                        ].map(({ key, label, onSelect }) => (
-                          <button
-                            key={key}
-                            onClick={onSelect}
-                            className={`h-8 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                              stockView === key
-                                ? "bg-[#2c1a10] text-white"
-                                : "bg-[#faf5ef] text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        ))}
+                      <div className="flex w-full gap-2">
+                        <button
+                          onClick={() => setStockView("prepa")}
+                          className={`relative flex-1 py-3 rounded-2xl text-sm font-black cursor-pointer transition-all ${
+                            stockView === "prepa" ? "bg-[#2c1a10] text-white shadow-md" : "bg-white border border-[#e5d5c5] text-[#2c1a10] hover:bg-[#faf5ef]"
+                          }`}
+                        >
+                          Prépas
+                          {prepCount > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
+                              {prepCount}
+                            </span>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => { setStockView("stock"); if (stockCategories[0]) setActiveStockCategory(stockCategories[0]); }}
+                          className={`relative flex-1 py-3 rounded-2xl text-sm font-black cursor-pointer transition-all ${
+                            stockView === "stock" ? "bg-[#2c1a10] text-white shadow-md" : "bg-white border border-[#e5d5c5] text-[#2c1a10] hover:bg-[#faf5ef]"
+                          }`}
+                        >
+                          Stock
+                          {stockKpis.critical > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
+                              {stockKpis.critical}
+                            </span>
+                          )}
+                        </button>
                       </div>
 
                       {/* Zone / Catégorie toggle */}
@@ -3634,21 +3644,31 @@ export default function MokaOrderPad() {
                     )}
                   </div>
 
-                  {/* Category pills */}
-                  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                    {categories.filter((cat) => String(cat).trim().toLowerCase() !== "tous").map((cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => { setActiveCategory(cat); setActiveSubCategory(""); }}
-                        className={`h-8 px-3 rounded-lg whitespace-nowrap text-xs font-bold shrink-0 transition-all cursor-pointer ${
-                          activeCategory === cat
-                            ? "bg-[#5a7828] text-white shadow-sm"
-                            : "bg-[#faf5ef] text-[#6b4a3d] border border-[#e5d5c5] hover:bg-[#f0e4d4]"
-                        }`}
-                      >
-                        {categoryEmojis[cat] || "📌"} {cat}
-                      </button>
-                    ))}
+                  {/* Category circles */}
+                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                    {categories.filter((cat) => String(cat).trim().toLowerCase() !== "tous").map((cat) => {
+                      const isActive = activeCategory === cat;
+                      const cartCount = Object.values(cart).filter(item => (item.category || "Autres") === cat).length;
+                      return (
+                        <div
+                          key={cat}
+                          onClick={() => { setActiveCategory(cat); setActiveSubCategory(""); }}
+                          className="flex flex-col items-center gap-1 w-16 shrink-0 cursor-pointer relative"
+                        >
+                          <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl border-2 transition-all ${
+                            isActive ? "bg-[#2c1a10] border-[#2c1a10]" : "bg-white border-[#e5d5c5]"
+                          }`}>
+                            {categoryEmojis[cat] || "📌"}
+                          </div>
+                          <span className={`text-[10px] font-black text-center truncate w-16 ${isActive ? "text-[#2c1a10]" : "text-[#6b4a3d]"}`}>{cat}</span>
+                          {cartCount > 0 && (
+                            <span className="absolute top-0 right-0 w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-black flex items-center justify-center">
+                              {cartCount}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {/* Sub-category pills */}
