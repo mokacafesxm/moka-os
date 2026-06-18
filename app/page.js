@@ -482,6 +482,7 @@ export default function MokaOrderPad() {
     return saved.statuses || {};
   });
   const [clockSending, setClockSending] = useState(false);
+  const [selectedStaffHours, setSelectedStaffHours] = useState(null);
   const [lastKnownDateSXM, setLastKnownDateSXM] = useState(
     new Date().toLocaleDateString("en-CA", { timeZone: "America/Puerto_Rico" })
   );
@@ -4927,8 +4928,8 @@ export default function MokaOrderPad() {
                         <div className="text-center text-[#9a7060] text-xs py-8">Aucune donnée de pointage</div>
                       ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                          {reportsData.staff.heures?.map(({ nom, heures }) => (
-                            <div key={nom} className="bg-gradient-to-br from-[#faf5ef] to-[#f0e8dc] rounded-xl p-3 border border-[#e5d5c5]">
+                          {reportsData.staff.heures?.map(({ nom, heures, detail }) => (
+                            <div key={nom} onClick={() => setSelectedStaffHours({ nom, heures, detail })} className="bg-gradient-to-br from-[#faf5ef] to-[#f0e8dc] rounded-xl p-3 border border-[#e5d5c5] cursor-pointer hover:shadow-md transition-all active:scale-[0.97]">
                               <div className="w-7 h-7 rounded-lg bg-[#2c1a10] flex items-center justify-center text-white text-[10px] font-black mb-2">
                                 {nom.charAt(0).toUpperCase()}
                               </div>
@@ -5053,6 +5054,41 @@ export default function MokaOrderPad() {
                     <p className="text-xs text-[#9a7060]">Impossible de charger les données. <button onClick={() => loadReports(reportsPeriode)} className="text-[#2c1a10] font-bold underline cursor-pointer">Réessayer</button></p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Modal détail heures staff */}
+            {selectedStaffHours && (
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={() => setSelectedStaffHours(null)}>
+                <div onClick={e => e.stopPropagation()} className="bg-[#f5ede0] rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-md max-h-[80vh] overflow-y-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}>
+                  <div className="w-10 h-1 bg-[#e5d5c5] rounded-full mx-auto mt-3 mb-1 sm:hidden"/>
+                  <div className="px-5 py-4 border-b border-[#e5d5c5] flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-[#2c1a10] flex items-center justify-center text-white text-sm font-black">
+                        {selectedStaffHours.nom.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-base font-black text-[#2c1a10]">{selectedStaffHours.nom}</div>
+                        <div className="text-xs text-[#9a7060] font-semibold">{selectedStaffHours.heures}h au total</div>
+                      </div>
+                    </div>
+                    <button onClick={() => setSelectedStaffHours(null)} className="w-8 h-8 rounded-xl bg-white border border-[#e5d5c5] flex items-center justify-center cursor-pointer">×</button>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    {selectedStaffHours.detail.length === 0 ? (
+                      <div className="text-center text-[#9a7060] text-sm py-8">Aucun détail disponible</div>
+                    ) : (
+                      selectedStaffHours.detail.map(({ date, heures }) => (
+                        <div key={date} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-[#e5d5c5]">
+                          <div className="text-sm font-bold text-[#2c1a10]">
+                            {new Date(date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                          </div>
+                          <div className="text-sm font-black text-[#5a7828]">{heures}h</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 

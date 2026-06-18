@@ -162,15 +162,23 @@ export async function GET(request) {
     };
 
     const hoursWorkedByStaff = {};
+    const hoursDetailByStaff = {};
     Object.entries(eventsByStaffDay).forEach(([key, events]) => {
-      const [staffName] = key.split("__");
+      const [staffName, day] = key.split("__");
       const sorted = events.sort((a, b) => new Date(a.date) - new Date(b.date));
+      const hours = calculateWorkedHours(sorted);
       if (!hoursWorkedByStaff[staffName]) hoursWorkedByStaff[staffName] = 0;
-      hoursWorkedByStaff[staffName] += calculateWorkedHours(sorted);
+      hoursWorkedByStaff[staffName] += hours;
+      if (!hoursDetailByStaff[staffName]) hoursDetailByStaff[staffName] = [];
+      if (hours > 0) hoursDetailByStaff[staffName].push({ date: day, heures: Math.round(hours * 10) / 10 });
     });
 
     const staffHoursStats = Object.entries(hoursWorkedByStaff)
-      .map(([nom, heures]) => ({ nom, heures: Math.round(heures * 10) / 10 }))
+      .map(([nom, heures]) => ({
+        nom,
+        heures: Math.round(heures * 10) / 10,
+        detail: (hoursDetailByStaff[nom] || []).sort((a, b) => new Date(b.date) - new Date(a.date)),
+      }))
       .sort((a, b) => b.heures - a.heures);
 
     return Response.json({
