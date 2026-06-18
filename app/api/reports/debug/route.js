@@ -51,7 +51,7 @@ export async function GET(request) {
           if (state === "working" && lastTimestamp) {
             totalMs += t - lastTimestamp;
             state = "paused";
-            lastTimestamp = t;
+            lastTimestamp = null;
           }
         } else if (action === "retour pause") {
           if (state === "paused") { state = "working"; lastTimestamp = t; }
@@ -70,10 +70,13 @@ export async function GET(request) {
         });
       });
 
+      const incomplete = state === "working";
       trace.push({
         staff: staffName,
         day,
         totalHeures: Math.round((totalMs / 3600000) * 10) / 10,
+        incomplete,
+        finalState: state,
         steps,
       });
     });

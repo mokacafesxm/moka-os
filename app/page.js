@@ -5078,10 +5078,15 @@ export default function MokaOrderPad() {
                     {selectedStaffHours.detail.length === 0 ? (
                       <div className="text-center text-[#9a7060] text-sm py-8">Aucun détail disponible</div>
                     ) : (
-                      selectedStaffHours.detail.map(({ date, heures }) => (
+                      selectedStaffHours.detail.map(({ date, heures, incomplete }) => (
                         <div key={date} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-[#e5d5c5]">
-                          <div className="text-sm font-bold text-[#2c1a10]">
-                            {new Date(date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                          <div>
+                            <div className="text-sm font-bold text-[#2c1a10]">
+                              {new Date(date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                            </div>
+                            {incomplete && (
+                              <div className="text-[10px] text-orange-500 font-bold">⚠️ Pointage incomplet (pas de départ)</div>
+                            )}
                           </div>
                           <div className="text-sm font-black text-[#5a7828]">{heures}h</div>
                         </div>

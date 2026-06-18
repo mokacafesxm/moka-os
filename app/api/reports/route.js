@@ -142,6 +142,7 @@ export async function GET(request) {
       let totalMs = 0;
       let state = "out";
       let lastTimestamp = null;
+      let incomplete = false;
       events.forEach(e => {
         const action = e.action.toLowerCase();
         const t = new Date(e.date);
@@ -151,7 +152,7 @@ export async function GET(request) {
           if (state === "working" && lastTimestamp) {
             totalMs += t - lastTimestamp;
             state = "paused";
-            lastTimestamp = t;
+            lastTimestamp = null;
           }
         } else if (action === "retour pause") {
           if (state === "paused") { state = "working"; lastTimestamp = t; }
@@ -161,7 +162,8 @@ export async function GET(request) {
           lastTimestamp = null;
         }
       });
-      return totalMs / (1000 * 60 * 60);
+      if (state === "working") incomplete = true;
+      return { hours: totalMs / (1000 * 60 * 60), incomplete };
     };
 
     const hoursWorkedByStaff = {};
@@ -169,11 +171,11 @@ export async function GET(request) {
     Object.entries(eventsByStaffDay).forEach(([key, events]) => {
       const [staffName, day] = key.split("__");
       const sorted = events.sort((a, b) => new Date(a.date) - new Date(b.date));
-      const hours = calculateWorkedHours(sorted);
+      const { hours, incomplete } = calculateWorkedHours(sorted);
       if (!hoursWorkedByStaff[staffName]) hoursWorkedByStaff[staffName] = 0;
       hoursWorkedByStaff[staffName] += hours;
       if (!hoursDetailByStaff[staffName]) hoursDetailByStaff[staffName] = [];
-      if (hours > 0) hoursDetailByStaff[staffName].push({ date: day, heures: Math.round(hours * 10) / 10 });
+      if (hours > 0 || incomplete) hoursDetailByStaff[staffName].push({ date: day, heures: Math.round(hours * 10) / 10, incomplete });
     });
 
     const staffHoursStats = Object.entries(hoursWorkedByStaff)
