@@ -505,7 +505,7 @@ export default function MokaOrderPad() {
   const [composeCart, setComposeCart] = useState({});
   const [stockStatusFilter, setStockStatusFilter] = useState("all");
   const [stockViewMode, setStockViewMode] = useState("zone");
-  const [collapsedZones, setCollapsedZones] = useState(new Set(["autre"]));
+  const [collapsedZones, setCollapsedZones] = useState(new Set(["Sans zone"]));
   const toggleZone = (key) => {
     setCollapsedZones(prev => {
       const next = new Set(prev);
@@ -915,13 +915,6 @@ export default function MokaOrderPad() {
   const stockByZone = useMemo(() => {
     if (stockView !== "stock") return null;
     const groups = {};
-    ZONE_GROUPS.forEach(g => { groups[g.key] = []; });
-    stockVisibleItems.forEach(item => {
-      const zone = String(item.zone || "").trim();
-      const group = ZONE_GROUPS.find(g => g.match(zone));
-      const key = group?.key || "autre";
-      groups[key].push(item);
-    });
     const priorityScore = (item) => {
       const s = String(getStockStatus(item)).toLowerCase();
       if (s.includes("critique")) return 0;
@@ -929,10 +922,22 @@ export default function MokaOrderPad() {
       if (s.includes("configurer")) return 3;
       return 2;
     };
-    Object.keys(groups).forEach(key => {
-      groups[key].sort((a, b) => priorityScore(a) - priorityScore(b));
+    stockVisibleItems.forEach(item => {
+      const zone = String(getStockZone(item)).trim() || "Sans zone";
+      if (!groups[zone]) groups[zone] = [];
+      groups[zone].push(item);
     });
-    return groups;
+    Object.keys(groups).forEach(zone => {
+      groups[zone].sort((a, b) => priorityScore(a) - priorityScore(b));
+    });
+    // Tri alphabétique, "Sans zone" en dernier
+    const sorted = {};
+    Object.keys(groups).sort((a, b) => {
+      if (a === "Sans zone") return 1;
+      if (b === "Sans zone") return -1;
+      return a.localeCompare(b, "fr");
+    }).forEach(zone => { sorted[zone] = groups[zone]; });
+    return sorted;
   }, [stockVisibleItems, stockView]);
 
   const prepCount = preps.filter(
@@ -941,13 +946,14 @@ export default function MokaOrderPad() {
 
 
   const stockKpis = useMemo(() => {
-    const total = stockLive.length;
+    const rawStock = stockLive.filter(item => !isPrepStock(item));
+    const total = rawStock.length;
 
-    const critical = stockLive.filter((item) =>
+    const critical = rawStock.filter((item) =>
       String(getStockStatus(item)).toLowerCase().includes("critique")
     ).length;
 
-    const alert = stockLive.filter((item) => {
+    const alert = rawStock.filter((item) => {
       const s = String(getStockStatus(item)).toLowerCase();
       return s.includes("alerte") || s.includes("stock bas") || s.includes("à commander");
     }).length;
@@ -3190,7 +3196,7 @@ export default function MokaOrderPad() {
           >
             <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>
             Stock Live
-            {(() => { const critCount = stockLive.filter(i => String(getStockStatus(i)).toLowerCase().includes("critique")).length; return critCount > 0 ? <span className="bg-red-500 text-white text-[10px] font-black rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">{critCount}</span> : null; })()}
+            {(() => { const critCount = stockLive.filter(i => !isPrepStock(i) && String(getStockStatus(i)).toLowerCase().includes("critique")).length; return critCount > 0 ? <span className="bg-red-500 text-white text-[10px] font-black rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">{critCount}</span> : null; })()}
           </button>
 
           <button
@@ -3386,22 +3392,29 @@ export default function MokaOrderPad() {
                     {stockView === "stock" && stockViewMode === "zone" && stockByZone ? (
                       /* ── Vue par zone ── */
                       <div className="space-y-3">
-                        {ZONE_GROUPS.map(group => {
-                          const items = stockByZone[group.key] || [];
+                        {Object.entries(stockByZone).map(([zoneName, items]) => {
                           if (items.length === 0) return null;
                           const critCount = items.filter(i => String(getStockStatus(i)).toLowerCase().includes("critique")).length;
                           const lowCount = items.filter(i => String(getStockStatus(i)).toLowerCase().includes("stock bas")).length;
-                          const isCollapsed = collapsedZones.has(group.key);
+                          const isCollapsed = collapsedZones.has(zoneName);
+                          const zl = zoneName.toLowerCase();
+                          const zoneIcon = zl.includes("congel") || zl.includes("congél") ? "❄️"
+                            : zl.includes("frigo") ? "🧊"
+                            : zl === "bar" || zl.includes("bar") ? "☕"
+                            : zl.includes("dry") || zl.includes("sec") ? "📦"
+                            : zl.includes("pain") || zl.includes("boulang") ? "🍞"
+                            : zoneName === "Sans zone" ? "📍"
+                            : "🗄️";
                           return (
-                            <div key={group.key} className="bg-white rounded-2xl border border-[#e5d5c5] overflow-hidden shadow-sm">
+                            <div key={zoneName} className="bg-white rounded-2xl border border-[#e5d5c5] overflow-hidden shadow-sm">
                               <button
-                                onClick={() => toggleZone(group.key)}
+                                onClick={() => toggleZone(zoneName)}
                                 className="w-full flex items-center justify-between px-4 py-3.5 cursor-pointer hover:bg-[#faf5ef] transition-colors"
                               >
                                 <div className="flex items-center gap-2.5">
-                                  <span className="text-lg">{group.icon}</span>
+                                  <span className="text-lg">{zoneIcon}</span>
                                   <div className="text-left">
-                                    <div className="text-sm font-black text-[#2c1a10]">{group.label}</div>
+                                    <div className="text-sm font-black text-[#2c1a10]">{zoneName}</div>
                                     <div className="text-[10px] text-[#9a7060] font-medium">
                                       {items.length} produit{items.length > 1 ? "s" : ""}
                                       {critCount > 0 && <span className="ml-1.5 text-red-500 font-bold">· {critCount} critique{critCount > 1 ? "s" : ""}</span>}
