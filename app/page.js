@@ -3820,13 +3820,13 @@ export default function MokaOrderPad() {
             {activeTab === "preps" && (
               <div className="space-y-4">
                 {/* Filtres catégorie */}
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex w-full gap-2">
                   {prepsCategories.map(cat => {
                     const todoCount = prepsTodoByCategory[cat] || 0;
                     const isActive = prepsStation === cat;
                     return (
                       <button key={cat} onClick={() => setPrepsStation(cat)}
-                        className={`relative py-2 px-4 rounded-xl text-xs font-black cursor-pointer transition-all ${
+                        className={`relative flex-1 py-3 rounded-2xl text-sm font-black cursor-pointer transition-all ${
                           isActive ? "bg-[#2c1a10] text-white shadow-md" : "bg-white border border-[#e5d5c5] text-[#2c1a10] hover:bg-[#faf5ef]"
                         }`}>
                         {cat}
