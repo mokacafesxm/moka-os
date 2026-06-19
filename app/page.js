@@ -419,9 +419,9 @@ export default function MokaOrderPad() {
   const [settingsPanel, setSettingsPanel] = useState("");
   const [settingsData, setSettingsData] = useState([]);
   const [referentiels, setReferentiels] = useState({ categories: [], sousCategories: [], unites: [], zones: [] });
-  const [activeReferentiel, setActiveReferentiel] = useState("categories");
-  const [refInput, setRefInput] = useState({ nom: "", emoji: "", abreviation: "", categorie: "", temperature: "" });
+  const [refInput, setRefInput] = useState({ nom: "", emoji: "", abreviation: "", categorie: "", temperature: "", uniteType: "", ordre: "" });
   const [savingRef, setSavingRef] = useState(false);
+  const [showRefAddModal, setShowRefAddModal] = useState(false);
   const [supplierOrders, setSupplierOrders] = useState([]);
   const [loadingSupplierOrders, setLoadingSupplierOrders] = useState(false);
   const [supplierOrdersFilter, setSupplierOrdersFilter] = useState("À commander");
@@ -1546,8 +1546,42 @@ export default function MokaOrderPad() {
   };
 
   useEffect(() => {
-    if (settingsPanel === "referentiels") loadReferentiels();
+    if (["categories","sousCategories","unites","zones"].includes(settingsPanel)) loadReferentiels();
   }, [settingsPanel]);
+
+  const addRef = async () => {
+    if (!refInput.nom.trim()) return;
+    setSavingRef(true);
+    try {
+      await fetch("/api/settings/referentiels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: settingsPanel,
+          nom: refInput.nom,
+          emoji: refInput.emoji,
+          abreviation: refInput.abreviation,
+          categorie: refInput.categorie,
+          temperature: refInput.temperature,
+          uniteType: refInput.uniteType,
+          ordre: refInput.ordre,
+        }),
+      });
+      setRefInput({ nom: "", emoji: "", abreviation: "", categorie: "", temperature: "", uniteType: "", ordre: "" });
+      setShowRefAddModal(false);
+      await loadReferentiels();
+    } catch (err) { console.error(err); }
+    finally { setSavingRef(false); }
+  };
+
+  const deleteRef = async (id) => {
+    await fetch("/api/settings/referentiels", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    await loadReferentiels();
+  };
 
   const loadSupplierOrders = async () => {
     setLoadingSupplierOrders(true);
@@ -5165,38 +5199,18 @@ export default function MokaOrderPad() {
             {adminSection === "settings" && (
               <div className={`space-y-4 ${isIphone ? "pb-32" : "pb-28"}`}>
                 <div className="h-2" />
-                {/* ── Référentiels ── */}
-                <div className="rounded-2xl border border-[#e5d5c5] bg-white shadow-sm p-4">
-                  <div className="text-xs font-black text-[#9a7060] uppercase tracking-wide mb-3">🗂 Référentiels</div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {[
-                      { id: "categories",     icon: "🏷",  label: "Catégories" },
-                      { id: "sousCategories", icon: "📂",  label: "Sous-catégories" },
-                      { id: "unites",         icon: "⚖️",  label: "Unités" },
-                      { id: "zones",          icon: "🗺",  label: "Zones" },
-                    ].map(({ id, icon, label }) => (
-                      <button key={id}
-                        onClick={() => { setSettingsPanel("referentiels"); setActiveReferentiel(id); setRefInput({ nom: "", emoji: "", abreviation: "", categorie: "", temperature: "" }); }}
-                        className="rounded-xl border border-[#e5d5c5] bg-[#faf5ef] p-3 text-left hover:border-[#2c1a10] hover:bg-[#f0e8dc] transition-all cursor-pointer active:scale-[0.97]">
-                        <div className="text-xl mb-1">{icon}</div>
-                        <div className="text-xs font-black text-[#2c1a10] leading-tight">{label}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {[
-                  { key: "suppliers", title: "Fournisseurs", desc: "Ajouter, modifier, désactiver", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
-                  { key: "categories", title: "Catégories", desc: "Créer / organiser", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg> },
-                  { key: "subcategories", title: "Sous-catégories", desc: "Ranger les produits", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg> },
-                  { key: "units", title: "Unités", desc: "kg, pièce, carton…", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></svg> },
-                  { key: "zones", title: "Zones", desc: "Stockage et emplacement", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> },
-                  { key: "staff", title: "Staff", desc: "Équipe et pointage", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
-                ].map(({ key, title, desc, icon }) => (
+                  { key: "suppliers",     panelType: null,             title: "Fournisseurs",     desc: "Ajouter, modifier, désactiver", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+                  { key: "categories",   panelType: "categories",     title: "Catégories",       desc: "Créer / organiser", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg> },
+                  { key: "subcategories",panelType: "sousCategories", title: "Sous-catégories", desc: "Ranger les produits", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg> },
+                  { key: "units",        panelType: "unites",         title: "Unités",           desc: "kg, pièce, carton…", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></svg> },
+                  { key: "zones",        panelType: "zones",          title: "Zones",            desc: "Stockage et emplacement", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> },
+                  { key: "staff",        panelType: null,             title: "Staff",            desc: "Équipe et pointage", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+                ].map(({ key, title, desc, icon, panelType }) => (
                   <button
                     key={key}
-                    onClick={() => loadSettingsPanel(key)}
+                    onClick={() => panelType ? (setSettingsPanel(panelType), loadReferentiels()) : loadSettingsPanel(key)}
                     className="bg-white rounded-2xl p-5 border border-[#e5d5c5] shadow-sm text-left hover:shadow-md hover:border-[#d0c0b0] transition-all cursor-pointer active:scale-[0.98] group"
                   >
                     <div className="w-12 h-12 rounded-2xl bg-[#f0e8dc] flex items-center justify-center text-[#6b4a3d] mb-3 group-hover:bg-[#2c1a10] group-hover:text-[#f5ede0] transition-all">{icon}</div>
@@ -5218,6 +5232,103 @@ export default function MokaOrderPad() {
               </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Ajouter Référentiel ── */}
+      {showRefAddModal && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center" onClick={() => setShowRefAddModal(false)}>
+          <div className="absolute inset-0 bg-black/40" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
+          <div className="relative w-full max-w-lg rounded-t-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="w-10 h-1 rounded-full bg-[#d0c0b0] mx-auto" />
+            <div>
+              <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Ajouter</div>
+              <h2 className="text-base font-black text-[#2c1a10] mt-0.5">
+                {settingsPanel === "categories" && "🏷 Nouvelle catégorie"}
+                {settingsPanel === "sousCategories" && "📂 Nouvelle sous-catégorie"}
+                {settingsPanel === "unites" && "⚖️ Nouvelle unité"}
+                {settingsPanel === "zones" && "🗺 Nouvelle zone"}
+              </h2>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Nom *</label>
+                <input value={refInput.nom} onChange={(e) => setRefInput((p) => ({ ...p, nom: e.target.value }))}
+                  placeholder="Nom…"
+                  className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors" />
+              </div>
+              {(settingsPanel === "categories" || settingsPanel === "zones") && (
+                <div>
+                  <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Emoji</label>
+                  <input value={refInput.emoji} onChange={(e) => setRefInput((p) => ({ ...p, emoji: e.target.value }))}
+                    placeholder="🥑" maxLength={4}
+                    className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm text-center outline-none focus:border-[#5a7828] transition-colors" />
+                </div>
+              )}
+              {settingsPanel === "unites" && (
+                <div>
+                  <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Abréviation</label>
+                  <input value={refInput.abreviation} onChange={(e) => setRefInput((p) => ({ ...p, abreviation: e.target.value }))}
+                    placeholder="kg" maxLength={10}
+                    className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm outline-none focus:border-[#5a7828] transition-colors" />
+                </div>
+              )}
+              {settingsPanel === "unites" && (
+                <div>
+                  <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Type</label>
+                  <select value={refInput.uniteType} onChange={(e) => setRefInput((p) => ({ ...p, uniteType: e.target.value }))}
+                    className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors">
+                    <option value="">Choisir…</option>
+                    <option value="Poids">Poids</option>
+                    <option value="Volume">Volume</option>
+                    <option value="Pièce">Pièce</option>
+                    <option value="Autre">Autre</option>
+                  </select>
+                </div>
+              )}
+              {settingsPanel === "sousCategories" && (
+                <div>
+                  <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Catégorie parente</label>
+                  <select value={refInput.categorie} onChange={(e) => setRefInput((p) => ({ ...p, categorie: e.target.value }))}
+                    className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors">
+                    <option value="">Aucune</option>
+                    {referentiels.categories.map((c) => <option key={c.id} value={c.nom}>{c.emoji} {c.nom}</option>)}
+                  </select>
+                </div>
+              )}
+              {settingsPanel === "zones" && (
+                <div>
+                  <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Température</label>
+                  <select value={refInput.temperature} onChange={(e) => setRefInput((p) => ({ ...p, temperature: e.target.value }))}
+                    className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors">
+                    <option value="">Choisir…</option>
+                    <option value="Ambiant">Ambiant</option>
+                    <option value="Froid">Froid</option>
+                    <option value="Surgelé">Surgelé</option>
+                  </select>
+                </div>
+              )}
+              {(settingsPanel === "categories" || settingsPanel === "sousCategories") && (
+                <div>
+                  <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Ordre</label>
+                  <input type="number" value={refInput.ordre} onChange={(e) => setRefInput((p) => ({ ...p, ordre: e.target.value }))}
+                    placeholder="99"
+                    className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm outline-none focus:border-[#5a7828] transition-colors" />
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 pt-1" style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
+              <button onClick={() => setShowRefAddModal(false)}
+                className="flex-1 py-3 rounded-2xl text-[#9a7060] font-bold text-sm cursor-pointer">
+                Annuler
+              </button>
+              <button onClick={addRef} disabled={savingRef || !refInput.nom.trim()}
+                className="flex-1 py-3 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-50 hover:bg-[#4e6a22] transition-colors">
+                {savingRef ? "Ajout…" : "Sauvegarder"}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -5357,19 +5468,25 @@ export default function MokaOrderPad() {
                 <h2 className="text-base font-black text-[#2c1a10] mt-0.5">
                   {settingsPanel === "suppliers" && "🏢 Fournisseurs"}
                   {settingsPanel === "staff" && "👥 Staff"}
-                  {settingsPanel === "categories" && "📦 Catégories"}
-                  {settingsPanel === "subcategories" && "📂 Sous-catégories"}
-                  {settingsPanel === "units" && "📏 Unités"}
-                  {settingsPanel === "zones" && "🗄️ Zones"}
-                  {settingsPanel === "referentiels" && "🗂 Référentiels"}
+                  {settingsPanel === "categories" && "🏷 Catégories"}
+                  {settingsPanel === "sousCategories" && "📂 Sous-catégories"}
+                  {settingsPanel === "unites" && "⚖️ Unités"}
+                  {settingsPanel === "zones" && "🗺 Zones"}
                 </h2>
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={openSettingsCreate}
+                  onClick={() => {
+                    if (["categories","sousCategories","unites","zones"].includes(settingsPanel)) {
+                      setRefInput({ nom: "", emoji: "", abreviation: "", categorie: "", temperature: "", uniteType: "", ordre: "" });
+                      setShowRefAddModal(true);
+                    } else {
+                      openSettingsCreate();
+                    }
+                  }}
                   className="h-9 px-3 rounded-xl bg-[#5a7828] text-white text-xs font-bold cursor-pointer hover:bg-[#4e6a22] transition-colors"
                 >
-                  ➕ Ajouter
+                  ➕ Nouveau
                 </button>
                 <button
                   onClick={() => setSettingsPanel("")}
@@ -5380,101 +5497,31 @@ export default function MokaOrderPad() {
               </div>
             </div>
 
-            {settingsPanel === "referentiels" ? (() => {
-              const REF_TABS = [
-                { id: "categories",     label: "Catégories",      icon: "🏷" },
-                { id: "sousCategories", label: "Sous-catégories", icon: "📂" },
-                { id: "unites",         label: "Unités",          icon: "⚖️" },
-                { id: "zones",          label: "Zones",           icon: "🗺" },
-              ];
-              const items = referentiels[activeReferentiel] || [];
-              const addRef = async () => {
-                if (!refInput.nom.trim()) return;
-                setSavingRef(true);
-                try {
-                  await fetch("/api/settings/referentiels", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ type: activeReferentiel, ...refInput }),
-                  });
-                  setRefInput({ nom: "", emoji: "", abreviation: "", categorie: "", temperature: "" });
-                  await loadReferentiels();
-                } catch (err) { console.error(err); }
-                finally { setSavingRef(false); }
-              };
-              const deleteRef = async (id) => {
-                await fetch("/api/settings/referentiels", {
-                  method: "DELETE",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ id }),
-                });
-                await loadReferentiels();
-              };
-              return (
-                <div className="flex flex-col flex-1 overflow-hidden">
-                  {/* Pills */}
-                  <div className="flex gap-2 px-4 pt-3 pb-2 overflow-x-auto shrink-0">
-                    {REF_TABS.map(({ id, label, icon }) => (
-                      <button key={id} onClick={() => { setActiveReferentiel(id); setRefInput({ nom: "", emoji: "", abreviation: "", categorie: "", temperature: "" }); }}
-                        className={`h-8 px-3 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${activeReferentiel === id ? "bg-[#2c1a10] text-white" : "bg-[#f0e8dc] text-[#6b4a3d] hover:bg-[#e5d5c5]"}`}>
-                        {icon} {label}
-                      </button>
-                    ))}
-                    <button onClick={loadReferentiels} className="h-8 px-3 rounded-xl text-xs font-bold shrink-0 bg-[#f0e8dc] text-[#6b4a3d] hover:bg-[#e5d5c5] transition-all cursor-pointer ml-auto">↻</button>
+            {["categories","sousCategories","unites","zones"].includes(settingsPanel) ? (
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+                {(referentiels[settingsPanel] || []).length === 0 && (
+                  <div className="text-center text-[#9a7060] text-sm py-10">
+                    Aucun élément — cliquez sur ➕ Nouveau pour en ajouter.
                   </div>
-
-                  {/* List */}
-                  <div className="flex-1 overflow-y-auto px-4 pb-2 space-y-2">
-                    {items.length === 0 && <div className="text-center text-[#9a7060] text-sm py-6">Aucun élément — ajoutez en ci-dessous.</div>}
-                    {items.map((item) => (
-                      <div key={item.id} className="flex items-center gap-3 bg-[#faf5ef] rounded-xl px-3 py-2.5 border border-[#e5d5c5]">
-                        {(item.emoji) && <span className="text-lg shrink-0">{item.emoji}</span>}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-black text-[#2c1a10] truncate">{item.nom}</div>
-                          {item.abreviation && <div className="text-[10px] text-[#9a7060]">{item.abreviation}</div>}
-                          {item.categorie && <div className="text-[10px] text-[#9a7060]">↳ {item.categorie}</div>}
-                          {item.temperature && <div className="text-[10px] text-[#9a7060]">{item.temperature}</div>}
-                        </div>
-                        <button onClick={() => deleteRef(item.id)}
-                          className="w-7 h-7 rounded-lg bg-red-50 border border-red-100 text-red-500 text-xs flex items-center justify-center cursor-pointer hover:bg-red-100 shrink-0">
-                          🗑
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Add form */}
-                  <div className="shrink-0 border-t border-[#e5d5c5] px-4 py-3 space-y-2">
-                    <div className="flex gap-2">
-                      <input value={refInput.nom} onChange={(e) => setRefInput((p) => ({ ...p, nom: e.target.value }))}
-                        placeholder="Nom *"
-                        className="flex-1 rounded-xl border border-[#e5d5c5] bg-white px-3 py-2 text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]" />
-                      {(activeReferentiel === "categories" || activeReferentiel === "zones") && (
-                        <input value={refInput.emoji} onChange={(e) => setRefInput((p) => ({ ...p, emoji: e.target.value }))}
-                          placeholder="Emoji" maxLength={4}
-                          className="w-20 rounded-xl border border-[#e5d5c5] bg-white px-3 py-2 text-sm text-center outline-none focus:border-[#5a7828]" />
-                      )}
-                      {activeReferentiel === "unites" && (
-                        <input value={refInput.abreviation} onChange={(e) => setRefInput((p) => ({ ...p, abreviation: e.target.value }))}
-                          placeholder="Abrév." maxLength={10}
-                          className="w-24 rounded-xl border border-[#e5d5c5] bg-white px-3 py-2 text-sm outline-none focus:border-[#5a7828]" />
-                      )}
+                )}
+                {(referentiels[settingsPanel] || []).map((item) => (
+                  <div key={item.id} className="rounded-2xl border border-[#e5d5c5] bg-white px-4 py-3 shadow-sm flex items-center gap-3">
+                    {item.emoji && <span className="text-xl shrink-0">{item.emoji}</span>}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-black text-sm text-[#2c1a10] truncate">{item.nom}</div>
+                      {item.abreviation && <div className="text-xs text-[#9a7060]">{item.abreviation}</div>}
+                      {item.type && <div className="text-xs text-[#9a7060]">{item.type}</div>}
+                      {item.categorie && <div className="text-xs text-[#9a7060]">↳ {item.categorie}</div>}
+                      {item.temperature && <div className="text-xs text-[#9a7060]">{item.temperature}</div>}
                     </div>
-                    {activeReferentiel === "sousCategories" && (
-                      <select value={refInput.categorie} onChange={(e) => setRefInput((p) => ({ ...p, categorie: e.target.value }))}
-                        className="w-full rounded-xl border border-[#e5d5c5] bg-white px-3 py-2 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]">
-                        <option value="">Catégorie parente (optionnel)</option>
-                        {referentiels.categories.map((c) => <option key={c.id} value={c.nom}>{c.emoji} {c.nom}</option>)}
-                      </select>
-                    )}
-                    <button onClick={addRef} disabled={savingRef || !refInput.nom.trim()}
-                      className="w-full py-2.5 rounded-xl bg-[#5a7828] text-white text-sm font-black cursor-pointer disabled:opacity-50 hover:bg-[#4e6a22] transition-colors">
-                      {savingRef ? "Ajout…" : "➕ Ajouter"}
+                    <button onClick={() => deleteRef(item.id)}
+                      className="shrink-0 h-8 px-3 rounded-xl bg-red-50 border border-red-100 text-red-500 text-xs font-bold cursor-pointer hover:bg-red-100 transition-colors">
+                      🗑 Supprimer
                     </button>
                   </div>
-                </div>
-              );
-            })() : loadingSettingsPanel ? (
+                ))}
+              </div>
+            ) : loadingSettingsPanel ? (
               <div className="p-10 text-center text-[#9a7060] font-semibold">Chargement…</div>
             ) : settingsData.length === 0 ? (
               <div className="p-10 text-center text-[#9a7060] font-semibold">Aucun élément trouvé.</div>

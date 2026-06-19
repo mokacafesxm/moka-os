@@ -64,7 +64,7 @@ export async function GET() {
 
 export async function POST(req) {
   try {
-    const { type, nom, emoji, abreviation, categorie, temperature } = await req.json();
+    const { type, nom, emoji, abreviation, categorie, temperature, uniteType, ordre } = await req.json();
 
     const dbMap = {
       categories:     CATEGORIES_DB(),
@@ -78,18 +78,19 @@ export async function POST(req) {
         Nom:   titleProp(nom),
         Emoji: textProp(emoji || ""),
         Actif: checkboxProp(true),
-        Ordre: numberProp(99),
+        Ordre: numberProp(ordre !== "" && ordre !== undefined ? Number(ordre) : 99),
       },
       sousCategories: {
         Nom:       titleProp(nom),
         Categorie: textProp(categorie || ""),
         Actif:     checkboxProp(true),
-        Ordre:     numberProp(99),
+        Ordre:     numberProp(ordre !== "" && ordre !== undefined ? Number(ordre) : 99),
       },
       unites: {
         Nom:         titleProp(nom),
         Abreviation: textProp(abreviation || ""),
         Actif:       checkboxProp(true),
+        ...(uniteType ? { Type: selectProp(uniteType) } : {}),
       },
       zones: {
         Nom:   titleProp(nom),
