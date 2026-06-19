@@ -475,6 +475,7 @@ export default function MokaOrderPad() {
   const [navCompact, setNavCompact] = useState(false);
   const [hasFixedBottomAction, setHasFixedBottomAction] = useState(false);
   const lastScrollY = useRef(0);
+  const adminSectionRef = useRef(adminSection);
   const [deviceType, setDeviceType] = useState("desktop");
   const [showMobileCart, setShowMobileCart] = useState(false);
   const [lastSync, setLastSync] = useState(new Date());
@@ -1588,6 +1589,10 @@ export default function MokaOrderPad() {
       else if (diff < -5) setNavCompact(false);
       if (diff > 50) setNavVisible(false);
       else if (diff < -10) setNavVisible(true);
+      if (adminSectionRef.current === "reports") {
+        if (y > 200) setHasFixedBottomAction(true);
+        else if (y < 50) setHasFixedBottomAction(false);
+      }
       lastScrollY.current = y;
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -1737,10 +1742,11 @@ export default function MokaOrderPad() {
   }, [ordSelectedSupplier, ordSupplierProducts]);
 
   useEffect(() => {
-    setHasFixedBottomAction(
-      adminSection === "orders" && orderView === "compose" && ordIncludedItems.length > 0
-    );
-  }, [adminSection, orderView, ordIncludedItems.length]);
+    adminSectionRef.current = adminSection;
+    const inOrders = adminSection === "orders" && orderView === "compose" && ordIncludedItems.length > 0;
+    const modalOpen = showMultiPanelModal || !!orderDetail;
+    setHasFixedBottomAction(inOrders || modalOpen);
+  }, [adminSection, orderView, ordIncludedItems.length, showMultiPanelModal, orderDetail]);
 
   const supplierOrdersVisible = supplierOrders.filter((order) => {
     if (supplierOrdersFilter === "Tous") return true;
@@ -4735,7 +4741,7 @@ export default function MokaOrderPad() {
 
                 {/* ── Sticky CTA ── */}
                 {orderView === "compose" && ordIncludedItems.length > 0 && (
-                  <div className="fixed bottom-0 left-0 right-0 z-30 px-4 py-3 backdrop-blur-2xl bg-white/40 border-t border-white/50 shadow-2xl" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}>
+                  <div className="fixed bottom-0 left-0 right-0 z-[95] px-4 py-3 backdrop-blur-2xl bg-white/40 border-t border-white/50 shadow-2xl" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
                     <button onClick={() => setShowMultiPanelModal(true)}
                       className="w-full py-4 rounded-2xl bg-[#5a7828] text-white font-black text-sm shadow-lg active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2">
                       <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -4758,7 +4764,7 @@ export default function MokaOrderPad() {
 
             {/* REPORTS PANEL */}
             {adminSection === "reports" && (
-              <div className={`space-y-4 ${isIphone ? "pb-32" : "pb-28"}`}>
+              <div className={`space-y-4 ${isIphone ? "pb-36" : "pb-32"}`}>
                 <div className="h-2" />
                 {/* Period selector */}
                 <div className="flex items-center justify-between flex-wrap gap-2">
@@ -5121,6 +5127,7 @@ export default function MokaOrderPad() {
                     )}
                   </div>
                 </div>
+                <div className="h-24" aria-hidden="true" />
               </div>
             )}
 
