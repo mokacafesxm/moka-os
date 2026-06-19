@@ -422,6 +422,7 @@ export default function MokaOrderPad() {
   const [refInput, setRefInput] = useState({ nom: "", emoji: "", abreviation: "", categorie: "", temperature: "", uniteType: "", ordre: "" });
   const [savingRef, setSavingRef] = useState(false);
   const [showRefAddModal, setShowRefAddModal] = useState(false);
+  const [importingRef, setImportingRef] = useState(false);
   const [supplierOrders, setSupplierOrders] = useState([]);
   const [loadingSupplierOrders, setLoadingSupplierOrders] = useState(false);
   const [supplierOrdersFilter, setSupplierOrdersFilter] = useState("À commander");
@@ -5245,11 +5246,10 @@ export default function MokaOrderPad() {
 
       {/* ── Modal Ajouter Référentiel ── */}
       {showRefAddModal && (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center" onClick={() => setShowRefAddModal(false)}>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" onClick={() => setShowRefAddModal(false)}>
           <div className="absolute inset-0 bg-black/40" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
-          <div className="relative w-full max-w-lg rounded-t-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-4"
+          <div className="relative w-full max-w-sm rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}>
-            <div className="w-10 h-1 rounded-full bg-[#d0c0b0] mx-auto" />
             <div>
               <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Ajouter</div>
               <h2 className="text-base font-black text-[#2c1a10] mt-0.5">
@@ -5482,6 +5482,28 @@ export default function MokaOrderPad() {
                 </h2>
               </div>
               <div className="flex items-center gap-2">
+                {["categories","sousCategories","unites","zones"].includes(settingsPanel) && (
+                  <button
+                    onClick={async () => {
+                      if (!confirm("Importer toutes les valeurs existantes depuis la base Matières premières ?")) return;
+                      setImportingRef(true);
+                      try {
+                        const res = await fetch("/api/settings/referentiels/import", { method: "POST" });
+                        const data = await res.json();
+                        await loadReferentiels();
+                        alert(`Import terminé ✅\nCatégories : +${data.imported.categories}\nSous-catégories : +${data.imported.sousCategories}\nZones : +${data.imported.zones}\nUnités : +${data.imported.unites}`);
+                      } catch {
+                        alert("Erreur import ❌");
+                      } finally {
+                        setImportingRef(false);
+                      }
+                    }}
+                    disabled={importingRef}
+                    className="h-9 px-3 rounded-xl border border-[#e5d5c5] bg-white text-[10px] font-black text-[#9a7060] cursor-pointer disabled:opacity-50 hover:bg-[#f0e8dc] transition-colors"
+                  >
+                    {importingRef ? "Import…" : "⬇ Importer"}
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     if (["categories","sousCategories","unites","zones"].includes(settingsPanel)) {
