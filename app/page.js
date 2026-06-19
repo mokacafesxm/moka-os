@@ -4536,7 +4536,7 @@ export default function MokaOrderPad() {
                 {/* ── VUE COMPOSER ── */}
                 {orderView === "compose" && (
                   <div className="space-y-4 pb-28">
-                    {/* Fournisseurs — bulles scrollables */}
+                    {/* Fournisseurs — pills nom complet scrollables */}
                     <div>
                       <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide mb-2">Fournisseur</div>
                       {(settingsCache.suppliers || []).length === 0 ? (
@@ -4544,7 +4544,7 @@ export default function MokaOrderPad() {
                           Aucun fournisseur configuré dans les paramètres.
                         </div>
                       ) : (
-                        <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-hide px-1">
+                        <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide">
                           {(settingsCache.suppliers || []).map((s) => {
                             const name = ordGetSupplierName(s);
                             const urgentCount = ordUrgentItems.filter((i) => i.fournisseur === name).length;
@@ -4552,32 +4552,58 @@ export default function MokaOrderPad() {
                             return (
                               <button key={s.id || name}
                                 onClick={() => { setOrdSelectedSupplier(name); setComposeCart({}); }}
-                                className="flex flex-col items-center gap-1.5 shrink-0 w-20 cursor-pointer">
-                                <div className="relative">
-                                  <div className={`w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all duration-200 ${
-                                    isSelected
-                                      ? "bg-[#2c1a10] border-[#2c1a10] shadow-lg"
-                                      : "bg-white/70 backdrop-blur-sm border-[#e5d5c5] hover:border-[#c8a882] hover:shadow-md"
-                                  }`}>
-                                    <span className={`text-xl font-black ${isSelected ? "text-white" : "text-[#2c1a10]"}`}>
-                                      {name.charAt(0).toUpperCase()}
-                                    </span>
+                                className={`relative shrink-0 px-4 py-3 rounded-2xl border-2 transition-all cursor-pointer ${
+                                  isSelected
+                                    ? "bg-[#2c1a10] border-[#2c1a10] text-white shadow-md"
+                                    : "bg-white/70 border-[#e5d5c5] text-[#2c1a10] hover:border-[#c8a882] hover:shadow-sm"
+                                }`}>
+                                {urgentCount > 0 && (
+                                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse z-10">
+                                    {urgentCount}
+                                  </span>
+                                )}
+                                <div className="text-sm font-black truncate max-w-[120px]">{name}</div>
+                                {urgentCount > 0 && (
+                                  <div className={`text-[10px] font-bold mt-0.5 ${isSelected ? "text-white/70" : "text-red-400"}`}>
+                                    {urgentCount} urgent{urgentCount > 1 ? "s" : ""}
                                   </div>
-                                  {urgentCount > 0 && (
-                                    <span className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
-                                      {urgentCount}
-                                    </span>
-                                  )}
-                                </div>
-                                <span className={`text-[10px] text-center leading-tight w-20 truncate transition-all ${isSelected ? "text-[#2c1a10] font-black" : "text-[#6b4a3d] font-bold"}`}>
-                                  {name}
-                                </span>
+                                )}
                               </button>
                             );
                           })}
                         </div>
                       )}
                     </div>
+
+                    {/* Card contact fournisseur sélectionné */}
+                    {ordSelectedSupplier && ordSupplierContact && (() => {
+                      const phone = ordGetSupplierPhone(ordSupplierContact);
+                      const whatsapp = ordGetSupplierWhatsapp(ordSupplierContact);
+                      const waNumber = (whatsapp || phone).replace(/\D/g, "");
+                      const displayPhone = whatsapp || phone;
+                      return (
+                        <div className="rounded-2xl bg-white/80 backdrop-blur-sm border border-[#e5d5c5] px-4 py-3 flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-black text-[#2c1a10] truncate">{ordSelectedSupplier}</div>
+                            {displayPhone && <div className="text-[11px] text-[#9a7060] mt-0.5">{displayPhone}</div>}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {phone && (
+                              <a href={`tel:${phone.replace(/\D/g, "")}`}
+                                className="w-10 h-10 bg-[#f0e8dc] rounded-xl flex items-center justify-center text-base hover:bg-[#e5d5c5] transition-colors cursor-pointer">
+                                📞
+                              </a>
+                            )}
+                            {waNumber && (
+                              <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noopener noreferrer"
+                                className="w-10 h-10 bg-green-50 border border-green-200 rounded-xl flex items-center justify-center text-base hover:bg-green-100 transition-colors cursor-pointer">
+                                💬
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Produits du fournisseur sélectionné */}
                     {ordSelectedSupplier && (
@@ -5147,56 +5173,38 @@ export default function MokaOrderPad() {
           ...(!isIphone ? [{ id: "settings", icon: settingsSVG }] : []),
         ];
         const navLabels = { dashboard: "Accueil", products: "Produits", inventory: "Stock", orders: "Commandes", reports: "Rapports", settings: "Réglages" };
+        const navEmojis = { dashboard: "🏠", products: "🏷️", inventory: "📦", orders: "🛒", reports: "📊", settings: "⚙️" };
         return (
           <div
-            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[90] transition-all duration-500 ease-out"
+            className="fixed bottom-4 left-1/2 z-[90] max-w-[92vw] overflow-hidden flex items-center gap-1 px-3 py-2 rounded-[2rem] border border-white/40 shadow-2xl transition-all duration-500 ease-out"
             style={{
-              transform: `translateX(-50%) translateY(${navVisible ? "0" : "calc(100% + 32px)"})`,
+              background: "rgba(255,255,255,0.18)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
               paddingBottom: "env(safe-area-inset-bottom)",
+              transform: `translateX(-50%) translateY(${navVisible ? "0" : "calc(100% + 32px)"})`,
             }}
           >
-            <div
-              className="relative flex items-center gap-1 px-3 py-2 rounded-[2rem]"
-              style={{
-                background: "rgba(255, 252, 248, 0.25)",
-                backdropFilter: "blur(40px) saturate(180%) brightness(1.12)",
-                WebkitBackdropFilter: "blur(40px) saturate(180%) brightness(1.12)",
-                boxShadow: "0 8px 32px rgba(44, 26, 16, 0.14), inset 0 1px 0 rgba(255,255,255,0.8)",
-                border: "1px solid rgba(255,255,255,0.40)",
-              }}
-            >
-              {/* top glow line */}
-              <div className="absolute top-0 inset-x-4 h-px bg-white/60 rounded-full pointer-events-none" />
-              {navItems.map(({ id, icon }) => {
-                const isActive = adminSection === id;
-                return (
-                  <button
-                    key={id}
-                    onClick={() => setAdminSection(id)}
-                    className={`relative flex flex-col items-center justify-center gap-0.5 rounded-2xl cursor-pointer transition-all duration-200 active:scale-90 ${
-                      navCompact ? "w-10 h-10" : "w-12 h-12"
-                    } ${
-                      isActive
-                        ? "bg-white/50 backdrop-blur-sm shadow-inner text-[#2c1a10]"
-                        : "bg-transparent text-[#9a7060] hover:bg-white/30"
-                    }`}
-                  >
-                    <svg
-                      className="w-5 h-5 shrink-0 transition-all duration-200"
-                      fill="none" viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={isActive ? 2.2 : 1.8}
-                      strokeLinecap="round" strokeLinejoin="round"
-                    >
-                      {icon}
-                    </svg>
-                    {isActive && !navCompact && (
-                      <span className="text-[9px] font-bold leading-none">{navLabels[id] || id}</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            {navItems.map(({ id }) => {
+              const isActive = adminSection === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setAdminSection(id)}
+                  className={`w-11 h-11 rounded-[1.1rem] flex flex-col items-center justify-center transition-all duration-150 cursor-pointer active:scale-90 ${
+                    isActive ? "shadow-inner" : "hover:bg-white/30"
+                  }`}
+                  style={isActive ? { background: "rgba(255,255,255,0.55)" } : {}}
+                >
+                  <span className={`text-lg leading-none ${isActive ? "text-[#2c1a10]" : "text-[#6b4a3d]"}`}>
+                    {navEmojis[id] || "·"}
+                  </span>
+                  {isActive && (
+                    <span className="text-[8px] font-bold mt-0.5 text-[#2c1a10]">{navLabels[id] || id}</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         );
       })()}
