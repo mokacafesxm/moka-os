@@ -418,6 +418,10 @@ export default function MokaOrderPad() {
   const [adminSection, setAdminSection] = useState("dashboard");
   const [settingsPanel, setSettingsPanel] = useState("");
   const [settingsData, setSettingsData] = useState([]);
+  const [referentiels, setReferentiels] = useState({ categories: [], sousCategories: [], unites: [], zones: [] });
+  const [activeReferentiel, setActiveReferentiel] = useState("categories");
+  const [refInput, setRefInput] = useState({ nom: "", emoji: "", abreviation: "", categorie: "", temperature: "" });
+  const [savingRef, setSavingRef] = useState(false);
   const [supplierOrders, setSupplierOrders] = useState([]);
   const [loadingSupplierOrders, setLoadingSupplierOrders] = useState(false);
   const [supplierOrdersFilter, setSupplierOrdersFilter] = useState("À commander");
@@ -861,14 +865,21 @@ export default function MokaOrderPad() {
     .filter((name) => name && name !== "À définir" && name !== "—")
     .filter((name) => !isUuidLikeSupplier(name));
   const categoryOptions = uniqueValues([
-    ...categoryOrder,
+    ...(referentiels.categories.length ? referentiels.categories.map((c) => c.nom) : categoryOrder),
     ...products.map((p) => p.category || p.categorie),
   ]);
 
-  const subCategoryOptions = uniqueValues(products.map((p) => getSubCategory(p)));
+  const subCategoryOptions = uniqueValues([
+    ...(referentiels.sousCategories.length ? referentiels.sousCategories.map((s) => s.nom) : []),
+    ...products.map((p) => getSubCategory(p)),
+  ]);
 
-  const zoneOptions = uniqueValues(products.map((p) => p.zone || p.zoneStockage || p.emplacement));
+  const zoneOptions = uniqueValues([
+    ...(referentiels.zones.length ? referentiels.zones.map((z) => z.nom) : []),
+    ...products.map((p) => p.zone || p.zoneStockage || p.emplacement),
+  ]);
   const uniteOptions = uniqueValues([
+    ...(referentiels.unites.length ? referentiels.unites.map((u) => u.nom) : []),
     ...products.map((p) => p.unit || p.uniteStock || p.uniteCommande),
     "kg",
     "g",
@@ -1525,6 +1536,18 @@ export default function MokaOrderPad() {
       console.error("Erreur markAsSent:", err);
     }
   };
+
+  const loadReferentiels = async () => {
+    try {
+      const res = await fetch("/api/settings/referentiels");
+      const data = await res.json();
+      setReferentiels(data);
+    } catch (err) { console.error("loadReferentiels:", err); }
+  };
+
+  useEffect(() => {
+    if (settingsPanel === "referentiels") loadReferentiels();
+  }, [settingsPanel]);
 
   const loadSupplierOrders = async () => {
     setLoadingSupplierOrders(true);
@@ -5142,6 +5165,26 @@ export default function MokaOrderPad() {
             {adminSection === "settings" && (
               <div className={`space-y-4 ${isIphone ? "pb-32" : "pb-28"}`}>
                 <div className="h-2" />
+                {/* ── Référentiels ── */}
+                <div className="rounded-2xl border border-[#e5d5c5] bg-white shadow-sm p-4">
+                  <div className="text-xs font-black text-[#9a7060] uppercase tracking-wide mb-3">🗂 Référentiels</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { id: "categories",     icon: "🏷",  label: "Catégories" },
+                      { id: "sousCategories", icon: "📂",  label: "Sous-catégories" },
+                      { id: "unites",         icon: "⚖️",  label: "Unités" },
+                      { id: "zones",          icon: "🗺",  label: "Zones" },
+                    ].map(({ id, icon, label }) => (
+                      <button key={id}
+                        onClick={() => { setSettingsPanel("referentiels"); setActiveReferentiel(id); setRefInput({ nom: "", emoji: "", abreviation: "", categorie: "", temperature: "" }); }}
+                        className="rounded-xl border border-[#e5d5c5] bg-[#faf5ef] p-3 text-left hover:border-[#2c1a10] hover:bg-[#f0e8dc] transition-all cursor-pointer active:scale-[0.97]">
+                        <div className="text-xl mb-1">{icon}</div>
+                        <div className="text-xs font-black text-[#2c1a10] leading-tight">{label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {[
                   { key: "suppliers", title: "Fournisseurs", desc: "Ajouter, modifier, désactiver", icon: <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
@@ -5318,6 +5361,7 @@ export default function MokaOrderPad() {
                   {settingsPanel === "subcategories" && "📂 Sous-catégories"}
                   {settingsPanel === "units" && "📏 Unités"}
                   {settingsPanel === "zones" && "🗄️ Zones"}
+                  {settingsPanel === "referentiels" && "🗂 Référentiels"}
                 </h2>
               </div>
               <div className="flex items-center gap-2">
@@ -5336,7 +5380,101 @@ export default function MokaOrderPad() {
               </div>
             </div>
 
-            {loadingSettingsPanel ? (
+            {settingsPanel === "referentiels" ? (() => {
+              const REF_TABS = [
+                { id: "categories",     label: "Catégories",      icon: "🏷" },
+                { id: "sousCategories", label: "Sous-catégories", icon: "📂" },
+                { id: "unites",         label: "Unités",          icon: "⚖️" },
+                { id: "zones",          label: "Zones",           icon: "🗺" },
+              ];
+              const items = referentiels[activeReferentiel] || [];
+              const addRef = async () => {
+                if (!refInput.nom.trim()) return;
+                setSavingRef(true);
+                try {
+                  await fetch("/api/settings/referentiels", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ type: activeReferentiel, ...refInput }),
+                  });
+                  setRefInput({ nom: "", emoji: "", abreviation: "", categorie: "", temperature: "" });
+                  await loadReferentiels();
+                } catch (err) { console.error(err); }
+                finally { setSavingRef(false); }
+              };
+              const deleteRef = async (id) => {
+                await fetch("/api/settings/referentiels", {
+                  method: "DELETE",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ id }),
+                });
+                await loadReferentiels();
+              };
+              return (
+                <div className="flex flex-col flex-1 overflow-hidden">
+                  {/* Pills */}
+                  <div className="flex gap-2 px-4 pt-3 pb-2 overflow-x-auto shrink-0">
+                    {REF_TABS.map(({ id, label, icon }) => (
+                      <button key={id} onClick={() => { setActiveReferentiel(id); setRefInput({ nom: "", emoji: "", abreviation: "", categorie: "", temperature: "" }); }}
+                        className={`h-8 px-3 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${activeReferentiel === id ? "bg-[#2c1a10] text-white" : "bg-[#f0e8dc] text-[#6b4a3d] hover:bg-[#e5d5c5]"}`}>
+                        {icon} {label}
+                      </button>
+                    ))}
+                    <button onClick={loadReferentiels} className="h-8 px-3 rounded-xl text-xs font-bold shrink-0 bg-[#f0e8dc] text-[#6b4a3d] hover:bg-[#e5d5c5] transition-all cursor-pointer ml-auto">↻</button>
+                  </div>
+
+                  {/* List */}
+                  <div className="flex-1 overflow-y-auto px-4 pb-2 space-y-2">
+                    {items.length === 0 && <div className="text-center text-[#9a7060] text-sm py-6">Aucun élément — ajoutez en ci-dessous.</div>}
+                    {items.map((item) => (
+                      <div key={item.id} className="flex items-center gap-3 bg-[#faf5ef] rounded-xl px-3 py-2.5 border border-[#e5d5c5]">
+                        {(item.emoji) && <span className="text-lg shrink-0">{item.emoji}</span>}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-black text-[#2c1a10] truncate">{item.nom}</div>
+                          {item.abreviation && <div className="text-[10px] text-[#9a7060]">{item.abreviation}</div>}
+                          {item.categorie && <div className="text-[10px] text-[#9a7060]">↳ {item.categorie}</div>}
+                          {item.temperature && <div className="text-[10px] text-[#9a7060]">{item.temperature}</div>}
+                        </div>
+                        <button onClick={() => deleteRef(item.id)}
+                          className="w-7 h-7 rounded-lg bg-red-50 border border-red-100 text-red-500 text-xs flex items-center justify-center cursor-pointer hover:bg-red-100 shrink-0">
+                          🗑
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add form */}
+                  <div className="shrink-0 border-t border-[#e5d5c5] px-4 py-3 space-y-2">
+                    <div className="flex gap-2">
+                      <input value={refInput.nom} onChange={(e) => setRefInput((p) => ({ ...p, nom: e.target.value }))}
+                        placeholder="Nom *"
+                        className="flex-1 rounded-xl border border-[#e5d5c5] bg-white px-3 py-2 text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]" />
+                      {(activeReferentiel === "categories" || activeReferentiel === "zones") && (
+                        <input value={refInput.emoji} onChange={(e) => setRefInput((p) => ({ ...p, emoji: e.target.value }))}
+                          placeholder="Emoji" maxLength={4}
+                          className="w-20 rounded-xl border border-[#e5d5c5] bg-white px-3 py-2 text-sm text-center outline-none focus:border-[#5a7828]" />
+                      )}
+                      {activeReferentiel === "unites" && (
+                        <input value={refInput.abreviation} onChange={(e) => setRefInput((p) => ({ ...p, abreviation: e.target.value }))}
+                          placeholder="Abrév." maxLength={10}
+                          className="w-24 rounded-xl border border-[#e5d5c5] bg-white px-3 py-2 text-sm outline-none focus:border-[#5a7828]" />
+                      )}
+                    </div>
+                    {activeReferentiel === "sousCategories" && (
+                      <select value={refInput.categorie} onChange={(e) => setRefInput((p) => ({ ...p, categorie: e.target.value }))}
+                        className="w-full rounded-xl border border-[#e5d5c5] bg-white px-3 py-2 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]">
+                        <option value="">Catégorie parente (optionnel)</option>
+                        {referentiels.categories.map((c) => <option key={c.id} value={c.nom}>{c.emoji} {c.nom}</option>)}
+                      </select>
+                    )}
+                    <button onClick={addRef} disabled={savingRef || !refInput.nom.trim()}
+                      className="w-full py-2.5 rounded-xl bg-[#5a7828] text-white text-sm font-black cursor-pointer disabled:opacity-50 hover:bg-[#4e6a22] transition-colors">
+                      {savingRef ? "Ajout…" : "➕ Ajouter"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })() : loadingSettingsPanel ? (
               <div className="p-10 text-center text-[#9a7060] font-semibold">Chargement…</div>
             ) : settingsData.length === 0 ? (
               <div className="p-10 text-center text-[#9a7060] font-semibold">Aucun élément trouvé.</div>
