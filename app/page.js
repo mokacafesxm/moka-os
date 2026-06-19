@@ -1107,7 +1107,7 @@ export default function MokaOrderPad() {
   const ordACommanderCount = supplierOrders.filter((o) => o.statut === "À commander").length;
   const ordEnvoyeCount = supplierOrders.filter((o) => o.statut === "Envoyé").length;
   const ordSupplierContact = (settingsCache.suppliers || []).find((s) => ordGetSupplierName(s) === ordSelectedSupplier);
-  const ordIncludedItems = ordSupplierProducts.filter((p) => composeCart[p.id]?.included);
+  const ordIncludedItems = Object.values(composeCart).filter((i) => i.included);
   const composeCartGroups = useMemo(() => {
     const map = {};
     Object.values(composeCart).forEach((item) => {
@@ -1719,7 +1719,6 @@ export default function MokaOrderPad() {
 
   useEffect(() => {
     if (!isAdmin || adminSection !== "orders") return;
-    setComposeCart({});
   }, [isAdmin, adminSection]);
 
   useEffect(() => {
@@ -1735,7 +1734,7 @@ export default function MokaOrderPad() {
       let changed = false;
       ordSupplierProducts.forEach((p) => {
         if (!(p.id in next)) {
-          next[p.id] = { ...p, qty: p.suggested, included: isUrgentStock(p), fournisseurId: ordSupplierContact?.id || null, fournisseurNom: ordSelectedSupplier };
+          next[p.id] = { ...p, qty: p.suggested ?? p.quantiteCommandee ?? 1, included: isUrgentStock(p), fournisseurNom: ordSelectedSupplier };
           changed = true;
         }
       });
@@ -4563,10 +4562,11 @@ export default function MokaOrderPad() {
                           {(settingsCache.suppliers || []).map((s) => {
                             const name = ordGetSupplierName(s);
                             const urgentCount = ordUrgentItems.filter((i) => i.fournisseur === name).length;
+                            const selectedCount = Object.values(composeCart).filter(i => i.included && i.fournisseurNom === name).length;
                             const isSelected = ordSelectedSupplier === name;
                             return (
                               <button key={s.id || name}
-                                onClick={() => { setOrdSelectedSupplier(name); setComposeCart({}); }}
+                                onClick={() => setOrdSelectedSupplier(name)}
                                 className="flex flex-col items-center shrink-0 w-20 gap-0 cursor-pointer relative">
                                 <div className="relative">
                                   <div
@@ -4578,7 +4578,12 @@ export default function MokaOrderPad() {
                                   >
                                     <span className={`text-[10px] font-black text-center leading-tight break-words hyphens-auto ${isSelected ? "text-white" : "text-[#2c1a10]"}`}>{name}</span>
                                   </div>
-                                  {urgentCount > 0 && (
+                                  {selectedCount > 0 && (
+                                    <span className="absolute top-0 right-0 w-5 h-5 rounded-full bg-[#5a7828] text-white text-[9px] font-black flex items-center justify-center">
+                                      {selectedCount}
+                                    </span>
+                                  )}
+                                  {urgentCount > 0 && selectedCount === 0 && (
                                     <span className="absolute top-0 right-0 w-5 h-5 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
                                       {urgentCount}
                                     </span>
@@ -4747,7 +4752,11 @@ export default function MokaOrderPad() {
                     <button onClick={() => setShowMultiPanelModal(true)}
                       className="w-full py-4 rounded-2xl bg-[#5a7828] text-white font-black text-sm shadow-lg active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2">
                       <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                      Préparer le message → {ordIncludedItems.length} produit{ordIncludedItems.length > 1 ? "s" : ""}
+                      {(() => {
+                        const nbProd = ordIncludedItems.length;
+                        const nbFourn = [...new Set(ordIncludedItems.map(i => i.fournisseurNom).filter(Boolean))].length;
+                        return `Préparer le message → ${nbProd} produit${nbProd > 1 ? "s" : ""} · ${nbFourn} fournisseur${nbFourn > 1 ? "s" : ""}`;
+                      })()}
                     </button>
                   </div>
                 )}
