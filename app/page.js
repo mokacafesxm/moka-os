@@ -6595,25 +6595,22 @@ function getGridCols(n) {
 }
 
 function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
+  const [currentStep, setCurrentStep] = React.useState(0);
   const [sentPanels, setSentPanels] = React.useState({});
+  const [saving, setSaving] = React.useState(false);
 
   const n = groups.length;
-  const compact = n >= 3;
-  const veryCompact = n >= 5;
-  const btnPy = veryCompact ? "py-1.5" : compact ? "py-2" : "py-3";
-  const btnSz = veryCompact ? "text-[11px] font-bold" : compact ? "text-xs font-bold" : "text-sm font-black";
-  const msgSz = n >= 4 ? "text-[10px]" : "text-xs";
-  const cardHeaderPad = compact ? "px-3 py-2" : "px-4 py-3";
-
-  const allSent = n > 0 && groups.every((g) => sentPanels[g.fournisseurId || g.fournisseurNom]);
+  const currentGroup = groups[currentStep] || groups[0];
+  const message = currentGroup ? buildGroupedMessage(currentGroup.fournisseurNom, currentGroup.items) : "";
+  const wa = currentGroup?.supplier ? ordGetSupplierWhatsapp(currentGroup.supplier) : null;
+  const em = currentGroup?.supplier ? ordGetSupplierEmail(currentGroup.supplier) : null;
+  const isLastStep = currentStep === n - 1;
 
   const markGroupSent = async (group) => {
     const key = group.fournisseurId || group.fournisseurNom;
-    const dateStr = new Date().toLocaleDateString("fr-FR", {
-      weekday: "long", day: "numeric", month: "long", year: "numeric",
-      timeZone: "America/Puerto_Rico",
-    });
-    const msg = buildGroupedMessage(group.fournisseurNom, group.items, dateStr);
+    if (sentPanels[key]) return;
+    setSaving(true);
+    const msg = buildGroupedMessage(group.fournisseurNom, group.items);
     try {
       await fetch("/api/supplier-orders", {
         method: "POST",
@@ -6632,101 +6629,107 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
       setSentPanels((prev) => ({ ...prev, [key]: true }));
     } catch (err) {
       console.error("Erreur markGroupSent:", err);
+    } finally {
+      setSaving(false);
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[95] flex items-end sm:items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
-      <div
-        className="relative w-full sm:max-w-lg bg-[#f5ede0] rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden"
-        style={{ maxHeight: "80vh" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Drag handle mobile */}
-        <div className="w-10 h-1 bg-[#e5d5c5] rounded-full mx-auto mt-3 mb-1 sm:hidden" />
+  const handleNext = async () => {
+    await markGroupSent(currentGroup);
+    setCurrentStep((s) => s + 1);
+  };
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-[#e5d5c5] shrink-0">
-          <div>
-            <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">Commandes</div>
-            <h2 className="text-base font-black text-[#3b241b]">{n} fournisseur{n > 1 ? "s" : ""} à contacter</h2>
+  const handleFinish = async () => {
+    await markGroupSent(currentGroup);
+    onAllSent();
+  };
+
+  if (!currentGroup) return null;
+
+  return (
+    <div className="fixed inset-0 z-[95] flex items-end sm:items-center justify-center bg-black/40"
+      style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
+      onClick={onClose}>
+      <div className="w-full sm:max-w-lg bg-[#f5ede0] rounded-t-3xl sm:rounded-3xl flex flex-col"
+        style={{ maxHeight: "88vh" }}
+        onClick={(e) => e.stopPropagation()}>
+
+        {/* Header fixe */}
+        <div className="shrink-0 px-5 pt-4 pb-3">
+          <div className="w-10 h-1 bg-[#e5d5c5] rounded-full mx-auto mb-4 sm:hidden" />
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">
+                Fournisseur {currentStep + 1} / {n}
+              </div>
+              <div className="text-lg font-black text-[#2c1a10]">{currentGroup.fournisseurNom}</div>
+            </div>
+            <button onClick={onClose}
+              className="w-8 h-8 rounded-xl bg-white border border-[#e5d5c5] flex items-center justify-center text-[#9a7060] text-lg font-black cursor-pointer">
+              ×
+            </button>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-full bg-[#f4eee7] flex items-center justify-center font-black text-[#a97862] text-lg cursor-pointer">×</button>
+          {n > 1 && (
+            <div className="flex gap-1.5 mt-3">
+              {groups.map((_, i) => (
+                <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${
+                  i === currentStep ? "bg-[#2c1a10] flex-1" : sentPanels[groups[i].fournisseurId || groups[i].fournisseurNom] ? "bg-[#5a7828] w-4" : "bg-[#e5d5c5] w-4"
+                }`} />
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Body */}
-        {allSent ? (
-          <div className="flex flex-col items-center justify-center gap-6 flex-1 p-8">
-            <div className="text-6xl">✅</div>
-            <div className="text-xl font-black text-[#3b241b] text-center">Toutes les commandes envoyées !</div>
+        {/* Contenu scrollable */}
+        <div className="flex-1 overflow-y-auto px-5 py-3 min-h-0 space-y-3">
+          <div className="bg-[#e8f5e1] rounded-2xl p-4 font-mono text-xs text-[#2d5a1b] whitespace-pre-wrap leading-relaxed">
+            {message}
           </div>
-        ) : (
-          <div className={`overflow-y-auto flex-1 p-4 grid grid-cols-1 ${getGridCols(n)} gap-3 content-start`}>
-            {groups.map((group) => {
-              const key = group.fournisseurId || group.fournisseurNom;
-              const isSent = sentPanels[key];
-              const message = buildGroupedMessage(group.fournisseurNom, group.items);
-              const wa = group.supplier ? ordGetSupplierWhatsapp(group.supplier) : null;
-              const em = group.supplier ? ordGetSupplierEmail(group.supplier) : null;
-              return (
-                <div key={key} className={`rounded-[1.2rem] border overflow-hidden flex flex-col transition-all ${isSent ? "bg-[#f0f7e8] border-[#6f8f32] opacity-70" : "bg-white border-[#eadfd4] shadow-sm"}`}>
-                  <div className={`${cardHeaderPad} border-b border-[#eadfd4] flex items-center justify-between`}>
-                    <div>
-                      <div className={`font-black text-[#3b241b] ${compact ? "text-sm" : "text-base"}`}>{group.fournisseurNom}</div>
-                      <div className="text-[11px] text-[#a97862]">{group.items.length} produit{group.items.length > 1 ? "s" : ""}</div>
-                    </div>
-                    {isSent && <span className="text-[#6f8f32] font-black text-sm">✅ Envoyé</span>}
-                  </div>
-                  <div className={`divide-y divide-[#f0e8dc] ${compact ? "px-3" : "px-4"} flex-1`}>
-                    {group.items.map((p) => (
-                      <div key={p.id} className={`${compact ? "py-1.5" : "py-2"} flex justify-between text-sm`}>
-                        <span className={`font-bold text-[#3b241b] truncate flex-1 mr-2 ${compact ? "text-xs" : "text-sm"}`}>{p.name}</span>
-                        <span className="text-[#a97862] shrink-0 text-xs">{p.qty} {p.unit}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className={`mx-2 my-2 bg-[#e8f5e1] rounded-xl p-2 font-mono ${msgSz} text-[#2d5a1b] whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto`}>
-                    {message}
-                  </div>
-                  {!isSent && (
-                    <div className="px-2 pb-2 flex flex-col gap-1.5">
-                      <div className="flex gap-1.5">
-                        <button onClick={async () => {
-                          if (wa) window.open(`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`);
-                          await markGroupSent(group);
-                        }} className={`flex-1 ${btnPy} rounded-xl bg-[#25D366] text-white ${btnSz} cursor-pointer hover:bg-[#1db954] transition-colors`}>
-                          💬 WhatsApp
-                        </button>
-                        <button onClick={async () => {
-                          if (em) window.open(`mailto:${em}?subject=Commande MÖKA&body=${encodeURIComponent(message)}`);
-                          await markGroupSent(group);
-                        }} className={`flex-1 ${btnPy} rounded-xl bg-[#2563eb] text-white ${btnSz} cursor-pointer hover:bg-[#1d4ed8] transition-colors`}>
-                          📧 Email
-                        </button>
-                      </div>
-                      <button onClick={() => markGroupSent(group)} className={`w-full ${btnPy} rounded-xl bg-[#2c1a10] text-white ${btnSz} cursor-pointer hover:bg-[#1e100a] transition-colors`}>
-                        ✅ Marquer comme envoyé
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div className="space-y-1.5">
+            {currentGroup.items.map((item) => (
+              <div key={item.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2.5 border border-[#e5d5c5]">
+                <span className="text-sm font-bold text-[#2c1a10] truncate flex-1 mr-2">{item.name}</span>
+                <span className="text-xs font-black text-[#9a7060] shrink-0">{item.qty} {item.unit}</span>
+              </div>
+            ))}
           </div>
-        )}
-        {/* Bouton sticky hors zone scroll */}
-        <div className="shrink-0 px-5 pt-3 pb-5 border-t border-[#e5d5c5]"
+        </div>
+
+        {/* Footer fixe */}
+        <div className="shrink-0 px-5 pt-3 space-y-2 border-t border-[#e5d5c5]"
           style={{ paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}>
-          {allSent ? (
-            <button onClick={onAllSent}
-              className="w-full py-4 rounded-2xl bg-[#6f8f32] text-white font-black text-sm cursor-pointer hover:bg-[#5a7228] transition-colors">
-              Fermer et voir l'historique
+          <div className="flex gap-2">
+            {wa && (
+              <a href={`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`}
+                target="_blank" rel="noreferrer"
+                onClick={() => markGroupSent(currentGroup)}
+                className="flex-1 py-3 rounded-2xl bg-[#25D366] text-white font-black text-sm text-center cursor-pointer">
+                💬 WhatsApp
+              </a>
+            )}
+            {em && (
+              <a href={`mailto:${em}?subject=Commande MÖKA&body=${encodeURIComponent(message)}`}
+                onClick={() => markGroupSent(currentGroup)}
+                className="flex-1 py-3 rounded-2xl bg-[#2563eb] text-white font-black text-sm text-center cursor-pointer">
+                📧 Email
+              </a>
+            )}
+          </div>
+          {isLastStep ? (
+            <button onClick={handleFinish} disabled={saving}
+              className="w-full py-4 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-60">
+              {saving ? "Enregistrement…" : "✅ Tout marquer comme envoyé"}
             </button>
           ) : (
-            <button onClick={onClose}
-              className="w-full py-3 rounded-2xl bg-[#f0e8dc] text-[#9a7060] font-black text-sm cursor-pointer">
-              Annuler
+            <button onClick={handleNext} disabled={saving}
+              className="w-full py-4 rounded-2xl bg-[#2c1a10] text-white font-black text-sm cursor-pointer disabled:opacity-60">
+              {saving ? "Enregistrement…" : `Fournisseur suivant → ${groups[currentStep + 1].fournisseurNom}`}
+            </button>
+          )}
+          {currentStep > 0 && (
+            <button onClick={() => setCurrentStep((s) => s - 1)}
+              className="w-full py-2 text-xs font-bold text-[#9a7060] cursor-pointer">
+              ← Retour à {groups[currentStep - 1].fournisseurNom}
             </button>
           )}
         </div>
