@@ -6598,15 +6598,19 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
   const [currentStep, setCurrentStep] = React.useState(0);
   const [sentPanels, setSentPanels] = React.useState({});
   const [saving, setSaving] = React.useState(false);
+  const touchStartX = React.useRef(null);
 
   const n = groups.length;
-  const currentGroup = groups[currentStep] || groups[0];
-  const message = currentGroup ? buildGroupedMessage(currentGroup.fournisseurNom, currentGroup.items) : "";
-  const wa = currentGroup?.supplier ? ordGetSupplierWhatsapp(currentGroup.supplier) : null;
-  const em = currentGroup?.supplier ? ordGetSupplierEmail(currentGroup.supplier) : null;
-  const isLastStep = currentStep === n - 1;
+  const currentGroup = groups[Math.min(currentStep, n - 1)];
+  if (!currentGroup) return null;
 
-  const markGroupSent = async (group) => {
+  const message = buildGroupedMessage(currentGroup.fournisseurNom, currentGroup.items);
+  const wa = currentGroup.supplier ? ordGetSupplierWhatsapp(currentGroup.supplier) : null;
+  const em = currentGroup.supplier ? ordGetSupplierEmail(currentGroup.supplier) : null;
+  const isLast = currentStep === n - 1;
+  const isSent = !!sentPanels[currentGroup.fournisseurId || currentGroup.fournisseurNom];
+
+  const markSent = async (group) => {
     const key = group.fournisseurId || group.fournisseurNom;
     if (sentPanels[key]) return;
     setSaving(true);
@@ -6628,41 +6632,39 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
       });
       setSentPanels((prev) => ({ ...prev, [key]: true }));
     } catch (err) {
-      console.error("Erreur markGroupSent:", err);
+      console.error("Erreur markSent:", err);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleNext = async () => {
-    await markGroupSent(currentGroup);
-    setCurrentStep((s) => s + 1);
+  const handleMarkAndAdvance = async () => {
+    await markSent(currentGroup);
+    if (isLast) { onAllSent(); } else { setCurrentStep((s) => s + 1); }
   };
 
-  const handleFinish = async () => {
-    await markGroupSent(currentGroup);
-    onAllSent();
+  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    if (delta < -50 && currentStep < n - 1) setCurrentStep((s) => s + 1);
+    if (delta > 50 && currentStep > 0) setCurrentStep((s) => s - 1);
+    touchStartX.current = null;
   };
-
-  if (!currentGroup) return null;
 
   return (
-    <div className="fixed inset-0 z-[95] flex items-end sm:items-center justify-center bg-black/40"
-      style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
+    <div className="fixed inset-0 z-[95] flex items-center justify-center p-4 bg-black/50"
+      style={{ backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}
       onClick={onClose}>
-      <div className="w-full sm:max-w-lg bg-[#f5ede0] rounded-t-3xl sm:rounded-3xl flex flex-col"
-        style={{ maxHeight: "88vh" }}
+      <div className="w-full max-w-md bg-[#f5ede0] rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+        style={{ maxHeight: "85vh" }}
         onClick={(e) => e.stopPropagation()}>
 
         {/* Header fixe */}
-        <div className="shrink-0 px-5 pt-4 pb-3">
-          <div className="w-10 h-1 bg-[#e5d5c5] rounded-full mx-auto mb-4 sm:hidden" />
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">
-                Fournisseur {currentStep + 1} / {n}
-              </div>
-              <div className="text-lg font-black text-[#2c1a10]">{currentGroup.fournisseurNom}</div>
+        <div className="shrink-0 px-5 pt-5 pb-3">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">
+              {currentStep + 1} / {n} fournisseur{n > 1 ? "s" : ""}
             </div>
             <button onClick={onClose}
               className="w-8 h-8 rounded-xl bg-white border border-[#e5d5c5] flex items-center justify-center text-[#9a7060] text-lg font-black cursor-pointer">
@@ -6670,26 +6672,35 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
             </button>
           </div>
           {n > 1 && (
-            <div className="flex gap-1.5 mt-3">
-              {groups.map((_, i) => (
-                <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${
-                  i === currentStep ? "bg-[#2c1a10] flex-1" : sentPanels[groups[i].fournisseurId || groups[i].fournisseurNom] ? "bg-[#5a7828] w-4" : "bg-[#e5d5c5] w-4"
-                }`} />
-              ))}
+            <div className="flex gap-1.5 justify-center">
+              {groups.map((g, i) => {
+                const sent = !!sentPanels[g.fournisseurId || g.fournisseurNom];
+                return (
+                  <button key={i} onClick={() => setCurrentStep(i)}
+                    className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                      i === currentStep ? "bg-[#2c1a10] w-6" : sent ? "bg-[#5a7828] w-3" : "bg-[#e5d5c5] w-1.5"
+                    }`} />
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* Contenu scrollable */}
-        <div className="flex-1 overflow-y-auto px-5 py-3 min-h-0 space-y-3">
-          <div className="bg-[#e8f5e1] rounded-2xl p-4 font-mono text-xs text-[#2d5a1b] whitespace-pre-wrap leading-relaxed">
-            {message}
+        {/* Carousel scrollable */}
+        <div className="flex-1 overflow-y-auto px-5 py-2 min-h-0"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}>
+          <div className="text-xl font-black text-[#2c1a10] mb-3">{currentGroup.fournisseurNom}</div>
+          <div className="bg-[#e8f5e1] rounded-2xl p-4 mb-3"
+            style={{ border: "1px solid rgba(134,188,106,0.3)" }}>
+            <div className="text-[10px] font-black text-[#5a8a3a] mb-2 uppercase tracking-wide">Aperçu message</div>
+            <div className="font-mono text-xs text-[#2d5a1b] whitespace-pre-wrap leading-relaxed">{message}</div>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 pb-3">
             {currentGroup.items.map((item) => (
-              <div key={item.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2.5 border border-[#e5d5c5]">
-                <span className="text-sm font-bold text-[#2c1a10] truncate flex-1 mr-2">{item.name}</span>
-                <span className="text-xs font-black text-[#9a7060] shrink-0">{item.qty} {item.unit}</span>
+              <div key={item.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-[#e5d5c5]">
+                <span className="text-xs font-bold text-[#2c1a10] truncate flex-1">{item.name}</span>
+                <span className="text-xs font-black text-[#9a7060] shrink-0 ml-2">{item.qty} {item.unit}</span>
               </div>
             ))}
           </div>
@@ -6698,40 +6709,41 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
         {/* Footer fixe */}
         <div className="shrink-0 px-5 pt-3 space-y-2 border-t border-[#e5d5c5]"
           style={{ paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}>
-          <div className="flex gap-2">
-            {wa && (
-              <a href={`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`}
-                target="_blank" rel="noreferrer"
-                onClick={() => markGroupSent(currentGroup)}
-                className="flex-1 py-3 rounded-2xl bg-[#25D366] text-white font-black text-sm text-center cursor-pointer">
-                💬 WhatsApp
-              </a>
-            )}
-            {em && (
-              <a href={`mailto:${em}?subject=Commande MÖKA&body=${encodeURIComponent(message)}`}
-                onClick={() => markGroupSent(currentGroup)}
-                className="flex-1 py-3 rounded-2xl bg-[#2563eb] text-white font-black text-sm text-center cursor-pointer">
-                📧 Email
-              </a>
-            )}
-          </div>
-          {isLastStep ? (
-            <button onClick={handleFinish} disabled={saving}
-              className="w-full py-4 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-60">
-              {saving ? "Enregistrement…" : "✅ Tout marquer comme envoyé"}
-            </button>
-          ) : (
-            <button onClick={handleNext} disabled={saving}
-              className="w-full py-4 rounded-2xl bg-[#2c1a10] text-white font-black text-sm cursor-pointer disabled:opacity-60">
-              {saving ? "Enregistrement…" : `Fournisseur suivant → ${groups[currentStep + 1].fournisseurNom}`}
-            </button>
+          {n > 1 && (
+            <div className="flex items-center justify-between mb-1">
+              <button onClick={() => setCurrentStep((s) => s - 1)} disabled={currentStep === 0}
+                className="text-xs font-bold text-[#9a7060] disabled:opacity-30 cursor-pointer px-2">
+                ← {currentStep > 0 ? groups[currentStep - 1].fournisseurNom : ""}
+              </button>
+              <button onClick={() => setCurrentStep((s) => s + 1)} disabled={isLast}
+                className="text-xs font-bold text-[#9a7060] disabled:opacity-30 cursor-pointer px-2">
+                {!isLast ? groups[currentStep + 1].fournisseurNom : ""} →
+              </button>
+            </div>
           )}
-          {currentStep > 0 && (
-            <button onClick={() => setCurrentStep((s) => s - 1)}
-              className="w-full py-2 text-xs font-bold text-[#9a7060] cursor-pointer">
-              ← Retour à {groups[currentStep - 1].fournisseurNom}
-            </button>
+          {wa && (
+            <a href={`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`}
+              target="_blank" rel="noreferrer"
+              onClick={() => markSent(currentGroup)}
+              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-[#25D366] text-white font-black text-sm cursor-pointer active:scale-[0.98] transition-all">
+              💬 Envoyer sur WhatsApp
+            </a>
           )}
+          {em && !wa && (
+            <a href={`mailto:${em}?subject=Commande MÖKA&body=${encodeURIComponent(message)}`}
+              onClick={() => markSent(currentGroup)}
+              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-[#2563eb] text-white font-black text-sm cursor-pointer active:scale-[0.98] transition-all">
+              📧 Envoyer par Email
+            </a>
+          )}
+          <button onClick={handleMarkAndAdvance} disabled={saving}
+            className={`w-full py-4 rounded-2xl font-black text-sm cursor-pointer active:scale-[0.98] transition-all disabled:opacity-60 ${
+              isSent ? "bg-[#5a7828] text-white" : "bg-[#2c1a10] text-white"
+            }`}>
+            {saving ? "Enregistrement…" : isSent
+              ? (isLast ? "✅ Terminé — fermer" : `Suivant → ${groups[currentStep + 1].fournisseurNom}`)
+              : (isLast ? "✅ Marquer comme envoyé" : `✅ Marquer comme envoyé · Suivant →`)}
+          </button>
         </div>
       </div>
     </div>
