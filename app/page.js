@@ -3761,7 +3761,7 @@ export default function MokaOrderPad() {
                           <span className="text-[11px] font-semibold text-[#9a7060]">{productsInGroup.length}</span>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2">
                           {productsInGroup.map((product) => {
                             const selected = !!cart[product.id];
                             const cat = product.category || "Autres";
@@ -3780,18 +3780,18 @@ export default function MokaOrderPad() {
                                 {/* Photo / icon zone */}
                                 <button
                                   onClick={() => selected ? removeItem(product.id) : addProduct(product)}
-                                  className={`w-full h-20 flex items-center justify-center overflow-hidden cursor-pointer relative ${
+                                  className={`w-full h-14 flex items-center justify-center overflow-hidden cursor-pointer relative ${
                                     selected ? "bg-[#3d5518]" : "bg-[#f0e8dc]"
                                   }`}
                                 >
                                   {product.photo ? (
                                     <img src={product.photo} alt={product.name || "Produit"} className="w-full h-full object-cover" />
                                   ) : (
-                                    <span className="text-4xl">{categoryEmojis[cat] || "📌"}</span>
+                                    <span className="text-2xl">{categoryEmojis[cat] || "📌"}</span>
                                   )}
                                   {selected && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-[#3d5518]/60">
-                                      <svg className="w-8 h-8 text-white drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                      <svg className="w-5 h-5 text-white drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                                     </div>
                                   )}
                                 </button>
@@ -3799,16 +3799,11 @@ export default function MokaOrderPad() {
                                 {/* Card body */}
                                 <button
                                   onClick={() => selected ? removeItem(product.id) : addProduct(product)}
-                                  className="w-full text-left p-4 cursor-pointer"
+                                  className="w-full text-left p-2 cursor-pointer"
                                 >
-                                  <div className="flex justify-between gap-2 mb-2.5">
+                                  <div className="flex justify-between gap-1 mb-1.5">
                                     <div className="flex-1 min-w-0">
-                                      <div className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold mb-1.5 tracking-wide ${
-                                        selected ? "bg-white/20 text-white/90" : "bg-[#f0e8dc] text-[#7a5a4a]"
-                                      }`}>
-                                        {sub}
-                                      </div>
-                                      <h3 className="text-sm font-black leading-tight truncate">{product.name}</h3>
+                                      <h3 className="text-xs font-black leading-tight line-clamp-2">{product.name}</h3>
                                     </div>
                                     <div className={`text-[10px] text-right shrink-0 max-w-[80px] leading-tight font-medium ${
                                       selected ? "text-white/60" : "text-[#9a7060]"
@@ -4753,9 +4748,10 @@ export default function MokaOrderPad() {
                       className="w-full py-4 rounded-2xl bg-[#5a7828] text-white font-black text-sm shadow-lg active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2">
                       <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                       {(() => {
-                        const nbProd = ordIncludedItems.length;
-                        const nbFourn = [...new Set(ordIncludedItems.map(i => i.fournisseurNom).filter(Boolean))].length;
-                        return `Préparer le message → ${nbProd} produit${nbProd > 1 ? "s" : ""} · ${nbFourn} fournisseur${nbFourn > 1 ? "s" : ""}`;
+                        const nbFourn = new Set(ordIncludedItems.map(i => i.fournisseurNom).filter(Boolean)).size;
+                        return nbFourn > 1
+                          ? `Préparer les messages → ${nbFourn} fournisseurs`
+                          : "Préparer le message →";
                       })()}
                     </button>
                   </div>
@@ -6644,7 +6640,7 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
       <div className="absolute inset-0 bg-black/40" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
       <div
         className="relative w-full sm:max-w-lg bg-[#f5ede0] rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden"
-        style={{ maxHeight: "90vh", paddingBottom: "max(0px, env(safe-area-inset-bottom))" }}
+        style={{ maxHeight: "80vh" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drag handle mobile */}
@@ -6661,15 +6657,12 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
 
         {/* Body */}
         {allSent ? (
-          <div className="flex flex-col items-center justify-center gap-6 p-8">
+          <div className="flex flex-col items-center justify-center gap-6 flex-1 p-8">
             <div className="text-6xl">✅</div>
             <div className="text-xl font-black text-[#3b241b] text-center">Toutes les commandes envoyées !</div>
-            <button onClick={onAllSent} className="px-8 py-4 rounded-xl bg-[#6f8f32] text-white font-black text-sm cursor-pointer hover:bg-[#5a7228] transition-colors">
-              Fermer et voir l'historique
-            </button>
           </div>
         ) : (
-          <div className={`overflow-y-auto p-4 grid grid-cols-1 ${getGridCols(n)} gap-3 content-start`} style={{ maxHeight: "calc(90vh - 80px)" }}>
+          <div className={`overflow-y-auto flex-1 p-4 grid grid-cols-1 ${getGridCols(n)} gap-3 content-start`}>
             {groups.map((group) => {
               const key = group.fournisseurId || group.fournisseurNom;
               const isSent = sentPanels[key];
@@ -6722,6 +6715,21 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
             })}
           </div>
         )}
+        {/* Bouton sticky hors zone scroll */}
+        <div className="shrink-0 px-5 pt-3 pb-5 border-t border-[#e5d5c5]"
+          style={{ paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}>
+          {allSent ? (
+            <button onClick={onAllSent}
+              className="w-full py-4 rounded-2xl bg-[#6f8f32] text-white font-black text-sm cursor-pointer hover:bg-[#5a7228] transition-colors">
+              Fermer et voir l'historique
+            </button>
+          ) : (
+            <button onClick={onClose}
+              className="w-full py-3 rounded-2xl bg-[#f0e8dc] text-[#9a7060] font-black text-sm cursor-pointer">
+              Annuler
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
