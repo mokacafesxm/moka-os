@@ -399,6 +399,8 @@ export default function MokaOrderPad() {
   const [invoiceAnalyzing, setInvoiceAnalyzing] = useState(false);
   const [invoiceResults, setInvoiceResults] = useState([]);
   const [invoiceSaving, setInvoiceSaving] = useState(false);
+  const [showScanFacture, setShowScanFacture] = useState(false);
+  const [showScanZ, setShowScanZ] = useState(false);
   const [inventoryCategory, setInventoryCategory] = useState("Tous");
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("Tous");
   const [inventoryView, setInventoryView] = useState("stock");
@@ -4371,7 +4373,7 @@ export default function MokaOrderPad() {
                 {/* 2 boutons majeurs */}
                 <div className="flex gap-3">
                   <button
-                    onClick={() => { setInvoiceModal(true); setInvoiceResults([]); setInvoiceImageUrl(""); setInvoiceImage(null); }}
+                    onClick={() => setShowScanFacture(true)}
                     className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 backdrop-blur-sm bg-white/70 border border-white/50 shadow-sm hover:bg-white/90 hover:shadow-md active:scale-[0.97] transition-all duration-200 cursor-pointer rounded-2xl"
                   >
                     <span className="text-2xl">📸</span>
@@ -4379,7 +4381,7 @@ export default function MokaOrderPad() {
                     <span className="text-[10px] text-[#9a7060]">IA → mise à jour stock</span>
                   </button>
                   <button
-                    onClick={() => showToast("Bientôt : photo Z de caisse + IA décompte ventes", "warning")}
+                    onClick={() => setShowScanZ(true)}
                     className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 backdrop-blur-sm bg-white/70 border border-white/50 shadow-sm hover:bg-white/90 hover:shadow-md active:scale-[0.97] transition-all duration-200 cursor-pointer rounded-2xl"
                   >
                     <span className="text-2xl">🧾</span>
@@ -4739,9 +4741,9 @@ export default function MokaOrderPad() {
                   );
                 })()}
 
-                {/* ── Sticky CTA ── */}
+                {/* ── CTA Composer ── */}
                 {orderView === "compose" && ordIncludedItems.length > 0 && (
-                  <div className="fixed bottom-0 left-0 right-0 z-[95] px-4 py-3 backdrop-blur-2xl bg-white/40 border-t border-white/50 shadow-2xl" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
+                  <div className="sticky bottom-4 z-10 mx-4 pb-4">
                     <button onClick={() => setShowMultiPanelModal(true)}
                       className="w-full py-4 rounded-2xl bg-[#5a7828] text-white font-black text-sm shadow-lg active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2">
                       <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -5168,6 +5170,78 @@ export default function MokaOrderPad() {
               </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Scanner facture ── */}
+      {showScanFacture && (
+        <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-4"
+          onClick={() => setShowScanFacture(false)}>
+          <div className="absolute inset-0 bg-black/40" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
+          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="space-y-1">
+              <h2 className="text-base font-black text-[#2c1a10]">📸 Scanner une facture</h2>
+              <p className="text-xs text-[#9a7060]">Prenez en photo votre facture fournisseur — l'IA extrait les produits et quantités automatiquement</p>
+            </div>
+            <div className="space-y-3">
+              <label className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-[#2c1a10] text-white font-black text-sm cursor-pointer active:scale-[0.98] transition-all">
+                📷 Prendre une photo
+                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => {
+                  setShowScanFacture(false);
+                  setInvoiceModal(true);
+                  setInvoiceResults([]);
+                  setInvoiceImageUrl("");
+                  setInvoiceImage(null);
+                  handleInvoicePhoto(e);
+                }} />
+              </label>
+              <label className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-[#f0e8dc] text-[#2c1a10] font-black text-sm cursor-pointer active:scale-[0.98] transition-all">
+                🖼 Choisir depuis la galerie
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                  setShowScanFacture(false);
+                  setInvoiceModal(true);
+                  setInvoiceResults([]);
+                  setInvoiceImageUrl("");
+                  setInvoiceImage(null);
+                  handleInvoicePhoto(e);
+                }} />
+              </label>
+              <button onClick={() => setShowScanFacture(false)}
+                className="w-full py-3 text-sm font-bold text-[#9a7060] cursor-pointer">
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Scanner Z de caisse ── */}
+      {showScanZ && (
+        <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-4"
+          onClick={() => setShowScanZ(false)}>
+          <div className="absolute inset-0 bg-black/40" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
+          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="space-y-1">
+              <h2 className="text-base font-black text-[#2c1a10]">🧾 Scanner un Z de caisse</h2>
+              <p className="text-xs text-[#9a7060]">Photographiez votre Z de caisse — l'IA comptabilise les ventes automatiquement</p>
+            </div>
+            <div className="space-y-3">
+              <label className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-[#2c1a10] text-white font-black text-sm cursor-pointer active:scale-[0.98] transition-all">
+                📷 Prendre une photo
+                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={() => { setShowScanZ(false); showToast("Fonctionnalité bientôt disponible", "warning"); }} />
+              </label>
+              <label className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-[#f0e8dc] text-[#2c1a10] font-black text-sm cursor-pointer active:scale-[0.98] transition-all">
+                🖼 Choisir depuis la galerie
+                <input type="file" accept="image/*" className="hidden" onChange={() => { setShowScanZ(false); showToast("Fonctionnalité bientôt disponible", "warning"); }} />
+              </label>
+              <button onClick={() => setShowScanZ(false)}
+                className="w-full py-3 text-sm font-bold text-[#9a7060] cursor-pointer">
+                Annuler
+              </button>
+            </div>
           </div>
         </div>
       )}
