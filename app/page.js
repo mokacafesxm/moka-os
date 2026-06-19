@@ -1552,26 +1552,33 @@ export default function MokaOrderPad() {
   const addRef = async () => {
     if (!refInput.nom.trim()) return;
     setSavingRef(true);
+    const payload = {
+      type: settingsPanel,
+      nom: refInput.nom.trim(),
+      emoji: refInput.emoji?.trim() || "",
+      abreviation: refInput.abreviation?.trim() || "",
+      categorie: refInput.categorie?.trim() || "",
+      uniteType: refInput.uniteType || "",
+      temperature: refInput.temperature || "",
+      ordre: Number(refInput.ordre) || 99,
+    };
+    console.log("[addRef] Payload:", payload);
     try {
-      await fetch("/api/settings/referentiels", {
+      const res = await fetch("/api/settings/referentiels", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: settingsPanel,
-          nom: refInput.nom,
-          emoji: refInput.emoji,
-          abreviation: refInput.abreviation,
-          categorie: refInput.categorie,
-          temperature: refInput.temperature,
-          uniteType: refInput.uniteType,
-          ordre: refInput.ordre,
-        }),
+        body: JSON.stringify(payload),
       });
-      setRefInput({ nom: "", emoji: "", abreviation: "", categorie: "", temperature: "", uniteType: "", ordre: "" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setRefInput({ nom: "", emoji: "", abreviation: "", categorie: "", uniteType: "", temperature: "", ordre: "" });
       setShowRefAddModal(false);
       await loadReferentiels();
-    } catch (err) { console.error(err); }
-    finally { setSavingRef(false); }
+    } catch (err) {
+      console.error("Erreur addRef:", err);
+      alert("Erreur lors de l'ajout ❌");
+    } finally {
+      setSavingRef(false);
+    }
   };
 
   const deleteRef = async (id) => {
@@ -5510,7 +5517,7 @@ export default function MokaOrderPad() {
                     <div className="flex-1 min-w-0">
                       <div className="font-black text-sm text-[#2c1a10] truncate">{item.nom}</div>
                       {item.abreviation && <div className="text-xs text-[#9a7060]">{item.abreviation}</div>}
-                      {item.type && <div className="text-xs text-[#9a7060]">{item.type}</div>}
+                      {item.uniteType && <div className="text-xs text-[#9a7060]">{item.uniteType}</div>}
                       {item.categorie && <div className="text-xs text-[#9a7060]">↳ {item.categorie}</div>}
                       {item.temperature && <div className="text-xs text-[#9a7060]">{item.temperature}</div>}
                     </div>
