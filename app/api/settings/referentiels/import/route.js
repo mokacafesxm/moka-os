@@ -1,6 +1,41 @@
-import { corsHeaders, notionFetch, queryDatabase, createPage } from "../../../_notion";
+import { corsHeaders } from "../../../_notion";
 
-const INGREDIENTS_DB    = "3699512cf66a808fb9fdf39666926abb";
+const NOTION_KEY = () => process.env.NOTION_API_KEY;
+const NOTION_VER = "2022-06-28";
+const notionHeaders = () => ({
+  "Authorization": `Bearer ${NOTION_KEY()}`,
+  "Notion-Version": NOTION_VER,
+  "Content-Type": "application/json",
+});
+
+const INGREDIENTS_DB = "3699512cf66a808fb9fdf39666926abb";
+const DB = {
+  categories:     "0a29512cf66a83ceb71c81efada3e727",
+  sousCategories: "b779512cf66a82e982f2014644271ff3",
+  zones:          "f599512cf66a83989b38015c1e7ef19a",
+  unites:         "1779512cf66a82e7afa38148234b9d33",
+};
+
+async function readExisting(dbId) {
+  const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
+    method: "POST",
+    headers: notionHeaders(),
+    body: JSON.stringify({ page_size: 200 }),
+  });
+  const data = await res.json();
+  return (data.results || []).map((p) => p.properties.Nom?.title?.[0]?.plain_text || "").filter(Boolean);
+}
+
+async function createEntry(dbId, props) {
+  const res = await fetch("https://api.notion.com/v1/pages", {
+    method: "POST",
+    headers: notionHeaders(),
+    body: JSON.stringify({ parent: { database_id: dbId }, properties: props }),
+  });
+  const data = await res.json();
+  if (!res.ok) console.error("[import] createEntry failed:", data.message);
+  await new Promise((r) => setTimeout(r, 350));
+}
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -8,81 +43,70 @@ export async function OPTIONS() {
 
 export async function POST() {
   try {
-    // 1. Lire le schéma pour récupérer les options des selects
-    const dbRes = await notionFetch(`/databases/${INGREDIENTS_DB}`);
-    if (!dbRes.ok) throw new Error(`Notion databases GET failed: ${dbRes.status}`);
-    const db = await dbRes.json();
+    // 1. Lire le schéma de MOKA_Ingredients_Master
+    const schemaRes = await fetch(`https://api.notion.com/v1/databases/${INGREDIENTS_DB}`, {
+      headers: notionHeaders(),
+    });
+    if (!schemaRes.ok) throw new Error(`Schema fetch failed: ${schemaRes.status}`);
+    const schema = await schemaRes.json();
 
-    const categorieOptions    = db.properties["Categorie"]?.select?.options?.map((o) => o.name) || [];
-    const sousCategorieOptions = db.properties["Sous-categorie"]?.select?.options?.map((o) => o.name) || [];
-    const zoneOptions          = db.properties["Zone_stockage"]?.select?.options?.map((o) => o.name) || [];
-    const uniteOptions         = [
-      ...new Set([
-        ...(db.properties["Unite_stock"]?.select?.options?.map((o) => o.name) || []),
-        ...(db.properties["Unite_commande"]?.select?.options?.map((o) => o.name) || []),
-      ]),
-    ];
+    const categorieOptions   = schema.properties["Categorie"]?.select?.options?.map((o) => o.name).filter(Boolean) || [];
+    const sousCatOptions     = schema.properties["Sous-categorie"]?.select?.options?.map((o) => o.name).filter(Boolean) || [];
+    const zoneOptions        = schema.properties["Zone_stockage"]?.select?.options?.map((o) => o.name).filter(Boolean) || [];
+    const uniteStockOptions  = schema.properties["Unite_stock"]?.select?.options?.map((o) => o.name).filter(Boolean) || [];
+    const uniteCmdOptions    = schema.properties["Unite_commande"]?.select?.options?.map((o) => o.name).filter(Boolean) || [];
+    const uniteOptions       = [...new Set([...uniteStockOptions, ...uniteCmdOptions])];
 
-    console.log("[import] options lues — cats:", categorieOptions.length, "sous:", sousCategorieOptions.length, "zones:", zoneOptions.length, "unites:", uniteOptions.length);
+    console.log("[import] lus — cats:", categorieOptions.length, "sous:", sousCatOptions.length, "zones:", zoneOptions.length, "unites:", uniteOptions.length);
 
-    // 2. Lire les référentiels existants pour éviter les doublons
-    const [existCats, existSousCats, existZones, existUnites] = await Promise.all([
-      queryDatabase(process.env.NOTION_CATEGORIES_DB_ID,     null, null, 200),
-      queryDatabase(process.env.NOTION_SOUSCATEGORIES_DB_ID, null, null, 200),
-      queryDatabase(process.env.NOTION_ZONES_DB_ID,          null, null, 200),
-      queryDatabase(process.env.NOTION_UNITES_DB_ID,         null, null, 200),
+    // 2. Lire les entrées existantes dans chaque base
+    const [existingCats, existingSousCats, existingZones, existingUnites] = await Promise.all([
+      readExisting(DB.categories),
+      readExisting(DB.sousCategories),
+      readExisting(DB.zones),
+      readExisting(DB.unites),
     ]);
 
-    const existingNames = (pages) =>
-      new Set(pages.map((p) => (p.properties.Nom?.title?.[0]?.plain_text || "").trim().toLowerCase()));
-
-    const eCats      = existingNames(existCats);
-    const eSousCats  = existingNames(existSousCats);
-    const eZones     = existingNames(existZones);
-    const eUnites    = existingNames(existUnites);
-
-    // 3. Filtrer les entrées manquantes
     const toCreate = {
-      categories:     categorieOptions.filter((n) => n && !eCats.has(n.trim().toLowerCase())),
-      sousCategories: sousCategorieOptions.filter((n) => n && !eSousCats.has(n.trim().toLowerCase())),
-      zones:          zoneOptions.filter((n) => n && !eZones.has(n.trim().toLowerCase())),
-      unites:         uniteOptions.filter((n) => n && !eUnites.has(n.trim().toLowerCase())),
+      categories:     categorieOptions.filter((n) => !existingCats.includes(n)),
+      sousCategories: sousCatOptions.filter((n) => !existingSousCats.includes(n)),
+      zones:          zoneOptions.filter((n) => !existingZones.includes(n)),
+      unites:         uniteOptions.filter((n) => !existingUnites.includes(n)),
     };
 
-    console.log("[import] à créer — cats:", toCreate.categories, "sous:", toCreate.sousCategories.length, "zones:", toCreate.zones.length, "unites:", toCreate.unites.length);
+    console.log("[import] à créer — cats:", toCreate.categories.length, "sous:", toCreate.sousCategories.length, "zones:", toCreate.zones.length, "unites:", toCreate.unites.length);
 
-    // 4. Créer séquentiellement par batch avec pause pour le rate limit Notion
-    const createBatch = async (dbId, items, buildProps) => {
-      for (const nom of items) {
-        await createPage(dbId, buildProps(nom));
-        await new Promise((r) => setTimeout(r, 350));
-      }
-    };
-
-    await Promise.all([
-      createBatch(process.env.NOTION_CATEGORIES_DB_ID, toCreate.categories, (nom) => ({
+    // 3. Créer séquentiellement pour respecter le rate limit Notion
+    for (const nom of toCreate.categories) {
+      await createEntry(DB.categories, {
         Nom:   { title:     [{ text: { content: nom } }] },
         Emoji: { rich_text: [{ text: { content: "" } }] },
         Ordre: { number: 99 },
         Actif: { checkbox: true },
-      })),
-      createBatch(process.env.NOTION_SOUSCATEGORIES_DB_ID, toCreate.sousCategories, (nom) => ({
+      });
+    }
+    for (const nom of toCreate.sousCategories) {
+      await createEntry(DB.sousCategories, {
         Nom:       { title:     [{ text: { content: nom } }] },
         Categorie: { rich_text: [{ text: { content: "" } }] },
         Ordre:     { number: 99 },
         Actif:     { checkbox: true },
-      })),
-      createBatch(process.env.NOTION_ZONES_DB_ID, toCreate.zones, (nom) => ({
+      });
+    }
+    for (const nom of toCreate.zones) {
+      await createEntry(DB.zones, {
         Nom:   { title:     [{ text: { content: nom } }] },
         Emoji: { rich_text: [{ text: { content: "" } }] },
         Actif: { checkbox: true },
-      })),
-      createBatch(process.env.NOTION_UNITES_DB_ID, toCreate.unites, (nom) => ({
+      });
+    }
+    for (const nom of toCreate.unites) {
+      await createEntry(DB.unites, {
         Nom:         { title:     [{ text: { content: nom } }] },
         Abreviation: { rich_text: [{ text: { content: nom } }] },
         Actif:       { checkbox: true },
-      })),
-    ]);
+      });
+    }
 
     return Response.json({
       success: true,
@@ -92,9 +116,10 @@ export async function POST() {
         zones:          toCreate.zones.length,
         unites:         toCreate.unites.length,
       },
+      detail: toCreate,
     }, { headers: corsHeaders });
   } catch (err) {
-    console.error("[import referentiels] erreur:", err);
-    return Response.json({ success: false, error: err.message }, { status: 500, headers: corsHeaders });
+    console.error("[import referentiels]", err);
+    return Response.json({ error: err.message }, { status: 500, headers: corsHeaders });
   }
 }

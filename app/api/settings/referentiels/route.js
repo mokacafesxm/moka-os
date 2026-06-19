@@ -1,9 +1,30 @@
-import { corsHeaders, queryDatabase, createPage, notionFetch } from "../../_notion";
+import { corsHeaders, notionFetch } from "../../_notion";
 
-const CATEGORIES_DB     = () => process.env.NOTION_CATEGORIES_DB_ID;
-const SOUSCATEGORIES_DB = () => process.env.NOTION_SOUSCATEGORIES_DB_ID;
-const UNITES_DB         = () => process.env.NOTION_UNITES_DB_ID;
-const ZONES_DB          = () => process.env.NOTION_ZONES_DB_ID;
+const NOTION_KEY = () => process.env.NOTION_API_KEY;
+const NOTION_VER = "2022-06-28";
+const notionHeaders = () => ({
+  "Authorization": `Bearer ${NOTION_KEY()}`,
+  "Notion-Version": NOTION_VER,
+  "Content-Type": "application/json",
+});
+
+const DB = {
+  categories:     "0a29512cf66a83ceb71c81efada3e727",
+  sousCategories: "b779512cf66a82e982f2014644271ff3",
+  unites:         "1779512cf66a82e7afa38148234b9d33",
+  zones:          "f599512cf66a83989b38015c1e7ef19a",
+};
+
+async function queryAll(dbId) {
+  const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
+    method: "POST",
+    headers: notionHeaders(),
+    body: JSON.stringify({ page_size: 200 }),
+  });
+  if (!res.ok) throw new Error(`Notion query ${dbId}: ${res.status}`);
+  const data = await res.json();
+  return data.results || [];
+}
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -12,10 +33,10 @@ export async function OPTIONS() {
 export async function GET() {
   try {
     const [cats, sousCats, unites, zones] = await Promise.all([
-      queryDatabase(CATEGORIES_DB(),     null, [{ property: "Ordre", direction: "ascending" }], 200),
-      queryDatabase(SOUSCATEGORIES_DB(), null, [{ property: "Ordre", direction: "ascending" }], 200),
-      queryDatabase(UNITES_DB(),         null, null, 200),
-      queryDatabase(ZONES_DB(),          null, null, 200),
+      queryAll(DB.categories),
+      queryAll(DB.sousCategories),
+      queryAll(DB.unites),
+      queryAll(DB.zones),
     ]);
 
     return Response.json({
@@ -67,67 +88,71 @@ export async function GET() {
 
 export async function POST(req) {
   try {
-    const { type, nom, emoji, abreviation, categorie, temperature, uniteType, ordre } = await req.json();
+    const body = await req.json();
+    const { type, nom, emoji, abreviation, categorie, uniteType, temperature, ordre } = body;
 
-    const dbMap = {
-      categories:     CATEGORIES_DB(),
-      sousCategories: SOUSCATEGORIES_DB(),
-      unites:         UNITES_DB(),
-      zones:          ZONES_DB(),
-    };
+    if (!DB[type]) return Response.json({ error: "Type inconnu" }, { status: 400, headers: corsHeaders });
+    if (!nom?.trim()) return Response.json({ error: "Nom requis" }, { status: 400, headers: corsHeaders });
 
     const propsMap = {
       categories: {
-        Nom:   { title:     [{ text: { content: String(nom || "") } }] },
-        Emoji: { rich_text: [{ text: { content: String(emoji || "") } }] },
+        Nom:   { title:     [{ text: { content: nom.trim() } }] },
+        Emoji: { rich_text: [{ text: { content: emoji?.trim() || "" } }] },
         Ordre: { number: Number(ordre) || 99 },
         Actif: { checkbox: true },
       },
       sousCategories: {
-        Nom:       { title:     [{ text: { content: String(nom || "") } }] },
-        Categorie: { rich_text: [{ text: { content: String(categorie || "") } }] },
+        Nom:       { title:     [{ text: { content: nom.trim() } }] },
+        Categorie: { rich_text: [{ text: { content: categorie?.trim() || "" } }] },
         Ordre:     { number: Number(ordre) || 99 },
         Actif:     { checkbox: true },
       },
       unites: {
-        Nom:         { title:     [{ text: { content: String(nom || "") } }] },
-        Abreviation: { rich_text: [{ text: { content: String(abreviation || "") } }] },
-        Type:        { select: uniteType ? { name: String(uniteType) } : null },
+        Nom:         { title:     [{ text: { content: nom.trim() } }] },
+        Abreviation: { rich_text: [{ text: { content: abreviation?.trim() || nom.trim() } }] },
         Actif:       { checkbox: true },
+        ...(uniteType ? { Type: { select: { name: uniteType } } } : {}),
       },
       zones: {
-        Nom:         { title:     [{ text: { content: String(nom || "") } }] },
-        Emoji:       { rich_text: [{ text: { content: String(emoji || "") } }] },
-        Temperature: { select: temperature ? { name: String(temperature) } : null },
-        Actif:       { checkbox: true },
+        Nom:   { title:     [{ text: { content: nom.trim() } }] },
+        Emoji: { rich_text: [{ text: { content: emoji?.trim() || "" } }] },
+        Actif: { checkbox: true },
+        ...(temperature ? { Temperature: { select: { name: temperature } } } : {}),
       },
     };
 
-    if (!dbMap[type] || !propsMap[type]) {
-      return Response.json({ success: false, error: "Type inconnu" }, { status: 400, headers: corsHeaders });
+    console.log("[POST referentiel]", type, JSON.stringify(propsMap[type]));
+
+    const res = await fetch("https://api.notion.com/v1/pages", {
+      method: "POST",
+      headers: notionHeaders(),
+      body: JSON.stringify({
+        parent: { database_id: DB[type] },
+        properties: propsMap[type],
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      console.error("[POST referentiel] Erreur Notion:", JSON.stringify(data));
+      return Response.json({ error: data.message || "Erreur Notion" }, { status: 500, headers: corsHeaders });
     }
 
-    const props = propsMap[type];
-    if (type === "unites"  && !uniteType)   delete props.Type;
-    if (type === "zones"   && !temperature) delete props.Temperature;
-
-    console.log("[POST referentiel] type:", type, "props:", JSON.stringify(props));
-
-    await createPage(dbMap[type], props);
     return Response.json({ success: true }, { headers: corsHeaders });
   } catch (err) {
-    console.error("Erreur POST referentiel:", err);
-    return Response.json({ success: false, error: err.message }, { status: 500, headers: corsHeaders });
+    console.error("[POST referentiel] Exception:", err);
+    return Response.json({ error: err.message }, { status: 500, headers: corsHeaders });
   }
 }
 
 export async function DELETE(req) {
   try {
     const { id } = await req.json();
-    await notionFetch(`/pages/${id}`, {
+    const res = await notionFetch(`/pages/${id}`, {
       method: "PATCH",
       body: JSON.stringify({ archived: true }),
     });
+    if (!res.ok) throw new Error(`Notion archive ${id}: ${res.status}`);
     return Response.json({ success: true }, { headers: corsHeaders });
   } catch (err) {
     console.error("Erreur DELETE referentiel:", err);

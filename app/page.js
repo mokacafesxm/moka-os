@@ -5266,11 +5266,19 @@ export default function MokaOrderPad() {
                   placeholder="Nom…"
                   className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors" />
               </div>
-              {(settingsPanel === "categories" || settingsPanel === "zones") && (
+              {settingsPanel === "categories" && (
                 <div>
                   <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Emoji</label>
                   <input value={refInput.emoji} onChange={(e) => setRefInput((p) => ({ ...p, emoji: e.target.value }))}
-                    placeholder="🥑" maxLength={4}
+                    placeholder="📦" maxLength={4}
+                    className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm text-center outline-none focus:border-[#5a7828] transition-colors" />
+                </div>
+              )}
+              {settingsPanel === "zones" && (
+                <div>
+                  <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Emoji</label>
+                  <input value={refInput.emoji} onChange={(e) => setRefInput((p) => ({ ...p, emoji: e.target.value }))}
+                    placeholder="🧊" maxLength={4}
                     className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm text-center outline-none focus:border-[#5a7828] transition-colors" />
                 </div>
               )}
@@ -5490,10 +5498,11 @@ export default function MokaOrderPad() {
                       try {
                         const res = await fetch("/api/settings/referentiels/import", { method: "POST" });
                         const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || "Erreur serveur");
                         await loadReferentiels();
-                        alert(`Import terminé ✅\nCatégories : +${data.imported.categories}\nSous-catégories : +${data.imported.sousCategories}\nZones : +${data.imported.zones}\nUnités : +${data.imported.unites}`);
-                      } catch {
-                        alert("Erreur import ❌");
+                        alert(`Import terminé ✅\n+${data.imported.categories} catégories\n+${data.imported.sousCategories} sous-catégories\n+${data.imported.zones} zones\n+${data.imported.unites} unités`);
+                      } catch (err) {
+                        alert("Erreur import : " + err.message);
                       } finally {
                         setImportingRef(false);
                       }
