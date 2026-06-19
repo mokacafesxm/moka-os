@@ -473,6 +473,7 @@ export default function MokaOrderPad() {
   const [pinSaveMsg, setPinSaveMsg] = useState("");
   const [navVisible, setNavVisible] = useState(true);
   const [navCompact, setNavCompact] = useState(false);
+  const [hideAdminNav, setHideAdminNav] = useState(false);
   const lastScrollY = useRef(0);
   const [deviceType, setDeviceType] = useState("desktop");
   const [showMobileCart, setShowMobileCart] = useState(false);
@@ -1587,6 +1588,9 @@ export default function MokaOrderPad() {
       else if (diff < -5) setNavCompact(false);
       if (diff > 50) setNavVisible(false);
       else if (diff < -10) setNavVisible(true);
+      if (diff > 5) setHideAdminNav(true);
+      else if (diff < -5) setHideAdminNav(false);
+      if (y < 20) setHideAdminNav(false);
       lastScrollY.current = y;
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -5161,7 +5165,7 @@ export default function MokaOrderPad() {
       {/* ── ADMIN BOTTOM NAV — glassmorphism ─────────── */}
       {isAdmin && (
         <div
-          className="fixed bottom-0 left-0 right-0 z-[90] flex justify-center"
+          className={`fixed bottom-0 left-0 right-0 z-[90] flex justify-center transition-all duration-300 ease-out ${hideAdminNav ? "opacity-0 translate-y-4 pointer-events-none" : "opacity-100 translate-y-0"}`}
           style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
         >
           <div
