@@ -4353,7 +4353,7 @@ export default function MokaOrderPad() {
 
             {/* INVENTORY PANEL */}
             {adminSection === "inventory" && (
-              <div className="space-y-3">
+              <div className={`space-y-3 ${isIphone ? "pb-32" : "pb-28"}`}>
                 <div className="h-2" />
                 {/* 2 boutons majeurs */}
                 <div className="flex gap-3">
@@ -4513,7 +4513,7 @@ export default function MokaOrderPad() {
 
             {/* ORDERS PANEL */}
             {adminSection === "orders" && (
-              <div className="min-h-[calc(100vh-120px)] relative">
+              <div className={`min-h-[calc(100vh-120px)] relative ${isIphone ? "pb-32" : "pb-28"}`}>
                 {/* ── Header: 2-tab switcher + refresh ── */}
                 <div className="flex items-center gap-2 mb-4">
                   <div className="flex gap-1.5 bg-white/60 rounded-2xl p-1.5 border border-[#e5d5c5] shadow-sm flex-1">
@@ -4751,7 +4751,7 @@ export default function MokaOrderPad() {
 
             {/* REPORTS PANEL */}
             {adminSection === "reports" && (
-              <div className="space-y-4">
+              <div className={`space-y-4 ${isIphone ? "pb-32" : "pb-28"}`}>
                 <div className="h-2" />
                 {/* Period selector */}
                 <div className="flex items-center justify-between flex-wrap gap-2">
@@ -5119,7 +5119,7 @@ export default function MokaOrderPad() {
 
             {/* SETTINGS PANEL */}
             {adminSection === "settings" && (
-              <div className="space-y-4">
+              <div className={`space-y-4 ${isIphone ? "pb-32" : "pb-28"}`}>
                 <div className="h-2" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 {[
