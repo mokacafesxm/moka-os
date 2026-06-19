@@ -4536,38 +4536,43 @@ export default function MokaOrderPad() {
                 {/* ── VUE COMPOSER ── */}
                 {orderView === "compose" && (
                   <div className="space-y-4 pb-28">
-                    {/* Fournisseurs — pills nom complet scrollables */}
+                    {/* Fournisseurs — bulles circulaires scrollables */}
                     <div>
                       <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide mb-2">Fournisseur</div>
                       {(settingsCache.suppliers || []).length === 0 ? (
-                        <div className="backdrop-blur-sm bg-white/70 border border-white/50 rounded-2xl p-8 text-center text-sm text-[#9a7060]">
+                        <div className="rounded-2xl p-8 text-center text-sm text-[#9a7060]" style={{ background: "rgba(255,255,255,0.7)" }}>
                           Aucun fournisseur configuré dans les paramètres.
                         </div>
                       ) : (
-                        <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide">
+                        <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-hide px-1">
                           {(settingsCache.suppliers || []).map((s) => {
                             const name = ordGetSupplierName(s);
                             const urgentCount = ordUrgentItems.filter((i) => i.fournisseur === name).length;
                             const isSelected = ordSelectedSupplier === name;
+                            const initials = name.slice(0, 2).toUpperCase();
                             return (
                               <button key={s.id || name}
                                 onClick={() => { setOrdSelectedSupplier(name); setComposeCart({}); }}
-                                className={`relative shrink-0 px-4 py-3 rounded-2xl border-2 transition-all cursor-pointer ${
-                                  isSelected
-                                    ? "bg-[#2c1a10] border-[#2c1a10] text-white shadow-md"
-                                    : "bg-white/70 border-[#e5d5c5] text-[#2c1a10] hover:border-[#c8a882] hover:shadow-sm"
-                                }`}>
-                                {urgentCount > 0 && (
-                                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse z-10">
-                                    {urgentCount}
-                                  </span>
-                                )}
-                                <div className="text-sm font-black truncate max-w-[120px]">{name}</div>
-                                {urgentCount > 0 && (
-                                  <div className={`text-[10px] font-bold mt-0.5 ${isSelected ? "text-white/70" : "text-red-400"}`}>
-                                    {urgentCount} urgent{urgentCount > 1 ? "s" : ""}
+                                className="flex flex-col items-center gap-1.5 shrink-0 w-20 relative cursor-pointer">
+                                <div className="relative">
+                                  <div
+                                    className="w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all duration-200"
+                                    style={isSelected
+                                      ? { background: "#2c1a10", borderColor: "#2c1a10", boxShadow: "0 4px 16px rgba(44,26,16,0.25)" }
+                                      : { background: "#ffffff", borderColor: "#e5d5c5", boxShadow: "0 2px 8px rgba(44,26,16,0.08)" }
+                                    }
+                                  >
+                                    <span className={`text-lg font-black ${isSelected ? "text-white" : "text-[#2c1a10]"}`}>{initials}</span>
                                   </div>
-                                )}
+                                  {urgentCount > 0 && (
+                                    <span className="absolute top-0 right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
+                                      {urgentCount}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className={`text-[10px] font-black text-center leading-tight w-20 line-clamp-2 ${isSelected ? "text-[#2c1a10]" : "text-[#6b4a3d]"}`}>
+                                  {name}
+                                </span>
                               </button>
                             );
                           })}
@@ -4582,7 +4587,8 @@ export default function MokaOrderPad() {
                       const waNumber = (whatsapp || phone).replace(/\D/g, "");
                       const displayPhone = whatsapp || phone;
                       return (
-                        <div className="rounded-2xl bg-white/80 backdrop-blur-sm border border-[#e5d5c5] px-4 py-3 flex items-center justify-between gap-3">
+                        <div className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3 mb-3"
+                          style={{ background: "rgba(255,255,255,0.8)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", border: "1px solid rgba(229,213,197,0.8)" }}>
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-black text-[#2c1a10] truncate">{ordSelectedSupplier}</div>
                             {displayPhone && <div className="text-[11px] text-[#9a7060] mt-0.5">{displayPhone}</div>}
@@ -5158,49 +5164,44 @@ export default function MokaOrderPad() {
 
       {/* ── ADMIN BOTTOM NAV — glassmorphism ─────────── */}
       {isAdmin && (() => {
-        const dashboardSVG = <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>;
-        const productsSVG  = <><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>;
-        const inventorySVG = <><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 12 2 2 4-4"/></>;
-        const ordersSVG    = <><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></>;
-        const reportsSVG   = <><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>;
-        const settingsSVG  = <><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></>;
-        const navItems = [
-          { id: "dashboard", icon: dashboardSVG },
-          { id: "products",  icon: productsSVG  },
-          { id: "inventory", icon: inventorySVG },
-          { id: "orders",    icon: ordersSVG    },
-          { id: "reports",   icon: reportsSVG   },
-          ...(!isIphone ? [{ id: "settings", icon: settingsSVG }] : []),
+        const adminNavItems = [
+          { id: "dashboard", label: "Dashboard", icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/></svg> },
+          { id: "products",  label: "Produits",   icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/><circle cx="18.5" cy="15.5" r="2.5"/><path d="M20.27 17.27 22 19"/></svg> },
+          { id: "inventory", label: "Inventaire", icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect width="6" height="4" x="9" y="3" rx="1"/><path d="m9 12 2 2 4-4"/></svg> },
+          { id: "orders",    label: "Commandes",  icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" x2="21" y1="6" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> },
+          { id: "reports",   label: "Rapports",   icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg> },
+          ...(!isIphone ? [{ id: "settings", label: "Paramètres", icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> }] : []),
         ];
-        const navLabels = { dashboard: "Accueil", products: "Produits", inventory: "Stock", orders: "Commandes", reports: "Rapports", settings: "Réglages" };
-        const navEmojis = { dashboard: "🏠", products: "🏷️", inventory: "📦", orders: "🛒", reports: "📊", settings: "⚙️" };
         return (
           <div
-            className="fixed bottom-4 left-1/2 z-[90] max-w-[92vw] overflow-hidden flex items-center gap-1 px-3 py-2 rounded-[2rem] border border-white/40 shadow-2xl transition-all duration-500 ease-out"
+            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-1 px-2 py-2 rounded-[2rem] max-w-[92vw] transition-all duration-500 ease-out"
             style={{
-              background: "rgba(255,255,255,0.18)",
-              backdropFilter: "blur(24px)",
-              WebkitBackdropFilter: "blur(24px)",
-              paddingBottom: "env(safe-area-inset-bottom)",
+              background: "rgba(245,237,224,0.45)",
+              backdropFilter: "blur(32px) saturate(180%)",
+              WebkitBackdropFilter: "blur(32px) saturate(180%)",
+              border: "1px solid rgba(255,255,255,0.5)",
+              boxShadow: "0 8px 32px rgba(44,26,16,0.18), inset 0 1px 0 rgba(255,255,255,0.6)",
+              paddingBottom: "max(8px, env(safe-area-inset-bottom))",
               transform: `translateX(-50%) translateY(${navVisible ? "0" : "calc(100% + 32px)"})`,
             }}
           >
-            {navItems.map(({ id }) => {
+            {adminNavItems.map(({ id, icon, label }) => {
               const isActive = adminSection === id;
               return (
                 <button
                   key={id}
                   onClick={() => setAdminSection(id)}
-                  className={`w-11 h-11 rounded-[1.1rem] flex flex-col items-center justify-center transition-all duration-150 cursor-pointer active:scale-90 ${
-                    isActive ? "shadow-inner" : "hover:bg-white/30"
-                  }`}
-                  style={isActive ? { background: "rgba(255,255,255,0.55)" } : {}}
+                  className="relative flex flex-col items-center justify-center w-12 h-12 rounded-[1.1rem] transition-all duration-200 cursor-pointer active:scale-90"
+                  style={isActive ? {
+                    background: "rgba(255,255,255,0.65)",
+                    boxShadow: "0 2px 8px rgba(44,26,16,0.12), inset 0 1px 0 rgba(255,255,255,0.8)",
+                  } : {}}
                 >
-                  <span className={`text-lg leading-none ${isActive ? "text-[#2c1a10]" : "text-[#6b4a3d]"}`}>
-                    {navEmojis[id] || "·"}
+                  <span className={isActive ? "text-[#2c1a10]" : "text-[#9a7060]"}>
+                    {icon}
                   </span>
                   {isActive && (
-                    <span className="text-[8px] font-bold mt-0.5 text-[#2c1a10]">{navLabels[id] || id}</span>
+                    <span className="text-[8px] font-black text-[#2c1a10] mt-0.5 leading-none">{label}</span>
                   )}
                 </button>
               );
