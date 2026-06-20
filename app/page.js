@@ -1226,16 +1226,23 @@ export default function MokaOrderPad() {
     }
 
     try {
-      const response = await fetch(SETTINGS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resource, action: "list" }),
-      });
+      const isDedicated = resource === "suppliers" || resource === "staff";
+      let list;
 
-      if (!response.ok) throw new Error(`Erreur settings ${response.status}`);
-
-      const data = await response.json();
-      const list = Array.isArray(data) ? data : normalizeArray(data, resource);
+      if (isDedicated) {
+        const response = await fetch(`/api/settings/${resource}`);
+        if (!response.ok) throw new Error(`Erreur settings ${response.status}`);
+        list = await response.json();
+      } else {
+        const response = await fetch(SETTINGS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resource, action: "list" }),
+        });
+        if (!response.ok) throw new Error(`Erreur settings ${response.status}`);
+        const data = await response.json();
+        list = Array.isArray(data) ? data : normalizeArray(data, resource);
+      }
 
       setSettingsData(list);
       setSettingsCache((prev) => {
@@ -1274,14 +1281,18 @@ export default function MokaOrderPad() {
   }, [isAdmin]);
 
   const fetchSettingsResource = async (resource) => {
+    const isDedicated = resource === "suppliers" || resource === "staff";
+    if (isDedicated) {
+      const response = await fetch(`/api/settings/${resource}`);
+      if (!response.ok) throw new Error(`Erreur settings ${response.status}`);
+      return response.json();
+    }
     const response = await fetch(SETTINGS_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ resource, action: "list" }),
     });
-
     if (!response.ok) throw new Error(`Erreur settings ${response.status}`);
-
     const text = await response.text();
     let data;
     try {
@@ -1337,15 +1348,26 @@ export default function MokaOrderPad() {
     setSavingSettingsPanel(true);
 
     try {
-      const response = await fetch(SETTINGS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resource: settingsPanel,
-          action: "create",
-          data: creatingSettingsForm,
-        }),
-      });
+      const isDedicated = settingsPanel === "suppliers" || settingsPanel === "staff";
+      let response;
+
+      if (isDedicated) {
+        response = await fetch(`/api/settings/${settingsPanel}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(creatingSettingsForm),
+        });
+      } else {
+        response = await fetch(SETTINGS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            resource: settingsPanel,
+            action: "create",
+            data: creatingSettingsForm,
+          }),
+        });
+      }
 
       if (!response.ok) throw new Error(`Erreur create ${response.status}`);
 
@@ -1370,7 +1392,7 @@ export default function MokaOrderPad() {
       showToast("Élément créé");
     } catch (error) {
       console.error(error);
-      showToast("Erreur création database", "error");
+      showToast("Erreur création : " + error.message, "error");
     } finally {
       setSavingSettingsPanel(false);
     }
@@ -1396,16 +1418,27 @@ export default function MokaOrderPad() {
     setSavingSettingsPanel(true);
 
     try {
-      const response = await fetch(SETTINGS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resource: settingsPanel,
-          action: "update",
-          id: editingSettingsForm.id,
-          data: editingSettingsForm,
-        }),
-      });
+      const isDedicated = settingsPanel === "suppliers" || settingsPanel === "staff";
+      let response;
+
+      if (isDedicated) {
+        response = await fetch(`/api/settings/${settingsPanel}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(editingSettingsForm),
+        });
+      } else {
+        response = await fetch(SETTINGS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            resource: settingsPanel,
+            action: "update",
+            id: editingSettingsForm.id,
+            data: editingSettingsForm,
+          }),
+        });
+      }
 
       if (!response.ok) throw new Error(`Erreur update ${response.status}`);
 
@@ -1427,36 +1460,27 @@ export default function MokaOrderPad() {
       showToast("Modification enregistrée");
     } catch (error) {
       console.error(error);
-      showToast("Erreur modification database", "error");
+      showToast("Erreur modification : " + error.message, "error");
     } finally {
       setSavingSettingsPanel(false);
     }
   };
 
-  const archiveSettingsDatabaseItem = async (item) => {
+  const deleteSupplierOrStaff = async (item) => {
     if (!settingsPanel || !item?.id) return;
-
-    if (!confirm("Désactiver cet élément ?")) return;
-
+    if (!confirm("Supprimer définitivement cet élément ?")) return;
     try {
-      const response = await fetch(SETTINGS_URL, {
-        method: "POST",
+      const endpoint = settingsPanel === "suppliers"
+        ? "/api/settings/suppliers"
+        : "/api/settings/staff";
+      const res = await fetch(endpoint, {
+        method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resource: settingsPanel,
-          action: "archive",
-          id: item.id,
-        }),
+        body: JSON.stringify({ id: item.id }),
       });
-
-      if (!response.ok) throw new Error(`Erreur archive ${response.status}`);
-      const result = await response.json().catch(() => ({}));
-      if (!result.success) throw new Error("Notion n'a pas confirmé la désactivation");
-
-      const updated = settingsData.map((row) =>
-        row.id === item.id ? { ...row, actif: false } : row
-      );
-
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "Erreur suppression");
+      const updated = settingsData.filter((row) => row.id !== item.id);
       setSettingsData(updated);
       setSettingsCache((prev) => {
         const next = { ...prev, [settingsPanel]: updated };
@@ -1465,10 +1489,10 @@ export default function MokaOrderPad() {
         }
         return next;
       });
-      showToast("Élément désactivé");
+      showToast("Élément supprimé");
     } catch (error) {
       console.error(error);
-      showToast("Erreur désactivation", "error");
+      showToast("Erreur suppression : " + error.message, "error");
     }
   };
 
@@ -5597,7 +5621,7 @@ export default function MokaOrderPad() {
                     </div>
                     <div className="flex gap-1.5 shrink-0">
                       <button onClick={() => openSettingsEdit(item)} className="h-8 px-3 rounded-xl bg-[#f0e8dc] border border-[#e5d5c5] text-xs font-bold text-[#6b4a3d] hover:bg-[#e5d5c5] transition-colors cursor-pointer">✏️</button>
-                      <button onClick={() => archiveSettingsDatabaseItem(item)} className="h-8 px-3 rounded-xl bg-red-50 border border-red-100 text-xs font-bold text-red-500 hover:bg-red-100 transition-colors cursor-pointer">🗑</button>
+                      <button onClick={() => deleteSupplierOrStaff(item)} className="h-8 px-3 rounded-xl bg-red-50 border border-red-100 text-xs font-bold text-red-500 hover:bg-red-100 transition-colors cursor-pointer">🗑</button>
                     </div>
                   </div>
                 ))}
