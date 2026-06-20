@@ -1271,26 +1271,7 @@ export default function MokaOrderPad() {
         })
         .catch((error) => console.error("Préchargement fournisseurs global:", error));
     }
-
-    if (!isAdmin || adminSection !== "settings") return;
-
-    const handler = (event) => {
-      const card = event.target.closest("button, div");
-      if (!card) return;
-
-      const text = String(card.textContent || "").toLowerCase();
-
-      if (text.includes("fournisseurs")) loadSettingsPanel("suppliers");
-      else if (text.includes("staff")) loadSettingsPanel("staff");
-      else if (text.includes("catégories") && !text.includes("sous")) { setSettingsPanel("categories"); loadReferentiels(); }
-      else if (text.includes("sous-catégories")) { setSettingsPanel("sousCategories"); loadReferentiels(); }
-      else if (text.includes("unités")) { setSettingsPanel("unites"); loadReferentiels(); }
-      else if (text.includes("zones")) { setSettingsPanel("zones"); loadReferentiels(); }
-    };
-
-    document.addEventListener("click", handler);
-    return () => document.removeEventListener("click", handler);
-  }, [isAdmin, adminSection]);
+  }, [isAdmin]);
 
   const fetchSettingsResource = async (resource) => {
     const response = await fetch(SETTINGS_URL, {
@@ -5508,6 +5489,15 @@ export default function MokaOrderPad() {
                 </h2>
               </div>
               <div className="flex items-center gap-2">
+                {["suppliers","staff"].includes(settingsPanel) && (
+                  <button
+                    onClick={() => loadSettingsPanel(settingsPanel)}
+                    disabled={loadingSettingsPanel}
+                    className="h-9 px-3 rounded-xl border border-[#e5d5c5] bg-white text-[10px] font-black text-[#9a7060] cursor-pointer disabled:opacity-50 hover:bg-[#f0e8dc] transition-colors"
+                  >
+                    {loadingSettingsPanel ? "…" : "↻ Actualiser"}
+                  </button>
+                )}
                 {["categories","sousCategories","unites","zones"].includes(settingsPanel) && (
                   <button
                     onClick={async () => {
@@ -5583,44 +5573,32 @@ export default function MokaOrderPad() {
                 ))}
               </div>
             ) : loadingSettingsPanel ? (
-              <div className="p-10 text-center text-[#9a7060] font-semibold">Chargement…</div>
+              <div className="flex-1 px-4 py-10 text-center text-[#9a7060] text-sm animate-pulse">Chargement…</div>
             ) : settingsData.length === 0 ? (
-              <div className="p-10 text-center text-[#9a7060] font-semibold">Aucun élément trouvé.</div>
+              <div className="flex-1 px-4 py-10 text-center text-[#9a7060] text-sm">Aucun élément — cliquez sur ➕ Nouveau pour en ajouter.</div>
             ) : (
-              <div className="overflow-auto flex-1">
-                <table className="w-full text-xs">
-                  <thead className="bg-[#faf5ef] text-[#9a7060] sticky top-0">
-                    <tr>
-                      {["Nom", "Catégorie / rôle", "Contact", "Téléphone", "Email", "Statut", "Actions"].map((h) => (
-                        <th key={h} className="text-left px-3 py-2.5 font-bold">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {settingsData.map((item, index) => (
-                      <tr key={item.id || item.nom || index} className="border-t border-[#f0e8dc] hover:bg-[#faf5ef] transition-colors">
-                        <td className="px-3 py-2.5 font-bold text-[#2c1a10]">{item.nom || item.name || item.fournisseur || item.prenom || "Sans nom"}</td>
-                        <td className="px-3 py-2.5 text-[#6b4a3d]">{item.categorie || item.category || item.role || "—"}</td>
-                        <td className="px-3 py-2.5 text-[#6b4a3d]">{item.contact || item.methodeContact || "—"}</td>
-                        <td className="px-3 py-2.5 text-[#6b4a3d]">{item.telephone || item.whatsapp || item.phone || "—"}</td>
-                        <td className="px-3 py-2.5 text-[#6b4a3d]">{item.email || "—"}</td>
-                        <td className="px-3 py-2.5">
-                          <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                            item.actif === false ? "bg-red-50 text-red-600" : "bg-[#f0f7e5] text-[#5a7828]"
-                          }`}>
-                            {item.actif === false ? "Inactif" : "Actif"}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <div className="flex gap-1.5">
-                            <button onClick={() => openSettingsEdit(item)} className="h-7 px-2.5 rounded-lg bg-white border border-[#e5d5c5] text-[11px] font-bold text-[#6b4a3d] hover:bg-[#faf5ef] transition-colors cursor-pointer">Modifier</button>
-                            <button onClick={() => archiveSettingsDatabaseItem(item)} className="h-7 px-2.5 rounded-lg bg-red-50 border border-red-100 text-[11px] font-bold text-red-600 hover:bg-red-100 transition-colors cursor-pointer">Désactiver</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+                {settingsData.map((item, index) => (
+                  <div key={item.id || item.nom || index} className="rounded-2xl border border-[#e5d5c5] bg-white px-4 py-3 shadow-sm flex items-center gap-3">
+                    <div className="text-xl shrink-0">
+                      {settingsPanel === "suppliers" ? "🏢" : "👤"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-black text-sm text-[#2c1a10] truncate">{item.nom || item.name || item.fournisseur || item.prenom || "Sans nom"}</div>
+                      <div className="text-xs text-[#9a7060] flex items-center gap-2 flex-wrap">
+                        {(item.categorie || item.category || item.role) && <span>{item.categorie || item.category || item.role}</span>}
+                        {(item.telephone || item.whatsapp || item.phone) && <span>📞 {item.telephone || item.whatsapp || item.phone}</span>}
+                        <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold ${item.actif === false ? "bg-red-50 text-red-600" : "bg-[#f0f7e5] text-[#5a7828]"}`}>
+                          {item.actif === false ? "Inactif" : "Actif"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5 shrink-0">
+                      <button onClick={() => openSettingsEdit(item)} className="h-8 px-3 rounded-xl bg-[#f0e8dc] border border-[#e5d5c5] text-xs font-bold text-[#6b4a3d] hover:bg-[#e5d5c5] transition-colors cursor-pointer">✏️</button>
+                      <button onClick={() => archiveSettingsDatabaseItem(item)} className="h-8 px-3 rounded-xl bg-red-50 border border-red-100 text-xs font-bold text-red-500 hover:bg-red-100 transition-colors cursor-pointer">🗑</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -5629,57 +5607,55 @@ export default function MokaOrderPad() {
 
       {/* ── CREATE SETTINGS ITEM MODAL ───────────────── */}
       {creatingSettingsItem && (
-        <div className="fixed inset-0 bg-black/50 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-xl max-h-[90vh] overflow-y-auto p-5">
-            <div className="flex justify-between items-start gap-4 mb-5">
-              <div>
-                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Ajouter</div>
-                <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">
-                  {settingsPanel === "suppliers" && "🏢 Nouveau fournisseur"}
-                  {settingsPanel === "staff" && "👥 Nouveau staff"}
-                  {settingsPanel === "categories" && "📦 Nouvelle catégorie"}
-                  {settingsPanel === "sousCategories" && "📂 Nouvelle sous-catégorie"}
-                  {settingsPanel === "unites" && "📏 Nouvelle unité"}
-                  {settingsPanel === "zones" && "🗄️ Nouvelle zone"}
-                </h2>
-              </div>
-              <button onClick={() => setCreatingSettingsItem(false)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] hover:text-[#2c1a10] transition-all cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" onClick={() => setCreatingSettingsItem(false)}>
+          <div className="absolute inset-0 bg-black/40" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
+          <div className="relative w-full max-w-sm rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Ajouter</div>
+              <h2 className="text-base font-black text-[#2c1a10] mt-0.5">
+                {settingsPanel === "suppliers" && "🏢 Nouveau fournisseur"}
+                {settingsPanel === "staff" && "👥 Nouveau staff"}
+              </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="md:col-span-2">
-                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Nom</label>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Nom *</label>
                 <input
                   value={creatingSettingsForm.nom || ""}
                   onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, nom: e.target.value, name: e.target.value }))}
-                  className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                  className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
                   placeholder="Nom…"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Catégorie / rôle</label>
+                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">{settingsPanel === "staff" ? "Rôle" : "Catégorie"}</label>
                 <input
                   value={creatingSettingsForm.categorie || ""}
                   onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, categorie: e.target.value }))}
-                  className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                  className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                  placeholder={settingsPanel === "staff" ? "Barista, Caissier…" : "Boissons, Épicerie…"}
                 />
               </div>
-              <div>
-                <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Méthode contact</label>
-                <select
-                  value={creatingSettingsForm.methodeContact || "WhatsApp"}
-                  onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, methodeContact: e.target.value }))}
-                  className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none"
-                >
-                  <option>WhatsApp</option><option>Email</option><option>Téléphone</option>
-                </select>
-              </div>
+              {settingsPanel === "suppliers" && (
+                <div>
+                  <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Méthode contact</label>
+                  <select
+                    value={creatingSettingsForm.methodeContact || "WhatsApp"}
+                    onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, methodeContact: e.target.value }))}
+                    className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                  >
+                    <option>WhatsApp</option><option>Email</option><option>Téléphone</option>
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Téléphone / WhatsApp</label>
                 <input
                   value={creatingSettingsForm.telephone || ""}
                   onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, telephone: e.target.value }))}
-                  className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                  className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                  placeholder="+590…"
                 />
               </div>
               <div>
@@ -5687,80 +5663,89 @@ export default function MokaOrderPad() {
                 <input
                   value={creatingSettingsForm.email || ""}
                   onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, email: e.target.value }))}
-                  className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                  className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                  placeholder="contact@…"
                 />
               </div>
-              <label className="md:col-span-2 flex items-center gap-3 rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold cursor-pointer">
+              <label className="flex items-center gap-3 rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm font-semibold cursor-pointer">
                 <input
                   type="checkbox"
                   checked={creatingSettingsForm.actif !== false}
                   onChange={(e) => setCreatingSettingsForm((prev) => ({ ...prev, actif: e.target.checked }))}
-                  className="w-4 h-4"
+                  className="w-4 h-4 accent-[#5a7828]"
                 />
                 Actif
               </label>
             </div>
 
-            <button
-              onClick={saveSettingsDatabaseCreate}
-              disabled={savingSettingsPanel}
-              className="w-full mt-5 py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-lg hover:bg-[#4e6a22] active:scale-[0.96] transition-all duration-100 disabled:opacity-50 cursor-pointer"
-            >
-              {savingSettingsPanel ? "Création…" : "Créer ✅"}
-            </button>
+            <div className="flex gap-3 pt-1" style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
+              <button onClick={() => setCreatingSettingsItem(false)}
+                className="flex-1 py-3 rounded-2xl text-[#9a7060] font-bold text-sm cursor-pointer">
+                Annuler
+              </button>
+              <button
+                onClick={saveSettingsDatabaseCreate}
+                disabled={savingSettingsPanel || !creatingSettingsForm.nom?.trim()}
+                className="flex-1 py-3 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-50 hover:bg-[#4e6a22] transition-colors">
+                {savingSettingsPanel ? "Création…" : "Sauvegarder"}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* ── EDIT SETTINGS ITEM MODAL ─────────────────── */}
       {editingSettingsItem && (
-        <div className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-xl max-h-[90vh] overflow-y-auto p-5">
-            <div className="flex justify-between items-start gap-4 mb-5">
-              <div>
-                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Modifier</div>
-                <h2 className="text-lg font-black text-[#2c1a10] mt-0.5">
-                  {settingsPanel === "suppliers" ? "🏢 Fournisseur" : "👥 Staff"}
-                </h2>
-              </div>
-              <button onClick={() => setEditingSettingsItem(null)} className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] hover:text-[#2c1a10] transition-all cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></button>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" onClick={() => setEditingSettingsItem(null)}>
+          <div className="absolute inset-0 bg-black/40" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
+          <div className="relative w-full max-w-sm rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Modifier</div>
+              <h2 className="text-base font-black text-[#2c1a10] mt-0.5">
+                {settingsPanel === "suppliers" ? "🏢 Fournisseur" : "👥 Staff"}
+              </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-3">
               {[
-                { label: "Nom", key: "nom", extra: (v) => ({ name: v }) },
-                { label: "Catégorie / rôle", key: "categorie", extra: (v) => ({ role: v }) },
-                { label: "Contact", key: "contact" },
-                { label: "Téléphone / WhatsApp", key: "telephone", extra: (v) => ({ whatsapp: v, phone: v }) },
-                { label: "Email", key: "email" },
-              ].map(({ label, key, extra }, i) => (
-                <div key={key} className={i === 0 ? "md:col-span-2" : ""}>
+                { label: "Nom", key: "nom", extra: (v) => ({ name: v }), placeholder: "Nom…" },
+                { label: settingsPanel === "staff" ? "Rôle" : "Catégorie", key: "categorie", extra: (v) => ({ role: v }), placeholder: settingsPanel === "staff" ? "Barista, Caissier…" : "Boissons…" },
+                { label: "Téléphone / WhatsApp", key: "telephone", extra: (v) => ({ whatsapp: v, phone: v }), placeholder: "+590…" },
+                { label: "Email", key: "email", placeholder: "contact@…" },
+              ].map(({ label, key, extra, placeholder }) => (
+                <div key={key}>
                   <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">{label}</label>
                   <input
                     value={editingSettingsForm[key] || ""}
                     onChange={(e) => setEditingSettingsForm((prev) => ({ ...prev, [key]: e.target.value, ...(extra ? extra(e.target.value) : {}) }))}
-                    className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
+                    placeholder={placeholder}
+                    className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] transition-colors"
                   />
                 </div>
               ))}
-              <label className="md:col-span-2 flex items-center gap-3 rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold cursor-pointer">
+              <label className="flex items-center gap-3 rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm font-semibold cursor-pointer">
                 <input
                   type="checkbox"
                   checked={editingSettingsForm.actif !== false}
                   onChange={(e) => setEditingSettingsForm((prev) => ({ ...prev, actif: e.target.checked }))}
-                  className="w-4 h-4"
+                  className="w-4 h-4 accent-[#5a7828]"
                 />
                 Actif
               </label>
             </div>
 
-            <button
-              onClick={saveSettingsDatabaseItem}
-              disabled={savingSettingsPanel}
-              className="w-full mt-5 py-3.5 rounded-xl bg-[#5a7828] text-white font-black text-sm shadow-lg hover:bg-[#4e6a22] active:scale-[0.96] transition-all duration-100 disabled:opacity-50 cursor-pointer"
-            >
-              {savingSettingsPanel ? "Enregistrement…" : "Enregistrer ✅"}
-            </button>
+            <div className="flex gap-3 pt-1" style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
+              <button onClick={() => setEditingSettingsItem(null)}
+                className="flex-1 py-3 rounded-2xl text-[#9a7060] font-bold text-sm cursor-pointer">
+                Annuler
+              </button>
+              <button
+                onClick={saveSettingsDatabaseItem}
+                disabled={savingSettingsPanel}
+                className="flex-1 py-3 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-50 hover:bg-[#4e6a22] transition-colors">
+                {savingSettingsPanel ? "Enregistrement…" : "Sauvegarder"}
+              </button>
+            </div>
           </div>
         </div>
       )}
