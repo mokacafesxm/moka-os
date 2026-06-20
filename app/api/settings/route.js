@@ -5,6 +5,40 @@ import {
   titleProp, textProp, selectProp, checkboxProp, numberProp, relationProp,
 } from "../_notion";
 
+// ── Shared property builders ─────────────────────────────────────────────────
+
+function buildSupplierProperties(data) {
+  const props = {
+    "Fournisseur":       titleProp(data?.nom || data?.name || ""),
+    "Catégorie":         selectProp(data?.categorie),
+    "Contact principal": textProp(data?.contact || data?.methodeContact || ""),
+    "Actif":             checkboxProp(data?.actif !== false),
+  };
+  // WhatsApp / Email : included only when non-empty to avoid Notion type errors
+  // if these Notion columns are phone_number or email type rather than rich_text,
+  // replace textProp with { phone_number: v } or { email: v } respectively.
+  const tel = data?.telephone || data?.whatsapp || "";
+  const email = data?.email || "";
+  if (tel)   props["WhatsApp"] = textProp(tel);
+  if (email) props["Email"]    = textProp(email);
+  return props;
+}
+
+function buildStaffProperties(data) {
+  const props = {
+    "Prénom": titleProp(data?.nom || data?.name || data?.prenom || ""),
+    "Rôle":   selectProp(data?.categorie || data?.role),
+    "Actif":  checkboxProp(data?.actif !== false),
+  };
+  const tel   = data?.telephone || "";
+  const email = data?.email || "";
+  if (tel)   props["Téléphone"] = textProp(tel);
+  if (email) props["Email"]     = textProp(email);
+  return props;
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 async function resolveSupplier(name) {
   if (!name) return null;
   try {
@@ -40,9 +74,7 @@ function buildProductProperties(data) {
   };
 }
 
-export async function OPTIONS() {
-  return new Response(null, { headers: corsHeaders });
-}
+// ── List helpers ─────────────────────────────────────────────────────────────
 
 async function listSuppliers() {
   const pages = await queryDatabase(DB.FOURNISSEURS);
@@ -74,6 +106,7 @@ async function listStaff() {
       name: getTitle(p, "Prénom", "Nom", "Name", "name"),
       prenom: getTitle(p, "Prénom", "Nom", "Name", "name"),
       role: getSelect(p, "Rôle", "Role", "role"),
+      categorie: getSelect(p, "Rôle", "Role", "role"),
       telephone: getText(p, "Téléphone", "telephone"),
       email: getText(p, "Email", "email"),
       actif: getCheckbox(p, "Actif", "actif"),
@@ -91,11 +124,24 @@ async function listFromIngredients(prop) {
   return [...values].sort().map((v) => ({ id: v, name: v }));
 }
 
-export async function POST(request) {
-  try {
-    const { resource, action, id, data } = await request.json();
+// ── Route handlers ───────────────────────────────────────────────────────────
 
-    // ── LIST ────────────────────────────────────────────────────────────────
+export async function OPTIONS() {
+  return new Response(null, { headers: corsHeaders });
+}
+
+export async function POST(request) {
+  let resource, action, id, data;
+  try {
+    ({ resource, action, id, data } = await request.json());
+  } catch {
+    return Response.json({ error: "Invalid JSON body" }, { status: 400, headers: corsHeaders });
+  }
+
+  console.log("[api/settings]", action, resource, id ? `id:${id}` : "");
+
+  try {
+    // ── LIST ─────────────────────────────────────────────────────────────────
     if (action === "list") {
       if (resource === "suppliers")     return Response.json(await listSuppliers(), { headers: corsHeaders });
       if (resource === "staff")         return Response.json(await listStaff(), { headers: corsHeaders });
@@ -109,25 +155,13 @@ export async function POST(request) {
     // ── CREATE ───────────────────────────────────────────────────────────────
     if (action === "create") {
       let dbId, properties;
+
       if (resource === "suppliers") {
         dbId = DB.FOURNISSEURS;
-        properties = {
-          "Fournisseur":       titleProp(data?.nom || data?.name || ""),
-          "Catégorie":         selectProp(data?.categorie),
-          "Contact principal": textProp(data?.contact || data?.methodeContact || ""),
-          "WhatsApp":          textProp(data?.telephone || data?.whatsapp || ""),
-          "Email":             textProp(data?.email || ""),
-          "Actif":             checkboxProp(data?.actif !== false),
-        };
+        properties = buildSupplierProperties(data);
       } else if (resource === "staff") {
         dbId = DB.STAFF;
-        properties = {
-          "Prénom":    titleProp(data?.nom || data?.name || data?.prenom || ""),
-          "Rôle":      selectProp(data?.categorie || data?.role),
-          "Téléphone": textProp(data?.telephone || ""),
-          "Email":     textProp(data?.email || ""),
-          "Actif":     checkboxProp(data?.actif !== false),
-        };
+        properties = buildStaffProperties(data);
       } else if (resource === "products") {
         dbId = DB.INGREDIENTS;
         properties = buildProductProperties(data);
@@ -136,70 +170,56 @@ export async function POST(request) {
       } else {
         return Response.json({ error: `create not supported for ${resource}` }, { status: 400, headers: corsHeaders });
       }
+
+      console.log("[api/settings create] dbId:", dbId, "properties:", JSON.stringify(properties));
+
       const page = await createPage(dbId, properties);
+
       if (resource === "products") {
         const supplierPageId = data?.fournisseurId || await resolveSupplier(data?.fournisseurDefaut);
         if (supplierPageId) {
-          await fetch(`https://api.notion.com/v1/pages/${page.id}`, {
+          await notionFetch(`/pages/${page.id}`, {
             method: "PATCH",
-            headers: {
-              "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
-              "Notion-Version": "2022-06-28",
-              "Content-Type": "application/json",
-            },
             body: JSON.stringify({ properties: { "Fournisseur par defaut": { relation: [{ id: supplierPageId }] } } }),
           });
         }
       }
+
       return Response.json({ success: true, id: page.id }, { headers: corsHeaders });
     }
 
     // ── UPDATE ───────────────────────────────────────────────────────────────
     if (action === "update") {
       if (!id) return Response.json({ error: "id required" }, { status: 400, headers: corsHeaders });
+
       let properties;
       if (resource === "suppliers") {
-        properties = {
-          "Fournisseur":       titleProp(data?.nom || data?.name || ""),
-          "Catégorie":         selectProp(data?.categorie),
-          "Contact principal": textProp(data?.contact || ""),
-          "WhatsApp":          textProp(data?.telephone || data?.whatsapp || ""),
-          "Email":             textProp(data?.email || ""),
-          "Actif":             checkboxProp(data?.actif !== false),
-        };
+        properties = buildSupplierProperties(data);
       } else if (resource === "staff") {
-        properties = {
-          "Prénom":    titleProp(data?.nom || data?.name || data?.prenom || ""),
-          "Rôle":      selectProp(data?.categorie || data?.role),
-          "Téléphone": textProp(data?.telephone || ""),
-          "Email":     textProp(data?.email || ""),
-          "Actif":     checkboxProp(data?.actif !== false),
-        };
+        properties = buildStaffProperties(data);
       } else if (resource === "products") {
         properties = buildProductProperties(data);
         const supplierPageId = data?.fournisseurId || await resolveSupplier(data?.fournisseurDefaut);
         console.log("UPDATE products — fournisseurId:", data?.fournisseurId, "| résolu:", supplierPageId);
-        if (supplierPageId) {
-          properties["Fournisseur par defaut"] = { relation: [{ id: supplierPageId }] };
-        }
+        if (supplierPageId) properties["Fournisseur par defaut"] = { relation: [{ id: supplierPageId }] };
       } else {
         return Response.json({ error: `update not supported for ${resource}` }, { status: 400, headers: corsHeaders });
       }
+
+      console.log("[api/settings update] id:", id, "properties:", JSON.stringify(properties));
+
       await updatePage(id, properties);
+
       if (resource === "products") {
         const supplierPageId = data?.fournisseurId || await resolveSupplier(data?.fournisseurDefaut);
         if (supplierPageId) {
-          await fetch(`https://api.notion.com/v1/pages/${id}`, {
+          await notionFetch(`/pages/${id}`, {
             method: "PATCH",
-            headers: {
-              "Authorization": `Bearer ${process.env.NOTION_API_KEY}`,
-              "Notion-Version": "2022-06-28",
-              "Content-Type": "application/json",
-            },
             body: JSON.stringify({ properties: { "Fournisseur par defaut": { relation: [{ id: supplierPageId }] } } }),
           });
         }
       }
+
       return Response.json({ success: true }, { headers: corsHeaders });
     }
 
@@ -207,18 +227,15 @@ export async function POST(request) {
     if (action === "archive") {
       if (!id) return Response.json({ error: "id required" }, { status: 400, headers: corsHeaders });
 
-      console.log("[api/settings archive]", resource, id);
-
       let notionRes;
-
       if (resource === "suppliers") {
-        // Suppression réelle : la page disparaît de la base Notion
+        // Real deletion — page removed from Notion
         notionRes = await notionFetch(`/pages/${id}`, {
           method: "PATCH",
           body: JSON.stringify({ archived: true }),
         });
       } else if (resource === "staff") {
-        // Désactivation : checkbox Actif = false, la page reste dans Notion
+        // Soft disable — checkbox Actif = false, page stays in Notion
         notionRes = await notionFetch(`/pages/${id}`, {
           method: "PATCH",
           body: JSON.stringify({ properties: { "Actif": { checkbox: false } } }),
@@ -227,7 +244,7 @@ export async function POST(request) {
         return Response.json({ error: `archive not supported for ${resource}` }, { status: 400, headers: corsHeaders });
       }
 
-      console.log("[api/settings archive] Notion status:", notionRes.status, "resource:", resource);
+      console.log("[api/settings archive]", resource, id, "→ Notion status:", notionRes.status);
 
       if (!notionRes.ok) {
         const errBody = await notionRes.text().catch(() => "");
@@ -242,7 +259,9 @@ export async function POST(request) {
     }
 
     return Response.json({ error: `Unknown action: ${action}` }, { status: 400, headers: corsHeaders });
+
   } catch (err) {
+    console.error("[api/settings] error:", action, resource, err.message);
     return Response.json({ error: err.message }, { status: 500, headers: corsHeaders });
   }
 }
