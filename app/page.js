@@ -2555,15 +2555,20 @@ export default function MokaOrderPad() {
   };
 
   const productsDbCategories = useMemo(() => {
+    if (referentiels.categories.length) {
+      return ["Tous", ...referentiels.categories
+        .map(c => c.nom).filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, "fr"))];
+    }
+    // fallback : valeurs déjà présentes dans productsDb
     const found = [...new Set(productsDb.map((p) => p.categorie || p.category || "Autres"))]
       .filter(Boolean);
-
     return ["Tous", ...found.sort((a, b) => {
       const ia = categoryOrder.indexOf(a);
       const ib = categoryOrder.indexOf(b);
       return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
     })];
-  }, [productsDb]);
+  }, [referentiels.categories, productsDb]);
 
   const filteredProductsDb = useMemo(() => {
     const q = productsDbSearch.trim().toLowerCase();
@@ -2638,29 +2643,53 @@ export default function MokaOrderPad() {
 
   const productsDbSupplierChoices = useMemo(() => {
     return (settingsCache.suppliers || [])
-      .map((s) => ({ id: s.id || "", name: s.nom || s.name || s.fournisseur || "" }))
-      .filter((s) => s.id && s.name);
-  }, [settingsCache]);
+      .filter(s => s.actif !== false)
+      .map(s => ({ id: s.id || "", name: s.nom || s.name || s.fournisseur || "" }))
+      .filter(s => s.id && s.name)
+      .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  }, [settingsCache.suppliers]);
 
   const productsDbZoneChoices = useMemo(() => {
-    const zones = settingsCache.zones || [];
-    const fromSettings = zones.map((z) => z.nom || z.name || z.zone || "").filter(Boolean);
-    const fromProducts = productsDb.map((p) => p.zoneStockage || p.zone || "").filter(Boolean);
+    if (referentiels.zones.length) {
+      return referentiels.zones.map(z => z.nom).filter(Boolean).sort((a, b) => a.localeCompare(b, "fr"));
+    }
+    // fallback
+    const fromSettings = (settingsCache.zones || []).map(z => z.nom || z.name || z.zone || "").filter(Boolean);
+    const fromProducts = productsDb.map(p => p.zoneStockage || p.zone || "").filter(Boolean);
     return [...new Set([...fromSettings, ...fromProducts])].sort();
-  }, [settingsCache, productsDb]);
+  }, [referentiels.zones, settingsCache, productsDb]);
 
   const productsDbUnitChoices = useMemo(() => {
-    const units = settingsCache.units || [];
-    const fromSettings = units.map((u) => u.nom || u.name || u.unite || "").filter(Boolean);
-    const fromProducts = productsDb.flatMap((p) => [p.uniteStock, p.uniteCommande, p.unit]).filter(Boolean);
+    if (referentiels.unites.length) {
+      return referentiels.unites.map(u => u.abreviation || u.nom).filter(Boolean).sort((a, b) => a.localeCompare(b, "fr"));
+    }
+    // fallback
+    const fromSettings = (settingsCache.units || []).map(u => u.nom || u.name || u.unite || "").filter(Boolean);
+    const fromProducts = productsDb.flatMap(p => [p.uniteStock, p.uniteCommande, p.unit]).filter(Boolean);
     return [...new Set([...fromSettings, ...fromProducts, "kg", "g", "L", "ml", "pièce", "carton", "sachet", "bouteille"])].sort();
-  }, [settingsCache, productsDb]);
+  }, [referentiels.unites, settingsCache, productsDb]);
 
   const productsDbSubCategoryChoices = useMemo(() => {
-    const fromSettings = (settingsCache.subcategories || []).map((s) => s.nom || s.name || "").filter(Boolean);
-    const fromProducts = productsDb.map((p) => p.sousCategorie || p.subcategory || "").filter(Boolean);
+    const selectedCat = creatingProductDb
+      ? creatingProductDbForm.categorie
+      : (editingProductDb ? editingProductDbForm.categorie : "");
+    if (referentiels.sousCategories.length) {
+      const filtered = selectedCat
+        ? referentiels.sousCategories.filter(s => s.categorie === selectedCat)
+        : referentiels.sousCategories;
+      return filtered.map(s => s.nom).filter(Boolean).sort((a, b) => a.localeCompare(b, "fr"));
+    }
+    // fallback
+    const fromSettings = (settingsCache.subcategories || []).map(s => s.nom || s.name || "").filter(Boolean);
+    const fromProducts = productsDb.map(p => p.sousCategorie || p.subcategory || "").filter(Boolean);
     return [...new Set([...fromSettings, ...fromProducts])].sort();
-  }, [settingsCache, productsDb]);
+  }, [referentiels.sousCategories, creatingProductDb, creatingProductDbForm.categorie, editingProductDb, editingProductDbForm.categorie, settingsCache, productsDb]);
+
+  // Dans le formulaire Modifier : injecte la valeur actuelle si absente de la liste référentiels
+  const withCurrentVal = (currentValue, opts) => {
+    if (currentValue && !opts.includes(currentValue)) return [currentValue, ...opts];
+    return opts;
+  };
 
   const productsDbSupplierMap = useMemo(() => {
     const suppliers = settingsCache.suppliers || [];
@@ -6100,6 +6129,9 @@ export default function MokaOrderPad() {
                     className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none"
                   >
                     <option value="">À définir ({productsDbSupplierChoices.length} choix)</option>
+                    {editingProductDbForm.fournisseurDefaut && !productsDbSupplierChoices.find(s => s.name === editingProductDbForm.fournisseurDefaut) && (
+                      <option value={editingProductDbForm.fournisseurId || ""}>{editingProductDbForm.fournisseurDefaut} (actuel)</option>
+                    )}
                     {productsDbSupplierChoices.map((s) => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
@@ -6110,6 +6142,8 @@ export default function MokaOrderPad() {
                 </div>
 
                 {[
+                  ["Catégorie", "categorie", "select", productsDbCategories.filter(c => c !== "Tous")],
+                  ["Sous-catégorie", "sousCategorie", "select", productsDbSubCategoryChoices],
                   ["Zone de stockage", "zoneStockage", "select", productsDbZoneChoices],
                   ["Méthode de suivi", "methodeSuivi", "select", ["Manuel", "Automatique", "Préparation"]],
                   ["Qté commande suggérée", "quantiteCommandeSuggeree", "number", []],
@@ -6128,7 +6162,7 @@ export default function MokaOrderPad() {
                         className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none"
                       >
                         <option value="">À définir</option>
-                        {opts.map((o) => <option key={o} value={o}>{o}</option>)}
+                        {withCurrentVal(editingProductDbForm[key], opts).map((o) => <option key={o} value={o}>{o}</option>)}
                       </select>
                     ) : (
                       <input
