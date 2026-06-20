@@ -205,6 +205,32 @@ function formatLocalDate(date) {
   return `${y}-${m}-${day}`;
 }
 
+// Fuseau SXM : UTC-4, pas de DST (identique à America/Puerto_Rico)
+const SXM_TIMEZONE = "America/Puerto_Rico";
+
+// Parse "YYYY-MM-DD" comme date locale (évite l'interprétation UTC de new Date("YYYY-MM-DD"))
+function parseSXMDate(dateString) {
+  if (!dateString) return null;
+  const [year, month, day] = String(dateString).slice(0, 10).split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+}
+
+// Formate une string "YYYY-MM-DD" en date lisible en français sans décalage UTC
+function formatSXMDate(dateString, options = { weekday: "long", day: "numeric", month: "long" }) {
+  const date = parseSXMDate(dateString);
+  if (!date) return "";
+  return date.toLocaleDateString("fr-FR", options);
+}
+
+// Retourne la date courante SXM au format "YYYY-MM-DD" (pour écriture vers Notion)
+function getSXMDateString(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: SXM_TIMEZONE,
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(date);
+}
+
 function addDays(days) {
   const d = new Date();
   d.setDate(d.getDate() + days);
@@ -5234,7 +5260,7 @@ export default function MokaOrderPad() {
                         <div key={date} className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-[#e5d5c5]">
                           <div>
                             <div className="text-sm font-bold text-[#2c1a10]">
-                              {new Date(date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                              {formatSXMDate(date)}
                             </div>
                             {incomplete && (
                               <div className="text-[10px] text-orange-500 font-bold">⚠️ Pointage incomplet (pas de départ)</div>
