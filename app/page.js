@@ -2067,34 +2067,32 @@ export default function MokaOrderPad() {
     setSavingProductDb(true);
 
     try {
-      const response = await fetch(SETTINGS_URL, {
+      const response = await fetch("/api/settings/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          resource: "products",
-          action: "create",
-          data: {
-            ingredient: creatingProductDbForm.ingredient,
-            fournisseurDefaut: creatingProductDbForm.fournisseurDefaut || "",
-            visibleOrderPad: creatingProductDbForm.visibleOrderPad ?? true,
-            categorie: creatingProductDbForm.categorie || "",
-            sousCategorie: creatingProductDbForm.sousCategorie || "",
-            zoneStockage: creatingProductDbForm.zoneStockage || "",
-            methodeSuivi: creatingProductDbForm.methodeSuivi || "",
-            quantiteCommandeSuggeree: Number(creatingProductDbForm.quantiteCommandeSuggeree) || null,
-            uniteStock: creatingProductDbForm.uniteStock || "",
-            uniteCommande: creatingProductDbForm.uniteCommande || "",
-            seuilAlerte: Number(creatingProductDbForm.seuilAlerte) || null,
-            seuilCritique: Number(creatingProductDbForm.seuilCritique) || null,
-            portionGrammes: Number(creatingProductDbForm.portionGrammes) || null,
-            notes: creatingProductDbForm.notes || "",
-          },
+          ingredient: creatingProductDbForm.ingredient,
+          fournisseurDefaut: creatingProductDbForm.fournisseurDefaut || "",
+          fournisseurId: creatingProductDbForm.fournisseurId || "",
+          visibleOrderPad: creatingProductDbForm.visibleOrderPad ?? true,
+          categorie: creatingProductDbForm.categorie || "",
+          sousCategorie: creatingProductDbForm.sousCategorie || "",
+          zoneStockage: creatingProductDbForm.zoneStockage || "",
+          methodeSuivi: creatingProductDbForm.methodeSuivi || "",
+          quantiteCommandeSuggeree: Number(creatingProductDbForm.quantiteCommandeSuggeree) || null,
+          uniteStock: creatingProductDbForm.uniteStock || "",
+          uniteCommande: creatingProductDbForm.uniteCommande || "",
+          seuilAlerte: Number(creatingProductDbForm.seuilAlerte) || null,
+          seuilCritique: Number(creatingProductDbForm.seuilCritique) || null,
+          portionGrammes: Number(creatingProductDbForm.portionGrammes) || null,
+          notes: creatingProductDbForm.notes || "",
         }),
       });
 
       if (!response.ok) throw new Error(`Erreur create ${response.status}`);
-
       const result = await response.json().catch(() => ({}));
+      if (!result.success) throw new Error(result.error || "Notion n'a pas confirmé la création");
+
       const created = result?.item || result?.product || result?.[0] || {
         ...creatingProductDbForm,
         id: `temp-${Date.now()}`,
@@ -2128,11 +2126,7 @@ export default function MokaOrderPad() {
 
     let suppliersList = [];
     try {
-      const res = await fetch("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resource: "suppliers", action: "list" }),
-      });
+      const res = await fetch("/api/settings/suppliers");
       suppliersList = await res.json();
       if (suppliersList?.length) {
         setSettingsCache((prev) => {
@@ -2188,36 +2182,34 @@ export default function MokaOrderPad() {
     setSavingProductDb(true);
 
     try {
-      const response = await fetch(SETTINGS_URL, {
-        method: "POST",
+      const response = await fetch("/api/settings/products", {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          resource: "products",
-          action: "update",
           id: editingProductDbForm.id,
-          data: {
-            ingredient: editingProductDbForm.ingredient,
-            fournisseurDefaut: editingProductDbForm.fournisseurDefaut || "",
-            fournisseurId: editingProductDbForm.fournisseurId || "",
-            visibleOrderPad: editingProductDbForm.visibleOrderPad ?? true,
-            categorie: editingProductDbForm.categorie || "",
-            sousCategorie: editingProductDbForm.sousCategorie || "",
-            zoneStockage: editingProductDbForm.zoneStockage || "",
-            methodeSuivi: editingProductDbForm.methodeSuivi || "",
-            quantiteCommandeSuggeree: Number(editingProductDbForm.quantiteCommandeSuggeree) || null,
-            uniteStock: editingProductDbForm.uniteStock || "",
-            uniteCommande: editingProductDbForm.uniteCommande || "",
-            seuilAlerte: Number(editingProductDbForm.seuilAlerte) || null,
-            seuilCritique: Number(editingProductDbForm.seuilCritique) || null,
-            portionGrammes: Number(editingProductDbForm.portionGrammes) || null,
-            notes: editingProductDbForm.notes || "",
-          },
+          ingredient: editingProductDbForm.ingredient,
+          fournisseurDefaut: editingProductDbForm.fournisseurDefaut || "",
+          fournisseurId: editingProductDbForm.fournisseurId || "",
+          visibleOrderPad: editingProductDbForm.visibleOrderPad ?? true,
+          categorie: editingProductDbForm.categorie || "",
+          sousCategorie: editingProductDbForm.sousCategorie || "",
+          zoneStockage: editingProductDbForm.zoneStockage || "",
+          methodeSuivi: editingProductDbForm.methodeSuivi || "",
+          quantiteCommandeSuggeree: Number(editingProductDbForm.quantiteCommandeSuggeree) || null,
+          uniteStock: editingProductDbForm.uniteStock || "",
+          uniteCommande: editingProductDbForm.uniteCommande || "",
+          seuilAlerte: Number(editingProductDbForm.seuilAlerte) || null,
+          seuilCritique: Number(editingProductDbForm.seuilCritique) || null,
+          portionGrammes: Number(editingProductDbForm.portionGrammes) || null,
+          notes: editingProductDbForm.notes || "",
         }),
       });
 
       const resText = await response.text();
       console.log("💾 saveProductDbEdit — réponse:", response.status, resText.slice(0, 200));
       if (!response.ok) throw new Error(`Erreur update ${response.status}: ${resText.slice(0, 200)}`);
+      const editResult = (() => { try { return JSON.parse(resText); } catch { return {}; } })();
+      if (!editResult.success) throw new Error(editResult.error || "Notion n'a pas confirmé la modification");
 
       const updated = productsDb.map((item) =>
         item.id === editingProductDbForm.id
@@ -2247,17 +2239,14 @@ export default function MokaOrderPad() {
     if (!confirm("Supprimer ce produit de la base ?")) return;
 
     try {
-      const response = await fetch(SETTINGS_URL, {
-        method: "POST",
+      const response = await fetch("/api/settings/products", {
+        method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resource: "products",
-          action: "delete",
-          id: item.id,
-        }),
+        body: JSON.stringify({ id: item.id }),
       });
 
-      if (!response.ok) throw new Error(`Erreur delete ${response.status}`);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) throw new Error(data.error || `Erreur delete ${response.status}`);
 
       const updated = productsDb.filter((row) => row.id !== item.id);
       setProductsDb(updated);
@@ -2267,9 +2256,10 @@ export default function MokaOrderPad() {
       }
 
       showToast("Produit supprimé");
+      setTimeout(async () => { await loadProductsDatabase(false); await refreshOrderPadProducts(); }, 2500);
     } catch (error) {
       console.error(error);
-      showToast("Erreur suppression produit", "error");
+      showToast("Erreur suppression produit : " + error.message, "error");
     }
   };
 
@@ -2466,29 +2456,28 @@ export default function MokaOrderPad() {
 
       let response;
       try {
-        response = await fetch(SETTINGS_URL, {
-          method: "POST",
+        const productPayload = {
+          ingredient: payload.name,
+          fournisseurDefaut: payload.fournisseurDefaut || "",
+          fournisseurId: payload.fournisseurDefautId || "",
+          visibleOrderPad: payload.visibleOrderPad,
+          categorie: payload.categorie,
+          sousCategorie: payload.sousCategorie,
+          zoneStockage: payload.zoneStockage,
+          methodeSuivi: settingsForm.methodeSuivi || "",
+          quantiteCommandeSuggeree: Number(payload.quantiteCommandee) || null,
+          uniteStock: payload.uniteStock,
+          uniteCommande: payload.uniteCommande,
+          seuilAlerte: Number(payload.seuilAlerte) || null,
+          seuilCritique: Number(payload.seuilCritique) || null,
+          portionGrammes: Number(payload.portionGrammes) || null,
+          notes: payload.notes,
+        };
+        if (!isNewProduct) productPayload.id = payload.id;
+        response = await fetch("/api/settings/products", {
+          method: isNewProduct ? "POST" : "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            resource: "products",
-            action: isNewProduct ? "create" : "update",
-            id: payload.id,
-            data: {
-              ingredient: payload.name,
-              visibleOrderPad: payload.visibleOrderPad,
-              categorie: payload.categorie,
-              sousCategorie: payload.sousCategorie,
-              zoneStockage: payload.zoneStockage,
-              methodeSuivi: settingsForm.methodeSuivi || "",
-              quantiteCommandeSuggeree: Number(payload.quantiteCommandee) || null,
-              uniteStock: payload.uniteStock,
-              uniteCommande: payload.uniteCommande,
-              seuilAlerte: Number(payload.seuilAlerte) || null,
-              seuilCritique: Number(payload.seuilCritique) || null,
-              portionGrammes: Number(payload.portionGrammes) || null,
-              notes: payload.notes,
-            },
-          }),
+          body: JSON.stringify(productPayload),
           signal: controller.signal,
         });
       } finally {
