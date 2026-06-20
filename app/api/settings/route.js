@@ -112,17 +112,21 @@ export async function POST(request) {
       if (resource === "suppliers") {
         dbId = DB.FOURNISSEURS;
         properties = {
-          "Fournisseur":     titleProp(data?.nom || data?.name || ""),
-          "Catégorie":       selectProp(data?.categorie),
-          "Contact principal": textProp(data?.contact || ""),
-          "Actif":           checkboxProp(data?.actif !== false),
+          "Fournisseur":       titleProp(data?.nom || data?.name || ""),
+          "Catégorie":         selectProp(data?.categorie),
+          "Contact principal": textProp(data?.contact || data?.methodeContact || ""),
+          "WhatsApp":          textProp(data?.telephone || data?.whatsapp || ""),
+          "Email":             textProp(data?.email || ""),
+          "Actif":             checkboxProp(data?.actif !== false),
         };
       } else if (resource === "staff") {
         dbId = DB.STAFF;
         properties = {
-          "Prénom":  titleProp(data?.nom || data?.name || data?.prenom || ""),
-          "Rôle":    selectProp(data?.role),
-          "Actif":   checkboxProp(data?.actif !== false),
+          "Prénom":    titleProp(data?.nom || data?.name || data?.prenom || ""),
+          "Rôle":      selectProp(data?.categorie || data?.role),
+          "Téléphone": textProp(data?.telephone || ""),
+          "Email":     textProp(data?.email || ""),
+          "Actif":     checkboxProp(data?.actif !== false),
         };
       } else if (resource === "products") {
         dbId = DB.INGREDIENTS;
@@ -156,16 +160,20 @@ export async function POST(request) {
       let properties;
       if (resource === "suppliers") {
         properties = {
-          "Fournisseur":     titleProp(data?.nom || data?.name || ""),
-          "Catégorie":       selectProp(data?.categorie),
+          "Fournisseur":       titleProp(data?.nom || data?.name || ""),
+          "Catégorie":         selectProp(data?.categorie),
           "Contact principal": textProp(data?.contact || ""),
-          "Actif":           checkboxProp(data?.actif !== false),
+          "WhatsApp":          textProp(data?.telephone || data?.whatsapp || ""),
+          "Email":             textProp(data?.email || ""),
+          "Actif":             checkboxProp(data?.actif !== false),
         };
       } else if (resource === "staff") {
         properties = {
-          "Prénom": titleProp(data?.nom || data?.name || data?.prenom || ""),
-          "Rôle":   selectProp(data?.role),
-          "Actif":  checkboxProp(data?.actif !== false),
+          "Prénom":    titleProp(data?.nom || data?.name || data?.prenom || ""),
+          "Rôle":      selectProp(data?.categorie || data?.role),
+          "Téléphone": textProp(data?.telephone || ""),
+          "Email":     textProp(data?.email || ""),
+          "Actif":     checkboxProp(data?.actif !== false),
         };
       } else if (resource === "products") {
         properties = buildProductProperties(data);

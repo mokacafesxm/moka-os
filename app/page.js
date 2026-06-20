@@ -1450,6 +1450,8 @@ export default function MokaOrderPad() {
       });
 
       if (!response.ok) throw new Error(`Erreur archive ${response.status}`);
+      const result = await response.json().catch(() => ({}));
+      if (!result.success) throw new Error("Notion n'a pas confirmé la désactivation");
 
       const updated = settingsData.map((row) =>
         row.id === item.id ? { ...row, actif: false } : row
@@ -5544,7 +5546,7 @@ export default function MokaOrderPad() {
             </div>
 
             {["categories","sousCategories","unites","zones"].includes(settingsPanel) ? (
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+              <div className="flex-1 overflow-y-auto px-4 py-3 pb-32 space-y-2">
                 {(referentiels[settingsPanel] || []).length === 0 && !loadingReferentiels && (
                   <div className="text-center text-[#9a7060] text-sm py-10">
                     Aucun élément — cliquez sur ➕ Nouveau pour en ajouter.
@@ -5577,7 +5579,7 @@ export default function MokaOrderPad() {
             ) : settingsData.length === 0 ? (
               <div className="flex-1 px-4 py-10 text-center text-[#9a7060] text-sm">Aucun élément — cliquez sur ➕ Nouveau pour en ajouter.</div>
             ) : (
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+              <div className="flex-1 overflow-y-auto px-4 py-3 pb-32 space-y-2">
                 {settingsData.map((item, index) => (
                   <div key={item.id || item.nom || index} className="rounded-2xl border border-[#e5d5c5] bg-white px-4 py-3 shadow-sm flex items-center gap-3">
                     <div className="text-xl shrink-0">
@@ -5609,7 +5611,7 @@ export default function MokaOrderPad() {
       {creatingSettingsItem && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" onClick={() => setCreatingSettingsItem(false)}>
           <div className="absolute inset-0 bg-black/40" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
-          <div className="relative w-full max-w-sm rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full max-w-sm max-h-[85vh] overflow-y-auto rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-4" onClick={(e) => e.stopPropagation()}>
             <div>
               <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Ajouter</div>
               <h2 className="text-base font-black text-[#2c1a10] mt-0.5">
@@ -5698,7 +5700,7 @@ export default function MokaOrderPad() {
       {editingSettingsItem && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" onClick={() => setEditingSettingsItem(null)}>
           <div className="absolute inset-0 bg-black/40" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
-          <div className="relative w-full max-w-sm rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full max-w-sm max-h-[85vh] overflow-y-auto rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-4" onClick={(e) => e.stopPropagation()}>
             <div>
               <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Modifier</div>
               <h2 className="text-base font-black text-[#2c1a10] mt-0.5">
