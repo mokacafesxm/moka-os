@@ -1,6 +1,6 @@
 import {
   DB, corsHeaders,
-  queryDatabase, createPage, updatePage,
+  notionFetch, queryDatabase, createPage, updatePage,
   getTitle, getText, getSelect, getCheckbox,
   titleProp, textProp, selectProp, checkboxProp, numberProp, relationProp,
 } from "../_notion";
@@ -206,7 +206,38 @@ export async function POST(request) {
     // ── ARCHIVE ──────────────────────────────────────────────────────────────
     if (action === "archive") {
       if (!id) return Response.json({ error: "id required" }, { status: 400, headers: corsHeaders });
-      await updatePage(id, { "Actif": checkboxProp(false) });
+
+      console.log("[api/settings archive]", resource, id);
+
+      let notionRes;
+
+      if (resource === "suppliers") {
+        // Suppression réelle : la page disparaît de la base Notion
+        notionRes = await notionFetch(`/pages/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ archived: true }),
+        });
+      } else if (resource === "staff") {
+        // Désactivation : checkbox Actif = false, la page reste dans Notion
+        notionRes = await notionFetch(`/pages/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ properties: { "Actif": { checkbox: false } } }),
+        });
+      } else {
+        return Response.json({ error: `archive not supported for ${resource}` }, { status: 400, headers: corsHeaders });
+      }
+
+      console.log("[api/settings archive] Notion status:", notionRes.status, "resource:", resource);
+
+      if (!notionRes.ok) {
+        const errBody = await notionRes.text().catch(() => "");
+        console.error("[api/settings archive] Notion error:", errBody);
+        return Response.json(
+          { success: false, error: `Notion ${notionRes.status}: ${errBody.slice(0, 300)}` },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+
       return Response.json({ success: true }, { headers: corsHeaders });
     }
 
