@@ -418,7 +418,16 @@ export default function MokaOrderPad() {
   const [adminSection, setAdminSection] = useState("dashboard");
   const [settingsPanel, setSettingsPanel] = useState("");
   const [settingsData, setSettingsData] = useState([]);
-  const [referentiels, setReferentiels] = useState({ categories: [], sousCategories: [], unites: [], zones: [] });
+  const [referentiels, setReferentiels] = useState(() => {
+    if (typeof window === "undefined") return { categories: [], sousCategories: [], unites: [], zones: [] };
+    try {
+      const cached = JSON.parse(localStorage.getItem("mokaReferentielsCache") || "null");
+      return cached || { categories: [], sousCategories: [], unites: [], zones: [] };
+    } catch {
+      return { categories: [], sousCategories: [], unites: [], zones: [] };
+    }
+  });
+  const [loadingReferentiels, setLoadingReferentiels] = useState(false);
   const [refInput, setRefInput] = useState({ nom: "", emoji: "", abreviation: "", categorie: "", temperature: "", uniteType: "", ordre: "" });
   const [savingRef, setSavingRef] = useState(false);
   const [showRefAddModal, setShowRefAddModal] = useState(false);
@@ -1245,6 +1254,10 @@ export default function MokaOrderPad() {
   };
 
   useEffect(() => {
+    if (isAdmin) loadReferentiels();
+  }, [isAdmin]);
+
+  useEffect(() => {
     if (isAdmin && !settingsCache.suppliers?.length) {
       fetchSettingsResource("suppliers")
         .then((list) => {
@@ -1539,11 +1552,16 @@ export default function MokaOrderPad() {
   };
 
   const loadReferentiels = async () => {
+    setLoadingReferentiels(true);
     try {
       const res = await fetch("/api/settings/referentiels");
       const data = await res.json();
       setReferentiels(data);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mokaReferentielsCache", JSON.stringify(data));
+      }
     } catch (err) { console.error("loadReferentiels:", err); }
+    finally { setLoadingReferentiels(false); }
   };
 
   useEffect(() => {
@@ -5537,9 +5555,14 @@ export default function MokaOrderPad() {
 
             {["categories","sousCategories","unites","zones"].includes(settingsPanel) ? (
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-                {(referentiels[settingsPanel] || []).length === 0 && (
+                {(referentiels[settingsPanel] || []).length === 0 && !loadingReferentiels && (
                   <div className="text-center text-[#9a7060] text-sm py-10">
                     Aucun élément — cliquez sur ➕ Nouveau pour en ajouter.
+                  </div>
+                )}
+                {(referentiels[settingsPanel] || []).length === 0 && loadingReferentiels && (
+                  <div className="text-center text-[#9a7060] text-sm py-10 animate-pulse">
+                    Chargement…
                   </div>
                 )}
                 {(referentiels[settingsPanel] || []).map((item) => (
