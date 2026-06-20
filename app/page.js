@@ -4406,11 +4406,12 @@ export default function MokaOrderPad() {
                     });
                     return sortedKeys.map(groupKey => (
                       <div key={groupKey}>
-                        <div className="px-4 py-2 bg-[#faf5ef] border-b border-[#e5d5c5] text-[10px] font-black text-[#9a7060] uppercase tracking-wide sticky top-0 z-10">
+                        <div className="px-4 py-2 bg-[#faf5ef] border-b border-[#e5d5c5] text-[10px] font-black text-[#9a7060] uppercase tracking-wide sticky top-0 z-10 mb-2">
                           {productsDbViewMode === "zone" ? "📍" : getSmartCategoryEmoji(groupKey)} {groupKey} — {groups[groupKey].length}
                         </div>
+                        <div className="px-3 py-2">
                         {groups[groupKey].map((item, idx) => (
-                          <div key={item.id || idx} className="flex items-start gap-3 px-4 py-3 border-b border-[#f5ede0] hover:bg-[#faf5ef] transition-colors">
+                          <div key={item.id || idx} className="rounded-2xl border border-[#e5d5c5] bg-white px-4 py-3 shadow-sm flex items-start gap-3 hover:shadow-md hover:border-[#d0c0b0] transition-all mb-2">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-sm font-black text-[#2c1a10]">{item.ingredient || item.name || "—"}</span>
@@ -4432,6 +4433,7 @@ export default function MokaOrderPad() {
                             </div>
                           </div>
                         ))}
+                        </div>
                       </div>
                     ));
                   })()}
@@ -4551,7 +4553,7 @@ export default function MokaOrderPad() {
                           ? `${getStockQty(item)}${getStockDisplayUnit(item) ? " " + getStockDisplayUnit(item) : ""}`
                           : `${getStockPortions(item)} portions`;
                         return (
-                          <div key={item.id || index} className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-[#faf5ef] transition-colors border-b border-[#f5ede0]">
+                          <div key={item.id || index} className="rounded-2xl border border-[#e5d5c5] bg-white px-4 py-3 shadow-sm flex items-center gap-3 hover:shadow-md hover:border-[#d0c0b0] transition-all mb-2">
                             <div className={`w-2 h-2 rounded-full shrink-0 ${isCritical ? "bg-red-500" : isLow ? "bg-orange-400" : statusLower.includes("configurer") ? "bg-gray-300" : "bg-[#5a7828]"}`}/>
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-bold text-[#2c1a10] truncate">{getStockName(item)}</div>
@@ -4587,10 +4589,12 @@ export default function MokaOrderPad() {
                       });
                       return sortedKeys.map(groupKey => (
                         <div key={groupKey}>
-                          <div className="px-4 py-2 bg-[#faf5ef] border-b border-[#e5d5c5] text-[10px] font-black text-[#9a7060] uppercase tracking-wide sticky top-0 z-10">
+                          <div className="px-4 py-2 bg-[#faf5ef] border-b border-[#e5d5c5] text-[10px] font-black text-[#9a7060] uppercase tracking-wide sticky top-0 z-10 mb-2">
                             {inventoryViewMode === "zone" ? "📍" : getSmartCategoryEmoji(groupKey)} {groupKey} — {groups[groupKey].length}
                           </div>
-                          {groups[groupKey].map((item, idx) => renderCard(item, idx))}
+                          <div className="px-3 py-2">
+                            {groups[groupKey].map((item, idx) => renderCard(item, idx))}
+                          </div>
                         </div>
                       ));
                     })()}
