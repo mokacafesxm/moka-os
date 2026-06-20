@@ -1282,10 +1282,10 @@ export default function MokaOrderPad() {
 
       if (text.includes("fournisseurs")) loadSettingsPanel("suppliers");
       else if (text.includes("staff")) loadSettingsPanel("staff");
-      else if (text.includes("catégories") && !text.includes("sous")) loadSettingsPanel("categories");
-      else if (text.includes("sous-catégories")) loadSettingsPanel("subcategories");
-      else if (text.includes("unités")) loadSettingsPanel("units");
-      else if (text.includes("zones")) loadSettingsPanel("zones");
+      else if (text.includes("catégories") && !text.includes("sous")) { setSettingsPanel("categories"); loadReferentiels(); }
+      else if (text.includes("sous-catégories")) { setSettingsPanel("sousCategories"); loadReferentiels(); }
+      else if (text.includes("unités")) { setSettingsPanel("unites"); loadReferentiels(); }
+      else if (text.includes("zones")) { setSettingsPanel("zones"); loadReferentiels(); }
     };
 
     document.addEventListener("click", handler);
@@ -5638,8 +5638,8 @@ export default function MokaOrderPad() {
                   {settingsPanel === "suppliers" && "🏢 Nouveau fournisseur"}
                   {settingsPanel === "staff" && "👥 Nouveau staff"}
                   {settingsPanel === "categories" && "📦 Nouvelle catégorie"}
-                  {settingsPanel === "subcategories" && "📂 Nouvelle sous-catégorie"}
-                  {settingsPanel === "units" && "📏 Nouvelle unité"}
+                  {settingsPanel === "sousCategories" && "📂 Nouvelle sous-catégorie"}
+                  {settingsPanel === "unites" && "📏 Nouvelle unité"}
                   {settingsPanel === "zones" && "🗄️ Nouvelle zone"}
                 </h2>
               </div>
