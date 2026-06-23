@@ -562,13 +562,13 @@ export default function MokaOrderPad() {
     new Date().toLocaleDateString("en-CA", { timeZone: "America/Puerto_Rico" })
   );
 
-  const [orderView, setOrderView] = useState("compose");
+  const [orderView, setOrderView] = useState("history");
   const [orderCart, setOrderCart] = useState({});
   const [ordSelectedSupplier, setOrdSelectedSupplier] = useState("");
   const [orderDetail, setOrderDetail] = useState(null);
   const [showMultiPanelModal, setShowMultiPanelModal] = useState(false);
   const [orderNotes, setOrderNotes] = useState("");
-  const [ordStatusFilter, setOrdStatusFilter] = useState("Tous");
+  const [ordStatusFilter, setOrdStatusFilter] = useState("À commander");
   const [composeCart, setComposeCart] = useState({});
   const [stockStatusFilter, setStockStatusFilter] = useState("all");
   const [stockViewMode, setStockViewMode] = useState("zone");
@@ -1679,6 +1679,24 @@ export default function MokaOrderPad() {
     loadSupplierOrders();
   }, [isAdmin, adminSection]);
 
+  const markOrderSent = async (order) => {
+    try {
+      const res = await fetch("/api/supplier-orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: order.id, statut: "Envoyé", dateEnvoi: new Date().toISOString() }),
+      });
+      if (!res.ok) throw new Error("Erreur mise à jour statut");
+      setSupplierOrders(prev => prev.map(o => o.id === order.id ? { ...o, statut: "Envoyé" } : o));
+      setOrderDetail(null);
+      setOrdStatusFilter("Envoyé");
+      showToast("Commande marquée comme envoyée ✅");
+    } catch (err) {
+      console.error("[markOrderSent]", err);
+      showToast("Erreur : " + err.message, "error");
+    }
+  };
+
   const markOrderReceived = async (order) => {
     if (!confirm(`Marquer la commande ${order.fournisseur} comme reçue et ajouter au stock ?`)) return;
     try {
@@ -1734,6 +1752,8 @@ export default function MokaOrderPad() {
       }));
 
       setSupplierOrders(prev => prev.map(o => o.id === order.id ? { ...o, statut: "Reçu" } : o));
+      setOrderDetail(null);
+      setOrdStatusFilter("Reçu");
 
       refreshAll(1500);
 
@@ -4775,7 +4795,7 @@ export default function MokaOrderPad() {
                 {/* ── Header: 2-tab switcher + refresh ── */}
                 <div className="flex items-center gap-2 mb-4">
                   <div className="flex gap-1.5 bg-white/60 rounded-2xl p-1.5 border border-[#e5d5c5] shadow-sm flex-1">
-                    {[["compose","📝 Composer"],["history","📜 Historique"]].map(([id,label]) => (
+                    {[["history","📜 Historique"],["compose","📝 Composer"]].map(([id,label]) => (
                       <button key={id} onClick={() => setOrderView(id)}
                         className={`flex-1 py-2.5 rounded-xl text-sm font-black cursor-pointer transition-all flex items-center justify-center gap-1.5 ${orderView === id ? "bg-[#2c1a10] text-white shadow-md" : "text-[#6b4a3d] hover:bg-[#f0e4d4]"}`}>
                         {label}
@@ -4950,7 +4970,7 @@ export default function MokaOrderPad() {
                   return (
                     <div className="space-y-2">
                       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                        {["Tous", "À commander", "Envoyé", "Reçu", "Annulé"].map((s) => (
+                        {["À commander", "Envoyé", "Reçu", "Annulé"].map((s) => (
                           <button key={s} onClick={() => setOrdStatusFilter(s)}
                             className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition cursor-pointer ${ordStatusFilter === s ? "bg-[#2c1a10] text-white" : "backdrop-blur-sm bg-white/50 border border-white/40 text-[#6b4a3d] hover:bg-white/70"}`}>
                             {s}
@@ -5020,8 +5040,13 @@ export default function MokaOrderPad() {
                     onAllSent={async () => { setShowMultiPanelModal(false); setComposeCart({}); setOrdSelectedSupplier(""); await loadSupplierOrders(); setOrderView("history"); }} />
                 )}
                 {orderDetail && (
-                  <OrdDetailModal orderDetail={orderDetail} setOrderDetail={setOrderDetail}
-                    supplier={(settingsCache.suppliers || []).find((s) => ordGetSupplierName(s) === orderDetail.fournisseur)} />
+                  <OrdDetailModal
+                    orderDetail={orderDetail}
+                    setOrderDetail={setOrderDetail}
+                    supplier={(settingsCache.suppliers || []).find((s) => ordGetSupplierName(s) === orderDetail.fournisseur)}
+                    onMarkSent={() => markOrderSent(orderDetail)}
+                    onMarkReceived={() => markOrderReceived(orderDetail)}
+                  />
                 )}
               </div>
             )}
@@ -6943,14 +6968,16 @@ export default function MokaOrderPad() {
 }
 
 function OrdStatusBadge({ status }) {
-  const s = String(status).toLowerCase();
-  const isCrit = s.includes("critique");
-  const isLow = s.includes("stock bas") || s.includes("alerte") || s.includes("envoyé") || s.includes("attente") || s.includes("commander");
-  const isGood = s.includes("reçu") || s.includes("ok");
-  const isCancel = s.includes("annulé");
+  const s = String(status || "");
+  let cls, icon;
+  if (s === "À commander") { cls = "bg-orange-100 text-orange-700 border border-orange-200"; icon = "🟠"; }
+  else if (s === "Envoyé")  { cls = "bg-blue-100 text-blue-700 border border-blue-200";   icon = "📤"; }
+  else if (s === "Reçu")    { cls = "bg-green-100 text-green-700 border border-green-200"; icon = "✅"; }
+  else if (s === "Annulé")  { cls = "bg-gray-100 text-gray-500 border border-gray-200";    icon = "✖️"; }
+  else                       { cls = "bg-blue-50 text-blue-700 border border-blue-100";    icon = "🔵"; }
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black ${isCrit ? "bg-red-100 text-red-700" : isLow ? "bg-orange-100 text-orange-700" : isGood ? "bg-green-100 text-green-700" : isCancel ? "bg-gray-100 text-gray-500" : "bg-blue-50 text-blue-700"}`}>
-      {isCrit ? "🔴" : isLow ? "🟠" : isGood ? "✅" : isCancel ? "✖️" : "🔵"} {status}
+    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black ${cls}`}>
+      {icon} {s}
     </span>
   );
 }
@@ -7215,9 +7242,50 @@ function OrdPreviewModal({ buildMessage, selectedSupplier, supplier, setShowPrev
   );
 }
 
-function OrdDetailModal({ orderDetail, supplier, setOrderDetail }) {
+function OrdDetailModal({ orderDetail, supplier, setOrderDetail, onMarkSent, onMarkReceived }) {
   const dateStr = String(orderDetail.dateCreation || "").slice(0, 10);
   const message = orderDetail.message || "";
+  const statut = orderDetail.statut || "";
+  const wa = ordGetSupplierWhatsapp(supplier);
+
+  const btnWhatsApp = message && wa ? (
+    <button onClick={() => window.open(`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`)}
+      className="flex-1 py-3 rounded-[1rem] bg-green-50 border border-green-200 text-green-700 font-black text-xs">
+      💬 Envoyer WhatsApp
+    </button>
+  ) : null;
+
+  const btnCopy = message ? (
+    <button onClick={() => navigator.clipboard?.writeText(message).then(() => showToast("Copié !"))}
+      className="flex-1 py-3 rounded-[1rem] bg-[#f4eee7] text-[#3b241b] font-bold text-xs">
+      📋 Copier
+    </button>
+  ) : null;
+
+  const btnMarkSent = (
+    <button onClick={onMarkSent}
+      className="flex-1 py-3 rounded-[1rem] bg-[#2c1a10] text-white font-black text-xs">
+      ✅ Marquer comme envoyé
+    </button>
+  );
+
+  const btnMarkReceived = (
+    <button onClick={onMarkReceived}
+      className="flex-1 py-3 rounded-[1rem] bg-[#5a7828] text-white font-black text-xs">
+      ✅ Marquer comme reçu
+    </button>
+  );
+
+  let footer = null;
+  if (statut === "À commander") {
+    footer = <>{btnWhatsApp}{btnMarkSent}</>;
+  } else if (statut === "Envoyé") {
+    footer = <>{btnMarkReceived}{btnCopy}</>;
+  } else {
+    // Reçu, Annulé ou autre → lecture seule
+    footer = btnCopy;
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl border border-[#e5d5c5] w-full max-w-lg flex flex-col overflow-hidden" style={{ maxHeight: "85vh" }}>
@@ -7227,7 +7295,7 @@ function OrdDetailModal({ orderDetail, supplier, setOrderDetail }) {
               <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">Détail commande</div>
               <h2 className="text-lg font-black text-[#3b241b]">{orderDetail.produit}</h2>
               <div className="flex items-center gap-2 mt-1">
-                <OrdStatusBadge status={orderDetail.statut} />
+                <OrdStatusBadge status={statut} />
                 <span className="text-xs text-[#a97862]">{orderDetail.fournisseur} · {dateStr || "Sans date"}</span>
               </div>
             </div>
@@ -7238,13 +7306,9 @@ function OrdDetailModal({ orderDetail, supplier, setOrderDetail }) {
             {message || "Aucun message enregistré"}
           </div>
         </div>
-        {message && (
+        {footer && (
           <div className="shrink-0 px-5 pt-3 border-t border-[#e5d5c5] flex gap-2" style={{ paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}>
-            <button onClick={() => {
-              const wa = ordGetSupplierWhatsapp(supplier);
-              if (wa) window.open(`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`);
-            }} className="flex-1 py-3 rounded-[1rem] bg-green-50 border border-green-200 text-green-700 font-black text-xs">💬 WhatsApp</button>
-            <button onClick={() => navigator.clipboard?.writeText(message).then(() => showToast("Copié !"))} className="flex-1 py-3 rounded-[1rem] bg-[#f4eee7] text-[#3b241b] font-black text-xs">📋 Copier</button>
+            {footer}
           </div>
         )}
       </div>

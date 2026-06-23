@@ -35,11 +35,12 @@ export async function OPTIONS() {
 
 export async function PATCH(req) {
   try {
-    const { id, statut } = await req.json();
+    const { id, statut, dateEnvoi } = await req.json();
     if (!id) return Response.json({ success: false, error: "ID requis" }, { status: 400, headers: corsHeaders });
-    // Note: pas de colonne "Date réception" dans le schéma Notion BESOINS
     const properties = {};
     if (statut) properties["Statut"] = selectProp(statut);
+    // "Date envoi" existe dans le schéma BESOINS (type date)
+    if (dateEnvoi) properties["Date envoi"] = dateProp(dateEnvoi);
     await updatePage(id, properties);
     return Response.json({ success: true }, { headers: corsHeaders });
   } catch (err) {
