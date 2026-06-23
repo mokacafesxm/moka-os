@@ -33,6 +33,21 @@ export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
 }
 
+export async function PATCH(req) {
+  try {
+    const { id, statut } = await req.json();
+    if (!id) return Response.json({ success: false, error: "ID requis" }, { status: 400, headers: corsHeaders });
+    // Note: pas de colonne "Date réception" dans le schéma Notion BESOINS
+    const properties = {};
+    if (statut) properties["Statut"] = selectProp(statut);
+    await updatePage(id, properties);
+    return Response.json({ success: true }, { headers: corsHeaders });
+  } catch (err) {
+    console.error("[PATCH supplier-orders]", err.message);
+    return Response.json({ success: false, error: err.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
 export async function GET() {
   try {
     const [pages, fournisseurPages] = await Promise.all([

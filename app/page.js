@@ -1679,6 +1679,64 @@ export default function MokaOrderPad() {
     loadSupplierOrders();
   }, [isAdmin, adminSection]);
 
+  const markOrderReceived = async (order) => {
+    if (!confirm(`Marquer la commande ${order.fournisseur} comme reçue et ajouter au stock ?`)) return;
+    try {
+      const updateRes = await fetch("/api/supplier-orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: order.id, statut: "Reçu" }),
+      });
+      if (!updateRes.ok) throw new Error("Erreur mise à jour statut commande");
+
+      // Parse products: composed orders (source Commandes) → parse "- Café — 3 kg" lines from message
+      const isComposed = order.source === "Commandes" || String(order.produit || "").startsWith("Order composée");
+      let products = [];
+      if (isComposed && order.message) {
+        products = order.message.split("\n")
+          .filter(l => l.trim().startsWith("- "))
+          .map(l => {
+            const content = l.replace(/^-\s*/, "").trim();
+            const dashIdx = content.indexOf(" — ");
+            if (dashIdx === -1) return { name: content, qty: 1, unit: "" };
+            const name = content.slice(0, dashIdx).trim();
+            const qtyUnit = content.slice(dashIdx + 3).trim();
+            const m = qtyUnit.match(/^([0-9.,]+)\s*(.*)$/);
+            return { name, qty: m ? parseFloat(m[1].replace(",", ".")) || 1 : 1, unit: m ? m[2].trim() : qtyUnit };
+          })
+          .filter(p => p.name);
+      } else if (order.produit && Number(order.quantite) > 0) {
+        products = [{ name: order.produit, qty: Number(order.quantite), unit: order.unite || "" }];
+      }
+
+      // Update stock: resolve product by name in productsDb
+      await Promise.allSettled(products.map(async (p) => {
+        const dbItem = productsDb.find(
+          db => (db.ingredient || db.name || "").trim().toLowerCase() === p.name.trim().toLowerCase()
+        );
+        if (!dbItem?.id) return;
+        return fetch(STOCK_UPDATE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: dbItem.id, poidsTotal: p.qty, mode: "add", Unite: p.unit || dbItem.uniteStock || "" }),
+        });
+      }));
+
+      setSupplierOrders(prev => prev.map(o => o.id === order.id ? { ...o, statut: "Reçu" } : o));
+
+      fetch(STOCK_URL).then(r => r.json()).then(data => {
+        const fresh = normalizeArray(data, "stock");
+        setStockLive(fresh);
+        if (typeof window !== "undefined") localStorage.setItem("mokaStockCache", JSON.stringify(fresh));
+      });
+
+      showToast(`Commande ${order.fournisseur} marquée reçue — stock mis à jour`);
+    } catch (err) {
+      console.error("[markOrderReceived]", err);
+      showToast("Erreur lors de la réception : " + err.message, "error");
+    }
+  };
+
   const loadReports = async (periode) => {
     setReportsLoading(true);
     try {
@@ -4196,6 +4254,14 @@ export default function MokaOrderPad() {
                             <div className="text-[10px] text-[#9a7060]">{item.type === "prep" ? "Préparation interne" : getSupplier(item)}</div>
                           </div>
                           <div className="text-xs font-black text-[#4a6620] whitespace-nowrap shrink-0 bg-[#f0f7e5] px-2 py-0.5 rounded-md border border-[#c8dfa0]">{item.qty} {item.unit}</div>
+                          <button
+                            onClick={() => setOrderCart(prev => { const next = { ...prev }; delete next[item.id]; return next; })}
+                            className="shrink-0 w-7 h-7 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-400 hover:bg-red-100 hover:text-red-600 transition-all cursor-pointer ml-1"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                            </svg>
+                          </button>
                         </div>
                       ))
                     )}
@@ -4340,6 +4406,14 @@ export default function MokaOrderPad() {
                         <div className="text-[10px] text-[#9a7060]">{item.type === "prep" ? "Préparation interne" : getSupplier(item)}</div>
                       </div>
                       <div className="text-xs font-black text-[#4a6620] whitespace-nowrap shrink-0 bg-[#f0f7e5] px-2 py-0.5 rounded-md border border-[#c8dfa0]">{item.qty} {item.unit}</div>
+                      <button
+                        onClick={() => setOrderCart(prev => { const next = { ...prev }; delete next[item.id]; return next; })}
+                        className="shrink-0 w-7 h-7 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-400 hover:bg-red-100 hover:text-red-600 transition-all cursor-pointer ml-1"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                        </svg>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -4865,10 +4939,18 @@ export default function MokaOrderPad() {
                                     <div className="font-black text-sm text-[#2c1a10] truncate">{order.produit}</div>
                                     <div className="text-[11px] text-[#9a7060] mt-0.5 truncate">{order.fournisseur}</div>
                                   </div>
-                                  <button onClick={() => setOrderDetail(order)}
-                                    className="shrink-0 text-xs font-black text-[#5a7828] border border-[#5a7828] px-3 py-1.5 rounded-xl cursor-pointer hover:bg-[#f0f7e5] transition-colors">
-                                    Détail →
-                                  </button>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    {order.statut !== "Reçu" && order.statut !== "Annulé" && (
+                                      <button onClick={() => markOrderReceived(order)}
+                                        className="text-xs font-black text-white bg-[#5a7828] px-3 py-1.5 rounded-xl cursor-pointer hover:bg-[#4e6a22] transition-colors">
+                                        ✅ Reçu
+                                      </button>
+                                    )}
+                                    <button onClick={() => setOrderDetail(order)}
+                                      className="text-xs font-black text-[#5a7828] border border-[#5a7828] px-3 py-1.5 rounded-xl cursor-pointer hover:bg-[#f0f7e5] transition-colors">
+                                      Détail →
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             ))}
