@@ -1,4 +1,4 @@
-import { DB, corsHeaders, getPage, updatePage, getNumber, selectProp, numberProp } from "../../_notion";
+import { DB, corsHeaders, getPage, updatePage, createPage, resolveName, getNumber, selectProp, numberProp, titleProp } from "../../_notion";
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -6,32 +6,47 @@ export async function OPTIONS() {
 
 export async function POST(request) {
   try {
-    const { id, poidsTotal, Unite, mode } = await request.json();
+    const { id, poidsTotal, Unite, mode, name, notionProductId } = await request.json();
 
-    if (!id) {
-      return Response.json({ error: "id required" }, { status: 400, headers: corsHeaders });
+    let targetId = id || null;
+
+    // Lookup by name if no id provided
+    if (!targetId && name) {
+      targetId = await resolveName(DB.STOCK, "Produit", String(name).trim());
     }
 
-    let newQuantity = Number(poidsTotal) || 0;
+    const quantity = Number(poidsTotal) || 0;
 
-    if (mode === "add") {
-      const page = await getPage(id);
-      const p = page.properties;
-      const current = getNumber(p, "Quantite_stock", "Quantité stock", "quantiteStock", "Quantite stock");
-      newQuantity = current + newQuantity;
+    if (targetId) {
+      // UPDATE existing stock entry
+      let finalQuantity = quantity;
+      if (mode === "add") {
+        const page = await getPage(targetId);
+        const current = getNumber(page.properties, "Quantite_stock", "Quantité stock", "quantiteStock", "Quantite stock");
+        finalQuantity = (current || 0) + quantity;
+      }
+      const properties = { "Quantite_stock": numberProp(finalQuantity) };
+      if (Unite) properties["Unite_stock"] = selectProp(Unite);
+      await updatePage(targetId, properties);
+      return Response.json({ success: true, newQuantity: finalQuantity, action: "update" }, { headers: corsHeaders });
     }
 
+    // CREATE new stock entry (upsert fallback)
+    if (!name) {
+      return Response.json({ error: "id or name required" }, { status: 400, headers: corsHeaders });
+    }
     const properties = {
-      "Quantite_stock": numberProp(newQuantity),
+      "Produit": titleProp(String(name).trim()),
+      "Quantite_stock": numberProp(quantity),
     };
+    if (Unite) properties["Unite_stock"] = selectProp(Unite);
+    // Link to MOKA_Ingredients_Master if catalog page ID provided
+    if (notionProductId) properties["MOKA_Ingredients_Master"] = { relation: [{ id: notionProductId }] };
 
-    if (Unite) {
-      properties["Unite_stock"] = selectProp(Unite);
-    }
-
-    await updatePage(id, properties);
-    return Response.json({ success: true, newQuantity }, { headers: corsHeaders });
+    const page = await createPage(DB.STOCK, properties);
+    return Response.json({ success: true, newQuantity: quantity, action: "create", id: page.id }, { headers: corsHeaders });
   } catch (err) {
+    console.error("[stock/update]", err.message);
     return Response.json({ error: err.message }, { status: 500, headers: corsHeaders });
   }
 }

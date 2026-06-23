@@ -1709,26 +1709,33 @@ export default function MokaOrderPad() {
         products = [{ name: order.produit, qty: Number(order.quantite), unit: order.unite || "" }];
       }
 
-      // Update stock: resolve product by name in productsDb
+      // Update stock: resolve via stockLive (needs STOCK page ID, not INGREDIENTS page ID)
       await Promise.allSettled(products.map(async (p) => {
-        const dbItem = productsDb.find(
-          db => (db.ingredient || db.name || "").trim().toLowerCase() === p.name.trim().toLowerCase()
+        const nameLower = p.name.trim().toLowerCase();
+        // Find catalog entry to get INGREDIENTS page ID
+        const catalogItem = productsDb.find(db =>
+          (db.ingredient || db.name || "").trim().toLowerCase() === nameLower
         );
-        if (!dbItem?.id) return;
+        // Find stock entry: prefer relation match, fallback to name match
+        const stockItem = stockLive.find(s =>
+          (catalogItem?.id && s.ingredientId === catalogItem.id) ||
+          (s.name || "").trim().toLowerCase() === nameLower
+        );
+        console.log("[markOrderReceived] Stock update:", { name: p.name, qty: p.qty, unit: p.unit, stockId: stockItem?.id || null });
+        if (!stockItem?.id) {
+          console.warn("[markOrderReceived] Pas d'entrée stock pour:", p.name);
+          return;
+        }
         return fetch(STOCK_UPDATE_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: dbItem.id, poidsTotal: p.qty, mode: "add", Unite: p.unit || dbItem.uniteStock || "" }),
+          body: JSON.stringify({ id: stockItem.id, poidsTotal: p.qty, mode: "add", Unite: p.unit || stockItem.uniteStock || "" }),
         });
       }));
 
       setSupplierOrders(prev => prev.map(o => o.id === order.id ? { ...o, statut: "Reçu" } : o));
 
-      fetch(STOCK_URL).then(r => r.json()).then(data => {
-        const fresh = normalizeArray(data, "stock");
-        setStockLive(fresh);
-        if (typeof window !== "undefined") localStorage.setItem("mokaStockCache", JSON.stringify(fresh));
-      });
+      refreshAll(1500);
 
       showToast(`Commande ${order.fournisseur} marquée reçue — stock mis à jour`);
     } catch (err) {
@@ -2105,6 +2112,17 @@ export default function MokaOrderPad() {
     }
   };
 
+  // Resyncs productsDb + products + stockLive after any Notion write.
+  // delay accounts for Notion propagation lag (~3-5s).
+  const refreshAll = async (delay = 3500) => {
+    if (delay > 0) await new Promise(r => setTimeout(r, delay));
+    await Promise.allSettled([
+      loadProductsDatabase(false),
+      refreshOrderPadProducts(),
+    ]);
+    console.log("[refreshAll] Sync complète ✅");
+  };
+
   const openProductDbCreate = () => {
     ["suppliers", "categories", "subcategories", "units", "zones"].forEach((resource) => {
       if (settingsCache[resource]?.length) return;
@@ -2190,10 +2208,25 @@ export default function MokaOrderPad() {
         localStorage.setItem("mokaProductsDbCacheUpdatedAt", String(Date.now()));
       }
 
+      // Create matching stock entry (qty 0) in MOKA_Stock_Produits_Notion
+      if (result.id) {
+        fetch(STOCK_UPDATE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: creatingProductDbForm.ingredient,
+            poidsTotal: 0,
+            mode: "replace",
+            Unite: creatingProductDbForm.uniteStock || "",
+            notionProductId: result.id,
+          }),
+        }).catch(e => console.warn("[saveProductDbCreate] stock entry init:", e.message));
+      }
+
       setCreatingProductDb(false);
       setActiveTab("orderpad");
       showToast("Produit ajouté");
-      setTimeout(async () => { await loadProductsDatabase(false); await refreshOrderPadProducts(); }, 2500);
+      refreshAll();
     } catch (error) {
       console.error(error);
       showToast("Erreur création produit", "error");
@@ -2309,7 +2342,7 @@ export default function MokaOrderPad() {
 
       setEditingProductDb(null);
       showToast("Produit modifié");
-      setTimeout(async () => { await loadProductsDatabase(false); await refreshOrderPadProducts(); }, 2500);
+      refreshAll();
     } catch (error) {
       console.error(error);
       showToast("Erreur modification produit", "error");
@@ -2340,7 +2373,7 @@ export default function MokaOrderPad() {
       }
 
       showToast("Produit supprimé");
-      setTimeout(async () => { await loadProductsDatabase(false); await refreshOrderPadProducts(); }, 2500);
+      refreshAll();
     } catch (error) {
       console.error(error);
       showToast("Erreur suppression produit : " + error.message, "error");
@@ -2623,7 +2656,7 @@ export default function MokaOrderPad() {
         return updated;
       });
 
-      setTimeout(async () => { await loadProductsDatabase(false); await refreshOrderPadProducts(); }, 2500);
+      refreshAll();
 
       if (isNewProduct) {
         setActiveTab("orderpad");
