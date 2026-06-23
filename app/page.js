@@ -4343,24 +4343,25 @@ export default function MokaOrderPad() {
 
       {/* ── MOBILE CART FAB (iPhone) ─────────────────── */}
       {isIphone && cartItems.length > 0 && !showMobileCart && (
-        <button
-          onClick={() => setShowMobileCart(true)}
-          className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-[#5a7828] text-white shadow-xl flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-        >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
-          <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">{cartItems.length}</span>
-        </button>
+        <div className="fixed right-4 z-40" style={{ bottom: "calc(80px + env(safe-area-inset-bottom))" }}>
+          <button
+            onClick={() => setShowMobileCart(true)}
+            className="w-14 h-14 rounded-full bg-[#5a7828] text-white shadow-xl flex items-center justify-center cursor-pointer active:scale-95 transition-transform relative"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">{cartItems.length}</span>
+          </button>
+        </div>
       )}
 
       {/* ── MOBILE CART DRAWER (iPhone) ──────────────── */}
       {isIphone && showMobileCart && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           <div className="flex-1 bg-black/50" onClick={() => setShowMobileCart(false)} />
-          <div className="bg-white rounded-t-3xl shadow-2xl max-h-[80vh] overflow-y-auto" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-            <div className="w-10 h-1 bg-[#e5d5c5] rounded-full mx-auto mt-3 mb-1" />
+          <div className="bg-white rounded-t-3xl shadow-2xl flex flex-col" style={{ maxHeight: "82vh" }}>
+            <div className="w-10 h-1 bg-[#e5d5c5] rounded-full mx-auto mt-3 mb-1 shrink-0" />
             {/* Cart header */}
-            <div className="px-4 py-3 border-b border-[#f0e8dc] bg-[#faf5ef] flex items-center justify-between">
+            <div className="px-4 py-3 border-b border-[#f0e8dc] bg-[#faf5ef] flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-xl bg-[#2c1a10] flex items-center justify-center">
                   <svg className="w-3.5 h-3.5 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
@@ -4373,7 +4374,8 @@ export default function MokaOrderPad() {
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
               </button>
             </div>
-            <div className="p-4 space-y-4">
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
               {/* Staff selector */}
               <div>
                 <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Membre du staff</label>
@@ -4418,7 +4420,9 @@ export default function MokaOrderPad() {
                   ))}
                 </div>
               </div>
-              {/* Send button */}
+            </div>
+            {/* Send button — toujours visible, hors du scroll */}
+            <div className="shrink-0 px-4 pt-3 border-t border-[#f0e8dc]" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
               <button
                 onClick={() => { sendToMokaOS(); setShowMobileCart(false); }}
                 disabled={cartItems.length === 0 || sending}
@@ -5505,10 +5509,9 @@ export default function MokaOrderPad() {
 
       {/* ── Modal Scanner facture ── */}
       {showScanFacture && (
-        <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-4"
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           onClick={() => setShowScanFacture(false)}>
-          <div className="absolute inset-0 bg-black/40" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
-          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4"
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}>
             <div className="space-y-1">
               <h2 className="text-base font-black text-[#2c1a10]">📸 Scanner une facture</h2>
@@ -5548,10 +5551,9 @@ export default function MokaOrderPad() {
 
       {/* ── Modal Scanner Z de caisse ── */}
       {showScanZ && (
-        <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-4"
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           onClick={() => setShowScanZ(false)}>
-          <div className="absolute inset-0 bg-black/40" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
-          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4"
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}>
             <div className="space-y-1">
               <h2 className="text-base font-black text-[#2c1a10]">🧾 Scanner un Z de caisse</h2>
@@ -7184,25 +7186,27 @@ function OrdDetailModal({ orderDetail, supplier, setOrderDetail }) {
   const dateStr = String(orderDetail.dateCreation || "").slice(0, 10);
   const message = orderDetail.message || "";
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-3">
-      <div className="backdrop-blur-2xl bg-white/90 rounded-[1.4rem] shadow-xl border border-white/50 w-full max-w-lg max-h-[85vh] overflow-y-auto p-5">
-        <div className="flex justify-between items-start gap-4 mb-4">
-          <div>
-            <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">Détail commande</div>
-            <h2 className="text-lg font-black text-[#3b241b]">{orderDetail.produit}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <OrdStatusBadge status={orderDetail.statut} />
-              <span className="text-xs text-[#a97862]">{orderDetail.fournisseur} · {dateStr || "Sans date"}</span>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl border border-[#e5d5c5] w-full max-w-lg flex flex-col overflow-hidden" style={{ maxHeight: "85vh" }}>
+        <div className="flex-1 overflow-y-auto p-5 min-h-0">
+          <div className="flex justify-between items-start gap-4 mb-4">
+            <div>
+              <div className="text-[10px] font-black tracking-[0.22em] text-[#a97862] uppercase">Détail commande</div>
+              <h2 className="text-lg font-black text-[#3b241b]">{orderDetail.produit}</h2>
+              <div className="flex items-center gap-2 mt-1">
+                <OrdStatusBadge status={orderDetail.statut} />
+                <span className="text-xs text-[#a97862]">{orderDetail.fournisseur} · {dateStr || "Sans date"}</span>
+              </div>
             </div>
+            <button onClick={() => setOrderDetail(null)} className="w-9 h-9 rounded-full bg-[#f4eee7] flex items-center justify-center font-black text-[#a97862]">×</button>
           </div>
-          <button onClick={() => setOrderDetail(null)} className="w-9 h-9 rounded-full bg-[#f4eee7] flex items-center justify-center font-black text-[#a97862]">×</button>
-        </div>
-        <div className="text-xs font-black text-[#a97862] mb-2">MESSAGE ENVOYÉ</div>
-        <div className="bg-[#e8f5e1] rounded-[1rem] p-4 font-mono text-xs text-[#2d5a1b] whitespace-pre-wrap leading-relaxed mb-4">
-          {message || "Aucun message enregistré"}
+          <div className="text-xs font-black text-[#a97862] mb-2">MESSAGE ENVOYÉ</div>
+          <div className="bg-[#e8f5e1] rounded-[1rem] p-4 font-mono text-xs text-[#2d5a1b] whitespace-pre-wrap leading-relaxed">
+            {message || "Aucun message enregistré"}
+          </div>
         </div>
         {message && (
-          <div className="flex gap-2">
+          <div className="shrink-0 px-5 pt-3 border-t border-[#e5d5c5] flex gap-2" style={{ paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}>
             <button onClick={() => {
               const wa = ordGetSupplierWhatsapp(supplier);
               if (wa) window.open(`https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`);
