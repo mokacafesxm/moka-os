@@ -4255,7 +4255,7 @@ export default function MokaOrderPad() {
                           </div>
                           <div className="text-xs font-black text-[#4a6620] whitespace-nowrap shrink-0 bg-[#f0f7e5] px-2 py-0.5 rounded-md border border-[#c8dfa0]">{item.qty} {item.unit}</div>
                           <button
-                            onClick={() => setOrderCart(prev => { const next = { ...prev }; delete next[item.id]; return next; })}
+                            onClick={() => removeItem(item.id)}
                             className="shrink-0 w-7 h-7 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-400 hover:bg-red-100 hover:text-red-600 transition-all cursor-pointer ml-1"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -4407,7 +4407,7 @@ export default function MokaOrderPad() {
                       </div>
                       <div className="text-xs font-black text-[#4a6620] whitespace-nowrap shrink-0 bg-[#f0f7e5] px-2 py-0.5 rounded-md border border-[#c8dfa0]">{item.qty} {item.unit}</div>
                       <button
-                        onClick={() => setOrderCart(prev => { const next = { ...prev }; delete next[item.id]; return next; })}
+                        onClick={() => removeItem(item.id)}
                         className="shrink-0 w-7 h-7 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-400 hover:bg-red-100 hover:text-red-600 transition-all cursor-pointer ml-1"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
