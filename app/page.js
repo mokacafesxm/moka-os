@@ -2295,6 +2295,7 @@ export default function MokaOrderPad() {
   };
 
   const openProductDbCreate = () => {
+    if (referentiels.categories.length === 0) loadReferentiels();
     ["suppliers", "categories", "subcategories", "units", "zones"].forEach((resource) => {
       if (settingsCache[resource]?.length) return;
       fetchSettingsResource(resource)
@@ -2392,6 +2393,7 @@ export default function MokaOrderPad() {
   };
 
   const openProductDbEdit = async (item) => {
+    if (referentiels.categories.length === 0) loadReferentiels();
     // Si l'item vient du stock live, utiliser ingredientId (page INGREDIENTS)
     const correctId = item.ingredientId && item.ingredientId !== item.id
       ? item.ingredientId
@@ -2943,14 +2945,25 @@ export default function MokaOrderPad() {
   }, [referentiels.unites, settingsCache, productsDb]);
 
   const productsDbSubCategoryChoices = useMemo(() => {
+    const norm = s => String(s || "").toLowerCase().trim();
     const selectedCat = creatingProductDb
       ? creatingProductDbForm.categorie
       : (editingProductDb ? editingProductDbForm.categorie : "");
+
+    console.log("[subcat debug]", {
+      selectedCat,
+      totalSousCats: referentiels.sousCategories.length,
+      sousCatsDisponibles: referentiels.sousCategories.slice(0, 5).map(s => ({ nom: s.nom, categorie: s.categorie })),
+      filtered: referentiels.sousCategories.filter(s => norm(s.categorie) === norm(selectedCat)).map(s => s.nom),
+    });
+
     if (referentiels.sousCategories.length) {
       const filtered = selectedCat
-        ? referentiels.sousCategories.filter(s => s.categorie === selectedCat)
+        ? referentiels.sousCategories.filter(s => norm(s.categorie) === norm(selectedCat))
         : referentiels.sousCategories;
-      return filtered.map(s => s.nom).filter(Boolean).sort((a, b) => a.localeCompare(b, "fr"));
+      // Si le filtre donne 0 résultats (valeur absente du référentiel), afficher tout
+      const result = filtered.length > 0 ? filtered : referentiels.sousCategories;
+      return result.map(s => s.nom).filter(Boolean).sort((a, b) => a.localeCompare(b, "fr"));
     }
     // fallback
     const fromSettings = (settingsCache.subcategories || []).map(s => s.nom || s.name || "").filter(Boolean);
@@ -6432,7 +6445,11 @@ export default function MokaOrderPad() {
                     {type === "select" ? (
                       <select
                         value={creatingProductDbForm[key] || ""}
-                        onChange={(e) => setCreatingProductDbForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                        onChange={(e) => setCreatingProductDbForm((prev) => ({
+                          ...prev,
+                          [key]: e.target.value,
+                          ...(key === "categorie" ? { sousCategorie: "" } : {}),
+                        }))}
                         className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none"
                       >
                         <option value="">À définir</option>
@@ -6540,7 +6557,11 @@ export default function MokaOrderPad() {
                     {type === "select" ? (
                       <select
                         value={editingProductDbForm[key] || ""}
-                        onChange={(e) => setEditingProductDbForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                        onChange={(e) => setEditingProductDbForm((prev) => ({
+                          ...prev,
+                          [key]: e.target.value,
+                          ...(key === "categorie" ? { sousCategorie: "" } : {}),
+                        }))}
                         className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 font-semibold text-[#2c1a10] outline-none"
                       >
                         <option value="">À définir</option>
