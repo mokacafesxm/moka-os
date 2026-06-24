@@ -506,6 +506,7 @@ export default function MokaOrderPad() {
   const [deviceType, setDeviceType] = useState("desktop");
   const [showMobileCart, setShowMobileCart] = useState(false);
   const [lastSync, setLastSync] = useState(new Date());
+  const [isSyncing, setIsSyncing] = useState(false);
   const [prepsStation, setPrepsStation] = useState("all");
   const [showNewPrepModal, setShowNewPrepModal] = useState(false);
   const [newPrepForm, setNewPrepForm] = useState({
@@ -1281,6 +1282,71 @@ export default function MokaOrderPad() {
     if (isAdmin) loadReferentiels();
   }, [isAdmin]);
 
+  // ── Polling silencieux toutes les 8s (sync multi-appareils) ──
+  useEffect(() => {
+    let active = true;
+
+    const poll = async () => {
+      if (!active) return;
+      const isBusy = savingProductDb || savingSettings || sending || savingStockReceive || savingNewPrep || savingRef;
+      if (isBusy) return;
+
+      setIsSyncing(true);
+      try {
+        const [stockRes, productsRes, prepsRes] = await Promise.allSettled([
+          fetch(STOCK_URL + "?t=" + Date.now()),
+          fetch(PRODUCTS_URL + "?t=" + Date.now()),
+          fetch(PREPS_URL + "?t=" + Date.now()),
+        ]);
+
+        if (!active) return;
+
+        if (stockRes.status === "fulfilled" && stockRes.value.ok) {
+          const data = await stockRes.value.json();
+          const fresh = normalizeArray(data, "stock");
+          setStockLive(fresh);
+          if (typeof window !== "undefined") localStorage.setItem("mokaStockCache", JSON.stringify(fresh));
+        }
+        if (productsRes.status === "fulfilled" && productsRes.value.ok) {
+          const data = await productsRes.value.json();
+          const fresh = normalizeArray(data, "products");
+          setProducts(fresh);
+          if (typeof window !== "undefined") localStorage.setItem("mokaProductsCache", JSON.stringify(fresh));
+        }
+        if (prepsRes.status === "fulfilled" && prepsRes.value.ok) {
+          const data = await prepsRes.value.json();
+          const fresh = normalizeArray(data, "preps");
+          setPreps(fresh);
+          if (typeof window !== "undefined") localStorage.setItem("mokaPrepsCache", JSON.stringify(fresh));
+        }
+
+        if (active) setLastSync(new Date());
+      } catch (err) {
+        console.warn("[poll] Erreur réseau:", err.message);
+      } finally {
+        if (active) setIsSyncing(false);
+      }
+    };
+
+    const handleVisibility = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") poll();
+    };
+
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibility);
+    }
+
+    const interval = setInterval(poll, 8000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibility);
+      }
+    };
+  }, [savingProductDb, savingSettings, sending, savingStockReceive, savingNewPrep, savingRef]);
+
   // Silent background sync: create stock entries for any catalogue product missing one
   useEffect(() => {
     if (!isAdmin) return;
@@ -1289,7 +1355,7 @@ export default function MokaOrderPad() {
       .then(data => {
         if (data.createdCount > 0) {
           console.log(`[autoSync] ${data.createdCount} produit(s) synchronisé(s) vers le stock`);
-          refreshAll(2000);
+          refreshAll();
         }
       })
       .catch(e => console.warn("[autoSync]", e.message));
@@ -1825,7 +1891,7 @@ export default function MokaOrderPad() {
         } catch (e) {
           console.error("[markOrderReceived] upsert:", e);
         }
-        refreshAll(1500);
+        refreshAll();
         showToast(`Commande ${order.fournisseur} marquée reçue — stock mis à jour`);
       }
       return;
@@ -1901,7 +1967,7 @@ export default function MokaOrderPad() {
         setSupplierOrders(prev => prev.map(o => o.id === order.id ? { ...o, statut: "Reçu" } : o));
         setOrdStatusFilter("Reçu");
         showToast(`Commande ${order.fournisseur} reçue — ${newConfirmed.length} produits mis en stock ✅`);
-        refreshAll(2000);
+        refreshAll();
       } catch (e) {
         showToast("Erreur mise à jour commande", "error");
       }
@@ -2257,7 +2323,7 @@ export default function MokaOrderPad() {
 
   // Resyncs productsDb + products + stockLive after any Notion write.
   // delay accounts for Notion propagation lag (~3-5s).
-  const refreshAll = async (delay = 3500) => {
+  const refreshAll = async (delay = 0) => {
     if (delay > 0) await new Promise(r => setTimeout(r, delay));
     await Promise.allSettled([
       loadProductsDatabase(false),
@@ -2355,7 +2421,7 @@ export default function MokaOrderPad() {
       setCreatingProductDb(false);
       setActiveTab("orderpad");
       showToast("Produit ajouté");
-      refreshAll(4000);
+      refreshAll();
     } catch (error) {
       console.error(error);
       showToast("Erreur création produit", "error");
@@ -3564,8 +3630,17 @@ export default function MokaOrderPad() {
               <div>
                 <div className="font-black text-[#2c1a10] text-base leading-none tracking-tight">MÖKA</div>
                 <div className="text-[10px] text-[#9a7060] tracking-[0.25em] uppercase mt-0.5">Order Pad</div>
-                <div className="text-[9px] text-[#9a7060]">
-                  Sync {lastSync.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Puerto_Rico" })}
+                <div className="text-[9px] text-[#9a7060] flex items-center gap-1">
+                  {isSyncing ? (
+                    <>
+                      <svg className="w-2.5 h-2.5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30 60"/>
+                      </svg>
+                      Sync…
+                    </>
+                  ) : (
+                    <>Sync {lastSync.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Puerto_Rico" })}</>
+                  )}
                 </div>
               </div>
             )}
