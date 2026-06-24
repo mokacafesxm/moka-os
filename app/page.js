@@ -1721,41 +1721,96 @@ export default function MokaOrderPad() {
       });
       if (!updateRes.ok) throw new Error("Erreur mise à jour statut commande");
 
-      // Parse products: composed orders (source Commandes) → parse "- Café — 3 kg" lines from message
-      const isComposed = order.source === "Commandes" || String(order.produit || "").startsWith("Order composée");
+      console.log("[markOrderReceived] order:", JSON.stringify({
+        id: order.id, fournisseur: order.fournisseur, source: order.source,
+        produit: order.produit, produits: order.produits, message: order.message?.slice(0, 200),
+      }));
+
+      // Bug 1 : isComposed étendu — source varie selon le chemin d'envoi
+      const isComposed =
+        order.source === "Commandes" ||
+        order.source === "MÖKA OS Orders" ||
+        order.source === "MokaOS" ||
+        (Array.isArray(order.produits) && order.produits.length > 1) ||
+        String(order.produit || "").startsWith("Order composée");
+
       let products = [];
-      if (isComposed && order.message) {
-        products = order.message.split("\n")
-          .filter(l => l.trim().startsWith("- "))
-          .map(l => {
-            const content = l.replace(/^-\s*/, "").trim();
-            const dashIdx = content.indexOf(" — ");
-            if (dashIdx === -1) return { name: content, qty: 1, unit: "" };
-            const name = content.slice(0, dashIdx).trim();
-            const qtyUnit = content.slice(dashIdx + 3).trim();
-            const m = qtyUnit.match(/^([0-9.,]+)\s*(.*)$/);
-            return { name, qty: m ? parseFloat(m[1].replace(",", ".")) || 1 : 1, unit: m ? m[2].trim() : qtyUnit };
-          })
-          .filter(p => p.name);
-      } else if (order.produit && Number(order.quantite) > 0) {
-        products = [{ name: order.produit, qty: Number(order.quantite), unit: order.unite || "" }];
+
+      if (isComposed) {
+        // Priorité 1 : tableau order.produits (array Notion) si disponible
+        const produitsArray = order.produits || order.products || [];
+        if (Array.isArray(produitsArray) && produitsArray.length > 0) {
+          products = produitsArray.map(p => {
+            if (typeof p === "string") {
+              const cleaned = p.replace(/^[•\-]\s*/, "").trim();
+              const crossIdx = cleaned.indexOf(" × ");
+              const dashIdx  = cleaned.indexOf(" — ");
+              const sepIdx   = crossIdx !== -1 ? crossIdx : dashIdx;
+              if (sepIdx === -1) return { name: cleaned, qty: 1, unit: "" };
+              const name    = cleaned.slice(0, sepIdx).trim();
+              const qtyUnit = cleaned.slice(sepIdx + 3).trim();
+              const m = qtyUnit.match(/^([0-9.,]+)\s*(.*)$/);
+              return { name, qty: m ? parseFloat(m[1].replace(",", ".")) || 1 : 1, unit: m ? m[2].trim() : "" };
+            }
+            return {
+              name: p.produit || p.name || p.ingredient || "",
+              qty:  Number(p.quantite || p.qty || 1),
+              unit: p.unite || p.unit || "",
+            };
+          }).filter(p => p.name);
+        }
+
+        // Priorité 2 : parser le message texte — formats "• Nom × qty unit" ET "- Nom — qty unit"
+        if (products.length === 0 && order.message) {
+          products = order.message
+            .split("\n")
+            .filter(l => /^[•\-]/.test(l.trim()))
+            .map(l => {
+              const cleaned = l.replace(/^[•\-]\s*/, "").trim();
+              const m1 = cleaned.match(/^(.+?)\s*[×x]\s*([0-9.,]+)\s*(.*)$/i);
+              const m2 = cleaned.match(/^(.+?)\s*—\s*([0-9.,]+)\s*(.*)$/);
+              const m  = m1 || m2;
+              if (!m) return { name: cleaned, qty: 1, unit: "" };
+              return { name: m[1].trim(), qty: parseFloat(m[2].replace(",", ".")) || 1, unit: m[3].trim() };
+            })
+            .filter(p => p.name);
+        }
       }
 
-      // Update stock: resolve via stockLive (needs STOCK page ID, not INGREDIENTS page ID)
+      // Fallback : commande simple (un seul produit)
+      if (products.length === 0 && order.produit) {
+        products = [{ name: order.produit, qty: Number(order.quantite) || 1, unit: order.unite || "" }];
+      }
+
+      console.log("[markOrderReceived] Produits parsés:", products);
+
+      // Bug 4 : normalize insensible aux accents et casse
+      const normalize = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+      // Update stock via stockLive (STOCK page ID, pas INGREDIENTS page ID)
       await Promise.allSettled(products.map(async (p) => {
-        const nameLower = p.name.trim().toLowerCase();
-        // Find catalog entry to get INGREDIENTS page ID
-        const catalogItem = productsDb.find(db =>
-          (db.ingredient || db.name || "").trim().toLowerCase() === nameLower
-        );
-        // Find stock entry: prefer relation match, fallback to name match
-        const stockItem = stockLive.find(s =>
+        const nameLower   = normalize(p.name);
+        const catalogItem = productsDb.find(db => normalize(db.ingredient || db.name || "") === nameLower);
+        const stockItem   = stockLive.find(s =>
           (catalogItem?.id && s.ingredientId === catalogItem.id) ||
-          (s.name || "").trim().toLowerCase() === nameLower
+          normalize(s.name) === nameLower ||
+          normalize(s.ingredient) === nameLower
         );
         console.log("[markOrderReceived] Stock update:", { name: p.name, qty: p.qty, unit: p.unit, stockId: stockItem?.id || null });
+
         if (!stockItem?.id) {
-          console.warn("[markOrderReceived] Pas d'entrée stock pour:", p.name);
+          // Bug 3 : upsert au lieu de skip silencieux
+          console.warn("[markOrderReceived] Entrée stock manquante pour:", p.name, "— tentative de création");
+          try {
+            await fetch(STOCK_UPDATE_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name: p.name, poidsTotal: p.qty, mode: "upsert", Unite: p.unit, source: "Réception commande" }),
+            });
+            console.log("[markOrderReceived] Entrée stock créée pour:", p.name);
+          } catch (e) {
+            console.error("[markOrderReceived] Impossible de créer entrée stock pour:", p.name, e);
+          }
           return;
         }
         return fetch(STOCK_UPDATE_URL, {
