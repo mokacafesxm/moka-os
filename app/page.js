@@ -416,7 +416,7 @@ export default function MokaOrderPad() {
   const [inventoryUnit, setInventoryUnit] = useState("kg");
   const [stockReceiveItem, setStockReceiveItem] = useState(null);
   const [stockReceiveWeight, setStockReceiveWeight] = useState("");
-  const [stockReceiveUnit, setStockReceiveUnit] = useState("kg");
+  const [stockReceiveUnit, setStockReceiveUnit] = useState("");
   const [stockReceiveMode, setStockReceiveMode] = useState("add");
   const [savingStockReceive, setSavingStockReceive] = useState(false);
   const [invoiceModal, setInvoiceModal] = useState(false);
@@ -1792,17 +1792,85 @@ export default function MokaOrderPad() {
         }
       }
 
-      // Fallback : commande simple (un seul produit)
-      if (products.length === 0 && order.produit) {
-        products = [{ name: order.produit, qty: Number(order.quantite) || 1, unit: order.unite || "" }];
+      // Fallback : commande simple (OrderPad) — plusieurs noms de champs possibles selon la source
+      if (products.length === 0) {
+        const produitName = order.produit || order.ingredient || order.name || order.Produit || "";
+        const produitQty  = Number(order.quantite || order.qty || order.Quantite || 0);
+        const produitUnite = order.unite || order.Unite || order.unit || order.uniteCommande || "";
+
+        console.log("[markOrderReceived] Commande simple détectée:", {
+          produit: produitName,
+          quantite: produitQty,
+          unite: produitUnite,
+          rawOrder: JSON.stringify({
+            produit: order.produit, quantite: order.quantite, unite: order.unite,
+            ingredient: order.ingredient, name: order.name,
+          }),
+        });
+
+        if (produitName) {
+          products = [{ name: produitName, qty: produitQty || 1, unit: produitUnite }];
+        }
+
+        // Si toujours vide, tenter de parser depuis order.message
+        if (products.length === 0 && order.message) {
+          console.warn("[markOrderReceived] Fallback parsing message:", order.message?.slice(0, 200));
+          products = order.message
+            .split("\n")
+            .filter(l => /^[•\-]/.test(l.trim()))
+            .map(l => {
+              const cleaned = l.replace(/^[•\-]\s*/, "").trim();
+              const m = cleaned.match(/^(.+?)\s*[×x]\s*([0-9.,]+)\s*(.*)$/i)
+                     || cleaned.match(/^(.+?)\s*—\s*([0-9.,]+)\s*(.*)$/);
+              if (!m) return { name: cleaned, qty: 1, unit: "" };
+              return { name: m[1].trim(), qty: parseFloat(m[2].replace(",", ".")) || 1, unit: m[3].trim() };
+            })
+            .filter(p => p.name);
+        }
       }
 
-      console.log("[markOrderReceived] Produits parsés:", products);
+      console.log("[markOrderReceived] Produits finaux à mettre en stock:", products);
 
       // Bug 4 : normalize insensible aux accents et casse
       const normalize = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-      // Update stock via stockLive (STOCK page ID, pas INGREDIENTS page ID)
+      // Commande simple (1 produit) → ouvre le modal pour confirmation/ajustement avant écriture
+      if (products.length === 1) {
+        const p = products[0];
+        const nameLower   = normalize(p.name);
+        const catalogItem = productsDb.find(db => normalize(db.ingredient || db.name || "") === nameLower);
+        const stockItem   = stockLive.find(s =>
+          (catalogItem?.id && s.ingredientId === catalogItem.id) ||
+          normalize(s.name) === nameLower ||
+          normalize(s.ingredient) === nameLower
+        );
+
+        setSupplierOrders(prev => prev.map(o => o.id === order.id ? { ...o, statut: "Reçu" } : o));
+        setOrderDetail(null);
+        setOrdStatusFilter("Reçu");
+
+        if (stockItem?.id) {
+          openStockReceive(stockItem, "add", p.qty || 1);
+          showToast(`Commande ${order.fournisseur} reçue — ajuste le stock`);
+        } else {
+          // Entrée manquante → upsert silencieux puis refresh
+          console.warn("[markOrderReceived] Entrée stock manquante pour:", p.name, "— upsert");
+          try {
+            await fetch(STOCK_UPDATE_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name: p.name, poidsTotal: p.qty || 1, mode: "upsert", Unite: p.unit, source: "Réception commande" }),
+            });
+          } catch (e) {
+            console.error("[markOrderReceived] Impossible de créer entrée stock pour:", p.name, e);
+          }
+          refreshAll(1500);
+          showToast(`Commande ${order.fournisseur} marquée reçue — stock mis à jour`);
+        }
+        return;
+      }
+
+      // Commande composée (plusieurs produits) → mise à jour automatique en batch
       await Promise.allSettled(products.map(async (p) => {
         const nameLower   = normalize(p.name);
         const catalogItem = productsDb.find(db => normalize(db.ingredient || db.name || "") === nameLower);
@@ -1814,7 +1882,6 @@ export default function MokaOrderPad() {
         console.log("[markOrderReceived] Stock update:", { name: p.name, qty: p.qty, unit: p.unit, stockId: stockItem?.id || null });
 
         if (!stockItem?.id) {
-          // Bug 3 : upsert au lieu de skip silencieux
           console.warn("[markOrderReceived] Entrée stock manquante pour:", p.name, "— tentative de création");
           try {
             await fetch(STOCK_UPDATE_URL, {
@@ -2952,10 +3019,10 @@ export default function MokaOrderPad() {
     setInventoryUnit(item?.uniteStock || item?.unit || item?.unite || "kg");
   };
 
-  const openStockReceive = (item, mode = "add") => {
+  const openStockReceive = (item, mode = "add", suggestedQty = null) => {
     setStockReceiveItem(item);
-    setStockReceiveWeight("");
-    setStockReceiveUnit(item?.uniteStock || item?.unit || item?.unite || "kg");
+    setStockReceiveWeight(suggestedQty !== null ? String(suggestedQty) : "");
+    setStockReceiveUnit(item?.uniteStock || item?.unit || item?.unite || "");
     setStockReceiveMode(mode);
     setTimeout(() => {
       document.getElementById("stockReceiveInput")?.focus();
@@ -6161,7 +6228,8 @@ export default function MokaOrderPad() {
                 onChange={(e) => setStockReceiveUnit(e.target.value)}
                 className="w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-4 py-3 text-base font-bold text-[#2c1a10] outline-none"
               >
-                {["kg", "g", "L", "ml", "pièce", "carton", "sachet", "bouteille"].map((u) => (
+                <option value="">Unité existante</option>
+                {productsDbUnitChoices.map((u) => (
                   <option key={u} value={u}>{u}</option>
                 ))}
               </select>
