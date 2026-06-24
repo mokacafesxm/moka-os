@@ -5435,9 +5435,8 @@ export default function MokaOrderPad() {
 
             {/* Modal détail heures staff */}
             {selectedStaffHours && (
-              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-sm" onClick={() => setSelectedStaffHours(null)}>
-                <div onClick={e => e.stopPropagation()} className="backdrop-blur-2xl bg-white/90 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-white/50 w-full sm:max-w-md max-h-[80vh] overflow-y-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}>
-                  <div className="w-10 h-1 bg-[#e5d5c5] rounded-full mx-auto mt-3 mb-1 sm:hidden"/>
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm" onClick={() => setSelectedStaffHours(null)}>
+                <div onClick={e => e.stopPropagation()} className="backdrop-blur-2xl bg-white/90 rounded-3xl shadow-2xl border border-white/50 w-full max-w-md max-h-[85vh] overflow-y-auto">
                   <div className="px-5 py-4 border-b border-[#e5d5c5] flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-[#2c1a10] flex items-center justify-center text-white text-sm font-black">
@@ -5744,8 +5743,8 @@ export default function MokaOrderPad() {
 
       {/* ── SETTINGS DATABASE MODAL ──────────────────── */}
       {settingsPanel && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="backdrop-blur-2xl bg-white/90 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-white/50 w-full sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="backdrop-blur-2xl bg-white/90 rounded-2xl shadow-2xl border border-white/50 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="p-4 border-b border-[#e5d5c5] flex justify-between items-center shrink-0">
               <div>
                 <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Paramètres</div>
@@ -6022,8 +6021,8 @@ export default function MokaOrderPad() {
 
       {/* ── STOCK RECEIVE MODAL ──────────────────────── */}
       {stockReceiveItem && (
-        <div className="fixed inset-0 bg-black/50 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-md p-5">
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#e5d5c5] w-full max-w-md p-5">
             <div className="flex justify-between gap-4 items-start mb-4">
               <div>
                 <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">{stockReceiveMode === "replace" ? "✏️ Corriger le stock" : "📦 Réception"}</div>
@@ -6088,8 +6087,8 @@ export default function MokaOrderPad() {
 
       {/* ── INVENTORY ADJUST MODAL ───────────────────── */}
       {inventoryItem && (
-        <div className="fixed inset-0 bg-black/50 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-md p-5">
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#e5d5c5] w-full max-w-md p-5">
             <div className="flex justify-between gap-4 items-start mb-5">
               <div>
                 <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">📋 Ajuster le stock</div>
@@ -6142,8 +6141,8 @@ export default function MokaOrderPad() {
 
       {/* ── PRODUCT SETTINGS MODAL (quick edit) ──────── */}
       {settingsItem && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="backdrop-blur-2xl bg-white/90 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-white/50 w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto p-5">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="backdrop-blur-2xl bg-white/90 rounded-2xl shadow-2xl border border-white/50 w-full max-w-2xl max-h-[85vh] overflow-y-auto p-5">
             <div className="flex justify-between gap-4 items-start mb-5">
               <div>
                 <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">{settingsItem?.isNew ? "Nouveau produit" : "Réglages produit"}</div>
@@ -6223,8 +6222,8 @@ export default function MokaOrderPad() {
 
       {/* ── CREATE PRODUCT DB MODAL ───────────────────── */}
       {creatingProductDb && (
-        <div className="fixed inset-0 bg-black/50 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-3xl max-h-[90vh] overflow-y-auto p-5">
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#e5d5c5] w-full max-w-3xl max-h-[85vh] overflow-y-auto p-5">
             <div className="flex justify-between items-start gap-4 mb-5">
               <div>
                 <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Nouveau produit</div>
@@ -6314,8 +6313,8 @@ export default function MokaOrderPad() {
 
       {/* ── EDIT PRODUCT DB MODAL ───────────────────── */}
       {editingProductDb && (
-        <div className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-3xl max-h-[90vh] overflow-y-auto p-5">
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#e5d5c5] w-full max-w-3xl max-h-[85vh] overflow-y-auto p-5">
             <div className="flex justify-between items-start gap-4 mb-5">
               <div>
                 <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Modifier le produit</div>
@@ -6852,8 +6851,8 @@ export default function MokaOrderPad() {
 
       {/* ── INVOICE SCANNER MODAL ────────────────────── */}
       {invoiceModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-[#faf5ef] rounded-t-3xl sm:rounded-2xl shadow-2xl border border-[#e5d5c5] w-full sm:max-w-lg max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
+          <div className="bg-[#faf5ef] rounded-2xl shadow-2xl border border-[#e5d5c5] w-full max-w-lg max-h-[85vh] overflow-y-auto">
             {/* Header */}
             <div className="flex justify-between items-start gap-4 p-5 pb-4 border-b border-[#e5d5c5]">
               <div>
@@ -7261,7 +7260,7 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
 function OrdPreviewModal({ buildMessage, selectedSupplier, supplier, setShowPreview, onSent }) {
   const message = buildMessage();
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-3">
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="backdrop-blur-2xl bg-white/90 rounded-[1.4rem] shadow-xl border border-white/50 w-full max-w-lg max-h-[85vh] overflow-y-auto p-5">
         <div className="flex justify-between items-start gap-4 mb-4">
           <div>
