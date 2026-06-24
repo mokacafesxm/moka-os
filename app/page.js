@@ -431,7 +431,8 @@ export default function MokaOrderPad() {
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("Tous");
   const [inventoryView, setInventoryView] = useState("stock");
   const [savingInventory, setSavingInventory] = useState(false);
-  const [stockView, setStockView] = useState("prepa");
+  const [stockView, setStockView] = useState("stock");
+  const [prepsView, setPrepsView] = useState("todo"); // "todo" | "stock"
   const [activeStockCategory, setActiveStockCategory] = useState("");
   const [dueDateMode, setDueDateMode] = useState("1");
   const [customDueDate, setCustomDueDate] = useState("");
@@ -656,6 +657,20 @@ export default function MokaOrderPad() {
     setCart({});
     setSelectedStaff("");
   }, [activeTab, stockView]);
+
+  // Sync stockView based on active tab + prepsView sub-view
+  useEffect(() => {
+    if (activeTab === "stock") {
+      setStockView("stock");
+    } else if (activeTab === "preps") {
+      setStockView(prepsView === "stock" ? "prepa" : "stock");
+    }
+  }, [activeTab, prepsView]);
+
+  // Reset prepsView to "todo" on each tab entry (except when coming from internal link)
+  useEffect(() => {
+    if (activeTab === "preps") setPrepsView("todo");
+  }, [activeTab]);
 
   const selectedDueDate = useMemo(() => {
     if (dueDateMode === "custom") return customDueDate || addDays(0);
@@ -3275,7 +3290,7 @@ export default function MokaOrderPad() {
     setSending(true);
 
     try {
-      if (activeTab === "stock") {
+      if (activeTab === "stock" || (activeTab === "preps" && prepsView === "stock")) {
         const payload = cartItems
           .filter((item) => item.type === "stock-prep")
           .map((item) => ({
@@ -3314,7 +3329,7 @@ export default function MokaOrderPad() {
         return;
       }
 
-      if (activeTab === "preps") {
+      if (activeTab === "preps" && prepsView === "todo") {
         const payload = cartItems
           .filter((item) => item.type === "prep")
           .map((item) => ({
@@ -3660,7 +3675,7 @@ export default function MokaOrderPad() {
                         <input
                           value={stockSearch}
                           onChange={(e) => setStockSearch(e.target.value)}
-                          placeholder={stockView === "prepa" ? "Rechercher une prépa..." : "Rechercher un produit stock..."}
+                          placeholder="Rechercher un produit stock..."
                           className="w-full bg-transparent outline-none text-[#2c1a10] placeholder:text-[#b09080] text-sm font-medium"
                         />
                         {stockSearch && (
@@ -3668,36 +3683,6 @@ export default function MokaOrderPad() {
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
                           </button>
                         )}
-                      </div>
-
-                      {/* View toggle */}
-                      <div className="flex w-full gap-2">
-                        <button
-                          onClick={() => setStockView("prepa")}
-                          className={`relative flex-1 py-3 rounded-2xl text-sm font-black cursor-pointer transition-all ${
-                            stockView === "prepa" ? "bg-[#2c1a10] text-white shadow-md" : "bg-white border border-[#e5d5c5] text-[#2c1a10] hover:bg-[#faf5ef]"
-                          }`}
-                        >
-                          Prépas
-                          {prepCount > 0 && (
-                            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
-                              {prepCount}
-                            </span>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => { setStockView("stock"); if (stockCategories[0]) setActiveStockCategory(stockCategories[0]); }}
-                          className={`relative flex-1 py-3 rounded-2xl text-sm font-black cursor-pointer transition-all ${
-                            stockView === "stock" ? "bg-[#2c1a10] text-white shadow-md" : "bg-white border border-[#e5d5c5] text-[#2c1a10] hover:bg-[#faf5ef]"
-                          }`}
-                        >
-                          Stock
-                          {stockKpis.critical > 0 && (
-                            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse">
-                              {stockKpis.critical}
-                            </span>
-                          )}
-                        </button>
                       </div>
 
                       {/* Zone / Catégorie toggle */}
@@ -3852,7 +3837,7 @@ export default function MokaOrderPad() {
                           <div key={category}>
                             <div className="flex items-center gap-3 mb-3">
                               <span className="text-sm font-black text-[#2c1a10]">
-                                {stockView === "prepa" ? "👨‍🍳 Prépas" : `${categoryEmojis[category] || "📌"} ${category}`}
+                                {`${categoryEmojis[category] || "📌"} ${category}`}
                               </span>
                               <div className="flex-1 h-px bg-[#e0d0c0]" />
                               <span className="text-[11px] font-semibold text-[#9a7060]">{items.length}</span>
@@ -4169,6 +4154,35 @@ export default function MokaOrderPad() {
             {/* ── PREPS TAB ──── */}
             {activeTab === "preps" && (
               <div className="space-y-4">
+                {/* Pills À faire / Stock prépas */}
+                {(() => {
+                  const prepStockCritCount = stockPreps.filter(i => String(getStockStatus(i)).toLowerCase().includes("critique")).length;
+                  return (
+                    <div className="flex w-full gap-2">
+                      <button
+                        onClick={() => setPrepsView("todo")}
+                        className={`relative flex-1 py-3 rounded-2xl text-sm font-black cursor-pointer transition-all ${prepsView === "todo" ? "bg-[#2c1a10] text-white shadow-md" : "bg-white border border-[#e5d5c5] text-[#2c1a10] hover:bg-[#faf5ef]"}`}
+                      >
+                        📋 À faire
+                        {prepCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse">{prepCount}</span>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setPrepsView("stock")}
+                        className={`relative flex-1 py-3 rounded-2xl text-sm font-black cursor-pointer transition-all ${prepsView === "stock" ? "bg-[#2c1a10] text-white shadow-md" : "bg-white border border-[#e5d5c5] text-[#2c1a10] hover:bg-[#faf5ef]"}`}
+                      >
+                        🧪 Stock prépas
+                        {prepStockCritCount > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center animate-pulse">{prepStockCritCount}</span>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })()}
+
+                {/* Vue À faire */}
+                {prepsView === "todo" && <>
                 {/* Filtres catégorie */}
                 <div className="flex w-full gap-2">
                   {prepsCategories.map(cat => {
@@ -4251,18 +4265,97 @@ export default function MokaOrderPad() {
                     )}
                   </>
                 )}
+                </>}
+
+                {/* Vue Stock prépas */}
+                {prepsView === "stock" && (
+                  <div className="space-y-4">
+                    {/* Search */}
+                    <div className="bg-white rounded-2xl p-3 border border-[#e5d5c5] shadow-sm">
+                      <div className="flex items-center gap-2 backdrop-blur-sm bg-white/60 border border-white/50 rounded-xl px-3 py-2">
+                        <svg className="w-4 h-4 text-[#9a7060] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <input
+                          value={stockSearch}
+                          onChange={(e) => setStockSearch(e.target.value)}
+                          placeholder="Rechercher une prépa..."
+                          className="w-full bg-transparent outline-none text-[#2c1a10] placeholder:text-[#b09080] text-sm font-medium"
+                        />
+                        {stockSearch && (
+                          <button onClick={() => setStockSearch("")} className="text-[#9a7060] hover:text-[#2c1a10] transition-colors cursor-pointer">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Cards */}
+                    {stockVisibleItems.length === 0 ? (
+                      <div className="bg-white rounded-2xl p-12 text-center text-[#9a7060] border border-[#e5d5c5] shadow-sm">
+                        <div className="font-semibold text-sm">Aucun stock de prépa trouvé.</div>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {groupedStockItems.map(([category, items]) => (
+                          <div key={category}>
+                            <div className="flex items-center gap-3 mb-3">
+                              <span className="text-sm font-black text-[#2c1a10]">👨‍🍳 {category}</span>
+                              <div className="flex-1 h-px bg-[#e0d0c0]" />
+                              <span className="text-[11px] font-semibold text-[#9a7060]">{items.length}</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+                              {items.map((item) => {
+                                const stockId = item.id || getStockName(item);
+                                const selected = !!cart[stockId];
+                                const status = getStockStatus(item);
+                                const isCritical = String(status).toLowerCase().includes("critique");
+                                const isLow = String(status).toLowerCase().includes("stock bas");
+                                return (
+                                  <div key={stockId}
+                                    onClick={() => { selected ? removeItem(stockId) : addStockPrep(item); }}
+                                    className={`rounded-2xl border transition-all duration-200 overflow-hidden cursor-pointer active:scale-[0.98] ${selected ? "bg-[#4a6620] text-white border-[#4a6620] shadow-xl ring-2 ring-[#5a7828]/40" : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:shadow-lg hover:border-[#c8b8a8]"}`}
+                                  >
+                                    <div className={`h-1.5 ${isCritical ? "bg-gradient-to-r from-red-600 to-red-400" : isLow ? "bg-gradient-to-r from-orange-500 to-amber-400" : selected ? "bg-white/30" : "bg-gradient-to-r from-[#5a7828] to-[#7aa830]"}`} />
+                                    <div className="p-4">
+                                      <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold mb-2.5 ${isCritical ? selected ? "bg-white/20 text-white" : "bg-red-50 text-red-700 border border-red-200" : isLow ? selected ? "bg-white/20 text-white" : "bg-orange-50 text-orange-700 border border-orange-200" : selected ? "bg-white/20 text-white" : "bg-[#f0f7e5] text-[#4a6620] border border-[#c8dfa0]"}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isCritical ? "bg-red-500" : isLow ? "bg-orange-500" : selected ? "bg-white" : "bg-[#5a7828]"}`}></span>
+                                        {status}
+                                      </div>
+                                      <h3 className="text-sm font-black leading-tight mb-3">{getStockName(item)}</h3>
+                                      <div className={`rounded-xl p-3 mb-3 ${selected ? "bg-white/10 border border-white/20" : "bg-[#faf5ef] border border-[#ede0d0]"}`}>
+                                        <div className={`text-[10px] font-semibold mb-1 uppercase tracking-wide ${selected ? "text-white/60" : "text-[#9a7060]"}`}>Portions restantes</div>
+                                        <div className="text-xl font-black">{getStockPortions(item)}</div>
+                                      </div>
+                                      <div className={`flex items-center justify-between text-xs font-semibold ${selected ? "text-white/70" : "text-[#9a7060]"}`}>
+                                        <span className="flex items-center gap-1">
+                                          {selected ? (<><svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Sélectionné</>) : "Toucher pour préparer"}
+                                        </span>
+                                        <span className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-sm ${selected ? "bg-white/20" : "bg-[#f0f7e5] border border-[#c8dfa0]"}`}>
+                                          {selected ? (<svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>) : (<svg className="w-4 h-4 text-[#5a7828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </section>
 
           {/* ── CART / ASIDE ─────────────────────────── */}
-          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 ${isIphone || (activeTab === "stock" && stockView === "stock") || (isAdmin && adminSection !== "dashboard" && ["products", "inventory", "settings", "orders", "reports"].includes(adminSection)) ? "hidden" : ""}`}>
+          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 ${isIphone || activeTab === "stock" || (isAdmin && adminSection !== "dashboard" && ["products", "inventory", "settings", "orders", "reports"].includes(adminSection)) ? "hidden" : ""}`}>
             <div className="bg-white rounded-2xl border border-[#ddc9b5] shadow-md sm:sticky sm:top-[72px] overflow-hidden">
               {/* Cart header */}
               <div className="px-4 py-3.5 border-b border-[#f0e8dc] bg-[#faf5ef]">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-[#2c1a10] flex items-center justify-center shrink-0">
-                    {activeTab === "stock" ? (
+                    {activeTab === "preps" && prepsView === "stock" ? (
                       <svg className="w-4 h-4 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" x2="18" y1="17" y2="17"/></svg>
                     ) : activeTab === "preps" ? (
                       <svg className="w-4 h-4 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -4272,10 +4365,10 @@ export default function MokaOrderPad() {
                   </div>
                   <div>
                     <h2 className="text-sm font-black text-[#2c1a10] leading-tight">
-                      {activeTab === "stock" ? "Envoyer en prépa" : activeTab === "preps" ? "Confirmer la prépa" : "Action du jour"}
+                      {activeTab === "preps" && prepsView === "stock" ? "Envoyer en prépa" : activeTab === "preps" ? "Confirmer la prépa" : "Action du jour"}
                     </h2>
                     <p className="text-[10px] text-[#9a7060] mt-0.5">
-                      {activeTab === "stock" ? "Sélectionne un produit puis un staff" : activeTab === "preps" ? "Valider une préparation terminée" : "Sélection staff depuis le pad"}
+                      {activeTab === "preps" && prepsView === "stock" ? "Sélectionne un produit puis un staff" : activeTab === "preps" ? "Valider une préparation terminée" : "Sélection staff depuis le pad"}
                     </p>
                   </div>
                 </div>
@@ -4302,8 +4395,8 @@ export default function MokaOrderPad() {
                   </select>
                 </div>
 
-                {/* Due date (stock mode) */}
-                {activeTab === "stock" && (
+                {/* Due date (stock mode ou prepsView stock) */}
+                {(activeTab === "stock" || (activeTab === "preps" && prepsView === "stock")) && (
                   <div>
                     <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5 flex items-center gap-1">
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
@@ -4414,7 +4507,7 @@ export default function MokaOrderPad() {
       </div>
 
       {/* ── NOUVELLE PRÉPA FAB ──────────────────────── */}
-      {activeTab === "preps" && (
+      {activeTab === "preps" && prepsView === "todo" && (
         <button
           onClick={async () => {
             const prepCount = productsDb.filter(p =>
