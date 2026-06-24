@@ -516,6 +516,11 @@ export default function MokaOrderPad() {
   const [pinSaveMsg, setPinSaveMsg] = useState("");
   const [navVisible, setNavVisible] = useState(true);
   const [navCompact, setNavCompact] = useState(false);
+
+  const [receiveModal, setReceiveModal] = useState(null);
+  // { order, products: [...], currentStep: 0, confirmed: [], totalSteps: N }
+  const [receiveQty, setReceiveQty] = useState("");
+  const [receiveUnit, setReceiveUnit] = useState("");
   const [hasFixedBottomAction, setHasFixedBottomAction] = useState(false);
   const lastScrollY = useRef(0);
   const adminSectionRef = useRef(adminSection);
@@ -1726,192 +1731,205 @@ export default function MokaOrderPad() {
     }
   };
 
+  const parseOrderProducts = (order) => {
+    let products = [];
+    const isComposed =
+      order.source === "Commandes" ||
+      order.source === "MÖKA OS Orders" ||
+      order.source === "MokaOS" ||
+      (Array.isArray(order.produits) && order.produits.length > 1) ||
+      String(order.produit || "").startsWith("Order composée");
+
+    if (isComposed) {
+      const produitsArray = order.produits || order.products || [];
+      if (Array.isArray(produitsArray) && produitsArray.length > 0) {
+        products = produitsArray.map(p => {
+          if (typeof p === "string") {
+            const cleaned = p.replace(/^[•\-]\s*/, "").trim();
+            const crossIdx = cleaned.indexOf(" × ");
+            const dashIdx  = cleaned.indexOf(" — ");
+            const sepIdx   = crossIdx !== -1 ? crossIdx : dashIdx;
+            if (sepIdx === -1) return { name: cleaned, qty: 1, unit: "" };
+            const name    = cleaned.slice(0, sepIdx).trim();
+            const qtyUnit = cleaned.slice(sepIdx + 3).trim();
+            const m = qtyUnit.match(/^([0-9.,]+)\s*(.*)$/);
+            return { name, qty: m ? parseFloat(m[1].replace(",", ".")) || 1 : 1, unit: m ? m[2].trim() : "" };
+          }
+          return {
+            name: p.produit || p.name || p.ingredient || "",
+            qty:  Number(p.quantite || p.qty || 1),
+            unit: p.unite || p.unit || "",
+          };
+        }).filter(p => p.name);
+      }
+      if (products.length === 0 && order.message) {
+        products = order.message
+          .split("\n")
+          .filter(l => /^[•\-]/.test(l.trim()))
+          .map(l => {
+            const cleaned = l.replace(/^[•\-]\s*/, "").trim();
+            const m = cleaned.match(/^(.+?)\s*[×x]\s*([0-9.,]+)\s*(.*)$/i)
+                   || cleaned.match(/^(.+?)\s*—\s*([0-9.,]+)\s*(.*)$/);
+            if (!m) return { name: cleaned, qty: 1, unit: "" };
+            return { name: m[1].trim(), qty: parseFloat(m[2].replace(",", ".")) || 1, unit: m[3].trim() };
+          })
+          .filter(p => p.name);
+      }
+    }
+
+    if (products.length === 0) {
+      const produitName  = order.produit || order.ingredient || order.name || order.Produit || "";
+      const produitQty   = Number(order.quantite || order.qty || order.Quantite || 0);
+      const produitUnite = order.unite || order.Unite || order.unit || order.uniteCommande || "";
+      console.log("[parseOrderProducts] Commande simple:", { produit: produitName, quantite: produitQty, unite: produitUnite });
+      if (produitName) {
+        products = [{ name: produitName, qty: produitQty || 1, unit: produitUnite }];
+      }
+      if (products.length === 0 && order.message) {
+        console.warn("[parseOrderProducts] Fallback parsing message:", order.message?.slice(0, 200));
+        products = order.message
+          .split("\n")
+          .filter(l => /^[•\-]/.test(l.trim()))
+          .map(l => {
+            const cleaned = l.replace(/^[•\-]\s*/, "").trim();
+            const m = cleaned.match(/^(.+?)\s*[×x]\s*([0-9.,]+)\s*(.*)$/i)
+                   || cleaned.match(/^(.+?)\s*—\s*([0-9.,]+)\s*(.*)$/);
+            if (!m) return { name: cleaned, qty: 1, unit: "" };
+            return { name: m[1].trim(), qty: parseFloat(m[2].replace(",", ".")) || 1, unit: m[3].trim() };
+          })
+          .filter(p => p.name);
+      }
+    }
+
+    console.log("[parseOrderProducts] Produits:", products);
+    return products;
+  };
+
   const markOrderReceived = async (order) => {
-    if (!confirm(`Marquer la commande ${order.fournisseur} comme reçue et ajouter au stock ?`)) return;
-    try {
-      const updateRes = await fetch("/api/supplier-orders", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: order.id, statut: "Reçu" }),
-      });
-      if (!updateRes.ok) throw new Error("Erreur mise à jour statut commande");
+    const products = parseOrderProducts(order);
 
-      console.log("[markOrderReceived] order:", JSON.stringify({
-        id: order.id, fournisseur: order.fournisseur, source: order.source,
-        produit: order.produit, produits: order.produits, message: order.message?.slice(0, 200),
-      }));
+    if (products.length === 0) {
+      showToast("Aucun produit trouvé dans cette commande", "error");
+      return;
+    }
 
-      // Bug 1 : isComposed étendu — source varie selon le chemin d'envoi
-      const isComposed =
-        order.source === "Commandes" ||
-        order.source === "MÖKA OS Orders" ||
-        order.source === "MokaOS" ||
-        (Array.isArray(order.produits) && order.produits.length > 1) ||
-        String(order.produit || "").startsWith("Order composée");
+    setOrderDetail(null);
 
-      let products = [];
-
-      if (isComposed) {
-        // Priorité 1 : tableau order.produits (array Notion) si disponible
-        const produitsArray = order.produits || order.products || [];
-        if (Array.isArray(produitsArray) && produitsArray.length > 0) {
-          products = produitsArray.map(p => {
-            if (typeof p === "string") {
-              const cleaned = p.replace(/^[•\-]\s*/, "").trim();
-              const crossIdx = cleaned.indexOf(" × ");
-              const dashIdx  = cleaned.indexOf(" — ");
-              const sepIdx   = crossIdx !== -1 ? crossIdx : dashIdx;
-              if (sepIdx === -1) return { name: cleaned, qty: 1, unit: "" };
-              const name    = cleaned.slice(0, sepIdx).trim();
-              const qtyUnit = cleaned.slice(sepIdx + 3).trim();
-              const m = qtyUnit.match(/^([0-9.,]+)\s*(.*)$/);
-              return { name, qty: m ? parseFloat(m[1].replace(",", ".")) || 1 : 1, unit: m ? m[2].trim() : "" };
-            }
-            return {
-              name: p.produit || p.name || p.ingredient || "",
-              qty:  Number(p.quantite || p.qty || 1),
-              unit: p.unite || p.unit || "",
-            };
-          }).filter(p => p.name);
-        }
-
-        // Priorité 2 : parser le message texte — formats "• Nom × qty unit" ET "- Nom — qty unit"
-        if (products.length === 0 && order.message) {
-          products = order.message
-            .split("\n")
-            .filter(l => /^[•\-]/.test(l.trim()))
-            .map(l => {
-              const cleaned = l.replace(/^[•\-]\s*/, "").trim();
-              const m1 = cleaned.match(/^(.+?)\s*[×x]\s*([0-9.,]+)\s*(.*)$/i);
-              const m2 = cleaned.match(/^(.+?)\s*—\s*([0-9.,]+)\s*(.*)$/);
-              const m  = m1 || m2;
-              if (!m) return { name: cleaned, qty: 1, unit: "" };
-              return { name: m[1].trim(), qty: parseFloat(m[2].replace(",", ".")) || 1, unit: m[3].trim() };
-            })
-            .filter(p => p.name);
-        }
-      }
-
-      // Fallback : commande simple (OrderPad) — plusieurs noms de champs possibles selon la source
-      if (products.length === 0) {
-        const produitName = order.produit || order.ingredient || order.name || order.Produit || "";
-        const produitQty  = Number(order.quantite || order.qty || order.Quantite || 0);
-        const produitUnite = order.unite || order.Unite || order.unit || order.uniteCommande || "";
-
-        console.log("[markOrderReceived] Commande simple détectée:", {
-          produit: produitName,
-          quantite: produitQty,
-          unite: produitUnite,
-          rawOrder: JSON.stringify({
-            produit: order.produit, quantite: order.quantite, unite: order.unite,
-            ingredient: order.ingredient, name: order.name,
-          }),
+    if (products.length === 1) {
+      // Commande simple → marquer Reçu immédiatement + ouvrir modal stock
+      try {
+        await fetch("/api/supplier-orders", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: order.id, statut: "Reçu" }),
         });
-
-        if (produitName) {
-          products = [{ name: produitName, qty: produitQty || 1, unit: produitUnite }];
-        }
-
-        // Si toujours vide, tenter de parser depuis order.message
-        if (products.length === 0 && order.message) {
-          console.warn("[markOrderReceived] Fallback parsing message:", order.message?.slice(0, 200));
-          products = order.message
-            .split("\n")
-            .filter(l => /^[•\-]/.test(l.trim()))
-            .map(l => {
-              const cleaned = l.replace(/^[•\-]\s*/, "").trim();
-              const m = cleaned.match(/^(.+?)\s*[×x]\s*([0-9.,]+)\s*(.*)$/i)
-                     || cleaned.match(/^(.+?)\s*—\s*([0-9.,]+)\s*(.*)$/);
-              if (!m) return { name: cleaned, qty: 1, unit: "" };
-              return { name: m[1].trim(), qty: parseFloat(m[2].replace(",", ".")) || 1, unit: m[3].trim() };
-            })
-            .filter(p => p.name);
-        }
+      } catch (e) {
+        console.error("[markOrderReceived] Erreur PATCH:", e);
       }
-
-      console.log("[markOrderReceived] Produits finaux à mettre en stock:", products);
-
-      // Bug 4 : normalize insensible aux accents et casse
-      const normalize = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-
-      // Commande simple (1 produit) → ouvre le modal pour confirmation/ajustement avant écriture
-      if (products.length === 1) {
-        const p = products[0];
-        const nameLower   = normalize(p.name);
-        const catalogItem = productsDb.find(db => normalize(db.ingredient || db.name || "") === nameLower);
-        const stockItem   = stockLive.find(s =>
-          (catalogItem?.id && s.ingredientId === catalogItem.id) ||
-          normalize(s.name) === nameLower ||
-          normalize(s.ingredient) === nameLower
-        );
-
-        setSupplierOrders(prev => prev.map(o => o.id === order.id ? { ...o, statut: "Reçu" } : o));
-        setOrderDetail(null);
-        setOrdStatusFilter("Reçu");
-
-        if (stockItem?.id) {
-          openStockReceive(stockItem, "add", p.qty || 1);
-          showToast(`Commande ${order.fournisseur} reçue — ajuste le stock`);
-        } else {
-          // Entrée manquante → upsert silencieux puis refresh
-          console.warn("[markOrderReceived] Entrée stock manquante pour:", p.name, "— upsert");
-          try {
-            await fetch(STOCK_UPDATE_URL, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ name: p.name, poidsTotal: p.qty || 1, mode: "upsert", Unite: p.unit, source: "Réception commande" }),
-            });
-          } catch (e) {
-            console.error("[markOrderReceived] Impossible de créer entrée stock pour:", p.name, e);
-          }
-          refreshAll(1500);
-          showToast(`Commande ${order.fournisseur} marquée reçue — stock mis à jour`);
+      const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+      const p = products[0];
+      const nameLower   = norm(p.name);
+      const catalogItem = productsDb.find(db => norm(db.ingredient || db.name || "") === nameLower);
+      const stockItem   = stockLive.find(s =>
+        (catalogItem?.id && s.ingredientId === catalogItem.id) ||
+        norm(s.name) === nameLower ||
+        norm(s.ingredient) === nameLower
+      );
+      setSupplierOrders(prev => prev.map(o => o.id === order.id ? { ...o, statut: "Reçu" } : o));
+      setOrdStatusFilter("Reçu");
+      if (stockItem?.id) {
+        openStockReceive(stockItem, "add", p.qty || 1);
+        showToast(`Commande ${order.fournisseur} reçue — ajuste le stock`);
+      } else {
+        try {
+          await fetch(STOCK_UPDATE_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: p.name, poidsTotal: p.qty || 1, mode: "upsert", Unite: p.unit, source: "Réception commande" }),
+          });
+        } catch (e) {
+          console.error("[markOrderReceived] upsert:", e);
         }
-        return;
+        refreshAll(1500);
+        showToast(`Commande ${order.fournisseur} marquée reçue — stock mis à jour`);
       }
+      return;
+    }
 
-      // Commande composée (plusieurs produits) → mise à jour automatique en batch
-      await Promise.allSettled(products.map(async (p) => {
-        const nameLower   = normalize(p.name);
-        const catalogItem = productsDb.find(db => normalize(db.ingredient || db.name || "") === nameLower);
-        const stockItem   = stockLive.find(s =>
-          (catalogItem?.id && s.ingredientId === catalogItem.id) ||
-          normalize(s.name) === nameLower ||
-          normalize(s.ingredient) === nameLower
-        );
-        console.log("[markOrderReceived] Stock update:", { name: p.name, qty: p.qty, unit: p.unit, stockId: stockItem?.id || null });
+    // Commande multi-produits → modal step by step (Notion PATCH à la fin)
+    setReceiveModal({ order, products, currentStep: 0, confirmed: [], totalSteps: products.length });
+    setReceiveQty(String(products[0].qty || ""));
+    setReceiveUnit(products[0].unit || "");
+  };
 
-        if (!stockItem?.id) {
-          console.warn("[markOrderReceived] Entrée stock manquante pour:", p.name, "— tentative de création");
-          try {
-            await fetch(STOCK_UPDATE_URL, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ name: p.name, poidsTotal: p.qty, mode: "upsert", Unite: p.unit, source: "Réception commande" }),
-            });
-            console.log("[markOrderReceived] Entrée stock créée pour:", p.name);
-          } catch (e) {
-            console.error("[markOrderReceived] Impossible de créer entrée stock pour:", p.name, e);
-          }
-          return;
-        }
-        return fetch(STOCK_UPDATE_URL, {
+  const confirmReceiveStep = async () => {
+    if (!receiveModal) return;
+    const { order, products, currentStep, confirmed, totalSteps } = receiveModal;
+    const product = products[currentStep];
+    const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+
+    const catalogItem = productsDb.find(db => norm(db.ingredient || db.name || "") === norm(product.name));
+    const stockItem   = stockLive.find(s =>
+      (catalogItem?.id && s.ingredientId === catalogItem.id) ||
+      norm(s.name) === norm(product.name) ||
+      norm(s.ingredient) === norm(product.name)
+    );
+
+    try {
+      if (stockItem?.id) {
+        await fetch(STOCK_UPDATE_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: stockItem.id, poidsTotal: p.qty, mode: "add", Unite: p.unit || stockItem.uniteStock || "" }),
+          body: JSON.stringify({
+            id: stockItem.id,
+            poidsTotal: Number(receiveQty) || product.qty || 1,
+            mode: "add",
+            Unite: receiveUnit || product.unit || stockItem.uniteStock || "",
+          }),
         });
-      }));
+      } else {
+        await fetch(STOCK_UPDATE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: product.name,
+            poidsTotal: Number(receiveQty) || product.qty || 1,
+            mode: "upsert",
+            Unite: receiveUnit || product.unit || "",
+            source: "Réception commande",
+          }),
+        });
+      }
+    } catch (e) {
+      console.error("[confirmReceiveStep] Erreur stock:", e);
+    }
 
-      setSupplierOrders(prev => prev.map(o => o.id === order.id ? { ...o, statut: "Reçu" } : o));
-      setOrderDetail(null);
-      setOrdStatusFilter("Reçu");
+    const newConfirmed = [...confirmed, {
+      ...product,
+      receivedQty: Number(receiveQty) || product.qty || 1,
+      receivedUnit: receiveUnit || product.unit || "",
+    }];
 
-      refreshAll(1500);
-
-      showToast(`Commande ${order.fournisseur} marquée reçue — stock mis à jour`);
-    } catch (err) {
-      console.error("[markOrderReceived]", err);
-      showToast("Erreur lors de la réception : " + err.message, "error");
+    if (currentStep < totalSteps - 1) {
+      const nextProduct = products[currentStep + 1];
+      setReceiveModal(prev => ({ ...prev, currentStep: currentStep + 1, confirmed: newConfirmed }));
+      setReceiveQty(String(nextProduct.qty || ""));
+      setReceiveUnit(nextProduct.unit || "");
+    } else {
+      setReceiveModal(null);
+      try {
+        await fetch("/api/supplier-orders", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: order.id, statut: "Reçu" }),
+        });
+        setSupplierOrders(prev => prev.map(o => o.id === order.id ? { ...o, statut: "Reçu" } : o));
+        setOrdStatusFilter("Reçu");
+        showToast(`Commande ${order.fournisseur} reçue — ${newConfirmed.length} produits mis en stock ✅`);
+        refreshAll(2000);
+      } catch (e) {
+        showToast("Erreur mise à jour commande", "error");
+      }
     }
   };
 
@@ -7179,6 +7197,103 @@ export default function MokaOrderPad() {
           </div>
         </div>
       )}
+
+      {/* ── RECEIVE MULTI-STEP MODAL ─────────────────── */}
+      {receiveModal && (() => {
+        const { products, currentStep, totalSteps, order, confirmed } = receiveModal;
+        const product = products[currentStep];
+        return (
+          <div className="fixed inset-0 z-[95] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden" style={{ maxHeight: "85vh" }}>
+
+              {/* Header */}
+              <div className="shrink-0 px-5 pt-5 pb-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">
+                    Réception · {currentStep + 1} / {totalSteps}
+                  </div>
+                  <button onClick={() => setReceiveModal(null)} className="w-8 h-8 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer text-lg font-black">×</button>
+                </div>
+                <div className="text-lg font-black text-[#2c1a10]">{product.name}</div>
+                <div className="text-xs text-[#9a7060] mt-0.5">{order.fournisseur} · commandé : {product.qty} {product.unit}</div>
+
+                {/* Progress bar */}
+                <div className="flex gap-1.5 mt-3">
+                  {products.map((_, i) => (
+                    <div key={i} className={`h-1.5 rounded-full transition-all duration-300 flex-1 ${
+                      i < currentStep ? "bg-[#5a7828]" :
+                      i === currentStep ? "bg-[#2c1a10]" : "bg-[#e5d5c5]"
+                    }`} />
+                  ))}
+                </div>
+              </div>
+
+              {/* Contenu */}
+              <div className="flex-1 overflow-y-auto px-5 py-3 min-h-0 space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black text-[#9a7060] uppercase tracking-wide mb-1.5">Quantité réellement reçue</label>
+                  <input
+                    type="number"
+                    value={receiveQty}
+                    onChange={e => setReceiveQty(e.target.value)}
+                    placeholder={String(product.qty || "")}
+                    className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-lg font-black text-[#2c1a10] outline-none focus:border-[#2c1a10]"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-[#9a7060] uppercase tracking-wide mb-1.5">Unité</label>
+                  <select
+                    value={receiveUnit}
+                    onChange={e => setReceiveUnit(e.target.value)}
+                    className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm text-[#2c1a10] outline-none"
+                  >
+                    {product.unit && <option value={product.unit}>{product.unit}</option>}
+                    {!product.unit && <option value="">Unité d'origine</option>}
+                    {productsDbUnitChoices.filter(u => u !== product.unit).map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </div>
+                {confirmed.length > 0 && (
+                  <div className="bg-[#f0f7e5] rounded-2xl p-3">
+                    <div className="text-[10px] font-black text-[#5a7828] mb-2 uppercase">Déjà reçus</div>
+                    {confirmed.map((c, i) => (
+                      <div key={i} className="text-xs text-[#2c1a10] py-1 flex justify-between">
+                        <span className="font-bold">{c.name}</span>
+                        <span className="text-[#5a7828] font-black">✓ {c.receivedQty} {c.receivedUnit}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="shrink-0 px-5 pt-3 pb-5 border-t border-[#e5d5c5] space-y-2" style={{ paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}>
+                <button
+                  onClick={confirmReceiveStep}
+                  className="w-full py-4 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer active:scale-[0.98] transition-all shadow-md"
+                >
+                  {currentStep < totalSteps - 1
+                    ? `✅ Confirmer · Suivant → ${products[currentStep + 1]?.name}`
+                    : "✅ Confirmer et terminer la réception"}
+                </button>
+                {currentStep > 0 && (
+                  <button
+                    onClick={() => {
+                      const prev = products[currentStep - 1];
+                      setReceiveModal(m => ({ ...m, currentStep: currentStep - 1, confirmed: m.confirmed.slice(0, -1) }));
+                      setReceiveQty(String(prev.qty || ""));
+                      setReceiveUnit(prev.unit || "");
+                    }}
+                    className="w-full py-2 text-xs font-bold text-[#9a7060] cursor-pointer hover:text-[#2c1a10] transition-colors"
+                  >
+                    ← Retour à {products[currentStep - 1]?.name}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── TOASTS ─────────────────────────────────────── */}
       <div className="fixed right-4 z-[90] flex flex-col gap-2 pointer-events-none"
