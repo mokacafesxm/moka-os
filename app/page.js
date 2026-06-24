@@ -14,9 +14,6 @@ const STOCK_URL = "/api/stock";
 
 const STOCK_UPDATE_URL = "/api/stock/update";
 
-const PRODUCT_UPDATE_URL = "/api/products/update";
-
-const PRODUCT_CREATE_URL = "/api/products/create";
 
 const COMPLETE_PREP_URL = "/api/preps/complete";
 
@@ -26,23 +23,6 @@ const CLOCK_URL = "/api/clock";
 
 const SETTINGS_URL = "/api/settings";
 
-const categoryEmojis = {
-  Bar: "☕",
-  Boissons: "🥤",
-  Protéines: "🍗",
-  "Produits laitiers": "🥛",
-  "Fruits & légumes": "🥑",
-  Boulangerie: "🥖",
-  "Sec/Episserie": "📦",
-  "Sec & épicerie": "📦",
-  "Dry Goods": "📦",
-  Prépas: "👨‍🍳",
-  "Prépas cuisine": "👨‍🍳",
-  Packaging: "🛍️",
-  Nettoyage: "🧽",
-  Desserts: "🍰",
-  Autres: "✨",
-};
 
 const getSmartCategoryEmoji = (name) => {
   const n = name.toLowerCase();
@@ -461,8 +441,6 @@ export default function MokaOrderPad() {
   const [importingRef, setImportingRef] = useState(false);
   const [supplierOrders, setSupplierOrders] = useState([]);
   const [loadingSupplierOrders, setLoadingSupplierOrders] = useState(false);
-  const [supplierOrdersFilter, setSupplierOrdersFilter] = useState("À commander");
-  const [selectedSupplierOrder, setSelectedSupplierOrder] = useState("");
 
   const [reportsData, setReportsData] = useState(null);
   const [reportsLoading, setReportsLoading] = useState(false);
@@ -516,6 +494,7 @@ export default function MokaOrderPad() {
   const [pinSaveMsg, setPinSaveMsg] = useState("");
   const [navVisible, setNavVisible] = useState(true);
   const [navCompact, setNavCompact] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
 
   const [receiveModal, setReceiveModal] = useState(null);
   // { order, products: [...], currentStep: 0, confirmed: [], totalSteps: N }
@@ -569,7 +548,6 @@ export default function MokaOrderPad() {
   );
 
   const [orderView, setOrderView] = useState("history");
-  const [orderCart, setOrderCart] = useState({});
   const [ordSelectedSupplier, setOrdSelectedSupplier] = useState("");
   const [orderDetail, setOrderDetail] = useState(null);
   const [showMultiPanelModal, setShowMultiPanelModal] = useState(false);
@@ -1193,13 +1171,6 @@ export default function MokaOrderPad() {
     return Object.values(map);
   }, [composeCart, settingsCache]);
   const composeCartTotal = Object.values(composeCart).filter((i) => i.included).length;
-  const ordCartItems = Object.values(orderCart);
-  const addToOrderCart = (item) => {
-    setOrderCart((prev) => ({ ...prev, [item.id]: { ...item, qty: item.suggested || 1 } }));
-    setOrdSelectedSupplier(item.fournisseur || ordSelectedSupplier);
-  };
-  const updateOrderCartQty = (id, qty) => setOrderCart((prev) => ({ ...prev, [id]: { ...prev[id], qty } }));
-  const removeFromOrderCart = (id) => setOrderCart((prev) => { const n = { ...prev }; delete n[id]; return n; });
   const buildOrderMessage = () => {
     const date = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     const lines = ordIncludedItems.map((p) => `- ${p.name} — ${composeCart[p.id]?.qty || p.suggested} ${p.unit}`).join("\n");
@@ -1528,7 +1499,13 @@ export default function MokaOrderPad() {
 
   const deleteSupplierOrStaff = async (item) => {
     if (!settingsPanel || !item?.id) return;
-    if (!confirm("Supprimer définitivement cet élément ?")) return;
+    if (pendingDelete !== item.id) {
+      setPendingDelete(item.id);
+      showToast("Cliquez à nouveau pour confirmer la suppression", "warning");
+      setTimeout(() => setPendingDelete(null), 3000);
+      return;
+    }
+    setPendingDelete(null);
     try {
       const endpoint = settingsPanel === "suppliers"
         ? "/api/settings/suppliers"
@@ -1661,7 +1638,7 @@ export default function MokaOrderPad() {
       await loadReferentiels();
     } catch (err) {
       console.error("Erreur addRef:", err);
-      alert("Erreur lors de l'ajout ❌");
+      showToast("Erreur lors de l'ajout", "error");
     } finally {
       setSavingRef(false);
     }
@@ -1689,8 +1666,6 @@ export default function MokaOrderPad() {
 
       setSupplierOrders(list);
 
-      const firstSupplier = list.find((o) => o.fournisseur)?.fournisseur || "";
-      if (firstSupplier && !selectedSupplierOrder) setSelectedSupplierOrder(firstSupplier);
 
       if (typeof window !== "undefined") {
         localStorage.setItem("mokaSupplierOrdersCache", JSON.stringify(list));
@@ -2119,27 +2094,6 @@ export default function MokaOrderPad() {
     setHasFixedBottomAction(inOrders || modalOpen);
   }, [adminSection, orderView, ordIncludedItems.length, showMultiPanelModal, orderDetail]);
 
-  const supplierOrdersVisible = supplierOrders.filter((order) => {
-    if (supplierOrdersFilter === "Tous") return true;
-    return String(order.statut || "À commander") === supplierOrdersFilter;
-  });
-
-  const supplierOrdersGrouped = supplierOrdersVisible.reduce((acc, order) => {
-    const supplier = order.fournisseur || "Sans fournisseur";
-    if (!acc[supplier]) acc[supplier] = [];
-    acc[supplier].push(order);
-    return acc;
-  }, {});
-
-  const selectedSupplierLines =
-    supplierOrdersGrouped[selectedSupplierOrder] ||
-    Object.values(supplierOrdersGrouped)[0] ||
-    [];
-
-  const selectedSupplierName =
-    selectedSupplierOrder ||
-    Object.keys(supplierOrdersGrouped)[0] ||
-    "";
 
   const loadProductsDatabase = async (silent = true) => {
     const cached = typeof window !== "undefined"
@@ -2529,7 +2483,13 @@ export default function MokaOrderPad() {
 
   const deleteProductDb = async (item) => {
     if (!item?.id) return;
-    if (!confirm("Supprimer ce produit de la base ?")) return;
+    if (pendingDelete !== item.id) {
+      setPendingDelete(item.id);
+      showToast("Cliquez à nouveau pour confirmer la suppression", "warning");
+      setTimeout(() => setPendingDelete(null), 3000);
+      return;
+    }
+    setPendingDelete(null);
 
     try {
       const response = await fetch("/api/settings/products", {
@@ -3813,7 +3773,7 @@ export default function MokaOrderPad() {
                                   : "backdrop-blur-sm bg-white/50 text-[#6b4a3d] border border-white/40 hover:bg-white/70"
                               }`}
                             >
-                              {categoryEmojis[cat] || "📌"} {cat}
+                              {getSmartCategoryEmoji(cat)} {cat}
                             </button>
                           ))}
                         </div>
@@ -3935,7 +3895,7 @@ export default function MokaOrderPad() {
                           <div key={category}>
                             <div className="flex items-center gap-3 mb-3">
                               <span className="text-sm font-black text-[#2c1a10]">
-                                {`${categoryEmojis[category] || "📌"} ${category}`}
+                                {`${getSmartCategoryEmoji(category)} ${category}`}
                               </span>
                               <div className="flex-1 h-px bg-[#e0d0c0]" />
                               <span className="text-[11px] font-semibold text-[#9a7060]">{items.length}</span>
@@ -4169,7 +4129,7 @@ export default function MokaOrderPad() {
                                   {product.photo ? (
                                     <img src={product.photo} alt={product.name || "Produit"} className="w-full h-full object-cover" />
                                   ) : (
-                                    <span className="text-2xl">{categoryEmojis[cat] || "📌"}</span>
+                                    <span className="text-2xl">{getSmartCategoryEmoji(cat)}</span>
                                   )}
                                   {selected && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-[#3d5518]/60">
@@ -5961,16 +5921,22 @@ export default function MokaOrderPad() {
                 {["categories","sousCategories","unites","zones"].includes(settingsPanel) && (
                   <button
                     onClick={async () => {
-                      if (!confirm("Importer toutes les valeurs existantes depuis la base Matières premières ?")) return;
+                      if (pendingDelete !== "import-ref") {
+                        setPendingDelete("import-ref");
+                        showToast("Cliquez à nouveau pour confirmer l'import", "warning");
+                        setTimeout(() => setPendingDelete(null), 3000);
+                        return;
+                      }
+                      setPendingDelete(null);
                       setImportingRef(true);
                       try {
                         const res = await fetch("/api/settings/referentiels/import", { method: "POST" });
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.error || "Erreur serveur");
                         await loadReferentiels();
-                        alert(`Import terminé ✅\n+${data.imported.categories} catégories\n+${data.imported.sousCategories} sous-catégories\n+${data.imported.zones} zones\n+${data.imported.unites} unités`);
+                        showToast(`Import terminé — +${data.imported.categories} cat. · +${data.imported.sousCategories} sous-cat. · +${data.imported.zones} zones · +${data.imported.unites} unités`);
                       } catch (err) {
-                        alert("Erreur import : " + err.message);
+                        showToast("Erreur import : " + err.message, "error");
                       } finally {
                         setImportingRef(false);
                       }
