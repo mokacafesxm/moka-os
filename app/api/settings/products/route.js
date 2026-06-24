@@ -2,6 +2,7 @@ const NOTION_KEY = () => process.env.NOTION_API_KEY;
 const NOTION_VER = "2022-06-28";
 const DB = "3699512cf66a808fb9fdf39666926abb";
 const DB_SUPPLIERS = "3689512cf66a805e8330fe73f781d1a5";
+const STOCK_DB = "3689512cf66a80aa8c43eb4f85347f8e";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,7 +102,28 @@ export async function POST(req) {
       console.error("[POST products] Notion error:", JSON.stringify(data));
       return Response.json({ success: false, error: data.message }, { status: 500, headers: corsHeaders });
     }
-    return Response.json({ success: true, id: data.id, item: { id: data.id, ...body } }, { headers: corsHeaders });
+
+    // Create matching stock entry immediately, same server request
+    const ingredientId = data.id;
+    const ingredientName = (body.ingredient || body.name || "").trim();
+    try {
+      const stockProps = {
+        Produit: { title: [{ text: { content: ingredientName } }] },
+        Quantite_stock: { number: 0 },
+        MOKA_Ingredients_Master: { relation: [{ id: ingredientId }] },
+      };
+      if (body.uniteStock) stockProps.Unite_stock = { select: { name: body.uniteStock } };
+      await fetch("https://api.notion.com/v1/pages", {
+        method: "POST",
+        headers: nHeaders(),
+        body: JSON.stringify({ parent: { database_id: STOCK_DB }, properties: stockProps }),
+      });
+      console.log("[POST products] Entrée stock créée pour :", ingredientName);
+    } catch (stockErr) {
+      console.error("[POST products] Erreur création entrée stock (non bloquant):", stockErr.message);
+    }
+
+    return Response.json({ success: true, id: ingredientId, item: { id: ingredientId, ...body } }, { headers: corsHeaders });
   } catch (err) {
     console.error("[POST products] Exception:", err.message);
     return Response.json({ success: false, error: err.message }, { status: 500, headers: corsHeaders });

@@ -1290,6 +1290,20 @@ export default function MokaOrderPad() {
     if (isAdmin) loadReferentiels();
   }, [isAdmin]);
 
+  // Silent background sync: create stock entries for any catalogue product missing one
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetch("/api/admin/sync-stock")
+      .then(r => r.json())
+      .then(data => {
+        if (data.createdCount > 0) {
+          console.log(`[autoSync] ${data.createdCount} produit(s) synchronisé(s) vers le stock`);
+          refreshAll(2000);
+        }
+      })
+      .catch(e => console.warn("[autoSync]", e.message));
+  }, [isAdmin]);
+
   useEffect(() => {
     if (isAdmin && !settingsCache.suppliers?.length) {
       fetchSettingsResource("suppliers")
@@ -2143,26 +2157,6 @@ export default function MokaOrderPad() {
     console.log("[refreshAll] Sync complète ✅");
   };
 
-  const [syncingStock, setSyncingStock] = useState(false);
-  const syncCatalogToStock = async () => {
-    setSyncingStock(true);
-    try {
-      const res = await fetch("/api/admin/sync-stock");
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || "Erreur sync");
-      showToast(
-        data.createdCount > 0
-          ? `${data.createdCount} entrée${data.createdCount > 1 ? "s" : ""} créée${data.createdCount > 1 ? "s" : ""} dans le stock ✅`
-          : `Catalogue déjà synchronisé (${data.alreadyExistCount} produits)`
-      );
-      if (data.createdCount > 0) refreshAll(4000);
-    } catch (err) {
-      showToast("Erreur sync : " + err.message, "error");
-    } finally {
-      setSyncingStock(false);
-    }
-  };
-
   const openProductDbCreate = () => {
     ["suppliers", "categories", "subcategories", "units", "zones"].forEach((resource) => {
       if (settingsCache[resource]?.length) return;
@@ -2246,21 +2240,6 @@ export default function MokaOrderPad() {
       if (typeof window !== "undefined") {
         localStorage.setItem("mokaProductsDbCache", JSON.stringify(updated));
         localStorage.setItem("mokaProductsDbCacheUpdatedAt", String(Date.now()));
-      }
-
-      // Create matching stock entry (qty 0) in MOKA_Stock_Produits_Notion
-      if (result.id) {
-        fetch(STOCK_UPDATE_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: creatingProductDbForm.ingredient,
-            poidsTotal: 0,
-            mode: "replace",
-            Unite: creatingProductDbForm.uniteStock || "",
-            notionProductId: result.id,
-          }),
-        }).catch(e => console.warn("[saveProductDbCreate] stock entry init:", e.message));
       }
 
       setCreatingProductDb(false);
@@ -4670,17 +4649,6 @@ export default function MokaOrderPad() {
                     <span className="text-[10px] text-[#9a7060]">IA → décompte ventes</span>
                   </button>
                 </div>
-
-                {/* Sync catalogue → stock */}
-                <button
-                  onClick={syncCatalogToStock}
-                  disabled={syncingStock}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl backdrop-blur-sm bg-white/60 border border-white/50 text-[#6b4a3d] text-xs font-black disabled:opacity-50 cursor-pointer hover:bg-white/80 transition-all"
-                >
-                  {syncingStock
-                    ? <><svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30 60"/></svg> Synchronisation…</>
-                    : <>🔄 Synchroniser le catalogue avec le stock</>}
-                </button>
 
                 <div className="backdrop-blur-sm bg-white/70 border border-white/50 shadow-sm overflow-hidden rounded-2xl">
                   <div className="p-3 border-b border-[#e5d5c5] space-y-2">

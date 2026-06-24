@@ -15,7 +15,7 @@ const notionHeaders = () => ({
   "Content-Type": "application/json",
 });
 
-const queryDatabase = async (dbId, pageSize = 200) => {
+const queryDatabase = async (dbId, pageSize = 300) => {
   const results = [];
   let cursor;
   do {
@@ -31,93 +31,71 @@ const queryDatabase = async (dbId, pageSize = 200) => {
   return results;
 };
 
-const createPage = async (dbId, properties) => {
+const createStockEntry = async (page) => {
+  const name = page.properties?.Ingredient?.title?.[0]?.plain_text || "";
+  if (!name) return null;
+  const unite = page.properties?.Unite_stock?.select?.name || "";
+  const properties = {
+    Produit: { title: [{ text: { content: name } }] },
+    Quantite_stock: { number: 0 },
+    MOKA_Ingredients_Master: { relation: [{ id: page.id }] },
+  };
+  if (unite) properties.Unite_stock = { select: { name: unite } };
   const res = await fetch("https://api.notion.com/v1/pages", {
     method: "POST",
     headers: notionHeaders(),
-    body: JSON.stringify({ parent: { database_id: dbId }, properties }),
+    body: JSON.stringify({ parent: { database_id: STOCK_DB }, properties }),
   });
-  return res.json();
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || `Notion ${res.status}`);
+  return name;
 };
-
-function getTitle(props, key) {
-  const p = props?.[key];
-  if (!p) return "";
-  if (p.type === "title" && p.title?.length) return p.title[0].plain_text || "";
-  return "";
-}
-
-function getSelect(props, key) {
-  const p = props?.[key];
-  if (p?.type === "select" && p.select?.name) return p.select.name;
-  return "";
-}
-
-function getRelationIds(props, key) {
-  const p = props?.[key];
-  if (p?.type === "relation" && p.relation?.length) return p.relation.map((r) => r.id);
-  return [];
-}
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
 }
 
-// GET → compares MOKA_Ingredients_Master vs MOKA_Stock_Produits_Notion,
-//        creates a stock entry (qty 0) for every ingredient that has none.
+// GET → load both DBs in parallel, identify missing entries by relation ID,
+//        create them in batches of 5.
 export async function GET() {
   try {
     const [ingredientPages, stockPages] = await Promise.all([
-      queryDatabase(INGREDIENTS_DB, 300),
-      queryDatabase(STOCK_DB, 300),
+      queryDatabase(INGREDIENTS_DB),
+      queryDatabase(STOCK_DB),
     ]);
 
-    // Build set of ingredient IDs already linked to a stock entry
+    // Set of ingredient IDs already linked to a stock entry via relation
     const linkedIngredientIds = new Set();
     for (const page of stockPages) {
-      const ids = getRelationIds(page.properties, "MOKA_Ingredients_Master");
-      if (ids[0]) linkedIngredientIds.add(ids[0]);
+      const rel = page.properties?.MOKA_Ingredients_Master?.relation || [];
+      if (rel[0]?.id) linkedIngredientIds.add(rel[0].id);
     }
 
+    const missing = ingredientPages.filter(p => !linkedIngredientIds.has(p.id));
+
     const created = [];
-    const alreadyExist = [];
     const errors = [];
 
-    for (const page of ingredientPages) {
-      const name = getTitle(page.properties, "Ingredient");
-      if (!name) continue;
-
-      if (linkedIngredientIds.has(page.id)) {
-        alreadyExist.push(name);
-        continue;
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < missing.length; i += BATCH_SIZE) {
+      const batch = missing.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(batch.map(createStockEntry));
+      for (const r of results) {
+        if (r.status === "fulfilled" && r.value) created.push(r.value);
+        else if (r.status === "rejected") errors.push(r.reason?.message || "erreur inconnue");
       }
-
-      // Missing — create stock entry with qty 0
-      try {
-        const unite = getSelect(page.properties, "Unite_stock");
-        const properties = {
-          Produit: { title: [{ text: { content: name } }] },
-          Quantite_stock: { number: 0 },
-          MOKA_Ingredients_Master: { relation: [{ id: page.id }] },
-        };
-        if (unite) properties.Unite_stock = { select: { name: unite } };
-
-        await createPage(STOCK_DB, properties);
-        created.push(name);
-        console.log("[sync-stock] créé :", name);
-      } catch (err) {
-        console.error("[sync-stock] erreur pour", name, ":", err.message);
-        errors.push({ name, error: err.message });
+      // Rate-limit pause between batches only (not after last batch)
+      if (i + BATCH_SIZE < missing.length) {
+        await new Promise(r => setTimeout(r, 400));
       }
     }
 
     return Response.json({
       success: true,
       createdCount: created.length,
-      alreadyExistCount: alreadyExist.length,
+      alreadyExistCount: ingredientPages.length - missing.length,
       errorCount: errors.length,
       created,
-      alreadyExist,
       errors,
     }, { headers: corsHeaders });
   } catch (err) {
