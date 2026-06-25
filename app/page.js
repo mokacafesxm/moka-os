@@ -407,6 +407,11 @@ export default function MokaOrderPad() {
   const [invoiceSaving, setInvoiceSaving] = useState(false);
   const [showScanFacture, setShowScanFacture] = useState(false);
   const [showScanZ, setShowScanZ] = useState(false);
+  const [scanZImage, setScanZImage] = useState(null);
+  const [scanZMediaType, setScanZMediaType] = useState("image/jpeg");
+  const [scanZAnalyzing, setScanZAnalyzing] = useState(false);
+  const [scanZResult, setScanZResult] = useState(null);
+  const [scanZError, setScanZError] = useState(null);
   const [inventoryCategory, setInventoryCategory] = useState("Tous");
   const [inventoryStatusFilter, setInventoryStatusFilter] = useState("Tous");
   const [inventoryView, setInventoryView] = useState("stock");
@@ -1950,6 +1955,41 @@ export default function MokaOrderPad() {
       setOrdStatusFilter("Reçu");
       showToast(`Commande ${getOrderSupplier(order) || order.fournisseur} reçue — ${newConfirmed.length} produit${newConfirmed.length > 1 ? "s" : ""} mis en stock ✅`);
       refreshAll();
+    }
+  };
+
+  const handleScanZFile = (file) => {
+    if (!file) return;
+    setScanZResult(null);
+    setScanZError(null);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target.result.split(",")[1];
+      setScanZImage(base64);
+      setScanZMediaType(file.type || "image/jpeg");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const analyzeScanZ = async () => {
+    if (!scanZImage) return;
+    setScanZAnalyzing(true);
+    setScanZError(null);
+    setScanZResult(null);
+    try {
+      const res = await fetch("/api/scan-z", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: scanZImage, mediaType: scanZMediaType }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "Erreur analyse");
+      setScanZResult(data.data);
+    } catch (err) {
+      setScanZError(err.message);
+      showToast("Erreur analyse : " + err.message, "error");
+    } finally {
+      setScanZAnalyzing(false);
     }
   };
 
@@ -5867,27 +5907,119 @@ export default function MokaOrderPad() {
 
       {/* ── Modal Scanner Z de caisse ── */}
       {showScanZ && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          onClick={() => setShowScanZ(false)}>
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4"
-            onClick={(e) => e.stopPropagation()}>
-            <div className="space-y-1">
-              <h2 className="text-base font-black text-[#2c1a10]">🧾 Scanner un Z de caisse</h2>
-              <p className="text-xs text-[#9a7060]">Photographiez votre Z de caisse — l'IA comptabilise les ventes automatiquement</p>
+        <div className="fixed inset-0 z-[95] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden" style={{ maxHeight: "90vh" }}>
+
+            {/* Header */}
+            <div className="shrink-0 px-5 pt-5 pb-4 border-b border-[#e5d5c5]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Rapports</div>
+                  <h2 className="text-xl font-black text-[#2c1a10]">🧾 Scanner Z de caisse</h2>
+                </div>
+                <button
+                  onClick={() => { setShowScanZ(false); setScanZImage(null); setScanZResult(null); setScanZError(null); }}
+                  className="w-9 h-9 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] cursor-pointer font-black">×</button>
+              </div>
             </div>
-            <div className="space-y-3">
-              <label className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-[#2c1a10] text-white font-black text-sm cursor-pointer active:scale-[0.98] transition-all">
-                📷 Prendre une photo
-                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={() => { setShowScanZ(false); showToast("Fonctionnalité bientôt disponible", "warning"); }} />
-              </label>
-              <label className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-[#f0e8dc] text-[#2c1a10] font-black text-sm cursor-pointer active:scale-[0.98] transition-all">
-                🖼 Choisir depuis la galerie
-                <input type="file" accept="image/*" className="hidden" onChange={() => { setShowScanZ(false); showToast("Fonctionnalité bientôt disponible", "warning"); }} />
-              </label>
-              <button onClick={() => setShowScanZ(false)}
-                className="w-full py-3 text-sm font-bold text-[#9a7060] cursor-pointer">
-                Annuler
-              </button>
+
+            {/* Contenu scrollable */}
+            <div className="flex-1 overflow-y-auto p-5 min-h-0 space-y-4">
+
+              {/* Zone capture + analyse */}
+              {!scanZResult && (
+                <div className="space-y-3">
+                  {scanZImage && (
+                    <div className="relative rounded-2xl overflow-hidden border border-[#e5d5c5]">
+                      <img src={`data:${scanZMediaType};base64,${scanZImage}`} alt="Z de caisse" className="w-full max-h-48 object-contain bg-[#f9f6f2]" />
+                      <button onClick={() => { setScanZImage(null); setScanZResult(null); }}
+                        className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-white shadow text-[#9a7060] font-black text-sm flex items-center justify-center cursor-pointer">×</button>
+                    </div>
+                  )}
+
+                  {!scanZImage && (
+                    <div className="space-y-2">
+                      <label className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl bg-[#2c1a10] text-white font-black text-sm cursor-pointer active:scale-[0.98] transition-all">
+                        📷 Prendre une photo
+                        <input type="file" accept="image/*" capture="environment" className="hidden"
+                          onChange={e => handleScanZFile(e.target.files[0])} />
+                      </label>
+                      <label className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-[#f0e8dc] text-[#2c1a10] font-black text-sm cursor-pointer border border-[#e5d5c5] active:scale-[0.98] transition-all">
+                        🖼 Choisir depuis la galerie
+                        <input type="file" accept="image/*" className="hidden"
+                          onChange={e => handleScanZFile(e.target.files[0])} />
+                      </label>
+                    </div>
+                  )}
+
+                  {scanZImage && !scanZAnalyzing && (
+                    <button onClick={analyzeScanZ}
+                      className="w-full py-4 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer active:scale-[0.98] transition-all">
+                      🔍 Analyser le Z de caisse
+                    </button>
+                  )}
+
+                  {scanZAnalyzing && (
+                    <div className="flex items-center justify-center gap-3 py-8">
+                      <svg className="w-6 h-6 animate-spin text-[#5a7828]" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30 60"/>
+                      </svg>
+                      <span className="text-sm font-bold text-[#9a7060]">Analyse en cours…</span>
+                    </div>
+                  )}
+
+                  {scanZError && (
+                    <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-sm text-red-700 font-bold">
+                      ❌ {scanZError}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Résultat */}
+              {scanZResult && (
+                <div className="space-y-4">
+                  <div className="bg-[#f0f7e5] rounded-2xl p-4">
+                    <div className="text-[10px] font-black text-[#5a7828] uppercase tracking-wide mb-1">Résumé</div>
+                    <div className="text-sm font-bold text-[#2c1a10]">{scanZResult.resume}</div>
+                    <div className="flex gap-4 mt-2 flex-wrap">
+                      {scanZResult.date && <span className="text-[11px] text-[#9a7060]">📅 {scanZResult.date}</span>}
+                      {scanZResult.nb_transactions && <span className="text-[11px] text-[#9a7060]">🧾 {scanZResult.nb_transactions} transactions</span>}
+                      {scanZResult.total_ventes != null && (
+                        <span className="text-[11px] font-black text-[#2c1a10]">
+                          💶 {Number(scanZResult.total_ventes).toFixed(2)} €
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide mb-2">
+                      Produits vendus ({scanZResult.produits?.length || 0})
+                    </div>
+                    <div className="space-y-2">
+                      {(scanZResult.produits || []).map((p, i) => (
+                        <div key={i} className="flex items-center gap-3 bg-[#f9f6f2] rounded-2xl px-4 py-3 border border-[#e5d5c5]">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-black text-sm text-[#2c1a10] truncate">{p.nom}</div>
+                            {p.categorie && <div className="text-[10px] text-[#9a7060]">{p.categorie}</div>}
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="font-black text-sm text-[#2c1a10]">× {p.quantite}</div>
+                            {p.total != null && <div className="text-[10px] text-[#9a7060]">{Number(p.total).toFixed(2)} €</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => { setScanZImage(null); setScanZResult(null); setScanZError(null); }}
+                    className="w-full py-3 rounded-2xl border border-[#e5d5c5] text-[#9a7060] font-black text-sm cursor-pointer hover:bg-[#f9f6f2] transition-colors">
+                    ↩ Scanner un autre Z
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
