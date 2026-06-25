@@ -7248,25 +7248,40 @@ export default function MokaOrderPad() {
             <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden" style={{ maxHeight: "85vh" }}>
 
               {/* Header */}
-              <div className="shrink-0 px-5 pt-5 pb-3">
-                <div className="flex items-center justify-between mb-2">
+              <div className="shrink-0 px-5 pt-5 pb-4">
+                <div className="flex items-center justify-between mb-3">
                   <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">
-                    Réception · {currentStep + 1} / {totalSteps}
+                    {order.fournisseur} · Produit {currentStep + 1} / {totalSteps}
                   </div>
-                  <button onClick={() => setReceiveModal(null)} className="w-8 h-8 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer text-lg font-black">×</button>
+                  <button onClick={() => setReceiveModal(null)} className="w-8 h-8 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer font-black">×</button>
                 </div>
-                <div className="text-lg font-black text-[#2c1a10]">{product.name}</div>
-                <div className="text-xs text-[#9a7060] mt-0.5">{order.fournisseur} · commandé : {product.qty} {product.unit}</div>
-
-                {/* Progress bar */}
-                <div className="flex gap-1.5 mt-3">
-                  {products.map((_, i) => (
-                    <div key={i} className={`h-1.5 rounded-full transition-all duration-300 flex-1 ${
-                      i < currentStep ? "bg-[#5a7828]" :
-                      i === currentStep ? "bg-[#2c1a10]" : "bg-[#e5d5c5]"
-                    }`} />
+                <div className="text-2xl font-black text-[#2c1a10] leading-tight mb-1">{product.name}</div>
+                <div className="text-xs text-[#9a7060] font-semibold mb-3">Commandé : {product.qty} {product.unit}</div>
+                <div className="flex gap-1.5">
+                  {products.map((p, i) => (
+                    <div key={i}
+                      title={p.name}
+                      className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                        i < currentStep ? "bg-[#5a7828] flex-1" :
+                        i === currentStep ? "bg-[#2c1a10] flex-1" :
+                        "bg-[#e5d5c5] w-3"
+                      }`}
+                      onClick={() => {
+                        if (i < currentStep) {
+                          setReceiveModal(m => ({ ...m, currentStep: i }));
+                          setReceiveQty(String(products[i].qty || ""));
+                          setReceiveUnit(products[i].unit || "");
+                        }
+                      }}
+                    />
                   ))}
                 </div>
+                {products.length > 1 && (
+                  <div className="flex justify-between mt-1">
+                    <span className="text-[9px] text-[#9a7060] truncate max-w-[45%]">{products[0].name}</span>
+                    <span className="text-[9px] text-[#9a7060] truncate max-w-[45%] text-right">{products[products.length - 1].name}</span>
+                  </div>
+                )}
               </div>
 
               {/* Contenu */}
