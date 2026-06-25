@@ -1819,7 +1819,8 @@ export default function MokaOrderPad() {
     }
 
     if (products.length === 0) {
-      const produitName  = order.produit || order.ingredient || order.name || order.Produit || "";
+      // order.name is the order title ("NEW ORDER : …"), not the product name — exclude it
+      const produitName  = order.produit || order.ingredient || order.Produit || "";
       const produitQty   = Number(order.quantite || order.qty || order.Quantite || 0);
       const produitUnite = order.unite || order.Unite || order.unit || order.uniteCommande || "";
       console.log("[parseOrderProducts] Commande simple:", { produit: produitName, quantite: produitQty, unite: produitUnite });
@@ -1846,8 +1847,14 @@ export default function MokaOrderPad() {
     return products;
   };
 
+  const getOrderSupplier = (order) =>
+    order.fournisseur || order.supplier || order.fournisseurNom || "";
+
   const markOrderReceived = async (order) => {
     const products = parseOrderProducts(order);
+    console.log("[markOrderReceived] order keys:", Object.keys(order));
+    console.log("[markOrderReceived] products parsés:", JSON.stringify(products));
+    console.log("[markOrderReceived] receiveModal state:", JSON.stringify({ currentStep: 0, totalSteps: products.length }));
 
     if (products.length === 0) {
       showToast("Aucun produit trouvé dans cette commande", "error");
@@ -7243,6 +7250,8 @@ export default function MokaOrderPad() {
       {receiveModal && (() => {
         const { products, currentStep, totalSteps, order, confirmed } = receiveModal;
         const product = products[currentStep];
+        if (!product) return null;
+        const productName = product.name || product.ingredient || product.produit || product.nom || "Produit";
         return (
           <div className="fixed inset-0 z-[95] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden" style={{ maxHeight: "85vh" }}>
@@ -7251,11 +7260,11 @@ export default function MokaOrderPad() {
               <div className="shrink-0 px-5 pt-5 pb-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">
-                    {order.fournisseur} · Produit {currentStep + 1} / {totalSteps}
+                    {getOrderSupplier(order)} · Produit {currentStep + 1} / {totalSteps}
                   </div>
                   <button onClick={() => setReceiveModal(null)} className="w-8 h-8 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer font-black">×</button>
                 </div>
-                <div className="text-2xl font-black text-[#2c1a10] leading-tight mb-1">{product.name}</div>
+                <div className="text-2xl font-black text-[#2c1a10] leading-tight mb-1">{productName}</div>
                 <div className="text-xs text-[#9a7060] font-semibold mb-3">Commandé : {product.qty} {product.unit}</div>
                 <div className="flex gap-1.5">
                   {products.map((p, i) => (
@@ -7329,7 +7338,7 @@ export default function MokaOrderPad() {
                   className="w-full py-4 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer active:scale-[0.98] transition-all shadow-md"
                 >
                   {currentStep < totalSteps - 1
-                    ? `✅ Confirmer · Suivant → ${products[currentStep + 1]?.name}`
+                    ? `✅ Confirmer · ${products[currentStep + 1]?.name || "Suivant"} →`
                     : "✅ Confirmer et terminer la réception"}
                 </button>
                 {currentStep > 0 && (
