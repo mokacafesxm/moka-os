@@ -503,6 +503,7 @@ export default function MokaOrderPad() {
   const [hasFixedBottomAction, setHasFixedBottomAction] = useState(false);
   const lastScrollY = useRef(0);
   const adminSectionRef = useRef(adminSection);
+  const swipeTouchStart = useRef(null);
   const [deviceType, setDeviceType] = useState("desktop");
   const [showMobileCart, setShowMobileCart] = useState(false);
   const [lastSync, setLastSync] = useState(new Date());
@@ -1773,78 +1774,80 @@ export default function MokaOrderPad() {
   };
 
   const parseOrderProducts = (order) => {
-    let products = [];
-    const isComposed =
-      order.source === "Commandes" ||
-      order.source === "MÖKA OS Orders" ||
-      order.source === "MokaOS" ||
-      (Array.isArray(order.produits) && order.produits.length > 1) ||
-      String(order.produit || "").startsWith("Order composée");
+    console.log("[parseOrderProducts] Clés disponibles:", Object.keys(order));
+    const isNew = s => !String(s || "").toLowerCase().includes("new order");
 
-    if (isComposed) {
-      const produitsArray = order.produits || order.products || [];
-      if (Array.isArray(produitsArray) && produitsArray.length > 0) {
-        products = produitsArray.map(p => {
-          if (typeof p === "string") {
-            const cleaned = p.replace(/^[•\-]\s*/, "").trim();
-            const crossIdx = cleaned.indexOf(" × ");
-            const dashIdx  = cleaned.indexOf(" — ");
-            const sepIdx   = crossIdx !== -1 ? crossIdx : dashIdx;
-            if (sepIdx === -1) return { name: cleaned, qty: 1, unit: "" };
-            const name    = cleaned.slice(0, sepIdx).trim();
-            const qtyUnit = cleaned.slice(sepIdx + 3).trim();
-            const m = qtyUnit.match(/^([0-9.,]+)\s*(.*)$/);
-            return { name, qty: m ? parseFloat(m[1].replace(",", ".")) || 1 : 1, unit: m ? m[2].trim() : "" };
-          }
-          return {
-            name: p.produit || p.name || p.ingredient || "",
-            qty:  Number(p.quantite || p.qty || 1),
-            unit: p.unite || p.unit || "",
-          };
-        }).filter(p => p.name);
-      }
-      if (products.length === 0 && order.message) {
-        products = order.message
-          .split("\n")
-          .filter(l => /^[•\-]/.test(l.trim()))
-          .map(l => {
-            const cleaned = l.replace(/^[•\-]\s*/, "").trim();
-            const m = cleaned.match(/^(.+?)\s*[×x]\s*([0-9.,]+)\s*(.*)$/i)
-                   || cleaned.match(/^(.+?)\s*—\s*([0-9.,]+)\s*(.*)$/);
-            if (!m) return { name: cleaned, qty: 1, unit: "" };
-            return { name: m[1].trim(), qty: parseFloat(m[2].replace(",", ".")) || 1, unit: m[3].trim() };
-          })
-          .filter(p => p.name);
+    const parseString = (s) => {
+      const cleaned = s.replace(/^[•\-]\s*/, "").trim();
+      const crossIdx = cleaned.indexOf(" × ");
+      const dashIdx  = cleaned.indexOf(" — ");
+      const sepIdx   = crossIdx !== -1 ? crossIdx : dashIdx;
+      if (sepIdx === -1) return { name: cleaned, qty: 1, unit: "" };
+      const name    = cleaned.slice(0, sepIdx).trim();
+      const qtyUnit = cleaned.slice(sepIdx + 3).trim();
+      const m = qtyUnit.match(/^([0-9.,]+)\s*(.*)$/);
+      return { name, qty: m ? parseFloat(m[1].replace(",", ".")) || 1 : 1, unit: m ? m[2].trim() : "" };
+    };
+
+    const parseMessageLines = (msg) =>
+      String(msg || "").split("\n")
+        .filter(l => /^[•\-]/.test(l.trim()))
+        .map(l => {
+          const cleaned = l.replace(/^[•\-]\s*/, "").trim();
+          const m = cleaned.match(/^(.+?)\s*[×x]\s*([0-9.,]+)\s*(.*)$/i)
+                 || cleaned.match(/^(.+?)\s*—\s*([0-9.,]+)\s*(.*)$/);
+          if (!m) return { name: cleaned, qty: 1, unit: "" };
+          return { name: m[1].trim(), qty: parseFloat(m[2].replace(",", ".")) || 1, unit: m[3].trim() };
+        })
+        .filter(p => p.name && isNew(p.name));
+
+    // Priorité 1 : tableau de produits (commandes composées)
+    const produitsArray = order.produits || order.products || order.items || order.Items || [];
+    if (Array.isArray(produitsArray) && produitsArray.length > 0) {
+      const parsed = produitsArray.map(p =>
+        typeof p === "string"
+          ? parseString(p)
+          : { name: p.produit || p.ingredient || p.name || p.Produit || "", qty: Number(p.quantite || p.qty || p.Quantite || 1), unit: p.unite || p.unit || p.Unite || "" }
+      ).filter(p => p.name && isNew(p.name));
+      if (parsed.length > 0) {
+        console.log("[parseOrderProducts] Via tableau produits:", parsed);
+        return parsed;
       }
     }
 
-    if (products.length === 0) {
-      // order.name is the order title ("NEW ORDER : …"), not the product name — exclude it
-      const produitName  = order.produit || order.ingredient || order.Produit || "";
-      const produitQty   = Number(order.quantite || order.qty || order.Quantite || 0);
-      const produitUnite = order.unite || order.Unite || order.unit || order.uniteCommande || "";
-      console.log("[parseOrderProducts] Commande simple:", { produit: produitName, quantite: produitQty, unite: produitUnite });
-      if (produitName) {
-        products = [{ name: produitName, qty: produitQty || 1, unit: produitUnite }];
-      }
-      if (products.length === 0 && order.message) {
-        console.warn("[parseOrderProducts] Fallback parsing message:", order.message?.slice(0, 200));
-        products = order.message
-          .split("\n")
-          .filter(l => /^[•\-]/.test(l.trim()))
-          .map(l => {
-            const cleaned = l.replace(/^[•\-]\s*/, "").trim();
-            const m = cleaned.match(/^(.+?)\s*[×x]\s*([0-9.,]+)\s*(.*)$/i)
-                   || cleaned.match(/^(.+?)\s*—\s*([0-9.,]+)\s*(.*)$/);
-            if (!m) return { name: cleaned, qty: 1, unit: "" };
-            return { name: m[1].trim(), qty: parseFloat(m[2].replace(",", ".")) || 1, unit: m[3].trim() };
-          })
-          .filter(p => p.name);
+    // Priorité 2 : champ produit unique explicite (PAS order.name / order.nom qui = titre commande)
+    const produitName  = order.produit || order.ingredient || order.Produit || order.Ingredient || order.product || order.item || order.Item || "";
+    const produitQty   = Number(order.quantite || order.qty || order.Quantite || order.quantity || 1);
+    const produitUnite = order.unite || order.unit || order.Unite || order.uniteCommande || "";
+    console.log("[parseOrderProducts] Produit simple:", { produitName, produitQty, produitUnite });
+    if (produitName && isNew(produitName)) {
+      return [{ name: produitName, qty: produitQty || 1, unit: produitUnite }];
+    }
+
+    // Priorité 3 : parser le message texte
+    if (order.message) {
+      const lines = parseMessageLines(order.message);
+      if (lines.length > 0) {
+        console.log("[parseOrderProducts] Via message:", lines);
+        return lines;
       }
     }
 
-    console.log("[parseOrderProducts] Produits:", products);
-    return products;
+    // Priorité 4 : chercher dans toutes les clés dont le nom évoque un produit
+    for (const key of Object.keys(order)) {
+      const val = order[key];
+      if (
+        typeof val === "string" && val.length > 0 && val.length < 100 &&
+        isNew(val) && !val.includes("@") && !val.includes("http") &&
+        ["produit", "ingredient", "product", "item", "article"].some(k => key.toLowerCase().includes(k))
+      ) {
+        console.log("[parseOrderProducts] Trouvé via clé:", key, "=", val);
+        return [{ name: val, qty: Number(order.quantite || order.qty || 1), unit: order.unite || "" }];
+      }
+    }
+
+    console.warn("[parseOrderProducts] Aucun produit trouvé. Order:", JSON.stringify(order));
+    return [];
   };
 
   const getOrderSupplier = (order) =>
@@ -7218,13 +7221,35 @@ export default function MokaOrderPad() {
       {/* ── RECEIVE MULTI-STEP MODAL ─────────────────── */}
       {receiveModal && (() => {
         const { products, currentStep, totalSteps, order, confirmed } = receiveModal;
-        const product = products[currentStep];
+        const product = products?.[currentStep];
         if (!product) return null;
         const productName = product.name || product.ingredient || product.produit || product.nom || "Produit";
+
+        const goToStep = (step) => {
+          if (step < 0 || step >= totalSteps) return;
+          setReceiveModal(m => ({ ...m, currentStep: step }));
+          setReceiveQty(String(products[step]?.qty || ""));
+          setReceiveUnit(products[step]?.unit || "");
+        };
+
         return (
           <div className="fixed inset-0 z-[95] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden" style={{ maxHeight: "85vh" }}>
-
+            <div
+              className="w-full max-w-sm bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+              style={{ maxHeight: "85vh" }}
+              onTouchStart={(e) => { swipeTouchStart.current = e.touches[0].clientX; }}
+              onTouchEnd={(e) => {
+                if (swipeTouchStart.current === null) return;
+                const delta = e.changedTouches[0].clientX - swipeTouchStart.current;
+                swipeTouchStart.current = null;
+                if (delta < -60 && currentStep < totalSteps - 1) goToStep(currentStep + 1);
+                if (delta > 60 && currentStep > 0) {
+                  setReceiveModal(m => ({ ...m, currentStep: m.currentStep - 1, confirmed: m.confirmed.slice(0, -1) }));
+                  setReceiveQty(String(products[currentStep - 1]?.qty || ""));
+                  setReceiveUnit(products[currentStep - 1]?.unit || "");
+                }
+              }}
+            >
               {/* Header */}
               <div className="shrink-0 px-5 pt-5 pb-4">
                 <div className="flex items-center justify-between mb-3">
@@ -7237,35 +7262,42 @@ export default function MokaOrderPad() {
                 <div className="text-xs text-[#9a7060] font-semibold mb-3">
                   {getOrderSupplier(order)} · Commandé : {product.qty || "?"} {product.unit}
                 </div>
-                <div className="flex gap-1.5">
-                  {products.map((p, i) => (
-                    <div key={i}
-                      title={p.name}
-                      className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                        i < currentStep ? "bg-[#5a7828] flex-1" :
-                        i === currentStep ? "bg-[#2c1a10] flex-1" :
-                        "bg-[#e5d5c5] w-3"
-                      }`}
-                      onClick={() => {
-                        if (i < currentStep) {
-                          setReceiveModal(m => ({ ...m, currentStep: i }));
-                          setReceiveQty(String(products[i].qty || ""));
-                          setReceiveUnit(products[i].unit || "");
-                        }
-                      }}
-                    />
-                  ))}
-                </div>
-                {products.length > 1 && (
-                  <div className="flex justify-between mt-1">
-                    <span className="text-[9px] text-[#9a7060] truncate max-w-[45%]">{products[0].name}</span>
-                    <span className="text-[9px] text-[#9a7060] truncate max-w-[45%] text-right">{products[products.length - 1].name}</span>
+
+                {/* Dots nav */}
+                {totalSteps > 1 && (
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[9px] text-[#9a7060] truncate max-w-[30%]">
+                      {currentStep > 0 ? `← ${products[currentStep - 1]?.name}` : ""}
+                    </span>
+                    <div className="flex-1 flex gap-1 justify-center">
+                      {products.map((_, i) => (
+                        <div key={i}
+                          className={`h-1.5 rounded-full transition-all duration-200 cursor-pointer ${
+                            i === currentStep ? "bg-[#2c1a10] w-6" :
+                            i < currentStep  ? "bg-[#5a7828] w-3" : "bg-[#e5d5c5] w-3"
+                          }`}
+                          onClick={() => goToStep(i)}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[9px] text-[#9a7060] truncate max-w-[30%] text-right">
+                      {currentStep < totalSteps - 1 ? `${products[currentStep + 1]?.name} →` : ""}
+                    </span>
+                  </div>
+                )}
+                {totalSteps > 1 && currentStep === 0 && (
+                  <div className="text-center text-[10px] text-[#c8b4a8] animate-pulse">
+                    ← Swipez pour naviguer →
                   </div>
                 )}
               </div>
 
-              {/* Contenu */}
-              <div className="flex-1 overflow-y-auto px-5 py-3 min-h-0 space-y-4">
+              {/* Contenu (key force re-render + animation au changement de step) */}
+              <div
+                key={currentStep}
+                className="flex-1 overflow-y-auto px-5 py-3 min-h-0 space-y-4"
+                style={{ animation: "receiveStepIn 0.2s ease" }}
+              >
                 <div>
                   <label className="block text-[10px] font-black text-[#9a7060] uppercase tracking-wide mb-1.5">Quantité réellement reçue</label>
                   <input
@@ -7309,16 +7341,15 @@ export default function MokaOrderPad() {
                   className="w-full py-4 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer active:scale-[0.98] transition-all shadow-md"
                 >
                   {currentStep < totalSteps - 1
-                    ? `✅ Confirmer · ${products[currentStep + 1]?.name || "Suivant"} →`
+                    ? `✅ Confirmer · Suivant : ${products[currentStep + 1]?.name || ""} →`
                     : "✅ Confirmer et terminer la réception"}
                 </button>
                 {currentStep > 0 && (
                   <button
                     onClick={() => {
-                      const prev = products[currentStep - 1];
-                      setReceiveModal(m => ({ ...m, currentStep: currentStep - 1, confirmed: m.confirmed.slice(0, -1) }));
-                      setReceiveQty(String(prev.qty || ""));
-                      setReceiveUnit(prev.unit || "");
+                      setReceiveModal(m => ({ ...m, currentStep: m.currentStep - 1, confirmed: m.confirmed.slice(0, -1) }));
+                      setReceiveQty(String(products[currentStep - 1]?.qty || ""));
+                      setReceiveUnit(products[currentStep - 1]?.unit || "");
                     }}
                     className="w-full py-2 text-xs font-bold text-[#9a7060] cursor-pointer hover:text-[#2c1a10] transition-colors"
                   >
