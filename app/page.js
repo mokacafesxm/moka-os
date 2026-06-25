@@ -1852,59 +1852,24 @@ export default function MokaOrderPad() {
 
   const markOrderReceived = async (order) => {
     const products = parseOrderProducts(order);
-    console.log("[markOrderReceived] order keys:", Object.keys(order));
-    console.log("[markOrderReceived] products parsés:", JSON.stringify(products));
-    console.log("[markOrderReceived] receiveModal state:", JSON.stringify({ currentStep: 0, totalSteps: products.length }));
-
-    if (products.length === 0) {
-      showToast("Aucun produit trouvé dans cette commande", "error");
-      return;
-    }
+    console.log("[markOrderReceived] products parsés:", products.length, JSON.stringify(products));
 
     setOrderDetail(null);
 
-    if (products.length === 1) {
-      // Commande simple → marquer Reçu immédiatement + ouvrir modal stock
-      try {
-        await fetch("/api/supplier-orders", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: order.id, statut: "Reçu" }),
-        });
-      } catch (e) {
-        console.error("[markOrderReceived] Erreur PATCH:", e);
-      }
-      const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
-      const p = products[0];
-      const nameLower   = norm(p.name);
-      const catalogItem = productsDb.find(db => norm(db.ingredient || db.name || "") === nameLower);
-      const stockItem   = stockLive.find(s =>
-        (catalogItem?.id && s.ingredientId === catalogItem.id) ||
-        norm(s.name) === nameLower ||
-        norm(s.ingredient) === nameLower
-      );
-      setSupplierOrders(prev => prev.map(o => o.id === order.id ? { ...o, statut: "Reçu" } : o));
-      setOrdStatusFilter("Reçu");
-      if (stockItem?.id) {
-        openStockReceive(stockItem, "add", p.qty || 1);
-        showToast(`Commande ${order.fournisseur} reçue — ajuste le stock`);
-      } else {
-        try {
-          await fetch(STOCK_UPDATE_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: p.name, poidsTotal: p.qty || 1, mode: "upsert", Unite: p.unit, source: "Réception commande" }),
-          });
-        } catch (e) {
-          console.error("[markOrderReceived] upsert:", e);
-        }
-        refreshAll();
-        showToast(`Commande ${order.fournisseur} marquée reçue — stock mis à jour`);
-      }
+    if (products.length === 0) {
+      const fallbackProduct = {
+        name: order.produit || order.ingredient || order.nom || getOrderSupplier(order) || "Produit",
+        qty: Number(order.quantite || order.qty || 1),
+        unit: order.unite || order.unit || "",
+      };
+      console.warn("[markOrderReceived] Fallback produit:", fallbackProduct);
+      setReceiveModal({ order, products: [fallbackProduct], currentStep: 0, confirmed: [], totalSteps: 1 });
+      setReceiveQty(String(fallbackProduct.qty || ""));
+      setReceiveUnit(fallbackProduct.unit || "");
       return;
     }
 
-    // Commande multi-produits → modal step by step (Notion PATCH à la fin)
+    // Toujours ouvrir le modal receiveModal, que ce soit 1 ou N produits
     setReceiveModal({ order, products, currentStep: 0, confirmed: [], totalSteps: products.length });
     setReceiveQty(String(products[0].qty || ""));
     setReceiveUnit(products[0].unit || "");
@@ -1965,19 +1930,23 @@ export default function MokaOrderPad() {
       setReceiveUnit(nextProduct.unit || "");
     } else {
       setReceiveModal(null);
+      setReceiveQty("");
+      setReceiveUnit("");
       try {
         await fetch("/api/supplier-orders", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: order.id, statut: "Reçu" }),
         });
-        setSupplierOrders(prev => prev.map(o => o.id === order.id ? { ...o, statut: "Reçu" } : o));
-        setOrdStatusFilter("Reçu");
-        showToast(`Commande ${order.fournisseur} reçue — ${newConfirmed.length} produits mis en stock ✅`);
-        refreshAll();
       } catch (e) {
-        showToast("Erreur mise à jour commande", "error");
+        console.error("[confirmReceiveStep] PATCH Reçu:", e);
       }
+      setSupplierOrders(prev => prev.map(o =>
+        o.id === order.id ? { ...o, statut: "Reçu", status: "Reçu" } : o
+      ));
+      setOrdStatusFilter("Reçu");
+      showToast(`Commande ${getOrderSupplier(order) || order.fournisseur} reçue — ${newConfirmed.length} produit${newConfirmed.length > 1 ? "s" : ""} mis en stock ✅`);
+      refreshAll();
     }
   };
 
@@ -7265,7 +7234,9 @@ export default function MokaOrderPad() {
                   <button onClick={() => setReceiveModal(null)} className="w-8 h-8 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer font-black">×</button>
                 </div>
                 <div className="text-2xl font-black text-[#2c1a10] leading-tight mb-1">{productName}</div>
-                <div className="text-xs text-[#9a7060] font-semibold mb-3">Commandé : {product.qty} {product.unit}</div>
+                <div className="text-xs text-[#9a7060] font-semibold mb-3">
+                  {getOrderSupplier(order)} · Commandé : {product.qty || "?"} {product.unit}
+                </div>
                 <div className="flex gap-1.5">
                   {products.map((p, i) => (
                     <div key={i}
