@@ -20,6 +20,7 @@ export default function ProductPopup({ product, onClose, onAdd }) {
   const matchedVariant = product.hasVariants ? findMatchingVariant(product.variants, selection) : null;
   const unitPrice = matchedVariant ? parseFloat(matchedVariant.price) : product.priceFrom;
   const total = unitPrice * quantity;
+  const variantLabel = product.hasVariants ? Object.values(selection).join(", ") : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end">
@@ -122,7 +123,7 @@ export default function ProductPopup({ product, onClose, onAdd }) {
           </div>
 
           <button
-            onClick={() => product.disponible && onAdd(quantity)}
+            onClick={() => product.disponible && onAdd({ variantLabel, unitPrice, quantity })}
             disabled={!product.disponible}
             className={`flex-1 py-3.5 rounded-2xl font-bold text-white flex items-center justify-center gap-2 ${
               product.disponible ? "cursor-pointer" : "cursor-not-allowed opacity-60"

@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { MOKA } from "../_lib/theme";
+import { useCart } from "../_lib/CartContext";
 import TopBar from "./TopBar";
 import Header from "./Header";
 import SearchBar from "./SearchBar";
@@ -11,6 +12,7 @@ import CategorySection from "./CategorySection";
 import PromoBanner from "./PromoBanner";
 import ProductPopup from "./ProductPopup";
 import BottomNav from "./BottomNav";
+import CartView from "./CartView";
 
 function matches(product, query) {
   if (!query) return true;
@@ -24,11 +26,11 @@ function filterGroup(produits, query) {
 
 export default function MenuCatalog({ data }) {
   const { categories, promos, popular, matchaLovers, coffeeAddict, allTheFood, refreshers, autres, products } = data;
+  const cart = useCart();
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [activeCategory, setActiveCategory] = useState(null);
   const [query, setQuery] = useState("");
   const [favorites, setFavorites] = useState(() => new Set());
-  const [cartCount, setCartCount] = useState(0);
   const [activeTab, setActiveTab] = useState("home");
   const searchRef = useRef(null);
   const topRef = useRef(null);
@@ -47,15 +49,18 @@ export default function MenuCatalog({ data }) {
 
   function goHome() {
     setActiveTab("home");
+    setActiveCategory(null);
     setQuery("");
     topRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
   function showFavorites() {
+    setActiveCategory(null);
     setActiveTab((t) => (t === "favorites" ? "home" : "favorites"));
   }
 
   function showCart() {
+    setActiveCategory(null);
     setActiveTab((t) => (t === "cart" ? "home" : "cart"));
   }
 
@@ -81,8 +86,12 @@ export default function MenuCatalog({ data }) {
 
   const cardProps = { onSelectProduct: setSelectedProduct, favorites, onToggleFavorite: toggleFavorite };
 
-  function addToCart(quantity) {
-    setCartCount((n) => n + quantity);
+  function addToCart({ variantLabel, unitPrice, quantity }) {
+    cart.addItem(
+      { id: selectedProduct.id, name: selectedProduct.nom, photo: selectedProduct.photo, price: unitPrice },
+      variantLabel,
+      quantity
+    );
     setSelectedProduct(null);
   }
 
@@ -96,7 +105,9 @@ export default function MenuCatalog({ data }) {
       <CategoryPanel categoryName={activeCategory} products={products} onSelectProduct={setSelectedProduct} />
 
       <main>
-        {activeTab === "favorites" ? (
+        {activeTab === "cart" ? (
+          <CartView onGoHome={goHome} />
+        ) : activeTab === "favorites" ? (
           <CategorySection nom="Favoris" produits={favoriteProducts} {...cardProps} />
         ) : (
           <>
@@ -117,11 +128,14 @@ export default function MenuCatalog({ data }) {
 
       <BottomNav
         activeTab={activeTab}
-        cartCount={cartCount}
+        cartCount={cart.count}
         onHome={goHome}
         onCart={showCart}
         onFavorites={showFavorites}
-        onAccount={() => setActiveTab("account")}
+        onAccount={() => {
+          setActiveCategory(null);
+          setActiveTab("account");
+        }}
       />
     </div>
   );

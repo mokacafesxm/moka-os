@@ -1,4 +1,5 @@
 import { Dancing_Script } from "next/font/google";
+import { CartProvider } from "./_lib/CartContext";
 
 const scriptFont = Dancing_Script({
   variable: "--font-script",
@@ -7,5 +8,9 @@ const scriptFont = Dancing_Script({
 });
 
 export default function CommanderLayout({ children }) {
-  return <div className={scriptFont.variable}>{children}</div>;
+  return (
+    <div className={scriptFont.variable}>
+      <CartProvider>{children}</CartProvider>
+    </div>
+  );
 }
