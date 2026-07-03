@@ -23,7 +23,7 @@ export default function ProductBottomSheet({ product, onClose }) {
 
       <div
         className="relative w-full max-h-[85vh] overflow-y-auto rounded-t-3xl p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
-        style={{ backgroundColor: MOKA.sand }}
+        style={{ backgroundColor: MOKA.cream }}
       >
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
@@ -31,7 +31,7 @@ export default function ProductBottomSheet({ product, onClose }) {
               {product.nom}
             </h3>
             {product.description && (
-              <p className="text-sm mt-1" style={{ color: MOKA.textMuted }}>
+              <p className="text-sm mt-1" style={{ color: MOKA.brownLight }}>
                 {product.description}
               </p>
             )}
@@ -48,7 +48,7 @@ export default function ProductBottomSheet({ product, onClose }) {
 
         {optionGroups.map((group) => (
           <div key={group.name} className="mb-4">
-            <div className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: MOKA.textMuted }}>
+            <div className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: MOKA.brownLight }}>
               {group.name}
             </div>
             <div className="flex flex-wrap gap-2">
@@ -64,10 +64,14 @@ export default function ProductBottomSheet({ product, onClose }) {
           </div>
         ))}
 
-        <div className="flex items-center justify-between mt-6 pt-4 border-t" style={{ borderColor: MOKA.border }}>
-          <span className="text-2xl font-black" style={{ color: MOKA.olive }}>
-            {formatPrice(price)}
-          </span>
+        <div className="mt-6 pt-4 border-t" style={{ borderColor: MOKA.brownLight }}>
+          <button
+            onClick={onClose}
+            className="w-full py-3.5 rounded-2xl font-bold text-white cursor-pointer flex items-center justify-center gap-2"
+            style={{ backgroundColor: MOKA.coral }}
+          >
+            Ajouter — {formatPrice(price)}
+          </button>
         </div>
       </div>
     </div>

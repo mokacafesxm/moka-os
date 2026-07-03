@@ -1,8 +1,12 @@
+import { MOKA } from "../_lib/theme";
+
 export default function PromoBanner({ promo }) {
   if (!promo?.image) return null;
 
   const content = (
-    <img src={promo.image} alt="Promotion" className="w-full h-28 object-cover rounded-2xl" />
+    <div className="rounded-3xl p-2 overflow-hidden" style={{ backgroundColor: MOKA.promoGreen }}>
+      <img src={promo.image} alt="Promotion" className="w-full h-24 object-cover rounded-2xl" />
+    </div>
   );
 
   return (

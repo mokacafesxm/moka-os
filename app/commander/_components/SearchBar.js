@@ -1,0 +1,30 @@
+"use client";
+
+import { forwardRef } from "react";
+import { MOKA } from "../_lib/theme";
+
+const SearchBar = forwardRef(function SearchBar({ value, onChange }, ref) {
+  return (
+    <div className="px-4 pb-3">
+      <div
+        className="flex items-center gap-2 rounded-full border bg-white px-4 py-2.5"
+        style={{ borderColor: MOKA.brownLight }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke={MOKA.brownLight} strokeWidth="2" className="w-4 h-4 shrink-0">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+        </svg>
+        <input
+          ref={ref}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Rechercher un produit..."
+          className="w-full bg-transparent outline-none text-sm placeholder:text-[#c2a894]"
+          style={{ color: MOKA.brown }}
+        />
+      </div>
+    </div>
+  );
+});
+
+export default SearchBar;

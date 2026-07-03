@@ -12,16 +12,16 @@ export default function CategoryIcon({ nom, photo, size = 56 }) {
       <img
         src={photo}
         alt={nom}
-        style={{ ...style, borderColor: MOKA.border }}
-        className="rounded-full object-cover border-2 shrink-0"
+        style={{ ...style, borderColor: MOKA.brownLight }}
+        className="rounded-full object-cover border shrink-0"
       />
     );
   }
 
   return (
     <div
-      style={{ ...style, backgroundColor: MOKA.brown, borderColor: MOKA.border }}
-      className="rounded-full flex items-center justify-center border-2 shrink-0"
+      style={{ ...style, backgroundColor: MOKA.brown, borderColor: MOKA.brownLight }}
+      className="rounded-full flex items-center justify-center border shrink-0"
     >
       <span className="text-white font-bold text-sm tracking-tight">{initials(nom)}</span>
     </div>

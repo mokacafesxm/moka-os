@@ -25,9 +25,10 @@ export function priceFrom(variants, fallbackPrice) {
   return prices.length ? Math.min(...prices) : fallbackPrice ?? 0;
 }
 
+// Matches mokacafe.co's price format: "€X,00" (comma decimal, always 2 digits).
 export function formatPrice(amount) {
   const n = Number(amount) || 0;
-  return Number.isInteger(n) ? `${n}€` : `${n.toFixed(2)}€`;
+  return `€${n.toFixed(2).replace(".", ",")}`;
 }
 
 // Builds [{ name: "Taille", values: ["S", "M", "L"] }, ...] preserving first-seen order.

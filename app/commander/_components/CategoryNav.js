@@ -15,7 +15,7 @@ export default function CategoryNav({ categories }) {
   return (
     <nav
       className="sticky top-0 z-20 flex gap-4 overflow-x-auto px-4 py-3 backdrop-blur-md border-b"
-      style={{ backgroundColor: `${MOKA.cream}f5`, borderColor: MOKA.borderMuted }}
+      style={{ backgroundColor: `${MOKA.cream}f5`, borderColor: MOKA.brownLight }}
     >
       {categories.map((cat) => (
         <button
@@ -24,7 +24,7 @@ export default function CategoryNav({ categories }) {
           className="flex flex-col items-center gap-1 shrink-0 cursor-pointer"
         >
           <CategoryIcon nom={cat.nom} photo={cat.photo} />
-          <span className="text-xs font-semibold whitespace-nowrap" style={{ color: MOKA.brown }}>
+          <span className="text-[11px] font-bold uppercase whitespace-nowrap" style={{ color: MOKA.brown }}>
             {cat.nom}
           </span>
         </button>
