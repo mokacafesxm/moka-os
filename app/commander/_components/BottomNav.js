@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { MOKA } from "../_lib/theme";
 
 function HomeIcon(props) {
@@ -36,6 +37,19 @@ function UserIcon(props) {
 }
 
 function NavButton({ Icon, active, onClick, badge }) {
+  const prevBadge = useRef(badge);
+  const [bump, setBump] = useState(false);
+
+  useEffect(() => {
+    if (badge > (prevBadge.current || 0)) {
+      setBump(true);
+      const t = setTimeout(() => setBump(false), 350);
+      prevBadge.current = badge;
+      return () => clearTimeout(t);
+    }
+    prevBadge.current = badge;
+  }, [badge]);
+
   return (
     <button onClick={onClick} className="relative w-11 h-11 rounded-full flex items-center justify-center cursor-pointer shrink-0">
       <span
@@ -46,7 +60,9 @@ function NavButton({ Icon, active, onClick, badge }) {
       </span>
       {badge > 0 && (
         <span
-          className="absolute top-0 right-0 min-w-[18px] h-[18px] px-1 rounded-full text-white text-[10px] font-bold flex items-center justify-center"
+          className={`absolute top-0 right-0 min-w-[18px] h-[18px] px-1 rounded-full text-white text-[10px] font-bold flex items-center justify-center ${
+            bump ? "animate-bump" : ""
+          }`}
           style={{ backgroundColor: MOKA.coral }}
         >
           {badge > 9 ? "9+" : badge}

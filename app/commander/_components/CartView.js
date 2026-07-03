@@ -38,7 +38,7 @@ function CartLine({ item, onUpdateQty, onRemove }) {
         >
           <button
             onClick={() => onUpdateQty(item.id, item.variant, item.qty - 1)}
-            className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer font-bold"
+            className="flex items-center justify-center cursor-pointer font-bold p-2.5 -m-2.5"
             style={{ color: MOKA.brown }}
             aria-label="Retirer un"
           >
@@ -49,7 +49,7 @@ function CartLine({ item, onUpdateQty, onRemove }) {
           </span>
           <button
             onClick={() => onUpdateQty(item.id, item.variant, item.qty + 1)}
-            className="w-6 h-6 rounded-full flex items-center justify-center cursor-pointer font-bold"
+            className="flex items-center justify-center cursor-pointer font-bold p-2.5 -m-2.5"
             style={{ color: MOKA.brown }}
             aria-label="Ajouter un"
           >
@@ -62,7 +62,7 @@ function CartLine({ item, onUpdateQty, onRemove }) {
         <button
           onClick={() => onRemove(item.id, item.variant)}
           aria-label="Supprimer"
-          className="cursor-pointer"
+          className="cursor-pointer p-3.5 -m-3.5"
           style={{ color: MOKA.brownLight }}
         >
           <Trash2 className="w-4 h-4" />
@@ -123,7 +123,7 @@ export default function CartView({ onGoHome }) {
           <span>{formatPrice(subtotal)}</span>
         </div>
 
-        <button onClick={clearCart} className="mt-3 text-xs underline cursor-pointer" style={{ color: MOKA.brownLight }}>
+        <button onClick={clearCart} className="mt-3 text-xs underline cursor-pointer p-2 -m-2" style={{ color: MOKA.brownLight }}>
           Vider le panier
         </button>
       </div>

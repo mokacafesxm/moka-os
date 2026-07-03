@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { MOKA } from "../_lib/theme";
 import { formatPrice } from "../_lib/variants";
 
@@ -18,6 +19,15 @@ function HeartIcon({ filled }) {
 }
 
 export default function ProductCard({ product, onSelect, favorited, onToggleFavorite }) {
+  const [pop, setPop] = useState(false);
+
+  function handleToggleFavorite(e) {
+    e.stopPropagation();
+    onToggleFavorite(product.id);
+    setPop(true);
+    setTimeout(() => setPop(false), 300);
+  }
+
   return (
     <div onClick={() => onSelect(product)} className="shrink-0 w-36 snap-start cursor-pointer">
       <div className="relative w-36 h-36 rounded-3xl overflow-hidden shadow-md bg-white active:scale-[0.97] transition-transform">
@@ -41,14 +51,13 @@ export default function ProductCard({ product, onSelect, favorited, onToggleFavo
         )}
 
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleFavorite(product.id);
-          }}
-          className="absolute top-2 right-2 w-7 h-7 rounded-xl bg-white shadow flex items-center justify-center cursor-pointer"
+          onClick={handleToggleFavorite}
+          className="absolute top-0 right-0 w-11 h-11 flex items-center justify-center cursor-pointer"
           aria-label="Favori"
         >
-          <HeartIcon filled={favorited} />
+          <span className={`w-7 h-7 rounded-xl bg-white shadow flex items-center justify-center ${pop ? "animate-pop" : ""}`}>
+            <HeartIcon filled={favorited} />
+          </span>
         </button>
       </div>
 

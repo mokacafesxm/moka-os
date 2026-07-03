@@ -5,14 +5,17 @@ import { MOKA } from "../_lib/theme";
 import { useCart } from "../_lib/CartContext";
 import TopBar from "./TopBar";
 import Header from "./Header";
+import FreshnessIndicator from "./FreshnessIndicator";
 import SearchBar from "./SearchBar";
 import CategoryNav from "./CategoryNav";
 import CategoryPanel from "./CategoryPanel";
 import CategorySection from "./CategorySection";
-import PromoBanner from "./PromoBanner";
+import PromoCarousel from "./PromoCarousel";
 import ProductPopup from "./ProductPopup";
 import BottomNav from "./BottomNav";
 import CartView from "./CartView";
+import LocationSheet from "./LocationSheet";
+import Toast from "./Toast";
 
 function matches(product, query) {
   if (!query) return true;
@@ -25,15 +28,18 @@ function filterGroup(produits, query) {
 }
 
 export default function MenuCatalog({ data }) {
-  const { categories, promos, popular, matchaLovers, coffeeAddict, allTheFood, refreshers, autres, products } = data;
+  const { categories, promos, popular, matchaLovers, coffeeAddict, allTheFood, refreshers, autres, products, generatedAt } =
+    data;
   const cart = useCart();
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [activeCategory, setActiveCategory] = useState(null);
   const [query, setQuery] = useState("");
   const [favorites, setFavorites] = useState(() => new Set());
   const [activeTab, setActiveTab] = useState("home");
+  const [toast, setToast] = useState(null);
   const searchRef = useRef(null);
   const topRef = useRef(null);
+  const toastTimer = useRef(null);
 
   function toggleFavorite(id) {
     setFavorites((prev) => {
@@ -92,6 +98,9 @@ export default function MenuCatalog({ data }) {
       variantLabel,
       quantity
     );
+    setToast(`Ajouté au panier · ${selectedProduct.nom}`);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 1800);
     setSelectedProduct(null);
   }
 
@@ -100,20 +109,19 @@ export default function MenuCatalog({ data }) {
       <div ref={topRef} />
       <TopBar />
       <Header />
+      <FreshnessIndicator generatedAt={generatedAt} />
       <SearchBar ref={searchRef} value={query} onChange={setQuery} />
       <CategoryNav categories={categories} activeCategory={activeCategory} onSelect={selectCategory} />
       <CategoryPanel categoryName={activeCategory} products={products} onSelectProduct={setSelectedProduct} />
 
-      <main>
+      <main key={activeTab} className="animate-fade-in">
         {activeTab === "cart" ? (
           <CartView onGoHome={goHome} />
         ) : activeTab === "favorites" ? (
           <CategorySection nom="Favoris" produits={favoriteProducts} {...cardProps} />
         ) : (
           <>
-            {promos.map((promo) => (
-              <PromoBanner key={promo.id} promo={promo} />
-            ))}
+            <PromoCarousel promos={promos} />
 
             {filteredGroups.map((group) => (
               <CategorySection key={group.nom} nom={group.nom} produits={group.produits} {...cardProps} />
@@ -125,6 +133,9 @@ export default function MenuCatalog({ data }) {
       {selectedProduct && (
         <ProductPopup product={selectedProduct} onClose={() => setSelectedProduct(null)} onAdd={addToCart} />
       )}
+
+      <LocationSheet />
+      <Toast message={toast} />
 
       <BottomNav
         activeTab={activeTab}

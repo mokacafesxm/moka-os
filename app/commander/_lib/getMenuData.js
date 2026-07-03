@@ -97,5 +97,16 @@ export async function getMenuData() {
   const refreshers = products.filter((p) => p.categorie && !isTagged(p) && !isFood(p));
   const autres = products.filter((p) => !p.categorie && !isTagged(p));
 
-  return { categories, promos, popular, matchaLovers, coffeeAddict, allTheFood, refreshers, autres, products };
+  return {
+    categories,
+    promos,
+    popular,
+    matchaLovers,
+    coffeeAddict,
+    allTheFood,
+    refreshers,
+    autres,
+    products,
+    generatedAt: Date.now(),
+  };
 }

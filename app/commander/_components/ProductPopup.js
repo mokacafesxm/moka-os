@@ -27,7 +27,7 @@ export default function ProductPopup({ product, onClose, onAdd }) {
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
       <div
-        className="relative w-full max-h-[90vh] rounded-t-3xl flex flex-col overflow-hidden"
+        className="relative w-full max-h-[90vh] rounded-t-3xl flex flex-col overflow-hidden animate-sheet-up"
         style={{ backgroundColor: MOKA.cream }}
       >
         <div className="overflow-y-auto flex-1">
@@ -53,7 +53,7 @@ export default function ProductPopup({ product, onClose, onAdd }) {
 
             <button
               onClick={onClose}
-              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white shadow flex items-center justify-center cursor-pointer"
+              className="absolute top-3 right-3 w-11 h-11 rounded-full bg-white shadow flex items-center justify-center cursor-pointer"
               style={{ color: MOKA.brown }}
               aria-label="Fermer"
             >
@@ -103,7 +103,7 @@ export default function ProductPopup({ product, onClose, onAdd }) {
           <div className="flex items-center gap-3 rounded-full border px-1 py-1 shrink-0" style={{ borderColor: MOKA.brownLight }}>
             <button
               onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer font-bold"
+              className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer font-bold"
               style={{ color: MOKA.brown }}
               aria-label="Retirer un"
             >
@@ -114,7 +114,7 @@ export default function ProductPopup({ product, onClose, onAdd }) {
             </span>
             <button
               onClick={() => setQuantity((q) => q + 1)}
-              className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer font-bold"
+              className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer font-bold"
               style={{ color: MOKA.brown }}
               aria-label="Ajouter un"
             >
