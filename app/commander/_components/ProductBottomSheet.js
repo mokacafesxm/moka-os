@@ -5,7 +5,7 @@ import { MOKA } from "../_lib/theme";
 import { formatPrice, groupOptionValues, findMatchingVariant } from "../_lib/variants";
 import VariantTile from "./VariantTile";
 
-export default function ProductBottomSheet({ product, onClose }) {
+export default function ProductBottomSheet({ product, onClose, onAdd }) {
   const optionGroups = useMemo(() => groupOptionValues(product.variants), [product]);
 
   const [selection, setSelection] = useState(() => {
@@ -66,7 +66,7 @@ export default function ProductBottomSheet({ product, onClose }) {
 
         <div className="mt-6 pt-4 border-t" style={{ borderColor: MOKA.brownLight }}>
           <button
-            onClick={onClose}
+            onClick={onAdd}
             className="w-full py-3.5 rounded-2xl font-bold text-white cursor-pointer flex items-center justify-center gap-2"
             style={{ backgroundColor: MOKA.coral }}
           >

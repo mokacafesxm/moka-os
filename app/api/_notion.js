@@ -172,6 +172,14 @@ export function getDate(props, ...keys) {
   return null;
 }
 
+export function getMultiSelect(props, ...keys) {
+  for (const k of keys) {
+    const p = props?.[k];
+    if (p?.type === "multi_select" && p.multi_select?.length) return p.multi_select.map((o) => o.name);
+  }
+  return [];
+}
+
 export function getFileUrl(props, ...keys) {
   for (const k of keys) {
     const p = props?.[k];

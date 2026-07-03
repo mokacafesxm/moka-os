@@ -22,10 +22,11 @@ function filterGroup(produits, query) {
 }
 
 export default function MenuCatalog({ data }) {
-  const { categories, sections, popular, autres, promos } = data;
+  const { categories, promos, popular, matchaLovers, coffeeAddict, allTheFood, refreshers, autres } = data;
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [query, setQuery] = useState("");
   const [favorites, setFavorites] = useState(() => new Set());
+  const [cartCount, setCartCount] = useState(0);
   const [activeTab, setActiveTab] = useState("home");
   const searchRef = useRef(null);
   const topRef = useRef(null);
@@ -44,33 +45,42 @@ export default function MenuCatalog({ data }) {
     topRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
-  function focusSearch() {
-    setActiveTab("search");
-    searchRef.current?.focus();
-  }
-
   function showFavorites() {
     setActiveTab((t) => (t === "favorites" ? "home" : "favorites"));
   }
 
-  const filteredPopular = useMemo(() => filterGroup(popular, query), [popular, query]);
-  const filteredSections = useMemo(
-    () => sections.map((s) => ({ ...s, produits: filterGroup(s.produits, query) })),
-    [sections, query]
-  );
-  const filteredAutres = useMemo(() => filterGroup(autres, query), [autres, query]);
+  function showCart() {
+    setActiveTab((t) => (t === "cart" ? "home" : "cart"));
+  }
 
-  const allProducts = useMemo(
-    () => [...popular, ...sections.flatMap((s) => s.produits), ...autres],
-    [popular, sections, autres]
-  );
-  const favoriteProducts = useMemo(
-    () => allProducts.filter((p) => favorites.has(p.id)),
-    [allProducts, favorites]
+  // All product groups, in the fixed homepage order — used both for rendering
+  // and for building the cross-section "Favoris" view.
+  const groups = useMemo(
+    () => [
+      { nom: "Popular", produits: popular },
+      { nom: "Matcha Lovers", produits: matchaLovers },
+      { nom: "Coffee Addict", produits: coffeeAddict },
+      { nom: "All The Food", produits: allTheFood },
+      { nom: "Refreshers", produits: refreshers },
+      { nom: "Autres", produits: autres },
+    ],
+    [popular, matchaLovers, coffeeAddict, allTheFood, refreshers, autres]
   );
 
-  const promo = (index) => promos[index] ?? null;
+  const filteredGroups = useMemo(
+    () => groups.map((g) => ({ ...g, produits: filterGroup(g.produits, query) })),
+    [groups, query]
+  );
+
+  const allProducts = useMemo(() => groups.flatMap((g) => g.produits), [groups]);
+  const favoriteProducts = useMemo(() => allProducts.filter((p) => favorites.has(p.id)), [allProducts, favorites]);
+
   const cardProps = { onSelectProduct: setSelectedProduct, favorites, onToggleFavorite: toggleFavorite };
+
+  function addToCart() {
+    setCartCount((n) => n + 1);
+    setSelectedProduct(null);
+  }
 
   return (
     <div className="min-h-screen pb-28" style={{ backgroundColor: MOKA.cream }}>
@@ -85,34 +95,26 @@ export default function MenuCatalog({ data }) {
           <CategorySection nom="Favoris" produits={favoriteProducts} {...cardProps} />
         ) : (
           <>
-            {filteredPopular.length > 0 && (
-              <CategorySection nom="Popular" produits={filteredPopular} {...cardProps} />
-            )}
-
-            <PromoBanner promo={promo(0)} />
-
-            {filteredSections.map((section, i) => (
-              <div key={section.id}>
-                <CategorySection nom={section.nom} produits={section.produits} {...cardProps} />
-                <PromoBanner promo={promo(i + 1)} />
-              </div>
+            {promos.map((promo) => (
+              <PromoBanner key={promo.id} promo={promo} />
             ))}
 
-            {filteredAutres.length > 0 && (
-              <CategorySection nom="Autres" produits={filteredAutres} {...cardProps} />
-            )}
+            {filteredGroups.map((group) => (
+              <CategorySection key={group.nom} nom={group.nom} produits={group.produits} {...cardProps} />
+            ))}
           </>
         )}
       </main>
 
       {selectedProduct && (
-        <ProductBottomSheet product={selectedProduct} onClose={() => setSelectedProduct(null)} />
+        <ProductBottomSheet product={selectedProduct} onClose={() => setSelectedProduct(null)} onAdd={addToCart} />
       )}
 
       <BottomNav
         activeTab={activeTab}
+        cartCount={cartCount}
         onHome={goHome}
-        onSearch={focusSearch}
+        onCart={showCart}
         onFavorites={showFavorites}
         onAccount={() => setActiveTab("account")}
       />

@@ -7,12 +7,17 @@ import {
   getNumber,
   getCheckbox,
   getFileUrl,
+  getMultiSelect,
 } from "../../api/_notion";
 import { parseVariants, hasRealOptions, priceFrom } from "./variants";
 
 // Public menu changes rarely (new products/photos) — cache for 2 minutes so a
 // burst of visitors doesn't hammer the Notion API (3 req/s limit).
 const CACHE = { next: { revalidate: 120 } };
+
+// Shopify collection names (product "Catégorie") classified as food, as opposed
+// to drinks — used to build the "All The Food" section.
+const FOOD_CATEGORIES = new Set(["FOOD", "SMALL BITES", "BIG BITES", "BOWLS", "SWEETS", "SIDES"]);
 
 async function fetchCategories() {
   const pages = await queryDatabase(DB.CATEGORIES_WEBSITE, null, null, 100, CACHE);
@@ -62,16 +67,17 @@ async function fetchProducts() {
       priceFrom: priceFrom(variants, prix),
       photo: getFileUrl(props, "Photo"),
       categorie: getSelect(props, "Catégorie"),
+      tags: getMultiSelect(props, "Tags"),
       disponible: getCheckbox(props, "Disponible"),
       populaire: getCheckbox(props, "Populaire"),
     };
   });
 }
 
-// Groups products into: "Popular" (Populaire=true), one section per Notion
-// category (only categories that actually have products, in Ordre), and
-// "Autres" for products whose Catégorie doesn't match any known category
-// (empty, or not yet imported — see migration-shopify/06-check-category-consistency.js).
+// Homepage flow (fixed order): category nav -> promos -> Popular -> Matcha
+// Lovers -> Coffee Addict -> All The Food -> Refreshers -> Autres (safety net
+// for products with neither a category nor a tag). Each section is dropped
+// entirely when empty — never rendered as a blank block.
 export async function getMenuData() {
   const [categories, promos, products] = await Promise.all([
     fetchCategories(),
@@ -79,23 +85,17 @@ export async function getMenuData() {
     fetchProducts(),
   ]);
 
-  const categoryNames = new Set(categories.map((c) => c.nom));
-  const byCategory = new Map(categories.map((c) => [c.nom, []]));
-  const autres = [];
-
-  for (const product of products) {
-    if (product.categorie && categoryNames.has(product.categorie)) {
-      byCategory.get(product.categorie).push(product);
-    } else {
-      autres.push(product);
-    }
-  }
-
-  const sections = categories
-    .map((c) => ({ id: c.id, nom: c.nom, photo: c.photo, produits: byCategory.get(c.nom) }))
-    .filter((s) => s.produits.length > 0);
+  const isMatcha = (p) => p.tags.includes("matcha");
+  const isCoffee = (p) => p.tags.includes("coffee");
+  const isTagged = (p) => isMatcha(p) || isCoffee(p);
+  const isFood = (p) => FOOD_CATEGORIES.has(p.categorie) && !isTagged(p);
 
   const popular = products.filter((p) => p.populaire && p.disponible);
+  const matchaLovers = products.filter(isMatcha);
+  const coffeeAddict = products.filter(isCoffee);
+  const allTheFood = products.filter(isFood);
+  const refreshers = products.filter((p) => p.categorie && !isTagged(p) && !isFood(p));
+  const autres = products.filter((p) => !p.categorie && !isTagged(p));
 
-  return { categories: sections.map(({ id, nom, photo }) => ({ id, nom, photo })), sections, popular, autres, promos };
+  return { categories, promos, popular, matchaLovers, coffeeAddict, allTheFood, refreshers, autres };
 }
