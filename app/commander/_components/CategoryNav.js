@@ -1,16 +1,10 @@
 "use client";
 
 import { MOKA } from "../_lib/theme";
-import { slugify } from "../_lib/slug";
 import CategoryIcon from "./CategoryIcon";
 
-export default function CategoryNav({ categories }) {
+export default function CategoryNav({ categories, activeCategory, onSelect }) {
   if (!categories.length) return null;
-
-  function scrollToCategory(nom) {
-    const el = document.getElementById(`cat-${slugify(nom)}`);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
 
   return (
     <nav
@@ -20,10 +14,15 @@ export default function CategoryNav({ categories }) {
       {categories.map((cat) => (
         <button
           key={cat.id}
-          onClick={() => scrollToCategory(cat.nom)}
+          onClick={() => onSelect(cat.nom)}
           className="flex flex-col items-center gap-1 shrink-0 cursor-pointer"
         >
-          <CategoryIcon nom={cat.nom} photo={cat.photo} />
+          <span
+            className="rounded-full transition-shadow"
+            style={activeCategory === cat.nom ? { boxShadow: `0 0 0 2px ${MOKA.coral}` } : undefined}
+          >
+            <CategoryIcon nom={cat.nom} photo={cat.photo} />
+          </span>
           <span className="text-[11px] font-bold uppercase whitespace-nowrap" style={{ color: MOKA.brown }}>
             {cat.nom}
           </span>

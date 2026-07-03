@@ -6,9 +6,10 @@ import TopBar from "./TopBar";
 import Header from "./Header";
 import SearchBar from "./SearchBar";
 import CategoryNav from "./CategoryNav";
+import CategoryPanel from "./CategoryPanel";
 import CategorySection from "./CategorySection";
 import PromoBanner from "./PromoBanner";
-import ProductBottomSheet from "./ProductBottomSheet";
+import ProductPopup from "./ProductPopup";
 import BottomNav from "./BottomNav";
 
 function matches(product, query) {
@@ -22,8 +23,9 @@ function filterGroup(produits, query) {
 }
 
 export default function MenuCatalog({ data }) {
-  const { categories, promos, popular, matchaLovers, coffeeAddict, allTheFood, refreshers, autres } = data;
+  const { categories, promos, popular, matchaLovers, coffeeAddict, allTheFood, refreshers, autres, products } = data;
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [activeCategory, setActiveCategory] = useState(null);
   const [query, setQuery] = useState("");
   const [favorites, setFavorites] = useState(() => new Set());
   const [cartCount, setCartCount] = useState(0);
@@ -37,6 +39,10 @@ export default function MenuCatalog({ data }) {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  }
+
+  function selectCategory(nom) {
+    setActiveCategory((current) => (current === nom ? null : nom));
   }
 
   function goHome() {
@@ -53,8 +59,7 @@ export default function MenuCatalog({ data }) {
     setActiveTab((t) => (t === "cart" ? "home" : "cart"));
   }
 
-  // All product groups, in the fixed homepage order — used both for rendering
-  // and for building the cross-section "Favoris" view.
+  // All product groups, in the fixed homepage order.
   const groups = useMemo(
     () => [
       { nom: "Popular", produits: popular },
@@ -72,13 +77,12 @@ export default function MenuCatalog({ data }) {
     [groups, query]
   );
 
-  const allProducts = useMemo(() => groups.flatMap((g) => g.produits), [groups]);
-  const favoriteProducts = useMemo(() => allProducts.filter((p) => favorites.has(p.id)), [allProducts, favorites]);
+  const favoriteProducts = useMemo(() => products.filter((p) => favorites.has(p.id)), [products, favorites]);
 
   const cardProps = { onSelectProduct: setSelectedProduct, favorites, onToggleFavorite: toggleFavorite };
 
-  function addToCart() {
-    setCartCount((n) => n + 1);
+  function addToCart(quantity) {
+    setCartCount((n) => n + quantity);
     setSelectedProduct(null);
   }
 
@@ -88,7 +92,8 @@ export default function MenuCatalog({ data }) {
       <TopBar />
       <Header />
       <SearchBar ref={searchRef} value={query} onChange={setQuery} />
-      <CategoryNav categories={categories} />
+      <CategoryNav categories={categories} activeCategory={activeCategory} onSelect={selectCategory} />
+      <CategoryPanel categoryName={activeCategory} products={products} onSelectProduct={setSelectedProduct} />
 
       <main>
         {activeTab === "favorites" ? (
@@ -107,7 +112,7 @@ export default function MenuCatalog({ data }) {
       </main>
 
       {selectedProduct && (
-        <ProductBottomSheet product={selectedProduct} onClose={() => setSelectedProduct(null)} onAdd={addToCart} />
+        <ProductPopup product={selectedProduct} onClose={() => setSelectedProduct(null)} onAdd={addToCart} />
       )}
 
       <BottomNav

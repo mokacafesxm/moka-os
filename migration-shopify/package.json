@@ -1,0 +1,18 @@
+{
+  "name": "migration-shopify",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Migration du catalogue produits Shopify vers Notion (MOKA OS), avec ré-hébergement des images sur Vercel Blob",
+  "scripts": {
+    "1:fetch": "node --env-file=.env 01-fetch-shopify.js",
+    "2:images": "node --env-file=.env 02-upload-images.js",
+    "3:inspect": "node --env-file=.env 03-inspect-notion-db.js",
+    "4:migrate": "node --env-file=.env 04-migrate-to-notion.js",
+    "5:categories": "node --env-file=.env 05-import-categories.js",
+    "6:check-categories": "node --env-file=.env 06-check-category-consistency.js",
+    "all": "node --env-file=.env run-all.js"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.5.0"
+  }
+}

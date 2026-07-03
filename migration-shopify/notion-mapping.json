@@ -1,0 +1,10 @@
+{
+  "_comment": "Noms exacts des propriétés de la base Notion 'website-product' (vérifiés via 3:inspect).",
+  "nom": "Name",
+  "description": "Description",
+  "prix": "Prix",
+  "variantes": "Variantes",
+  "categorie": "Catégorie",
+  "photo": "Photo",
+  "disponible": "Disponible"
+}

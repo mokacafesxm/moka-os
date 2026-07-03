@@ -18,18 +18,9 @@ function HeartIcon({ filled }) {
 }
 
 export default function ProductCard({ product, onSelect, favorited, onToggleFavorite }) {
-  const clickable = product.hasVariants && product.disponible;
-
   return (
-    <div
-      onClick={clickable ? () => onSelect(product) : undefined}
-      className={`shrink-0 w-36 snap-start ${clickable ? "cursor-pointer" : "cursor-default"}`}
-    >
-      <div
-        className={`relative w-36 h-36 rounded-3xl overflow-hidden shadow-md bg-white ${
-          clickable ? "active:scale-[0.97] transition-transform" : ""
-        }`}
-      >
+    <div onClick={() => onSelect(product)} className="shrink-0 w-36 snap-start cursor-pointer">
+      <div className="relative w-36 h-36 rounded-3xl overflow-hidden shadow-md bg-white active:scale-[0.97] transition-transform">
         {product.photo ? (
           <img src={product.photo} alt={product.nom} className="w-full h-full object-cover" />
         ) : (
