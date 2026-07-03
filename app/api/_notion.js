@@ -8,6 +8,10 @@ export const DB = {
   PREPS:        "3689512c-f66a-80a1-a067-c2a0288d2cb9",
   BESOINS:      "3689512c-f66a-80dc-a439-f3955cc30001",
   FOURNISSEURS: "3689512c-f66a-805e-8330-fe73f781d1a5",
+  // Catalogue /commander (importé depuis Shopify — voir migration-shopify/)
+  WEBSITE_PRODUCTS:  "3929512c-f66a-816b-88d4-d29604b3ef54",
+  CATEGORIES_WEBSITE: "3929512c-f66a-81d9-ace3-e387b4c4a16f",
+  PROMOS:             "3929512c-f66a-813c-af85-c34263c0eea7",
 };
 
 export const corsHeaders = {
@@ -31,7 +35,7 @@ export async function notionFetch(path, options = {}) {
   });
 }
 
-export async function queryDatabase(dbId, filter, sorts, pageSize = 100) {
+export async function queryDatabase(dbId, filter, sorts, pageSize = 100, fetchOptions) {
   const allPages = [];
   let cursor = undefined;
 
@@ -44,6 +48,7 @@ export async function queryDatabase(dbId, filter, sorts, pageSize = 100) {
     const res = await notionFetch(`/databases/${dbId}/query`, {
       method: "POST",
       body: JSON.stringify(body),
+      ...fetchOptions,
     });
     if (!res.ok) throw new Error(`Notion query ${dbId} failed: ${res.status}`);
     const data = await res.json();
@@ -165,6 +170,15 @@ export function getDate(props, ...keys) {
     if (p?.type === "date" && p.date?.start) return p.date.start;
   }
   return null;
+}
+
+export function getFileUrl(props, ...keys) {
+  for (const k of keys) {
+    const p = props?.[k];
+    const file = p?.type === "files" ? p.files?.[0] : null;
+    if (file) return file.file?.url || file.external?.url || "";
+  }
+  return "";
 }
 
 export function getRelationIds(props, ...keys) {
