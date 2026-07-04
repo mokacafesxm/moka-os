@@ -17,6 +17,8 @@ import CartView from "./CartView";
 import LocationSheet from "./LocationSheet";
 import Toast from "./Toast";
 import AccountView from "./AccountView";
+import EmptyState from "./EmptyState";
+import { Heart } from "lucide-react";
 
 function matches(product, query) {
   if (!query) return true;
@@ -121,7 +123,11 @@ export default function MenuCatalog({ data }) {
         ) : activeTab === "cart" ? (
           <CartView onGoHome={goHome} />
         ) : activeTab === "favorites" ? (
-          <CategorySection nom="Favoris" produits={favoriteProducts} {...cardProps} />
+          favoriteProducts.length > 0 ? (
+            <CategorySection nom="Favoris" produits={favoriteProducts} {...cardProps} />
+          ) : (
+            <EmptyState icon={Heart} message="Aucun favori pour l'instant" actionLabel="Voir le menu" onAction={goHome} />
+          )
         ) : (
           <>
             <PromoCarousel promos={promos} />

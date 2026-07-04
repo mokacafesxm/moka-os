@@ -3,17 +3,28 @@
 import { Check, MapPin } from "lucide-react";
 import { MOKA } from "../_lib/theme";
 import { useLocation, MOKA_LOCATION } from "../_lib/LocationContext";
+import { useModalA11y } from "../_lib/useModalA11y";
 
 export default function LocationSheet() {
   const { open, closePanel, selectLocation } = useLocation();
+  const dialogRef = useModalA11y(closePanel, open);
+
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end">
       <div className="absolute inset-0 bg-black/40" onClick={closePanel} />
 
-      <div className="relative w-full rounded-t-3xl p-5 animate-sheet-up" style={{ backgroundColor: MOKA.cream }}>
-        <h3 className="text-lg font-black mb-4" style={{ color: MOKA.brown }}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="location-sheet-title"
+        tabIndex={-1}
+        className="relative w-full rounded-t-3xl p-5 animate-sheet-up outline-none"
+        style={{ backgroundColor: MOKA.cream }}
+      >
+        <h3 id="location-sheet-title" className="text-lg font-black mb-4" style={{ color: MOKA.brown }}>
           Choisir un restaurant
         </h3>
 

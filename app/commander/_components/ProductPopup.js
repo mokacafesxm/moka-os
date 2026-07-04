@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MOKA } from "../_lib/theme";
 import { formatPrice, groupOptionValues, findMatchingVariant } from "../_lib/variants";
+import { useModalA11y } from "../_lib/useModalA11y";
 import VariantTile from "./VariantTile";
 
 const DESCRIPTION_TRUNCATE_LENGTH = 90;
@@ -26,13 +27,19 @@ export default function ProductPopup({ product, onClose, onAdd }) {
   const variantLabel = product.hasVariants ? Object.values(selection).join(", ") : null;
 
   const isLongDescription = (product.description?.length || 0) > DESCRIPTION_TRUNCATE_LENGTH;
+  const dialogRef = useModalA11y(onClose);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
       <div
-        className="relative w-full max-h-[90vh] rounded-t-3xl flex flex-col overflow-hidden animate-sheet-up"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="product-popup-title"
+        tabIndex={-1}
+        className="relative w-full max-h-[90vh] rounded-t-3xl flex flex-col overflow-hidden animate-sheet-up outline-none"
         style={{ backgroundColor: MOKA.cream }}
       >
         <div className="overflow-y-auto flex-1">
@@ -74,7 +81,7 @@ export default function ProductPopup({ product, onClose, onAdd }) {
             )}
 
             <div className="flex items-start justify-between gap-3">
-              <h3 className="text-xl font-black flex-1" style={{ color: MOKA.brown }}>
+              <h3 id="product-popup-title" className="text-xl font-black flex-1" style={{ color: MOKA.brown }}>
                 {product.nom}
               </h3>
               <span className="text-2xl font-black shrink-0" style={{ color: MOKA.coral }}>

@@ -18,7 +18,8 @@ export default function AccountView() {
     setConnected(true);
   }
 
-  const inputClass = "w-full rounded-full border bg-white px-5 py-3.5 text-sm outline-none min-h-[44px]";
+  const inputClass =
+    "w-full rounded-full border bg-white px-5 py-3.5 text-sm outline-none min-h-[44px] focus:ring-2 focus:ring-offset-2 focus:ring-[#587F25]";
   const inputStyle = { borderColor: MOKA.brownLight, color: MOKA.brown };
 
   return (

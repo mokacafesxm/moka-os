@@ -7,7 +7,7 @@ const SearchBar = forwardRef(function SearchBar({ value, onChange }, ref) {
   return (
     <div className="px-4 pb-3">
       <div
-        className="flex items-center gap-2 rounded-full border bg-white px-4 py-2.5"
+        className="flex items-center gap-2 rounded-full border bg-white px-4 py-2.5 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-[#587F25]"
         style={{ borderColor: MOKA.brownLight }}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke={MOKA.brownLight} strokeWidth="2" className="w-4 h-4 shrink-0">
@@ -19,7 +19,7 @@ const SearchBar = forwardRef(function SearchBar({ value, onChange }, ref) {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Rechercher un produit..."
-          className="w-full bg-transparent outline-none text-sm placeholder:text-[#c2a894]"
+          className="w-full bg-transparent outline-none text-sm placeholder:text-[#976146]"
           style={{ color: MOKA.brown }}
         />
       </div>

@@ -28,8 +28,22 @@ export default function ProductCard({ product, onSelect, favorited, onToggleFavo
     setTimeout(() => setPop(false), 300);
   }
 
+  function handleKeyDown(e) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onSelect(product);
+    }
+  }
+
   return (
-    <div onClick={() => onSelect(product)} className="shrink-0 w-36 snap-start cursor-pointer">
+    <div
+      onClick={() => onSelect(product)}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`${product.nom}, ${product.hasVariants ? "à partir de " : ""}${formatPrice(product.priceFrom)}`}
+      className="shrink-0 w-36 snap-start cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#587F25] rounded-3xl"
+    >
       <div className="relative w-36 h-36 rounded-3xl overflow-hidden shadow-md bg-white active:scale-[0.97] transition-transform">
         {product.photo ? (
           <img src={product.photo} alt={product.nom} className="w-full h-full object-cover" />
