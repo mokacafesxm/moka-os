@@ -53,10 +53,11 @@ function NavButton({ Icon, active, onClick, badge }) {
   return (
     <button onClick={onClick} className="relative w-11 h-11 rounded-full flex items-center justify-center cursor-pointer shrink-0">
       <span
-        className="w-9 h-9 rounded-full flex items-center justify-center"
-        style={active ? { backgroundColor: "white" } : undefined}
+        className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
+        style={active ? { backgroundColor: "rgba(255,255,255,0.9)" } : undefined}
       >
-        <Icon className="w-5 h-5" style={{ color: MOKA.brown }} />
+        {/* Drop shadow keeps the icon legible over busy/light photos scrolling behind the glass. */}
+        <Icon className="w-5 h-5" style={{ color: MOKA.brown, filter: "drop-shadow(0 1px 1.5px rgba(0,0,0,0.25))" }} />
       </span>
       {badge > 0 && (
         <span
@@ -73,10 +74,34 @@ function NavButton({ Icon, active, onClick, badge }) {
 }
 
 export default function BottomNav({ activeTab, cartCount, onHome, onFavorites, onCart, onAccount }) {
+  const [scrolling, setScrolling] = useState(false);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    function handleScroll() {
+      setScrolling(true);
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setScrolling(false), 300);
+    }
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      clearTimeout(timerRef.current);
+    };
+  }, []);
+
   return (
     <nav
-      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 px-2 py-1.5 rounded-full shadow-lg"
-      style={{ backgroundColor: MOKA.navBg }}
+      className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center rounded-full transition-[gap,padding] duration-300 ease-out ${
+        scrolling ? "gap-0 px-1 py-1.5" : "gap-1 px-2 py-1.5"
+      }`}
+      style={{
+        backgroundColor: "rgba(250,243,235,0.7)",
+        backdropFilter: "blur(20px) saturate(180%)",
+        WebkitBackdropFilter: "blur(20px) saturate(180%)",
+        border: "1px solid rgba(255,255,255,0.35)",
+        boxShadow: "0 8px 30px rgba(44,26,16,0.16)",
+      }}
     >
       <NavButton Icon={HomeIcon} active={activeTab === "home"} onClick={onHome} />
       <NavButton Icon={HeartIcon} active={activeTab === "favorites"} onClick={onFavorites} />

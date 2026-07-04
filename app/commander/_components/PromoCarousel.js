@@ -4,11 +4,11 @@ import { useRef, useState } from "react";
 import { MOKA } from "../_lib/theme";
 
 function PromoSlide({ promo }) {
-  const content = (
-    <div className="rounded-3xl p-2 overflow-hidden" style={{ backgroundColor: MOKA.promoGreen }}>
-      <img src={promo.image} alt="Promotion" className="w-full h-32 object-cover rounded-2xl" />
-    </div>
-  );
+  // These images are fully composed by Shopify (text + photo + background
+  // baked in) — just show them as-is, no frame/overlay/extra crop. Both
+  // known banners are natively 16:9, so aspect-[16/9] + object-cover renders
+  // them with zero cropping.
+  const content = <img src={promo.image} alt="Promotion" className="w-full aspect-[16/9] object-cover rounded-3xl" />;
 
   return promo.lien ? (
     <a href={promo.lien} target="_blank" rel="noopener noreferrer">

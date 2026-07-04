@@ -19,7 +19,7 @@ export default function CategoryNav({ categories, activeCategory, onSelect }) {
         >
           <span
             className="rounded-full transition-shadow"
-            style={activeCategory === cat.nom ? { boxShadow: `0 0 0 2px ${MOKA.coral}` } : undefined}
+            style={activeCategory === cat.nom ? { boxShadow: `0 0 0 2px ${MOKA.green}` } : undefined}
           >
             <CategoryIcon nom={cat.nom} photo={cat.photo} />
           </span>
