@@ -38,7 +38,7 @@ function CartLine({ item, onUpdateQty, onRemove }) {
         >
           <button
             onClick={() => onUpdateQty(item.id, item.variant, item.qty - 1)}
-            className="flex items-center justify-center cursor-pointer font-bold p-2.5 -m-2.5"
+            className="flex items-center justify-center cursor-pointer font-bold p-2.5 -m-2.5 min-w-[44px]"
             style={{ color: MOKA.brown }}
             aria-label="Retirer un"
           >
@@ -49,7 +49,7 @@ function CartLine({ item, onUpdateQty, onRemove }) {
           </span>
           <button
             onClick={() => onUpdateQty(item.id, item.variant, item.qty + 1)}
-            className="flex items-center justify-center cursor-pointer font-bold p-2.5 -m-2.5"
+            className="flex items-center justify-center cursor-pointer font-bold p-2.5 -m-2.5 min-w-[44px]"
             style={{ color: MOKA.brown }}
             aria-label="Ajouter un"
           >

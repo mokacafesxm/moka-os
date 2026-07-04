@@ -25,7 +25,7 @@ export default function TopBar() {
 
       <button
         onClick={openPanel}
-        className="shrink-0 font-semibold text-[11px] flex items-center gap-1 cursor-pointer p-3 -m-3"
+        className="shrink-0 font-semibold text-[11px] flex items-center gap-1 cursor-pointer p-4 -m-4"
       >
         <MapPin className="w-3.5 h-3.5" />
         {location.name.split("—")[1]?.split(",")[0]?.trim() || "Marigot"}

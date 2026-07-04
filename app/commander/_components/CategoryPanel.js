@@ -6,7 +6,7 @@ import { formatPrice } from "../_lib/variants";
 function CompactTile({ product, onSelect }) {
   return (
     <button onClick={() => onSelect(product)} className="text-left cursor-pointer">
-      <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-white shadow-sm">
+      <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-white shadow-sm">
         {product.photo ? (
           <img src={product.photo} alt={product.nom} className="w-full h-full object-cover" />
         ) : (
