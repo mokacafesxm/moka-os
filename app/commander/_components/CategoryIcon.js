@@ -22,16 +22,18 @@ function initials(name) {
   return String(name || "?").trim().slice(0, 2).toUpperCase();
 }
 
-export default function CategoryIcon({ nom, photo, size = 56 }) {
-  const style = { width: size, height: size };
+// Sized in CSS (not JS) so it can grow at the md breakpoint without a
+// runtime media-query check — mobile 56px, desktop 64px.
+const SIZE_CLASSES = "w-14 h-14 md:w-16 md:h-16";
 
+export default function CategoryIcon({ nom, photo }) {
   if (photo) {
     return (
       <img
         src={photo}
         alt={nom}
-        style={{ ...style, borderColor: MOKA.brownLight }}
-        className="rounded-full object-cover border shrink-0"
+        style={{ borderColor: MOKA.brownLight }}
+        className={`${SIZE_CLASSES} rounded-full object-cover border shrink-0`}
       />
     );
   }
@@ -40,13 +42,13 @@ export default function CategoryIcon({ nom, photo, size = 56 }) {
 
   return (
     <div
-      style={{ ...style, backgroundColor: MOKA.cream, borderColor: MOKA.brownLight }}
-      className="rounded-full flex items-center justify-center border shrink-0"
+      style={{ backgroundColor: MOKA.cream, borderColor: MOKA.brownLight }}
+      className={`${SIZE_CLASSES} rounded-full flex items-center justify-center border shrink-0`}
     >
       {Icon ? (
-        <Icon style={{ color: MOKA.brownLight }} className="w-6 h-6" strokeWidth={1.8} />
+        <Icon style={{ color: MOKA.brownLight }} className="w-6 h-6 md:w-7 md:h-7" strokeWidth={1.8} />
       ) : (
-        <span style={{ color: MOKA.brown }} className="font-bold text-sm tracking-tight">
+        <span style={{ color: MOKA.brown }} className="font-bold text-sm md:text-base tracking-tight">
           {initials(nom)}
         </span>
       )}

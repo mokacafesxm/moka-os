@@ -8,22 +8,29 @@ export default function CategoryNav({ categories, activeCategory, onSelect }) {
 
   return (
     <nav
-      className="sticky top-0 z-20 flex gap-3 overflow-x-auto px-4 py-3 backdrop-blur-md border-b"
+      className="sticky top-0 z-20 backdrop-blur-md border-b px-4 py-3
+                 flex gap-4 overflow-x-auto snap-x snap-mandatory no-scrollbar
+                 md:grid md:overflow-visible md:snap-none md:justify-center md:gap-x-6 md:gap-y-5
+                 md:[grid-template-columns:repeat(auto-fit,minmax(88px,112px))]"
       style={{ backgroundColor: `${MOKA.cream}f5`, borderColor: MOKA.brownLight }}
     >
       {categories.map((cat) => (
         <button
           key={cat.id}
           onClick={() => onSelect(cat.nom)}
-          className="flex flex-col items-center gap-1 shrink-0 cursor-pointer"
+          className="w-20 md:w-auto flex flex-col items-center gap-1.5 shrink-0 snap-start cursor-pointer
+                     md:hover:-translate-y-1 md:transition-transform md:duration-200"
         >
           <span
             className="rounded-full transition-shadow"
             style={activeCategory === cat.nom ? { boxShadow: `0 0 0 2px ${MOKA.green}` } : undefined}
           >
-            <CategoryIcon nom={cat.nom} photo={cat.photo} size={48} />
+            <CategoryIcon nom={cat.nom} photo={cat.photo} />
           </span>
-          <span className="text-[9px] font-bold uppercase truncate w-14 text-center" style={{ color: MOKA.brown }}>
+          <span
+            className="text-[10px] md:text-xs font-bold uppercase text-center leading-tight break-words"
+            style={{ color: MOKA.brown }}
+          >
             {cat.nom}
           </span>
         </button>
