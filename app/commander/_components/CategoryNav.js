@@ -8,7 +8,7 @@ export default function CategoryNav({ categories, activeCategory, onSelect }) {
 
   return (
     <nav
-      className="sticky top-0 z-20 flex gap-4 overflow-x-auto px-4 py-3 backdrop-blur-md border-b"
+      className="sticky top-0 z-20 flex gap-3 overflow-x-auto px-4 py-3 backdrop-blur-md border-b"
       style={{ backgroundColor: `${MOKA.cream}f5`, borderColor: MOKA.brownLight }}
     >
       {categories.map((cat) => (
@@ -21,9 +21,9 @@ export default function CategoryNav({ categories, activeCategory, onSelect }) {
             className="rounded-full transition-shadow"
             style={activeCategory === cat.nom ? { boxShadow: `0 0 0 2px ${MOKA.green}` } : undefined}
           >
-            <CategoryIcon nom={cat.nom} photo={cat.photo} />
+            <CategoryIcon nom={cat.nom} photo={cat.photo} size={48} />
           </span>
-          <span className="text-[11px] font-bold uppercase whitespace-nowrap" style={{ color: MOKA.brown }}>
+          <span className="text-[9px] font-bold uppercase truncate w-14 text-center" style={{ color: MOKA.brown }}>
             {cat.nom}
           </span>
         </button>

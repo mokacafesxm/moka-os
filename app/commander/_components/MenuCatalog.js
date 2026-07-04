@@ -16,6 +16,7 @@ import BottomNav from "./BottomNav";
 import CartView from "./CartView";
 import LocationSheet from "./LocationSheet";
 import Toast from "./Toast";
+import AccountView from "./AccountView";
 
 function matches(product, query) {
   if (!query) return true;
@@ -115,7 +116,9 @@ export default function MenuCatalog({ data }) {
       <CategoryPanel categoryName={activeCategory} products={products} onSelectProduct={setSelectedProduct} />
 
       <main key={activeTab} className="animate-fade-in">
-        {activeTab === "cart" ? (
+        {activeTab === "account" ? (
+          <AccountView />
+        ) : activeTab === "cart" ? (
           <CartView onGoHome={goHome} />
         ) : activeTab === "favorites" ? (
           <CategorySection nom="Favoris" produits={favoriteProducts} {...cardProps} />
