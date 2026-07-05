@@ -52,7 +52,7 @@ export default function PromoCarousel({ promos }) {
   }
 
   return (
-    <div className="pb-2">
+    <div>
       <div
         ref={scrollRef}
         onScroll={handleScroll}
@@ -66,7 +66,7 @@ export default function PromoCarousel({ promos }) {
       </div>
 
       {valid.length > 1 && (
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center -my-3">
           {valid.map((_, i) => (
             <button
               key={i}

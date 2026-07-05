@@ -13,7 +13,7 @@ export default function ProductGrid({ products, onSelectProduct, favorites, onTo
   }
 
   return (
-    <div className="flex-1 min-w-0 px-4 py-4">
+    <div className="flex-1 min-w-0 px-4 pt-1 pb-4">
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3 gap-y-5">
         {products.map((product) => (
           <ProductGridTile
