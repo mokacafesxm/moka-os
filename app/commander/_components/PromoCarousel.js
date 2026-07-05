@@ -6,11 +6,12 @@ import { MOKA } from "../_lib/theme";
 
 function PromoSlide({ promo }) {
   // These images are fully composed by Shopify (text + photo + background
-  // baked in) — just show them as-is, no frame/overlay/extra crop. Both
-  // known banners are natively 16:9, so aspect-[16/9] + object-cover renders
-  // them with zero cropping.
+  // baked in, natively 16:9) — the aspect ratio must stay 16:9 or object-cover
+  // crops the baked-in promo text/pricing off the left and right edges.
+  // Full-bleed (no side padding, no rounding) is what gives it more screen
+  // presence instead: same ratio, no crop, just bigger and edge-to-edge.
   const content = (
-    <div className="relative w-full aspect-[16/9] rounded-3xl overflow-hidden">
+    <div className="relative w-full aspect-[16/9] overflow-hidden">
       <Image src={promo.image} alt="Promotion" fill sizes="100vw" className="object-cover" />
     </div>
   );
@@ -44,14 +45,14 @@ export default function PromoCarousel({ promos }) {
   }
 
   return (
-    <div className="py-2">
+    <div className="pb-2">
       <div
         ref={scrollRef}
         onScroll={handleScroll}
         className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar"
       >
         {valid.map((promo) => (
-          <div key={promo.id} className="w-full shrink-0 snap-center px-4">
+          <div key={promo.id} className="w-full shrink-0 snap-center">
             <PromoSlide promo={promo} />
           </div>
         ))}

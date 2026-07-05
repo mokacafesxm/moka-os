@@ -7,7 +7,7 @@ const STORAGE_KEY = "moka-commander-location";
 
 // Single real location for now — the panel already shows a disabled
 // "more locations coming soon" section to prep for multi-location later.
-export const MOKA_LOCATION = { id: "marigot", name: "MÖKA Café — Marigot, Saint-Martin" };
+export const MOKA_LOCATION = { id: "marigot", name: "MÖKA Café — Saint-Martin" };
 
 export function LocationProvider({ children }) {
   const [locationId, setLocationId] = useState(MOKA_LOCATION.id);

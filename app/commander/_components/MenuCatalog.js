@@ -3,7 +3,6 @@
 import { useMemo, useRef, useState } from "react";
 import { MOKA } from "../_lib/theme";
 import { useCart } from "../_lib/CartContext";
-import TopBar from "./TopBar";
 import Header from "./Header";
 import FreshnessIndicator from "./FreshnessIndicator";
 import SearchBar from "./SearchBar";
@@ -110,7 +109,6 @@ export default function MenuCatalog({ data }) {
   return (
     <div className="min-h-screen pb-28" style={{ backgroundColor: MOKA.cream }}>
       <div ref={topRef} />
-      <TopBar />
       <Header />
       <FreshnessIndicator generatedAt={generatedAt} />
       <SearchBar ref={searchRef} value={query} onChange={setQuery} />

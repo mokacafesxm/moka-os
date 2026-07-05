@@ -1,6 +1,5 @@
 "use client";
 
-import TopBar from "./_components/TopBar";
 import Header from "./_components/Header";
 import SearchBar from "./_components/SearchBar";
 import { MOKA } from "./_lib/theme";
@@ -10,7 +9,6 @@ import { MOKA } from "./_lib/theme";
 export default function Loading() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: MOKA.cream }}>
-      <TopBar />
       <Header />
       <SearchBar value="" onChange={() => {}} />
 
