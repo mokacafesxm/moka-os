@@ -62,11 +62,11 @@ function NavButton({ Icon, label, active, onClick, badge }) {
         style={active ? { backgroundColor: "rgba(255,255,255,0.9)" } : undefined}
       >
         {/* Drop shadow keeps the icon legible over busy/light photos scrolling behind the glass. */}
-        <Icon className="w-5 h-5" style={{ color: MOKA.brown, filter: "drop-shadow(0 1px 1.5px rgba(0,0,0,0.25))" }} />
+        <Icon className="w-5 h-5" style={{ color: MOKA.brown, filter: `drop-shadow(0 1px 1.5px ${MOKA.iconDropShadow})` }} />
       </span>
       {badge > 0 && (
         <span
-          className={`absolute top-0 right-0 min-w-[18px] h-[18px] px-1 rounded-full text-white text-[10px] font-bold flex items-center justify-center ${
+          className={`absolute top-0 right-0 min-w-[18px] h-[18px] px-1 rounded-full text-white text-[0.625rem] font-bold flex items-center justify-center ${
             bump ? "animate-bump" : ""
           }`}
           style={{ backgroundColor: MOKA.coral }}

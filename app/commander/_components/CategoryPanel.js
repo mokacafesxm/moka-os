@@ -25,7 +25,7 @@ function CompactTile({ product, onSelect }) {
         )}
         {!product.disponible && (
           <span
-            className="absolute top-1.5 left-1.5 text-[8px] font-bold px-2 py-0.5 rounded-full text-white uppercase"
+            className="absolute top-1.5 left-1.5 text-[0.5rem] font-bold px-2 py-0.5 rounded-full text-white uppercase"
             style={{ backgroundColor: MOKA.green }}
           >
             Back Soon
@@ -35,7 +35,7 @@ function CompactTile({ product, onSelect }) {
       <div className="mt-1.5 text-xs font-bold leading-tight line-clamp-1" style={{ color: MOKA.brown }}>
         {product.nom}
       </div>
-      <div className="text-[11px] font-semibold" style={{ color: MOKA.brownLight }}>
+      <div className="text-[0.6875rem] font-semibold" style={{ color: MOKA.brownLight }}>
         {product.hasVariants ? `Du ${formatPrice(product.priceFrom)}` : formatPrice(product.priceFrom)}
       </div>
     </button>
@@ -59,7 +59,7 @@ export default function CategoryPanel({ categoryName, products, onSelectProduct 
         >
           {items.length === 0 ? (
             <div className="col-span-3 text-sm py-6 text-center" style={{ color: MOKA.brownLight }}>
-              Aucun produit dans cette catégorie pour l'instant.
+              Aucun produit dans cette catégorie pour l&apos;instant.
             </div>
           ) : (
             items.map((p) => <CompactTile key={p.id} product={p} onSelect={onSelectProduct} />)

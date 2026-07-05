@@ -19,13 +19,13 @@ export default function TopBar() {
         ))}
       </div>
 
-      <div className="font-bold tracking-wide whitespace-nowrap text-[11px] truncate">
+      <div className="font-bold tracking-wide whitespace-nowrap text-[0.6875rem] truncate">
         ORDER TAKEAWAY ONLINE!
       </div>
 
       <button
         onClick={openPanel}
-        className="shrink-0 font-semibold text-[11px] flex items-center gap-1 cursor-pointer p-4 -m-4"
+        className="shrink-0 font-semibold text-[0.6875rem] flex items-center gap-1 cursor-pointer p-4 -m-4"
       >
         <MapPin className="w-3.5 h-3.5" />
         {location.name.split("—")[1]?.split(",")[0]?.trim() || "Marigot"}

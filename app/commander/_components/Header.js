@@ -3,6 +3,7 @@ import Image from "next/image";
 export default function Header() {
   return (
     <div className="text-center pt-6 pb-5">
+      <h1 className="sr-only">Menu MÖKA Café — Saint-Martin</h1>
       <Image
         src="/logo-moka.png"
         alt="MÖKA Drive"

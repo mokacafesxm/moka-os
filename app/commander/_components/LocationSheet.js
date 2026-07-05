@@ -24,9 +24,9 @@ export default function LocationSheet() {
         className="relative w-full rounded-t-3xl p-5 animate-sheet-up outline-none"
         style={{ backgroundColor: MOKA.cream }}
       >
-        <h3 id="location-sheet-title" className="text-lg font-black mb-4" style={{ color: MOKA.brown }}>
+        <h2 id="location-sheet-title" className="text-lg font-black mb-4" style={{ color: MOKA.brown }}>
           Choisir un restaurant
-        </h3>
+        </h2>
 
         <button
           onClick={() => selectLocation(MOKA_LOCATION.id)}
@@ -49,7 +49,7 @@ export default function LocationSheet() {
           <Check className="w-5 h-5 shrink-0" style={{ color: MOKA.coral }} />
         </button>
 
-        <div className="mt-4 p-3 rounded-2xl opacity-50 cursor-not-allowed" style={{ backgroundColor: "#f0e4d4" }}>
+        <div className="mt-4 p-3 rounded-2xl opacity-50 cursor-not-allowed" style={{ backgroundColor: MOKA.placeholderTan }}>
           <div className="font-semibold text-sm" style={{ color: MOKA.brownLight }}>
             Plus de restaurants bientôt disponibles
           </div>

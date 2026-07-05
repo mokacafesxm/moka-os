@@ -58,7 +58,7 @@ export default function ProductCard({ product, onSelect, favorited, onToggleFavo
 
         {!product.disponible && (
           <span
-            className="absolute top-2 left-2 text-[9px] font-bold px-2.5 py-1 rounded-full text-white uppercase tracking-wide"
+            className="absolute top-2 left-2 text-[0.5625rem] font-bold px-2.5 py-1 rounded-full text-white uppercase tracking-wide"
             style={{ backgroundColor: MOKA.green }}
           >
             Back Soon
@@ -78,7 +78,7 @@ export default function ProductCard({ product, onSelect, favorited, onToggleFavo
 
       <div className="mt-2 px-0.5">
         {product.categorie && (
-          <div className="text-[10px] font-medium truncate" style={{ color: MOKA.brownLight }}>
+          <div className="text-[0.625rem] font-medium truncate" style={{ color: MOKA.brownLight }}>
             {product.categorie}
           </div>
         )}

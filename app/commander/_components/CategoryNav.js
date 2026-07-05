@@ -29,7 +29,7 @@ export default function CategoryNav({ categories, activeCategory, onSelect }) {
             <CategoryIcon nom={cat.nom} photo={cat.photo} />
           </span>
           <span
-            className="text-[10px] md:text-xs font-bold uppercase text-center leading-tight break-words"
+            className="text-[0.625rem] md:text-xs font-bold uppercase text-center leading-tight break-words"
             style={{ color: MOKA.brown }}
           >
             {cat.nom}

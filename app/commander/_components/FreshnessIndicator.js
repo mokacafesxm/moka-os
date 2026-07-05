@@ -35,7 +35,7 @@ export default function FreshnessIndicator({ generatedAt }) {
   return (
     <button
       onClick={handleRefresh}
-      className="flex items-center gap-1.5 mx-auto text-[11px] font-medium cursor-pointer px-3 py-4 -my-4"
+      className="flex items-center gap-1.5 mx-auto text-[0.6875rem] font-medium cursor-pointer px-3 py-4 -my-4"
       style={{ color: MOKA.brownLight }}
     >
       <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />

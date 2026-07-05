@@ -70,7 +70,7 @@ function CartLine({ item, onUpdateQty, onRemove }) {
           <Trash2 className="w-4 h-4" />
         </button>
         <div className="text-right">
-          <div className="text-[11px]" style={{ color: MOKA.brownLight }}>
+          <div className="text-[0.6875rem]" style={{ color: MOKA.brownLight }}>
             {formatPrice(item.price)}
           </div>
           <div className="font-bold text-sm" style={{ color: MOKA.brown }}>

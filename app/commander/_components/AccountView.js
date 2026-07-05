@@ -37,9 +37,9 @@ export default function AccountView() {
             )}
           </div>
           <div className="min-w-0">
-            <div className="text-lg font-black truncate" style={{ color: MOKA.brown }}>
+            <h2 className="text-lg font-black truncate" style={{ color: MOKA.brown }}>
               {connected ? `Bonjour, ${name}` : "Bonjour"}
-            </div>
+            </h2>
             <div className="text-xs truncate" style={{ color: MOKA.brownLight }}>
               {connected ? "Ravi de vous revoir" : "Connectez-vous pour continuer"}
             </div>

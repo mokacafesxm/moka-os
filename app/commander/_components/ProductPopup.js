@@ -57,7 +57,7 @@ export default function ProductPopup({ product, onClose, onAdd }) {
 
             {!product.disponible && (
               <span
-                className="absolute top-3 left-3 text-[10px] font-bold px-2.5 py-1 rounded-full text-white uppercase tracking-wide"
+                className="absolute top-3 left-3 text-[0.625rem] font-bold px-2.5 py-1 rounded-full text-white uppercase tracking-wide"
                 style={{ backgroundColor: MOKA.green }}
               >
                 Back Soon
@@ -82,9 +82,9 @@ export default function ProductPopup({ product, onClose, onAdd }) {
             )}
 
             <div className="flex items-start justify-between gap-3">
-              <h3 id="product-popup-title" className="text-xl font-black flex-1" style={{ color: MOKA.brown }}>
+              <h2 id="product-popup-title" className="text-xl font-black flex-1" style={{ color: MOKA.brown }}>
                 {product.nom}
-              </h3>
+              </h2>
               <span className="text-2xl font-black shrink-0" style={{ color: MOKA.coral }}>
                 {product.hasVariants ? `Dès ${formatPrice(product.priceFrom)}` : formatPrice(product.priceFrom)}
               </span>
