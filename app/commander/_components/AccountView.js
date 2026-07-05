@@ -3,19 +3,20 @@
 import { useState } from "react";
 import { User, Bell, ChevronRight } from "lucide-react";
 import { MOKA } from "../_lib/theme";
+import { useCustomer } from "../_lib/CustomerContext";
 
 // No real auth backend yet — this is a visual mock (mirrors how the location
 // selector was built ahead of real multi-restaurant support). Submitting the
-// form just flips to a "connected" state locally.
+// form signs in through CustomerContext so the personalized header (Header.js)
+// reflects it too. Swap this for a real auth call later; nothing downstream
+// needs to change.
 export default function AccountView() {
-  const [connected, setConnected] = useState(false);
-  const [name, setName] = useState("");
+  const { customer, signIn, signOut } = useCustomer();
   const [form, setForm] = useState({ prenom: "", email: "", password: "" });
 
   function handleSubmit(e) {
     e.preventDefault();
-    setName(form.prenom.trim() || "MÖKA");
-    setConnected(true);
+    signIn(form.prenom.trim() || "MÖKA");
   }
 
   const inputClass =
@@ -30,18 +31,18 @@ export default function AccountView() {
             className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
             style={{ backgroundColor: MOKA.brown }}
           >
-            {connected ? (
-              <span className="text-white font-bold">{name.slice(0, 1).toUpperCase()}</span>
+            {customer.connected ? (
+              <span className="text-white font-bold">{customer.prenom.slice(0, 1).toUpperCase()}</span>
             ) : (
               <User className="w-6 h-6 text-white" />
             )}
           </div>
           <div className="min-w-0">
             <h2 className="text-lg font-black truncate" style={{ color: MOKA.brown }}>
-              {connected ? `Bonjour, ${name}` : "Bonjour"}
+              {customer.connected ? `Bonjour, ${customer.prenom}` : "Bonjour"}
             </h2>
             <div className="text-xs truncate" style={{ color: MOKA.brownLight }}>
-              {connected ? "Ravi de vous revoir" : "Connectez-vous pour continuer"}
+              {customer.connected ? "Ravi de vous revoir" : "Connectez-vous pour continuer"}
             </div>
           </div>
         </div>
@@ -53,7 +54,7 @@ export default function AccountView() {
         </button>
       </div>
 
-      {connected ? (
+      {customer.connected ? (
         <div className="space-y-2">
           {["Mes commandes", "Mes informations", "Favoris"].map((label) => (
             <button
@@ -66,7 +67,7 @@ export default function AccountView() {
             </button>
           ))}
           <button
-            onClick={() => setConnected(false)}
+            onClick={signOut}
             className="w-full mt-4 py-3.5 rounded-full font-bold cursor-pointer min-h-[44px]"
             style={{ color: MOKA.coral, backgroundColor: "white" }}
           >

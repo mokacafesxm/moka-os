@@ -69,3 +69,14 @@ body {
 .animate-sheet-up { animation: sheetUp 0.28s ease-out; }
 .animate-toast-in { animation: toastIn 0.25s ease-out; }
 .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+
+/* Header tagline auto-swipe (Pickup your brunch <-> daily quotes) */
+@keyframes swipeIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-swipe-in { animation: swipeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-swipe-in { animation: none; }
+}

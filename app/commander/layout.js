@@ -1,6 +1,7 @@
 import { Dancing_Script } from "next/font/google";
 import { CartProvider } from "./_lib/CartContext";
 import { LocationProvider } from "./_lib/LocationContext";
+import { CustomerProvider } from "./_lib/CustomerContext";
 
 const scriptFont = Dancing_Script({
   variable: "--font-script",
@@ -12,7 +13,9 @@ export default function CommanderLayout({ children }) {
   return (
     <div className={scriptFont.variable}>
       <LocationProvider>
-        <CartProvider>{children}</CartProvider>
+        <CustomerProvider>
+          <CartProvider>{children}</CartProvider>
+        </CustomerProvider>
       </LocationProvider>
     </div>
   );
