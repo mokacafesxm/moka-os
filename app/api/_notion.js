@@ -12,6 +12,7 @@ export const DB = {
   WEBSITE_PRODUCTS:  "3929512c-f66a-816b-88d4-d29604b3ef54",
   CATEGORIES_WEBSITE: "3929512c-f66a-81d9-ace3-e387b4c4a16f",
   PROMOS:             "3929512c-f66a-813c-af85-c34263c0eea7",
+  COMMANDES_CLIENTS:  "3939512c-f66a-8136-a28c-f16c3d92a7f6",
 };
 
 export const corsHeaders = {
