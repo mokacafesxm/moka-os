@@ -41,9 +41,10 @@ export default function Header({ onGoToAccount }) {
         </button>
       </div>
 
-      {/* py-2 (not pb-2) so the logo sits centered between the greeting row
-          above and the promo banner below, with equal space on both sides. */}
-      <div className="flex justify-center px-4 py-2">
+      {/* pt-1.5/pb-2.5 (not equal py-2) — centered between the greeting row
+          above and the promo banner below, then nudged a few px down from
+          that strict center for a more balanced look. */}
+      <div className="flex justify-center px-4 pt-1.5 pb-2.5">
         <Image src="/logo-moka.png" alt="MÖKA Drive" width={1930} height={461} priority className="h-7 w-auto" />
       </div>
     </div>
