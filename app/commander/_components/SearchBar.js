@@ -14,7 +14,11 @@ const SearchBar = forwardRef(function SearchBar({ value, onChange }, ref) {
           <circle cx="11" cy="11" r="7" />
           <path d="m20 20-3.5-3.5" strokeLinecap="round" />
         </svg>
+        <label htmlFor="commander-search" className="sr-only">
+          Rechercher un produit
+        </label>
         <input
+          id="commander-search"
           ref={ref}
           value={value}
           onChange={(e) => onChange(e.target.value)}

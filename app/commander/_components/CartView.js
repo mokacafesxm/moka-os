@@ -110,7 +110,13 @@ export default function CartView({ onGoHome }) {
           <span>{formatPrice(subtotal)}</span>
         </div>
 
-        <button onClick={clearCart} className="mt-3 text-xs underline cursor-pointer p-2 -m-2" style={{ color: MOKA.brownLight }}>
+        <button
+          onClick={() => {
+            if (window.confirm("Vider tout le panier ?")) clearCart();
+          }}
+          className="mt-3 text-xs underline cursor-pointer p-2 -m-2"
+          style={{ color: MOKA.brownLight }}
+        >
           Vider le panier
         </button>
       </div>

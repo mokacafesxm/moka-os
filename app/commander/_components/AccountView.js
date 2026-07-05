@@ -75,7 +75,11 @@ export default function AccountView() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-3">
+          <label htmlFor="account-prenom" className="sr-only">
+            Prénom
+          </label>
           <input
+            id="account-prenom"
             required
             placeholder="Prénom"
             value={form.prenom}
@@ -83,7 +87,11 @@ export default function AccountView() {
             className={inputClass}
             style={inputStyle}
           />
+          <label htmlFor="account-email" className="sr-only">
+            Email
+          </label>
           <input
+            id="account-email"
             required
             type="email"
             placeholder="Email"
@@ -92,7 +100,11 @@ export default function AccountView() {
             className={inputClass}
             style={inputStyle}
           />
+          <label htmlFor="account-password" className="sr-only">
+            Mot de passe
+          </label>
           <input
+            id="account-password"
             required
             type="password"
             placeholder="Mot de passe"

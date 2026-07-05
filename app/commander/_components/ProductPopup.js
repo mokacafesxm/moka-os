@@ -100,7 +100,7 @@ export default function ProductPopup({ product, onClose, onAdd }) {
                 {isLongDescription && (
                   <button
                     onClick={() => setDescExpanded((v) => !v)}
-                    className="text-xs font-bold mt-1 cursor-pointer p-2 -m-2"
+                    className="text-xs font-bold mt-1 cursor-pointer p-3.5 -m-3.5 min-h-[44px]"
                     style={{ color: MOKA.brown }}
                   >
                     {descExpanded ? "Voir moins" : "Voir plus"}

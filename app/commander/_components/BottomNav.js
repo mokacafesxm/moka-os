@@ -36,7 +36,7 @@ function UserIcon(props) {
   );
 }
 
-function NavButton({ Icon, active, onClick, badge }) {
+function NavButton({ Icon, label, active, onClick, badge }) {
   const prevBadge = useRef(badge);
   const [bump, setBump] = useState(false);
 
@@ -51,7 +51,12 @@ function NavButton({ Icon, active, onClick, badge }) {
   }, [badge]);
 
   return (
-    <button onClick={onClick} className="relative w-11 h-11 rounded-full flex items-center justify-center cursor-pointer shrink-0">
+    <button
+      onClick={onClick}
+      aria-label={label}
+      aria-current={active ? "true" : undefined}
+      className="relative w-11 h-11 rounded-full flex items-center justify-center cursor-pointer shrink-0"
+    >
       <span
         className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
         style={active ? { backgroundColor: "rgba(255,255,255,0.9)" } : undefined}
@@ -103,10 +108,10 @@ export default function BottomNav({ activeTab, cartCount, onHome, onFavorites, o
         boxShadow: "0 8px 30px rgba(44,26,16,0.16)",
       }}
     >
-      <NavButton Icon={HomeIcon} active={activeTab === "home"} onClick={onHome} />
-      <NavButton Icon={HeartIcon} active={activeTab === "favorites"} onClick={onFavorites} />
-      <NavButton Icon={CartIcon} active={activeTab === "cart"} onClick={onCart} badge={cartCount} />
-      <NavButton Icon={UserIcon} active={activeTab === "account"} onClick={onAccount} />
+      <NavButton Icon={HomeIcon} label="Accueil" active={activeTab === "home"} onClick={onHome} />
+      <NavButton Icon={HeartIcon} label="Favoris" active={activeTab === "favorites"} onClick={onFavorites} />
+      <NavButton Icon={CartIcon} label="Panier" active={activeTab === "cart"} onClick={onCart} badge={cartCount} />
+      <NavButton Icon={UserIcon} label="Compte" active={activeTab === "account"} onClick={onAccount} />
     </nav>
   );
 }

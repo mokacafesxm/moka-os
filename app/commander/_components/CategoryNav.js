@@ -18,6 +18,7 @@ export default function CategoryNav({ categories, activeCategory, onSelect }) {
         <button
           key={cat.id}
           onClick={() => onSelect(cat.nom)}
+          aria-current={activeCategory === cat.nom ? "true" : undefined}
           className="w-20 md:w-auto flex flex-col items-center gap-1.5 shrink-0 snap-start cursor-pointer
                      md:hover:-translate-y-1 md:transition-transform md:duration-200"
         >
