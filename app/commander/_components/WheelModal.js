@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { MOKA } from "../_lib/theme";
 import { useModalA11y } from "../_lib/useModalA11y";
 import { getDeviceId } from "../_lib/deviceId";
-import { SLICES, REWARD_COLOR } from "../_lib/wheelSlices";
+import { SLICES, REWARD_COLOR, REWARD_LINES, REWARD_TEXT_COLOR } from "../_lib/wheelSlices";
 
 const SLICE_DEG = 360 / SLICES.length;
 const SPIN_DURATION_MS = 4000;
 const FULL_TURNS_DEG = 6 * 360;
+const CENTER = 100;
+const OUTER_R = 96;
+const LABEL_R = 62;
 
 function formatResetTime(iso) {
   if (!iso) return "";
@@ -21,6 +24,54 @@ function formatResetTime(iso) {
   });
 }
 
+function polarPoint(angleDeg, r) {
+  const rad = (angleDeg * Math.PI) / 180;
+  return { x: CENTER + r * Math.sin(rad), y: CENTER - r * Math.cos(rad) };
+}
+
+function WheelSlices() {
+  return (
+    <>
+      {SLICES.map((reward, i) => {
+        const startAngle = i * SLICE_DEG;
+        const endAngle = startAngle + SLICE_DEG;
+        const midAngle = startAngle + SLICE_DEG / 2;
+        const start = polarPoint(startAngle, OUTER_R);
+        const end = polarPoint(endAngle, OUTER_R);
+        const lines = REWARD_LINES[reward] || [reward];
+        const textColor = REWARD_TEXT_COLOR[reward] || "#FFFFFF";
+
+        return (
+          <g key={i}>
+            <path
+              d={`M ${CENTER} ${CENTER} L ${start.x} ${start.y} A ${OUTER_R} ${OUTER_R} 0 0 1 ${end.x} ${end.y} Z`}
+              fill={REWARD_COLOR[reward]}
+              stroke={MOKA.cream}
+              strokeWidth="1"
+            />
+            <g transform={`rotate(${midAngle}, ${CENTER}, ${CENTER})`}>
+              <text
+                x={CENTER}
+                y={CENTER - LABEL_R}
+                textAnchor="middle"
+                fill={textColor}
+                fontSize="9"
+                fontWeight="700"
+              >
+                {lines.map((line, li) => (
+                  <tspan key={li} x={CENTER} dy={li === 0 ? 0 : 10}>
+                    {line}
+                  </tspan>
+                ))}
+              </text>
+            </g>
+          </g>
+        );
+      })}
+    </>
+  );
+}
+
 // Rendered only while open (parent does `{wheelOpen && <WheelModal .../>}`,
 // same pattern as ProductPopup) so a fresh mount is what resets state —
 // no reset-on-close effect needed.
@@ -30,15 +81,6 @@ export default function WheelModal({ onClose, eligibility, onSpun, customer, onG
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-
-  const wheelBackground = useMemo(() => {
-    const stops = SLICES.map((reward, i) => {
-      const from = i * SLICE_DEG;
-      const to = from + SLICE_DEG;
-      return `${REWARD_COLOR[reward]} ${from}deg ${to}deg`;
-    });
-    return `conic-gradient(from 0deg, ${stops.join(", ")})`;
-  }, []);
 
   // Already connected when the result lands — claim immediately in the
   // background, no extra tap. Fire-and-forget: the UI shows success
@@ -119,16 +161,18 @@ export default function WheelModal({ onClose, eligibility, onSpun, customer, onG
         </div>
 
         {phase !== "result" && (
-          <div className="relative w-56 h-56 mx-auto mb-6">
-            <div
-              className="absolute inset-0 rounded-full"
+          <div className="relative w-64 h-64 mx-auto mb-6">
+            <svg
+              viewBox="0 0 200 200"
+              className="absolute inset-0"
               style={{
-                background: wheelBackground,
                 transform: `rotate(${rotation}deg)`,
                 transition: phase === "spinning" ? `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.15, 0.65, 0.25, 1)` : "none",
-                boxShadow: `0 8px 24px ${MOKA.navShadow}`,
+                filter: `drop-shadow(0 8px 16px ${MOKA.navShadow})`,
               }}
-            />
+            >
+              <WheelSlices />
+            </svg>
             <div
               className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 z-10"
               style={{

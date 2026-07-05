@@ -1,5 +1,5 @@
 import { DB, corsHeaders, createPage, updatePage, titleProp, textProp, selectProp, numberProp, dateProp } from "../../_notion";
-import { currentPeriodStart, pickRandomSlice, spinCodeFromPageId, findSpinsByDevice } from "../_shared";
+import { currentPeriodStart, pickReward, spinCodeFromPageId, findSpinsByDevice } from "../_shared";
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -19,7 +19,7 @@ export async function POST(request) {
       return Response.json({ error: "Une seule roue par jour — reviens après 5h du matin." }, { status: 409, headers: corsHeaders });
     }
 
-    const { sliceIndex, reward } = pickRandomSlice();
+    const { sliceIndex, reward } = await pickReward();
     const wonAt = new Date();
     const expiresAt = new Date(wonAt.getTime() + 24 * 60 * 60 * 1000);
 

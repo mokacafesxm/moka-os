@@ -1,37 +1,90 @@
 import { DB, queryDatabase, getPage, getTitle, getText, getSelect, getNumber, getCheckbox, getDate } from "../_notion";
 
 // Reward catalogue — kept as literal strings matching the Notion "Récompense"
-// select options exactly (see the DB created via the Notion API).
+// select options exactly (see the DB's schema, updated via the Notion API).
 export const REWARD = {
+  ICED_COFFEE_BOGO: "1 Iced Coffee acheté = 1 offert",
   PERCENT_5: "-5%",
-  ICED_COFFEE_BOGO: "Iced Coffee acheté = 1 offert",
-  BIG_SMALL_JUICE: "Big Bites + Small Bites achetés = 1 jus offert",
+  PERCENT_10: "-10%",
   PERCENT_15: "-15%",
-  BRUNCH_FREE: "Brunch offert (max 25€ / 1 pers.)",
+  PERCENT_20: "-20%",
+  BRUNCH_FREE: "1 Brunch offert",
+  BIG_SMALL_JUICE: "1 Big Bites + 1 Small Bites achetés = 1 jus offert",
+  COFFEE_FREE: "1 café offert",
+  PASTRY_FREE: "1 pâtisserie offerte",
+  SMOOTHIE_FREE: "1 smoothie offert",
+  REPLAY_TOMORROW: "Rejoue demain",
+  DESSERT_FREE: "1 dessert offert",
 };
 
-// 12 slices, weighted so the cheapest-for-the-business reward is the most
-// common and the priciest is the rarest: -5% x4, Iced Coffee BOGO x3,
-// Big+Small->juice x2, -15% x2, free brunch x1. Interleaved so identical
-// rewards never sit on adjacent slices.
+// One reward per slice now (12 unique labels, each printed on its own slice
+// client-side) — fixed order, index = slice position on the wheel.
 export const SLICES = [
-  REWARD.PERCENT_5,
   REWARD.ICED_COFFEE_BOGO,
   REWARD.PERCENT_5,
-  REWARD.BIG_SMALL_JUICE,
-  REWARD.ICED_COFFEE_BOGO,
-  REWARD.PERCENT_5,
+  REWARD.PERCENT_10,
   REWARD.PERCENT_15,
-  REWARD.ICED_COFFEE_BOGO,
-  REWARD.PERCENT_5,
-  REWARD.BIG_SMALL_JUICE,
-  REWARD.PERCENT_15,
+  REWARD.PERCENT_20,
   REWARD.BRUNCH_FREE,
+  REWARD.BIG_SMALL_JUICE,
+  REWARD.COFFEE_FREE,
+  REWARD.PASTRY_FREE,
+  REWARD.SMOOTHIE_FREE,
+  REWARD.REPLAY_TOMORROW,
+  REWARD.DESSERT_FREE,
 ];
 
-export function pickRandomSlice() {
-  const sliceIndex = Math.floor(Math.random() * SLICES.length);
-  return { sliceIndex, reward: SLICES[sliceIndex] };
+// Weighted so the cheapest-for-the-business outcomes are by far the most
+// common; the two "big win" rewards are additionally hard-capped weekly
+// below (see pickWeightedReward). Weights sum to 1000 for readable percentages.
+const WEIGHT = {
+  [REWARD.REPLAY_TOMORROW]: 200, // 20%
+  [REWARD.PERCENT_5]: 180, // 18%
+  [REWARD.COFFEE_FREE]: 150, // 15%
+  [REWARD.PERCENT_10]: 120, // 12%
+  [REWARD.PASTRY_FREE]: 90, // 9%
+  [REWARD.SMOOTHIE_FREE]: 80, // 8%
+  [REWARD.DESSERT_FREE]: 70, // 7%
+  [REWARD.PERCENT_15]: 50, // 5%
+  [REWARD.ICED_COFFEE_BOGO]: 30, // 3%
+  [REWARD.BIG_SMALL_JUICE]: 20, // 2%
+  [REWARD.PERCENT_20]: 6, // 0.6%
+  [REWARD.BRUNCH_FREE]: 4, // 0.4%
+};
+
+const BIG_WIN_REWARDS = [REWARD.PERCENT_20, REWARD.BRUNCH_FREE];
+const BIG_WIN_WEEKLY_CAP = 1; // combined, across both big-win rewards, all customers
+const BIG_WIN_CONSOLATION = REWARD.DESSERT_FREE;
+
+function sliceIndexForReward(reward) {
+  return SLICES.indexOf(reward);
+}
+
+function pickWeightedSlice() {
+  const total = Object.values(WEIGHT).reduce((sum, w) => sum + w, 0);
+  let roll = Math.random() * total;
+  for (const reward of SLICES) {
+    roll -= WEIGHT[reward];
+    if (roll < 0) return reward;
+  }
+  return SLICES[SLICES.length - 1];
+}
+
+// The full spin decision: weighted pick, then downgrade to the consolation
+// reward if the weekly big-win quota is already spent. Returns the *actual*
+// slice to land on — never claims to land on -20%/Brunch and then swap the
+// prize, since that would be visually dishonest.
+export async function pickReward() {
+  const picked = pickWeightedSlice();
+
+  if (BIG_WIN_REWARDS.includes(picked)) {
+    const bigWinsThisWeek = await countBigWinsThisWeek();
+    if (bigWinsThisWeek >= BIG_WIN_WEEKLY_CAP) {
+      return { sliceIndex: sliceIndexForReward(BIG_WIN_CONSOLATION), reward: BIG_WIN_CONSOLATION };
+    }
+  }
+
+  return { sliceIndex: sliceIndexForReward(picked), reward: picked };
 }
 
 const RESET_HOUR_PR = 5;
@@ -53,23 +106,57 @@ export function nextResetAt(now = new Date()) {
   return new Date(currentPeriodStart(now).getTime() + 24 * 60 * 60 * 1000);
 }
 
+// Same 5:00 AM Puerto Rico anchor, but weekly (Monday). Used only for the
+// big-win quota, not the per-user spin limit.
+export function currentWeekStart(now = new Date()) {
+  const dayStart = currentPeriodStart(now);
+  const prShifted = new Date(dayStart.getTime() - PR_UTC_OFFSET_HOURS * 60 * 60 * 1000);
+  const dayOfWeek = prShifted.getUTCDay(); // 0=Sun..6=Sat
+  const daysSinceMonday = (dayOfWeek + 6) % 7;
+  const weekShifted = new Date(prShifted);
+  weekShifted.setUTCDate(weekShifted.getUTCDate() - daysSinceMonday);
+  return new Date(weekShifted.getTime() + PR_UTC_OFFSET_HOURS * 60 * 60 * 1000);
+}
+
+export async function countBigWinsThisWeek() {
+  const weekStart = currentWeekStart();
+  const pages = await queryDatabase(DB.ROUE_CHANCE, {
+    or: BIG_WIN_REWARDS.map((reward) => ({ property: "Récompense", select: { equals: reward } })),
+  });
+  return pages.filter((p) => new Date(getDate(p.properties, "Gagné le")) >= weekStart).length;
+}
+
 export function spinCodeFromPageId(pageId) {
   const hex = pageId.replace(/-/g, "").slice(-5).toUpperCase();
   return `LUCKY-${hex}`;
 }
 
-// Notion "Catégorie" values these combo rewards require. BIG BITES / SMALL
-// BITES currently have zero real products tagged with these exact values —
-// every food item is still lumped under the legacy "FOOD"/"SIDES" values
-// (see categoryMatch.js). These rewards are correctly wired for once that
-// Notion cleanup happens, but until then they'll validate as "missing item"
-// for every cart, since no product actually carries these categories yet.
+// Notion "Catégorie" values each reward requires in the cart to redeem.
+// BIG BITES / SMALL BITES currently have zero real products tagged with
+// these exact values — every food item is still lumped under the legacy
+// "FOOD"/"SIDES" values (see categoryMatch.js). That reward is correctly
+// wired for once that Notion cleanup happens, but until then it'll validate
+// as "missing item" for every cart, since no product carries those
+// categories yet. "Pâtisserie offerte" and "Dessert offert" both map to the
+// same SWEETS category — there's no finer distinction in Notion today, so
+// they're functionally identical until that category is split further.
 export const REWARD_CATEGORY_REQUIREMENTS = {
   [REWARD.ICED_COFFEE_BOGO]: { categories: ["ICED COFFEEs"], minQtyEach: 2 },
   [REWARD.BIG_SMALL_JUICE]: { categories: ["BIG BITES", "SMALL BITES", "SMOOTHIEs & JUICES"], minQtyEach: 1 },
+  [REWARD.COFFEE_FREE]: { categories: ["COFFEEs & TEAs"], minQtyEach: 1 },
+  [REWARD.PASTRY_FREE]: { categories: ["SWEETS"], minQtyEach: 1 },
+  [REWARD.SMOOTHIE_FREE]: { categories: ["SMOOTHIEs & JUICES"], minQtyEach: 1 },
+  [REWARD.DESSERT_FREE]: { categories: ["SWEETS"], minQtyEach: 1 },
 };
 
 const BRUNCH_CAP = 25;
+
+const PERCENT_BY_REWARD = {
+  [REWARD.PERCENT_5]: 0.05,
+  [REWARD.PERCENT_10]: 0.1,
+  [REWARD.PERCENT_15]: 0.15,
+  [REWARD.PERCENT_20]: 0.2,
+};
 
 // items: [{ id, price, qty }], categoryById: { [productId]: categorieString }.
 // Never trust a client-supplied discount — this always recomputes server-side
@@ -78,8 +165,11 @@ const BRUNCH_CAP = 25;
 export function computeRewardDiscount(reward, items, categoryById) {
   const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
 
-  if (reward === REWARD.PERCENT_5) return { valid: true, discount: round2(subtotal * 0.05) };
-  if (reward === REWARD.PERCENT_15) return { valid: true, discount: round2(subtotal * 0.15) };
+  if (reward === REWARD.REPLAY_TOMORROW) return { valid: true, discount: 0 };
+
+  const percent = PERCENT_BY_REWARD[reward];
+  if (percent !== undefined) return { valid: true, discount: round2(subtotal * percent) };
+
   if (reward === REWARD.BRUNCH_FREE) return { valid: true, discount: round2(Math.min(subtotal, BRUNCH_CAP)) };
 
   const requirement = REWARD_CATEGORY_REQUIREMENTS[reward];
@@ -96,19 +186,19 @@ export function computeRewardDiscount(reward, items, categoryById) {
     return { valid: false, discount: 0, error: `Ajoute ${missing.join(" + ")} au panier pour utiliser cette récompense.` };
   }
 
-  if (reward === REWARD.ICED_COFFEE_BOGO) {
-    const coffeeItems = items.filter((i) => categoryById[i.id] === "ICED COFFEEs");
-    const cheapest = Math.min(...coffeeItems.map((i) => i.price));
-    return { valid: true, discount: round2(cheapest) };
-  }
+  // Single-category rewards: the cheapest matching item becomes free.
+  // (Combo rewards like Iced Coffee BOGO / Big+Small->juice pick from their
+  // own designated "free" category below.)
+  const freeCategory =
+    reward === REWARD.ICED_COFFEE_BOGO
+      ? "ICED COFFEEs"
+      : reward === REWARD.BIG_SMALL_JUICE
+        ? "SMOOTHIEs & JUICES"
+        : requirement.categories[0];
 
-  if (reward === REWARD.BIG_SMALL_JUICE) {
-    const juiceItems = items.filter((i) => categoryById[i.id] === "SMOOTHIEs & JUICES");
-    const cheapest = Math.min(...juiceItems.map((i) => i.price));
-    return { valid: true, discount: round2(cheapest) };
-  }
-
-  return { valid: false, discount: 0, error: "Récompense inconnue." };
+  const matchingItems = items.filter((i) => categoryById[i.id] === freeCategory);
+  const cheapest = Math.min(...matchingItems.map((i) => i.price));
+  return { valid: true, discount: round2(cheapest) };
 }
 
 export function round2(n) {
@@ -169,7 +259,7 @@ export async function resolveActiveReward(deviceId, items) {
   const spins = await findSpinsByDevice(deviceId);
   const now = new Date();
   const active = spins.find((s) => s.claimed && s.status === "Active" && new Date(s.expiresAt) > now);
-  if (!active) return null;
+  if (!active || active.reward === REWARD.REPLAY_TOMORROW) return null;
 
   const categoryById = await resolveCartCategories(items);
   const { valid, discount, error } = computeRewardDiscount(active.reward, items, categoryById);
