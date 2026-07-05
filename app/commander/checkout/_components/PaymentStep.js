@@ -66,7 +66,35 @@ function StripeForm({ total, submitting, setSubmitting, onSuccess, onError }) {
   );
 }
 
-export default function PaymentStep({ testMode, clientSecret, total, onSuccess, onError, error, onSimulate }) {
+function RewardBanner({ rewardApplied, rewardBlocked }) {
+  if (rewardApplied) {
+    return (
+      <div className="rounded-2xl p-4 text-sm font-semibold" style={{ backgroundColor: `${MOKA.green}1a`, color: MOKA.green }}>
+        Récompense appliquée · {rewardApplied.reward} (-{formatPrice(rewardApplied.discount)})
+      </div>
+    );
+  }
+  if (rewardBlocked) {
+    return (
+      <div className="rounded-2xl p-4 text-sm font-semibold" style={{ backgroundColor: "#FDF3E0", color: MOKA.brown }}>
+        Récompense disponible ({rewardBlocked.reward}) — {rewardBlocked.error}
+      </div>
+    );
+  }
+  return null;
+}
+
+export default function PaymentStep({
+  testMode,
+  clientSecret,
+  total,
+  rewardApplied,
+  rewardBlocked,
+  onSuccess,
+  onError,
+  error,
+  onSimulate,
+}) {
   const [submitting, setSubmitting] = useState(false);
 
   if (testMode) {
@@ -75,6 +103,7 @@ export default function PaymentStep({ testMode, clientSecret, total, onSuccess, 
         <div className="rounded-2xl p-4 text-sm font-semibold" style={{ backgroundColor: "#FDF3E0", color: MOKA.brown }}>
           Mode test — aucun compte de paiement n&apos;est encore configuré. Cette commande sera enregistrée sans paiement réel.
         </div>
+        <RewardBanner rewardApplied={rewardApplied} rewardBlocked={rewardBlocked} />
         {error && (
           <p role="alert" className="text-sm font-semibold" style={{ color: "#8C2F2F" }}>
             {error}
@@ -112,6 +141,7 @@ export default function PaymentStep({ testMode, clientSecret, total, onSuccess, 
 
   return (
     <div className="px-4 pt-4 pb-4 space-y-4">
+      <RewardBanner rewardApplied={rewardApplied} rewardBlocked={rewardBlocked} />
       <Elements stripe={stripePromise} options={{ clientSecret, appearance: STRIPE_APPEARANCE }}>
         <StripeForm total={total} submitting={submitting} setSubmitting={setSubmitting} onSuccess={onSuccess} onError={onError} />
       </Elements>

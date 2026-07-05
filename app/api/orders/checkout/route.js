@@ -1,6 +1,7 @@
 import { DB, corsHeaders, getPage, getCheckbox } from "../../_notion";
 import { getStripe, isStripeConfigured } from "../../_stripe";
 import { computeTotal, isValidSlot } from "../_shared";
+import { resolveActiveReward, round2 } from "../../wheel/_shared";
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -12,7 +13,7 @@ export async function OPTIONS() {
 // item that went unavailable after it was added can't be paid for.
 export async function POST(request) {
   try {
-    const { items, slot } = await request.json();
+    const { items, slot, deviceId } = await request.json();
 
     if (!Array.isArray(items) || !items.length) {
       return Response.json({ error: "Le panier est vide" }, { status: 400, headers: corsHeaders });
@@ -47,10 +48,13 @@ export async function POST(request) {
       return Response.json({ unavailable }, { status: 409, headers: corsHeaders });
     }
 
-    const total = computeTotal(items);
+    const subtotal = computeTotal(items);
+    const rewardResult = await resolveActiveReward(deviceId, items);
+    const rewardApplied = rewardResult?.valid ? rewardResult : null;
+    const total = Math.max(0, round2(subtotal - (rewardApplied?.discount || 0)));
 
     if (!isStripeConfigured()) {
-      return Response.json({ testMode: true, total }, { headers: corsHeaders });
+      return Response.json({ testMode: true, total, subtotal, rewardApplied, rewardBlocked: rewardResult && !rewardResult.valid ? rewardResult : null }, { headers: corsHeaders });
     }
 
     const stripe = getStripe();
@@ -61,7 +65,14 @@ export async function POST(request) {
     });
 
     return Response.json(
-      { testMode: false, total, clientSecret: intent.client_secret },
+      {
+        testMode: false,
+        total,
+        subtotal,
+        rewardApplied,
+        rewardBlocked: rewardResult && !rewardResult.valid ? rewardResult : null,
+        clientSecret: intent.client_secret,
+      },
       { headers: corsHeaders }
     );
   } catch (err) {

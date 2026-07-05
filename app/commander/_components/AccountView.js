@@ -4,6 +4,7 @@ import { useState } from "react";
 import { User, Bell, ChevronRight } from "lucide-react";
 import { MOKA } from "../_lib/theme";
 import { useCustomer } from "../_lib/CustomerContext";
+import { getDeviceId } from "../_lib/deviceId";
 
 // No real auth backend yet — this is a visual mock (mirrors how the location
 // selector was built ahead of real multi-restaurant support). Submitting the
@@ -16,7 +17,19 @@ export default function AccountView() {
 
   function handleSubmit(e) {
     e.preventDefault();
-    signIn(form.prenom.trim() || "MÖKA");
+    const prenom = form.prenom.trim() || "MÖKA";
+    signIn(prenom);
+
+    // Attach any wheel-of-fortune reward won anonymously on this device to
+    // the now-known identity — a no-op if there's nothing pending.
+    const deviceId = getDeviceId();
+    if (deviceId) {
+      fetch("/api/wheel/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId, prenom }),
+      }).catch(() => {});
+    }
   }
 
   const inputClass =

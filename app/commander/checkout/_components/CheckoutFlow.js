@@ -6,6 +6,7 @@ import { ChevronLeft } from "lucide-react";
 import { MOKA } from "../../_lib/theme";
 import { useCart } from "../../_lib/CartContext";
 import { PICKUP_SLOTS } from "../../_lib/pickupSlots";
+import { getDeviceId } from "../../_lib/deviceId";
 import PickupStep from "./PickupStep";
 import PaymentStep from "./PaymentStep";
 import SuccessStep from "./SuccessStep";
@@ -22,7 +23,13 @@ export default function CheckoutFlow() {
   const [unavailable, setUnavailable] = useState([]);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [payment, setPayment] = useState({ testMode: true, clientSecret: null, total: 0 });
+  const [payment, setPayment] = useState({
+    testMode: true,
+    clientSecret: null,
+    total: 0,
+    rewardApplied: null,
+    rewardBlocked: null,
+  });
   const [confirmation, setConfirmation] = useState(null);
 
   useEffect(() => {
@@ -46,7 +53,7 @@ export default function CheckoutFlow() {
       const res = await fetch("/api/orders/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: cart.items, slot }),
+        body: JSON.stringify({ items: cart.items, slot, deviceId: getDeviceId() }),
       });
       const data = await res.json();
 
@@ -59,7 +66,13 @@ export default function CheckoutFlow() {
         return;
       }
 
-      setPayment({ testMode: !!data.testMode, clientSecret: data.clientSecret || null, total: data.total });
+      setPayment({
+        testMode: !!data.testMode,
+        clientSecret: data.clientSecret || null,
+        total: data.total,
+        rewardApplied: data.rewardApplied || null,
+        rewardBlocked: data.rewardBlocked || null,
+      });
       setStep("payment");
     } catch {
       setError("Impossible de contacter le serveur, réessayez.");
@@ -72,7 +85,7 @@ export default function CheckoutFlow() {
     const res = await fetch("/api/orders/confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: cart.items, slot, guest, paymentIntentId, testMode }),
+      body: JSON.stringify({ items: cart.items, slot, guest, paymentIntentId, testMode, deviceId: getDeviceId() }),
     });
     const data = await res.json();
 
@@ -134,6 +147,8 @@ export default function CheckoutFlow() {
           testMode={payment.testMode}
           clientSecret={payment.clientSecret}
           total={payment.total}
+          rewardApplied={payment.rewardApplied}
+          rewardBlocked={payment.rewardBlocked}
           error={error}
           onError={setError}
           onSuccess={(paymentIntentId) => submitConfirmation({ paymentIntentId, testMode: false })}

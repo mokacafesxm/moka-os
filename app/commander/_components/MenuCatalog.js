@@ -3,6 +3,8 @@
 import { useMemo, useRef, useState } from "react";
 import { MOKA } from "../_lib/theme";
 import { useCart } from "../_lib/CartContext";
+import { useCustomer } from "../_lib/CustomerContext";
+import { useWheelEligibility } from "../_lib/useWheelEligibility";
 import { productsForCategory } from "../_lib/categoryMatch";
 import Header from "./Header";
 import SearchBar from "./SearchBar";
@@ -17,6 +19,8 @@ import LocationSheet from "./LocationSheet";
 import Toast from "./Toast";
 import AccountView from "./AccountView";
 import EmptyState from "./EmptyState";
+import WheelFab from "./WheelFab";
+import WheelModal from "./WheelModal";
 import { Heart } from "lucide-react";
 
 function matches(product, query) {
@@ -28,12 +32,15 @@ function matches(product, query) {
 export default function MenuCatalog({ data }) {
   const { categories, promos, products } = data;
   const cart = useCart();
+  const { customer } = useCustomer();
+  const wheelEligibility = useWheelEligibility();
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [activeCategory, setActiveCategory] = useState(() => categories[0] || null);
   const [query, setQuery] = useState("");
   const [favorites, setFavorites] = useState(() => new Set());
   const [activeTab, setActiveTab] = useState("home");
   const [toast, setToast] = useState(null);
+  const [wheelOpen, setWheelOpen] = useState(false);
   const searchRef = useRef(null);
   const topRef = useRef(null);
   const toastTimer = useRef(null);
@@ -127,6 +134,17 @@ export default function MenuCatalog({ data }) {
 
       <LocationSheet />
       <Toast message={toast} />
+
+      <WheelFab canSpin={wheelEligibility.canSpin} onClick={() => setWheelOpen(true)} />
+      {wheelOpen && (
+        <WheelModal
+          onClose={() => setWheelOpen(false)}
+          eligibility={wheelEligibility}
+          onSpun={wheelEligibility.refresh}
+          customer={customer}
+          onGoToAccount={goToAccount}
+        />
+      )}
 
       <BottomNav
         activeTab={activeTab}
