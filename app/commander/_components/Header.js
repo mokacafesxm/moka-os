@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { MapPin } from "lucide-react";
 import { MOKA } from "../_lib/theme";
 import { useLocation } from "../_lib/LocationContext";
 import { useCustomer } from "../_lib/CustomerContext";
@@ -18,7 +19,27 @@ export default function Header() {
     <div className="pt-safe" style={{ backgroundColor: MOKA.cream }}>
       <h1 className="sr-only">Menu MÖKA Café — Saint-Martin</h1>
 
-      <HeaderGreetingSwipe customer={customer} quotes={quotes} onOpenLocation={openPanel} />
+      {/* Location pill is a sibling of the swipe block, not inside it — it
+          must never disappear mid-swipe or move between states. */}
+      <div className="flex items-start gap-2 px-4 pt-3 pb-2">
+        <div className="flex-1 min-w-0">
+          <HeaderGreetingSwipe customer={customer} quotes={quotes} />
+        </div>
+
+        <button
+          onClick={openPanel}
+          aria-label="Changer de restaurant — Saint-Martin"
+          className="shrink-0 flex items-center justify-center cursor-pointer p-3 -m-3 min-h-[44px] min-w-[44px]"
+        >
+          <span
+            className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[0.625rem] font-semibold whitespace-nowrap"
+            style={{ borderColor: MOKA.brownLight, color: MOKA.brown }}
+          >
+            <MapPin className="w-3 h-3" style={{ color: MOKA.coral }} />
+            Saint-Martin
+          </span>
+        </button>
+      </div>
 
       <div className="flex justify-center px-4 pb-2">
         <Image src="/logo-moka.png" alt="MÖKA Drive" width={1930} height={461} priority className="h-7 w-auto" />

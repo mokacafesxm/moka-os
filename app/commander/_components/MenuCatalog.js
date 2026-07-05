@@ -100,8 +100,8 @@ export default function MenuCatalog({ data }) {
           )
         ) : (
           <>
-            <SearchBar ref={searchRef} value={query} onChange={setQuery} />
             <PromoCarousel promos={promos} />
+            <SearchBar ref={searchRef} value={query} onChange={setQuery} />
 
             <div className="flex items-start">
               <CategoryRail categories={categories} activeCategory={activeCategory} onSelect={setActiveCategory} />

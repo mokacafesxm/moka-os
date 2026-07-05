@@ -10,4 +10,5 @@ export const MOKA = {
   placeholderTan: "#F0E4D4", // fond des vignettes produit sans photo
   navShadow: "rgba(44,26,16,0.16)", // ombre de la nav flottante
   iconDropShadow: "rgba(0,0,0,0.25)", // ombre des icônes de la nav flottante
+  subtleBorder: "rgba(0,0,0,0.12)", // contour discret (relief sans couleur de marque)
 };

@@ -36,7 +36,7 @@ export default function CategoryIcon({ nom, photo }) {
           alt={nom}
           fill
           sizes="64px"
-          style={{ borderColor: MOKA.brownLight }}
+          style={{ borderColor: MOKA.subtleBorder }}
           className="rounded-full object-cover border"
         />
       </div>
@@ -47,7 +47,7 @@ export default function CategoryIcon({ nom, photo }) {
 
   return (
     <div
-      style={{ backgroundColor: MOKA.cream, borderColor: MOKA.brownLight }}
+      style={{ backgroundColor: MOKA.cream, borderColor: MOKA.subtleBorder }}
       className={`${SIZE_CLASSES} rounded-full flex items-center justify-center border shrink-0`}
     >
       {Icon ? (

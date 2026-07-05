@@ -70,7 +70,7 @@ body {
 .animate-toast-in { animation: toastIn 0.25s ease-out; }
 .animate-fade-in { animation: fadeIn 0.2s ease-out; }
 
-/* Header tagline auto-swipe (Pickup your brunch <-> daily quotes) */
+/* Header greeting auto-swipe (greeting block <-> daily quote) */
 @keyframes swipeIn {
   from { opacity: 0; transform: translateX(20px); }
   to   { opacity: 1; transform: translateX(0); }
@@ -79,4 +79,17 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-swipe-in { animation: none; }
+}
+
+/* Category rail — thin, low-key scrollbar (instead of hiding it) hints that
+   the list continues below the fold. */
+.category-rail-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 79, 47, 0.35) transparent;
+}
+.category-rail-scroll::-webkit-scrollbar { width: 4px; }
+.category-rail-scroll::-webkit-scrollbar-track { background: transparent; }
+.category-rail-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(140, 79, 47, 0.35);
+  border-radius: 9999px;
 }
