@@ -8,7 +8,7 @@ import { useCustomer } from "../_lib/CustomerContext";
 import { useDailyQuotes } from "../_lib/useDailyQuotes";
 import HeaderGreetingSwipe from "./HeaderGreetingSwipe";
 
-export default function Header() {
+export default function Header({ onGoToAccount }) {
   const { openPanel } = useLocation();
   const { customer } = useCustomer();
   const quotes = useDailyQuotes();
@@ -23,7 +23,7 @@ export default function Header() {
           must never disappear mid-swipe or move between states. */}
       <div className="flex items-start gap-2 px-4 pt-3 pb-2">
         <div className="flex-1 min-w-0">
-          <HeaderGreetingSwipe customer={customer} quotes={quotes} />
+          <HeaderGreetingSwipe customer={customer} quotes={quotes} onGoToAccount={onGoToAccount} />
         </div>
 
         <button
@@ -41,7 +41,9 @@ export default function Header() {
         </button>
       </div>
 
-      <div className="flex justify-center px-4 pb-2">
+      {/* py-2 (not pb-2) so the logo sits centered between the greeting row
+          above and the promo banner below, with equal space on both sides. */}
+      <div className="flex justify-center px-4 py-2">
         <Image src="/logo-moka.png" alt="MÖKA Drive" width={1930} height={461} priority className="h-7 w-auto" />
       </div>
     </div>

@@ -38,6 +38,10 @@ export default function MenuCatalog({ data }) {
   const topRef = useRef(null);
   const toastTimer = useRef(null);
 
+  function goToAccount() {
+    setActiveTab("account");
+  }
+
   function toggleFavorite(id) {
     setFavorites((prev) => {
       const next = new Set(prev);
@@ -85,7 +89,7 @@ export default function MenuCatalog({ data }) {
   return (
     <div className="min-h-screen pb-28" style={{ backgroundColor: MOKA.cream }}>
       <div ref={topRef} />
-      <Header />
+      <Header onGoToAccount={goToAccount} />
 
       <main key={activeTab} className="animate-fade-in">
         {activeTab === "account" ? (

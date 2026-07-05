@@ -7,7 +7,7 @@ import { MOKA } from "../_lib/theme";
 
 const STEP_MS = 4000;
 
-function GreetingSlide({ customer }) {
+function GreetingSlide({ customer, onGoToAccount }) {
   return (
     <div className="flex items-center gap-3">
       <div
@@ -20,9 +20,19 @@ function GreetingSlide({ customer }) {
           <User className="w-5 h-5 text-white" />
         )}
       </div>
-      <span className="font-black text-sm truncate shrink-0" style={{ color: MOKA.brown }}>
-        {customer.connected ? `Hi ${customer.prenom}` : "Bonjour"}
-      </span>
+      {customer.connected ? (
+        <span className="font-black text-sm truncate shrink-0" style={{ color: MOKA.brown }}>
+          Hi {customer.prenom}
+        </span>
+      ) : (
+        <button
+          onClick={onGoToAccount}
+          className="font-black text-sm truncate shrink-0 cursor-pointer p-2 -m-2 min-h-[44px]"
+          style={{ color: MOKA.brown }}
+        >
+          Connectez-vous
+        </button>
+      )}
     </div>
   );
 }
@@ -45,7 +55,7 @@ function QuoteSlide({ quote }) {
 // line, cycling through each daily quote in turn, automatically. The
 // location pill lives outside this component now (see Header.js) so it
 // never disappears mid-swipe.
-export default function HeaderGreetingSwipe({ customer, quotes }) {
+export default function HeaderGreetingSwipe({ customer, quotes, onGoToAccount }) {
   const sequence = useMemo(() => {
     if (!quotes.length) return ["greeting"];
     return quotes.flatMap((quote) => ["greeting", quote]);
@@ -65,7 +75,11 @@ export default function HeaderGreetingSwipe({ customer, quotes }) {
   return (
     <div className="min-h-[44px] flex items-center overflow-hidden">
       <div key={index} className="w-full animate-swipe-in">
-        {current === "greeting" ? <GreetingSlide customer={customer} /> : <QuoteSlide quote={current} />}
+        {current === "greeting" ? (
+          <GreetingSlide customer={customer} onGoToAccount={onGoToAccount} />
+        ) : (
+          <QuoteSlide quote={current} />
+        )}
       </div>
     </div>
   );
