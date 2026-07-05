@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-04T15:40:08Z",
+  "title": "Design System: MÖKA Drive — Commander",
+  "extensions": {
+    "colorMeta": {
+      "coral": { "role": "primary", "displayName": "Coral", "canonical": "oklch(58% 0.17 15)", "tonalRamp": ["#3D1116", "#5C1A21", "#8A2833", "#B03B47", "#C24755", "#D97883", "#EDB4BA", "#FBE6E8"] },
+      "green": { "role": "secondary", "displayName": "Café Green", "canonical": "oklch(48% 0.11 130)", "tonalRamp": ["#151F0A", "#243610", "#3A5518", "#4A6D1F", "#587F25", "#7DA347", "#AECB7F", "#DDEBC8"] },
+      "promo-green": { "role": "secondary", "displayName": "Promo Green", "canonical": "oklch(74% 0.06 130)", "tonalRamp": ["#3A4A2E", "#556B41", "#748F5A", "#8CA872", "#A3B987", "#BFCFA8", "#DAE4CB", "#F1F5EA"] },
+      "brown": { "role": "neutral", "displayName": "Cocoa Brown", "canonical": "oklch(42% 0.08 45)", "tonalRamp": ["#1E100A", "#331B10", "#552C1B", "#6F3B22", "#8C4F2F", "#A96F4C", "#CBA184", "#E8D6C4"] },
+      "brown-light": { "role": "neutral", "displayName": "Brown Light", "canonical": "oklch(52% 0.07 45)", "tonalRamp": ["#241609", "#3D250F", "#623B1B", "#7E4E29", "#976146", "#B48568", "#D3B49A", "#EEDDCF"] },
+      "cream": { "role": "neutral", "displayName": "Cream", "canonical": "oklch(97% 0.015 90)", "tonalRamp": ["#3A3628", "#5C5640", "#8C8467", "#C4BB9C", "#E8E2CF", "#F3EFE3", "#FBF9EE", "#FEFDF9"] },
+      "page-bg": { "role": "neutral", "displayName": "Page Background", "canonical": "oklch(93% 0.02 70)", "tonalRamp": ["#362C1D", "#57462C", "#836A45", "#B69C79", "#DBC7A8", "#EDDECA", "#F5EDE0", "#FBF6EE"] },
+      "nav-glass-bg": { "role": "neutral", "displayName": "Nav Glass Base", "canonical": "oklch(96% 0.015 80)", "tonalRamp": ["#39331F", "#5A5133", "#8A7D52", "#C0B285", "#E6D9BB", "#F2EADC", "#FAF3EB", "#FDFAF6"] },
+      "placeholder-tan": { "role": "neutral", "displayName": "Placeholder Tan", "canonical": "oklch(90% 0.03 60)", "tonalRamp": ["#33261A", "#523E2A", "#815F41", "#AC855F", "#D3AD87", "#E7CDB2", "#F0E4D4", "#F8F1E8"] },
+      "surface-white": { "role": "neutral", "displayName": "Surface White", "canonical": "oklch(100% 0 0)", "tonalRamp": ["#1A1A1A", "#333333", "#666666", "#999999", "#CCCCCC", "#E6E6E6", "#F5F5F5", "#FFFFFF"] }
+    },
+    "typographyMeta": {
+      "heading": { "displayName": "Heading", "purpose": "Product names, popup titles, section headers — Arial/Helvetica at black/900 weight, brown ink." },
+      "body": { "displayName": "Body", "purpose": "Descriptions, search input — Arial/Helvetica regular." },
+      "label": { "displayName": "Label", "purpose": "Category tags, badges, variant group headers — bold, uppercase, tracked." }
+    },
+    "shadows": [
+      { "name": "card-lift", "value": "0 1px 3px rgba(0,0,0,0.1), 0 4px 6px -1px rgba(0,0,0,0.1)", "purpose": "Separates white foreground cards (product tile, cart line, stepper buttons) from the cream backdrop." },
+      { "name": "toast-float", "value": "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)", "purpose": "Toast confirmation floating free of any container." },
+      { "name": "nav-glass", "value": "0 8px 30px rgba(44,26,16,0.16)", "purpose": "The bottom nav's frosted-glass float, paired with backdrop-filter blur(20px) saturate(180%) and a 1px rgba(255,255,255,0.35) border. The system's one deliberate glassmorphism moment." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "ease-out", "purpose": "Default easing for all micro-feedback (bump, pop, sheet, toast, fade)." },
+      { "name": "duration-bump", "value": "0.35s", "purpose": "Cart badge and favorite-heart pop feedback." },
+      { "name": "duration-sheet", "value": "0.28s", "purpose": "Product popup bottom-sheet slide-up." },
+      { "name": "duration-toast", "value": "0.25s", "purpose": "Toast confirmation slide-in." }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button (Add to Cart)",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Full-width coral pill CTA in the product popup footer; disabled state swaps to brown-light.",
+      "html": "<button class=\"ds-btn-primary\">Ajouter au panier — 4,50 €</button>",
+      "css": ".ds-btn-primary { background: #C24755; color: #FFFFFF; font-weight: 700; padding: 14px 24px; border: none; border-radius: 9999px; min-height: 44px; cursor: pointer; transition: background 0.2s ease-out, transform 0.2s ease-out; } .ds-btn-primary:hover { background: #A93B47; } .ds-btn-primary:focus-visible { outline: 2px solid #587F25; outline-offset: 2px; } .ds-btn-primary:active { transform: scale(0.97); } .ds-btn-primary:disabled { background: #976146; opacity: 0.6; cursor: not-allowed; }"
+    },
+    {
+      "name": "Variant Chip",
+      "kind": "chip",
+      "refersTo": "chip-variant",
+      "description": "Selectable variant tile (size, flavor); solid coral fill when selected.",
+      "html": "<button class=\"ds-chip\">Medium</button>",
+      "css": ".ds-chip { padding: 8px 16px; border-radius: 24px; border: 1px solid #976146; background: #FFFFFF; color: #8C4F2F; font-weight: 600; font-size: 0.875rem; min-height: 44px; cursor: pointer; transition: background 0.2s ease-out, color 0.2s ease-out, border-color 0.2s ease-out; } .ds-chip:focus-visible { outline: 2px solid #587F25; outline-offset: 2px; } .ds-chip.ds-selected { background: #C24755; border-color: #C24755; color: #FFFFFF; }"
+    },
+    {
+      "name": "Product Card",
+      "kind": "card",
+      "refersTo": "card-product",
+      "description": "144x144 tappable product image tile with favorite toggle and availability badge.",
+      "html": "<div class=\"ds-card-product\"><img src=\"product.jpg\" alt=\"\" class=\"ds-card-product-img\"/><button class=\"ds-card-fav\" aria-label=\"Favori\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"#976146\" stroke-width=\"1.8\"><path d=\"M12 20.3s-7.5-4.6-9.8-9.1C.8 8 2.2 4.6 5.4 3.7c2-.55 4 .2 5 1.9 1-1.7 3-2.45 5-1.9 3.2.9 4.6 4.3 3.2 7.5-2.3 4.5-9.8 9.1-9.8 9.1Z\"/></svg></button></div>",
+      "css": ".ds-card-product { position: relative; width: 144px; height: 144px; border-radius: 24px; overflow: hidden; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 4px 6px -1px rgba(0,0,0,0.1); transition: transform 0.15s ease-out; } .ds-card-product:active { transform: scale(0.97); } .ds-card-product-img { width: 100%; height: 100%; object-fit: cover; } .ds-card-fav { position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; border-radius: 12px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; }"
+    },
+    {
+      "name": "Bottom Nav",
+      "kind": "nav",
+      "refersTo": "nav-glass",
+      "description": "Floating frosted-glass pill nav with a coral cart badge; the system's one glassmorphism exception.",
+      "html": "<nav class=\"ds-bottom-nav\"><span class=\"ds-nav-icon\">⌂</span><span class=\"ds-nav-icon\">♡</span><span class=\"ds-nav-icon ds-nav-cart\">🛒<span class=\"ds-nav-badge\">3</span></span><span class=\"ds-nav-icon\">☺</span></nav>",
+      "css": ".ds-bottom-nav { display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-radius: 9999px; background: rgba(250,243,235,0.7); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border: 1px solid rgba(255,255,255,0.35); box-shadow: 0 8px 30px rgba(44,26,16,0.16); } .ds-nav-icon { position: relative; width: 44px; height: 44px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; color: #8C4F2F; } .ds-nav-badge { position: absolute; top: 0; right: 0; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9999px; background: #C24755; color: #FFFFFF; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; }"
+    },
+    {
+      "name": "Search Bar",
+      "kind": "input",
+      "refersTo": "search-bar",
+      "description": "Pill search input with green focus ring.",
+      "html": "<div class=\"ds-search\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"#976146\" stroke-width=\"2\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\" stroke-linecap=\"round\"/></svg><input class=\"ds-search-input\" placeholder=\"Rechercher un produit...\"/></div>",
+      "css": ".ds-search { display: flex; align-items: center; gap: 8px; border-radius: 9999px; border: 1px solid #976146; background: #FFFFFF; padding: 10px 16px; } .ds-search:focus-within { outline: 2px solid #587F25; outline-offset: 2px; } .ds-search-input { flex: 1; background: transparent; border: none; outline: none; font-size: 0.875rem; color: #8C4F2F; } .ds-search-input::placeholder { color: #976146; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Neighborhood Café, Ordered Like Uber Eats",
+    "overview": "MÖKA Drive borrows the structure of a modern food-ordering app — sticky category strip, tappable product cards, a bottom sheet for variants, a floating nav with a live cart badge — and refuses its cold, corporate palette. Every surface stays in the café's own register: warm cream and tan backgrounds, cocoa-brown ink, a single coral accent reserved for the one action that matters (add to cart, checkout). Nothing here should read as a white-label delivery platform; it should read as a family café that happens to have a very well-organized menu.\n\nThe system is deliberately calm at rest and expressive only at the moment of feedback: a heart pops, a cart badge bumps, a bottom sheet slides up. Motion is small, fast (250–350ms), and always tied to a user action — never ambient or decorative.",
+    "keyCharacteristics": [
+      "Warm, tinted-neutral surfaces (cream/tan) — never stark white as a page background.",
+      "One accent color (coral) doing all of the \"act now\" work; everything else is ink, brown, or green.",
+      "Pill shapes everywhere interaction happens (buttons, nav, chips, search); generous 24px rounding on photographic tiles and sheets.",
+      "Micro-feedback (bump, pop, slide-up, fade) confirms every tap without slowing the tap down."
+    ],
+    "rules": [
+      { "name": "The Coral Reserve Rule", "body": "Coral is the app's only saturated color and it is spent on exactly one thing per screen: the primary action. It never appears on a badge, a label, or a decorative accent.", "section": "colors" },
+      { "name": "The No-Stark-White-Page Rule", "body": "Page backgrounds are always Cream or Page Background, never pure white. White is a foreground material (cards, buttons, stepper pills), not the backdrop.", "section": "colors" },
+      { "name": "The Weight-Over-Family Rule", "body": "Never introduce a second font family for emphasis. Move up the weight ramp (400 → 700 → 900) and switch brown → brown-light for de-emphasis instead.", "section": "typography" },
+      { "name": "The One Glass Rule", "body": "Backdrop-blur glass is reserved for the bottom nav alone, to keep icons legible over scrolling content — never used as a stylistic default elsewhere.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep coral to exactly one actionable element per screen (primary CTA, selected chip, cart badge) — its rarity is what signals \"tap me.\"",
+      "Do use Café Green only for status/orientation (badges, focus rings, active-category indicator, top strip) — never for a primary action.",
+      "Do keep every page background in the Cream/Page-Background family; white is a foreground-only material for cards and controls.",
+      "Do reach for Uber Eats-grade structure (sticky category strip, tappable card grid, bottom-sheet variant picker) when it improves clarity and speed — that reference is about information hierarchy, not visual style.",
+      "Do give every tap 44px+ touch targets and pair it with a small, fast (≤350ms) feedback animation (bump, pop, scale, slide).",
+      "Do respect prefers-reduced-motion — swap bump/pop/slide animations for instant or crossfade equivalents."
+    ],
+    "donts": [
+      "Don't let the interface read as a generic delivery-platform white-label (Uber Eats / Deliveroo / McDo's actual palette and chrome) — MÖKA's warmth must stay dominant even where the layout borrows platform-grade structure.",
+      "Don't introduce a second saturated accent color competing with coral.",
+      "Don't apply backdrop-blur glass anywhere except the bottom nav.",
+      "Don't use a stark pure-white page background — Cream/Page-Background only.",
+      "Don't add gradient text, side-stripe borders, or decorative card chrome.",
+      "Don't use Dancing Script anywhere yet without a deliberate decision — it's loaded but unassigned."
+    ]
+  }
+}
