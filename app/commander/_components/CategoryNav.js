@@ -3,11 +3,12 @@
 import { MOKA } from "../_lib/theme";
 import CategoryIcon from "./CategoryIcon";
 
-export default function CategoryNav({ categories, activeCategory, onSelect }) {
+export default function CategoryNav({ categories, activeCategory, onSelect, ref }) {
   if (!categories.length) return null;
 
   return (
     <nav
+      ref={ref}
       className="sticky top-0 z-20 backdrop-blur-md border-b px-4 py-3
                  flex gap-4 overflow-x-auto snap-x snap-mandatory no-scrollbar
                  md:grid md:overflow-visible md:snap-none md:justify-center md:gap-x-6 md:gap-y-5

@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MOKA } from "../_lib/theme";
 import { useCart } from "../_lib/CartContext";
 import Header from "./Header";
-import FreshnessIndicator from "./FreshnessIndicator";
 import SearchBar from "./SearchBar";
 import CategoryNav from "./CategoryNav";
 import CategoryPanel from "./CategoryPanel";
@@ -30,8 +29,7 @@ function filterGroup(produits, query) {
 }
 
 export default function MenuCatalog({ data }) {
-  const { categories, promos, popular, matchaLovers, coffeeAddict, allTheFood, refreshers, autres, products, generatedAt } =
-    data;
+  const { categories, promos, popular, matchaLovers, coffeeAddict, allTheFood, refreshers, autres, products } = data;
   const cart = useCart();
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [activeCategory, setActiveCategory] = useState(null);
@@ -42,6 +40,8 @@ export default function MenuCatalog({ data }) {
   const searchRef = useRef(null);
   const topRef = useRef(null);
   const toastTimer = useRef(null);
+  const categoryNavRef = useRef(null);
+  const categoryPanelRef = useRef(null);
 
   function toggleFavorite(id) {
     setFavorites((prev) => {
@@ -54,6 +54,29 @@ export default function MenuCatalog({ data }) {
   function selectCategory(nom) {
     setActiveCategory((current) => (current === nom ? null : nom));
   }
+
+  // The panel takes 300ms to expand (see CategoryPanel's grid-rows transition);
+  // wait for it to settle before measuring, then reveal it under the sticky nav
+  // only if it isn't already fully visible.
+  useEffect(() => {
+    if (!activeCategory) return;
+
+    const timer = setTimeout(() => {
+      const nav = categoryNavRef.current;
+      const panel = categoryPanelRef.current;
+      if (!nav || !panel) return;
+
+      const navHeight = nav.getBoundingClientRect().height;
+      const panelRect = panel.getBoundingClientRect();
+      const fullyVisible = panelRect.top >= navHeight && panelRect.bottom <= window.innerHeight;
+
+      if (!fullyVisible) {
+        window.scrollTo({ top: window.scrollY + panelRect.top - navHeight, behavior: "smooth" });
+      }
+    }, 320);
+
+    return () => clearTimeout(timer);
+  }, [activeCategory]);
 
   function goHome() {
     setActiveTab("home");
@@ -110,10 +133,14 @@ export default function MenuCatalog({ data }) {
     <div className="min-h-screen pb-28" style={{ backgroundColor: MOKA.cream }}>
       <div ref={topRef} />
       <Header />
-      <FreshnessIndicator generatedAt={generatedAt} />
       <SearchBar ref={searchRef} value={query} onChange={setQuery} />
-      <CategoryNav categories={categories} activeCategory={activeCategory} onSelect={selectCategory} />
-      <CategoryPanel categoryName={activeCategory} products={products} onSelectProduct={setSelectedProduct} />
+      <CategoryNav ref={categoryNavRef} categories={categories} activeCategory={activeCategory} onSelect={selectCategory} />
+      <CategoryPanel
+        ref={categoryPanelRef}
+        categoryName={activeCategory}
+        products={products}
+        onSelectProduct={setSelectedProduct}
+      />
 
       <main key={activeTab} className="animate-fade-in">
         {activeTab === "account" ? (

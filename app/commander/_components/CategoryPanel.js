@@ -42,12 +42,13 @@ function CompactTile({ product, onSelect }) {
   );
 }
 
-export default function CategoryPanel({ categoryName, products, onSelectProduct }) {
+export default function CategoryPanel({ categoryName, products, onSelectProduct, ref }) {
   const open = !!categoryName;
   const items = open ? products.filter((p) => p.categorie === categoryName) : [];
 
   return (
     <div
+      ref={ref}
       className={`grid transition-all duration-300 ease-in-out ${
         open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
       }`}

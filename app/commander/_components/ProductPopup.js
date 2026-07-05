@@ -5,7 +5,7 @@ import Image from "next/image";
 import { MOKA } from "../_lib/theme";
 import { formatPrice, groupOptionValues, findMatchingVariant } from "../_lib/variants";
 import { useModalA11y } from "../_lib/useModalA11y";
-import VariantTile from "./VariantTile";
+import VariantSegmented from "./VariantSegmented";
 
 const DESCRIPTION_TRUNCATE_LENGTH = 90;
 
@@ -115,16 +115,11 @@ export default function ProductPopup({ product, onClose, onAdd }) {
                 <div className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: MOKA.brownLight }}>
                   {group.name}
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {group.values.map((value) => (
-                    <VariantTile
-                      key={value}
-                      label={value}
-                      selected={selection[group.name] === value}
-                      onClick={() => setSelection((s) => ({ ...s, [group.name]: value }))}
-                    />
-                  ))}
-                </div>
+                <VariantSegmented
+                  options={group.values}
+                  selected={selection[group.name]}
+                  onSelect={(value) => setSelection((s) => ({ ...s, [group.name]: value }))}
+                />
               </div>
             ))}
           </div>
