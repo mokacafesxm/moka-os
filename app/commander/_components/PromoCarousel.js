@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Image from "next/image";
 import { MOKA } from "../_lib/theme";
 
 function PromoSlide({ promo }) {
@@ -8,7 +9,11 @@ function PromoSlide({ promo }) {
   // baked in) — just show them as-is, no frame/overlay/extra crop. Both
   // known banners are natively 16:9, so aspect-[16/9] + object-cover renders
   // them with zero cropping.
-  const content = <img src={promo.image} alt="Promotion" className="w-full aspect-[16/9] object-cover rounded-3xl" />;
+  const content = (
+    <div className="relative w-full aspect-[16/9] rounded-3xl overflow-hidden">
+      <Image src={promo.image} alt="Promotion" fill sizes="100vw" className="object-cover" />
+    </div>
+  );
 
   return promo.lien ? (
     <a href={promo.lien} target="_blank" rel="noopener noreferrer">

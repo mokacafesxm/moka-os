@@ -83,8 +83,15 @@ export default function BottomNav({ activeTab, cartCount, onHome, onFavorites, o
   const timerRef = useRef(null);
 
   useEffect(() => {
+    let ticking = false;
     function handleScroll() {
-      setScrolling(true);
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          setScrolling(true);
+          ticking = false;
+        });
+      }
       clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setScrolling(false), 300);
     }
@@ -97,15 +104,14 @@ export default function BottomNav({ activeTab, cartCount, onHome, onFavorites, o
 
   return (
     <nav
-      className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center rounded-full transition-[gap,padding] duration-300 ease-out ${
-        scrolling ? "gap-0 px-1 py-1.5" : "gap-1 px-2 py-1.5"
-      }`}
+      className="fixed bottom-4 left-1/2 z-30 flex items-center gap-1 px-2 py-1.5 rounded-full transition-transform duration-300 ease-out"
       style={{
         backgroundColor: "rgba(250,243,235,0.7)",
         backdropFilter: "blur(20px) saturate(180%)",
         WebkitBackdropFilter: "blur(20px) saturate(180%)",
         border: "1px solid rgba(255,255,255,0.35)",
-        boxShadow: "0 8px 30px rgba(44,26,16,0.16)",
+        boxShadow: `0 8px 30px ${MOKA.navShadow}`,
+        transform: `translateX(-50%) scale(${scrolling ? 0.92 : 1})`,
       }}
     >
       <NavButton Icon={HomeIcon} label="Accueil" active={activeTab === "home"} onClick={onHome} />

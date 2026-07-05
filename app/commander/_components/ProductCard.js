@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { MOKA } from "../_lib/theme";
 import { formatPrice } from "../_lib/variants";
 
@@ -46,9 +47,9 @@ export default function ProductCard({ product, onSelect, favorited, onToggleFavo
     >
       <div className="relative w-36 h-36 rounded-3xl overflow-hidden shadow-md bg-white active:scale-[0.97] transition-transform">
         {product.photo ? (
-          <img src={product.photo} alt={product.nom} className="w-full h-full object-cover" />
+          <Image src={product.photo} alt={product.nom} fill sizes="144px" className="object-cover" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: "#f0e4d4" }}>
+          <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: MOKA.placeholderTan }}>
             <span className="text-3xl font-bold" style={{ color: MOKA.brownLight }}>
               {product.nom.slice(0, 1)}
             </span>

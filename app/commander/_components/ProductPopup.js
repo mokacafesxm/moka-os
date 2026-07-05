@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { MOKA } from "../_lib/theme";
 import { formatPrice, groupOptionValues, findMatchingVariant } from "../_lib/variants";
 import { useModalA11y } from "../_lib/useModalA11y";
@@ -43,9 +44,9 @@ export default function ProductPopup({ product, onClose, onAdd }) {
         style={{ backgroundColor: MOKA.cream }}
       >
         <div className="overflow-y-auto flex-1">
-          <div className="relative w-full h-60 shrink-0" style={{ backgroundColor: "#f0e4d4" }}>
+          <div className="relative w-full h-60 shrink-0" style={{ backgroundColor: MOKA.placeholderTan }}>
             {product.photo ? (
-              <img src={product.photo} alt={product.nom} className="w-full h-full object-cover" />
+              <Image src={product.photo} alt={product.nom} fill priority sizes="100vw" className="object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <span className="text-5xl font-bold" style={{ color: MOKA.brownLight }}>

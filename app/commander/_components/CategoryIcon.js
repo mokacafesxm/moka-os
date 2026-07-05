@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Coffee, Leaf, Milk, CupSoda, UtensilsCrossed, Salad, Cookie, Star } from "lucide-react";
 import { MOKA } from "../_lib/theme";
 
@@ -29,12 +30,16 @@ const SIZE_CLASSES = "w-14 h-14 md:w-16 md:h-16";
 export default function CategoryIcon({ nom, photo }) {
   if (photo) {
     return (
-      <img
-        src={photo}
-        alt={nom}
-        style={{ borderColor: MOKA.brownLight }}
-        className={`${SIZE_CLASSES} rounded-full object-cover border shrink-0`}
-      />
+      <div className={`relative ${SIZE_CLASSES} shrink-0`}>
+        <Image
+          src={photo}
+          alt={nom}
+          fill
+          sizes="64px"
+          style={{ borderColor: MOKA.brownLight }}
+          className="rounded-full object-cover border"
+        />
+      </div>
     );
   }
 

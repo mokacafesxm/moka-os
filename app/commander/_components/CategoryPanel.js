@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { MOKA } from "../_lib/theme";
 import { formatPrice } from "../_lib/variants";
 
@@ -8,9 +9,15 @@ function CompactTile({ product, onSelect }) {
     <button onClick={() => onSelect(product)} className="text-left cursor-pointer">
       <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-white shadow-sm">
         {product.photo ? (
-          <img src={product.photo} alt={product.nom} className="w-full h-full object-cover" />
+          <Image
+            src={product.photo}
+            alt={product.nom}
+            fill
+            sizes="(min-width: 1024px) 16vw, (min-width: 768px) 25vw, 33vw"
+            className="object-cover"
+          />
         ) : (
-          <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: "#f0e4d4" }}>
+          <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: MOKA.placeholderTan }}>
             <span className="text-xl font-bold" style={{ color: MOKA.brownLight }}>
               {product.nom.slice(0, 1)}
             </span>
@@ -46,7 +53,10 @@ export default function CategoryPanel({ categoryName, products, onSelectProduct 
       }`}
     >
       <div className="overflow-hidden">
-        <div className="px-4 py-4 grid grid-cols-3 gap-x-3 gap-y-4 border-b" style={{ borderColor: `${MOKA.brownLight}33` }}>
+        <div
+          className="px-4 py-4 grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-3 gap-y-4 border-b"
+          style={{ borderColor: `${MOKA.brownLight}33` }}
+        >
           {items.length === 0 ? (
             <div className="col-span-3 text-sm py-6 text-center" style={{ color: MOKA.brownLight }}>
               Aucun produit dans cette catégorie pour l'instant.

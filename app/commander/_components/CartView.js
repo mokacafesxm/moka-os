@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ShoppingBag, Trash2 } from "lucide-react";
 import { MOKA } from "../_lib/theme";
 import { formatPrice } from "../_lib/variants";
@@ -12,9 +13,9 @@ function CartLine({ item, onUpdateQty, onRemove }) {
 
   return (
     <div className="flex items-center gap-3 bg-white rounded-2xl p-3 shadow-sm">
-      <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0" style={{ backgroundColor: "#f0e4d4" }}>
+      <div className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0" style={{ backgroundColor: MOKA.placeholderTan }}>
         {item.photo ? (
-          <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
+          <Image src={item.photo} alt={item.name} fill sizes="64px" className="object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <span className="text-xl font-bold" style={{ color: MOKA.brownLight }}>
