@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { MOKA } from "../_lib/theme";
 import { useCart } from "../_lib/CartContext";
+import { productsForCategory } from "../_lib/categoryMatch";
 import Header from "./Header";
 import SearchBar from "./SearchBar";
-import CategoryNav from "./CategoryNav";
-import CategoryPanel from "./CategoryPanel";
+import CategoryRail from "./CategoryRail";
+import ProductGrid from "./ProductGrid";
 import CategorySection from "./CategorySection";
 import PromoCarousel from "./PromoCarousel";
 import ProductPopup from "./ProductPopup";
@@ -24,15 +25,11 @@ function matches(product, query) {
   return product.nom.toLowerCase().includes(q) || product.description?.toLowerCase().includes(q);
 }
 
-function filterGroup(produits, query) {
-  return produits.filter((p) => matches(p, query));
-}
-
 export default function MenuCatalog({ data }) {
-  const { categories, promos, popular, matchaLovers, coffeeAddict, allTheFood, refreshers, autres, products } = data;
+  const { categories, promos, products } = data;
   const cart = useCart();
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [activeCategory, setActiveCategory] = useState(null);
+  const [activeCategory, setActiveCategory] = useState(() => categories[0] || null);
   const [query, setQuery] = useState("");
   const [favorites, setFavorites] = useState(() => new Set());
   const [activeTab, setActiveTab] = useState("home");
@@ -40,8 +37,6 @@ export default function MenuCatalog({ data }) {
   const searchRef = useRef(null);
   const topRef = useRef(null);
   const toastTimer = useRef(null);
-  const categoryNavRef = useRef(null);
-  const categoryPanelRef = useRef(null);
 
   function toggleFavorite(id) {
     setFavorites((prev) => {
@@ -51,67 +46,25 @@ export default function MenuCatalog({ data }) {
     });
   }
 
-  function selectCategory(nom) {
-    setActiveCategory((current) => (current === nom ? null : nom));
-  }
-
-  // The panel takes 300ms to expand (see CategoryPanel's grid-rows transition);
-  // wait for it to settle before measuring, then reveal it under the sticky nav
-  // only if it isn't already fully visible.
-  useEffect(() => {
-    if (!activeCategory) return;
-
-    const timer = setTimeout(() => {
-      const nav = categoryNavRef.current;
-      const panel = categoryPanelRef.current;
-      if (!nav || !panel) return;
-
-      const navHeight = nav.getBoundingClientRect().height;
-      const panelRect = panel.getBoundingClientRect();
-      const fullyVisible = panelRect.top >= navHeight && panelRect.bottom <= window.innerHeight;
-
-      if (!fullyVisible) {
-        window.scrollTo({ top: window.scrollY + panelRect.top - navHeight, behavior: "smooth" });
-      }
-    }, 320);
-
-    return () => clearTimeout(timer);
-  }, [activeCategory]);
-
   function goHome() {
     setActiveTab("home");
-    setActiveCategory(null);
     setQuery("");
     topRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
   function showFavorites() {
-    setActiveCategory(null);
     setActiveTab((t) => (t === "favorites" ? "home" : "favorites"));
   }
 
   function showCart() {
-    setActiveCategory(null);
     setActiveTab((t) => (t === "cart" ? "home" : "cart"));
   }
 
-  // All product groups, in the fixed homepage order.
-  const groups = useMemo(
-    () => [
-      { nom: "Popular", produits: popular },
-      { nom: "Matcha Lovers", produits: matchaLovers },
-      { nom: "Coffee Addict", produits: coffeeAddict },
-      { nom: "All The Food", produits: allTheFood },
-      { nom: "Refreshers", produits: refreshers },
-      { nom: "Autres", produits: autres },
-    ],
-    [popular, matchaLovers, coffeeAddict, allTheFood, refreshers, autres]
-  );
-
-  const filteredGroups = useMemo(
-    () => groups.map((g) => ({ ...g, produits: filterGroup(g.produits, query) })),
-    [groups, query]
-  );
+  // Searching spans every category at once; browsing shows only the active one.
+  const displayedProducts = useMemo(() => {
+    if (query) return products.filter((p) => matches(p, query));
+    return productsForCategory(products, activeCategory);
+  }, [products, activeCategory, query]);
 
   const favoriteProducts = useMemo(() => products.filter((p) => favorites.has(p.id)), [products, favorites]);
 
@@ -133,14 +86,6 @@ export default function MenuCatalog({ data }) {
     <div className="min-h-screen pb-28" style={{ backgroundColor: MOKA.cream }}>
       <div ref={topRef} />
       <Header />
-      <SearchBar ref={searchRef} value={query} onChange={setQuery} />
-      <CategoryNav ref={categoryNavRef} categories={categories} activeCategory={activeCategory} onSelect={selectCategory} />
-      <CategoryPanel
-        ref={categoryPanelRef}
-        categoryName={activeCategory}
-        products={products}
-        onSelectProduct={setSelectedProduct}
-      />
 
       <main key={activeTab} className="animate-fade-in">
         {activeTab === "account" ? (
@@ -155,11 +100,19 @@ export default function MenuCatalog({ data }) {
           )
         ) : (
           <>
+            <SearchBar ref={searchRef} value={query} onChange={setQuery} />
             <PromoCarousel promos={promos} />
 
-            {filteredGroups.map((group) => (
-              <CategorySection key={group.nom} nom={group.nom} produits={group.produits} {...cardProps} />
-            ))}
+            <div className="flex items-start">
+              <CategoryRail categories={categories} activeCategory={activeCategory} onSelect={setActiveCategory} />
+              <ProductGrid
+                products={displayedProducts}
+                emptyMessage={
+                  query ? "Aucun produit ne correspond à ta recherche." : "Aucun produit dans cette catégorie pour l'instant."
+                }
+                {...cardProps}
+              />
+            </div>
           </>
         )}
       </main>
@@ -177,10 +130,7 @@ export default function MenuCatalog({ data }) {
         onHome={goHome}
         onCart={showCart}
         onFavorites={showFavorites}
-        onAccount={() => {
-          setActiveCategory(null);
-          setActiveTab("account");
-        }}
+        onAccount={() => setActiveTab("account")}
       />
     </div>
   );

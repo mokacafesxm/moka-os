@@ -8,11 +8,18 @@ function PromoSlide({ promo }) {
   // These images are fully composed by Shopify (text + photo + background
   // baked in, natively 16:9) — the aspect ratio must stay 16:9 or object-cover
   // crops the baked-in promo text/pricing off the left and right edges.
-  // Full-bleed (no side padding, no rounding) is what gives it more screen
-  // presence instead: same ratio, no crop, just bigger and edge-to-edge.
+  // Full-bleed (no side padding, no rounding) on mobile is what gives it more
+  // screen presence; capped width from md: up so it doesn't become an 800px+
+  // banner that pushes the category rail/grid below the fold on desktop.
   const content = (
-    <div className="relative w-full aspect-[16/9] overflow-hidden">
-      <Image src={promo.image} alt="Promotion" fill sizes="100vw" className="object-cover" />
+    <div className="relative w-full aspect-[16/9] overflow-hidden md:max-w-xl md:mx-auto md:rounded-3xl">
+      <Image
+        src={promo.image}
+        alt="Promotion"
+        fill
+        sizes="(min-width: 768px) 576px, 100vw"
+        className="object-cover"
+      />
     </div>
   );
 
