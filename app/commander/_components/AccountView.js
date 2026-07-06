@@ -4,6 +4,7 @@ import { useState } from "react";
 import { User, Bell, ChevronRight } from "lucide-react";
 import { MOKA } from "../_lib/theme";
 import { useCustomer } from "../_lib/CustomerContext";
+import SavedCardSection from "./SavedCardSection";
 
 const PHONE_PATTERN = /^\+[1-9]\d{6,14}$/;
 
@@ -163,6 +164,8 @@ export default function AccountView() {
               <ChevronRight className="w-4 h-4" style={{ color: MOKA.brownLight }} />
             </button>
           ))}
+
+          <SavedCardSection />
 
           <button
             onClick={signOut}

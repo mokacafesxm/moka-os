@@ -28,6 +28,7 @@ export default function CheckoutFlow() {
     total: 0,
     rewardApplied: null,
     rewardBlocked: null,
+    savedCard: null,
   });
   const [confirmation, setConfirmation] = useState(null);
 
@@ -71,8 +72,45 @@ export default function CheckoutFlow() {
         total: data.total,
         rewardApplied: data.rewardApplied || null,
         rewardBlocked: data.rewardBlocked || null,
+        savedCard: data.savedCard || null,
       });
       setStep("payment");
+    } catch {
+      setError("Impossible de contacter le serveur, réessayez.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handlePaySavedCard() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/orders/pay-saved-card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: cart.items, slot }),
+      });
+      const data = await res.json();
+
+      if (res.status === 409) {
+        setUnavailable(data.unavailable || []);
+        setStep("pickup");
+        return;
+      }
+      if (!res.ok) {
+        setError(data.error || "Le paiement avec la carte enregistrée a échoué.");
+        return;
+      }
+      if (data.status !== "succeeded") {
+        // 3D Secure or another extra step would be needed — simplest safe
+        // fallback is to ask for a fresh card entry instead of building a
+        // second confirmation UI just for this rarer case.
+        setError("Cette carte nécessite une vérification supplémentaire — utilise le formulaire de paiement ci-dessous.");
+        return;
+      }
+
+      await submitConfirmation({ paymentIntentId: data.paymentIntentId, testMode: false });
     } catch {
       setError("Impossible de contacter le serveur, réessayez.");
     } finally {
@@ -148,6 +186,9 @@ export default function CheckoutFlow() {
           total={payment.total}
           rewardApplied={payment.rewardApplied}
           rewardBlocked={payment.rewardBlocked}
+          savedCard={payment.savedCard}
+          submittingSavedCard={submitting}
+          onPaySavedCard={handlePaySavedCard}
           error={error}
           onError={setError}
           onSuccess={(paymentIntentId) => submitConfirmation({ paymentIntentId, testMode: false })}

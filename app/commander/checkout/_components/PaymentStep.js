@@ -84,12 +84,31 @@ function RewardBanner({ rewardApplied, rewardBlocked }) {
   return null;
 }
 
+function SavedCardOption({ savedCard, submitting, onPaySavedCard }) {
+  if (!savedCard) return null;
+  return (
+    <button
+      onClick={onPaySavedCard}
+      disabled={submitting}
+      className={`w-full py-3.5 rounded-full font-bold text-white flex items-center justify-center min-h-[44px] ${
+        submitting ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+      }`}
+      style={{ backgroundColor: MOKA.green }}
+    >
+      {submitting ? "Paiement en cours…" : `Payer avec la carte enregistrée (${savedCard.label})`}
+    </button>
+  );
+}
+
 export default function PaymentStep({
   testMode,
   clientSecret,
   total,
   rewardApplied,
   rewardBlocked,
+  savedCard,
+  submittingSavedCard,
+  onPaySavedCard,
   onSuccess,
   onError,
   error,
@@ -142,6 +161,12 @@ export default function PaymentStep({
   return (
     <div className="px-4 pt-4 pb-4 space-y-4">
       <RewardBanner rewardApplied={rewardApplied} rewardBlocked={rewardBlocked} />
+      <SavedCardOption savedCard={savedCard} submitting={submittingSavedCard} onPaySavedCard={onPaySavedCard} />
+      {savedCard && (
+        <p className="text-center text-xs" style={{ color: MOKA.brownLight }}>
+          ou paie avec une autre carte
+        </p>
+      )}
       <Elements stripe={stripePromise} options={{ clientSecret, appearance: STRIPE_APPEARANCE }}>
         <StripeForm total={total} submitting={submitting} setSubmitting={setSubmitting} onSuccess={onSuccess} onError={onError} />
       </Elements>
