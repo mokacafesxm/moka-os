@@ -14,6 +14,8 @@ export const DB = {
   PROMOS:             "3929512c-f66a-813c-af85-c34263c0eea7",
   COMMANDES_CLIENTS:  "3939512c-f66a-8136-a28c-f16c3d92a7f6",
   ROUE_CHANCE:        "3949512c-f66a-81dc-89fc-f4f493e4c846",
+  CLIENTS:            "3959512c-f66a-81ea-be0f-f614915dbdd1",
+  SPINS_ANONYMES:     "3959512c-f66a-8105-a0f8-f068f1f58df0",
 };
 
 export const corsHeaders = {
