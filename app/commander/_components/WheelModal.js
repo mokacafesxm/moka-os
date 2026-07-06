@@ -1,17 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Coffee, Percent, Sandwich, CupSoda, Croissant, GlassWater, RotateCcw, Cake } from "lucide-react";
 import { MOKA } from "../_lib/theme";
 import { useModalA11y } from "../_lib/useModalA11y";
 import { getDeviceId } from "../_lib/deviceId";
-import { SLICES, REWARD_COLOR, REWARD_LINES, REWARD_TEXT_COLOR } from "../_lib/wheelSlices";
+import { SLICES, REWARD, REWARD_COLOR, REWARD_LINES } from "../_lib/wheelSlices";
 
 const SLICE_DEG = 360 / SLICES.length;
-const SPIN_DURATION_MS = 4000;
+const SPIN_DURATION_MS = 4200;
+const LANDED_DURATION_MS = 1000;
 const FULL_TURNS_DEG = 6 * 360;
 const CENTER = 100;
 const OUTER_R = 96;
-const LABEL_R = 62;
+const ICON_R = 74;
+const TEXT_R = 54;
+const FONT_STACK = "var(--font-geist-sans), Arial, Helvetica, sans-serif";
+
+const REWARD_ICON = {
+  [REWARD.ICED_COFFEE_BOGO]: Coffee,
+  [REWARD.PERCENT_5]: Percent,
+  [REWARD.PERCENT_10]: Percent,
+  [REWARD.PERCENT_15]: Percent,
+  [REWARD.PERCENT_20]: Percent,
+  [REWARD.BRUNCH_FREE]: Sandwich,
+  [REWARD.BIG_SMALL_JUICE]: CupSoda,
+  [REWARD.COFFEE_FREE]: Coffee,
+  [REWARD.PASTRY_FREE]: Croissant,
+  [REWARD.SMOOTHIE_FREE]: GlassWater,
+  [REWARD.REPLAY_TOMORROW]: RotateCcw,
+  [REWARD.DESSERT_FREE]: Cake,
+};
 
 function formatResetTime(iso) {
   if (!iso) return "";
@@ -29,7 +48,12 @@ function polarPoint(angleDeg, r) {
   return { x: CENTER + r * Math.sin(rad), y: CENTER - r * Math.cos(rad) };
 }
 
-function WheelSlices() {
+// Text is drawn "upright" at the top (angle 0) then the whole slice group is
+// rotated into place. Slices in the bottom half would end up upside down
+// after that rotation, so labels there get an extra 180° flip around their
+// own pivot to stay readable right-side up (icon position is unaffected —
+// it's part of the same flipped group, so it stays paired with its text).
+function WheelSlices({ highlightIndex }) {
   return (
     <>
       {SLICES.map((reward, i) => {
@@ -39,7 +63,12 @@ function WheelSlices() {
         const start = polarPoint(startAngle, OUTER_R);
         const end = polarPoint(endAngle, OUTER_R);
         const lines = REWARD_LINES[reward] || [reward];
-        const textColor = REWARD_TEXT_COLOR[reward] || "#FFFFFF";
+        const Icon = REWARD_ICON[reward];
+        const flip = midAngle > 90 && midAngle < 270;
+        const isHighlighted = i === highlightIndex;
+        const iconY = CENTER - ICON_R;
+        const textY = CENTER - TEXT_R;
+        const pivotY = (iconY + textY) / 2;
 
         return (
           <g key={i}>
@@ -47,23 +76,22 @@ function WheelSlices() {
               d={`M ${CENTER} ${CENTER} L ${start.x} ${start.y} A ${OUTER_R} ${OUTER_R} 0 0 1 ${end.x} ${end.y} Z`}
               fill={REWARD_COLOR[reward]}
               stroke={MOKA.cream}
-              strokeWidth="1"
+              strokeWidth={isHighlighted ? 3 : 1}
+              style={isHighlighted ? { filter: "drop-shadow(0 0 6px rgba(255,255,255,0.95))" } : undefined}
             />
             <g transform={`rotate(${midAngle}, ${CENTER}, ${CENTER})`}>
-              <text
-                x={CENTER}
-                y={CENTER - LABEL_R}
-                textAnchor="middle"
-                fill={textColor}
-                fontSize="9"
-                fontWeight="700"
-              >
-                {lines.map((line, li) => (
-                  <tspan key={li} x={CENTER} dy={li === 0 ? 0 : 10}>
-                    {line}
-                  </tspan>
-                ))}
-              </text>
+              <g transform={flip ? `rotate(180, ${CENTER}, ${pivotY})` : undefined}>
+                <g transform={`translate(${CENTER - 7}, ${iconY - 7})`}>
+                  <Icon size={14} color="#FFFFFF" strokeWidth={2.5} />
+                </g>
+                <text x={CENTER} y={textY} textAnchor="middle" fill="#FFFFFF" fontSize="8.5" fontWeight="700" fontFamily={FONT_STACK}>
+                  {lines.map((line, li) => (
+                    <tspan key={li} x={CENTER} dy={li === 0 ? 0 : 10}>
+                      {line}
+                    </tspan>
+                  ))}
+                </text>
+              </g>
             </g>
           </g>
         );
@@ -72,15 +100,74 @@ function WheelSlices() {
   );
 }
 
+function WheelCenterHub() {
+  return (
+    <div
+      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center z-10"
+      style={{ backgroundColor: MOKA.cream, border: `3px solid ${MOKA.brown}`, boxShadow: `0 2px 8px ${MOKA.navShadow}` }}
+      aria-hidden="true"
+    >
+      <span className="text-xl font-black" style={{ color: MOKA.brown, fontFamily: FONT_STACK }}>
+        M
+      </span>
+    </div>
+  );
+}
+
+function WheelPointer() {
+  return (
+    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center" aria-hidden="true">
+      <Coffee className="w-5 h-5 mb-[-3px]" style={{ color: MOKA.brown }} strokeWidth={2.5} />
+      <div
+        className="w-0 h-0"
+        style={{ borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: `14px solid ${MOKA.brown}` }}
+      />
+    </div>
+  );
+}
+
+// Deterministic scatter (no Math.random — components must stay pure): angle
+// jitter and distance vary with index so the burst still reads as random.
+const CONFETTI_COLORS = [MOKA.brownLight, MOKA.brown, MOKA.green, MOKA.coral];
+const CONFETTI_DOTS = Array.from({ length: 12 }, (_, i) => {
+  const angle = (i / 12) * 360 + ((i % 3) - 1) * 7;
+  const dist = 42 + ((i * 7) % 28);
+  const rad = (angle * Math.PI) / 180;
+  return {
+    dx: Math.cos(rad) * dist,
+    dy: Math.sin(rad) * dist,
+    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    delay: (i % 5) * 0.03,
+  };
+});
+
+function Confetti() {
+  return (
+    <div className="absolute top-2 left-1/2 -translate-x-1/2 w-0 h-0 z-20" aria-hidden="true">
+      {CONFETTI_DOTS.map((d, i) => (
+        <span
+          key={i}
+          className="absolute w-2 h-2 -ml-1 -mt-1 rounded-full animate-confetti"
+          style={{ backgroundColor: d.color, "--dx": `${d.dx}px`, "--dy": `${d.dy}px`, animationDelay: `${d.delay}s` }}
+        />
+      ))}
+    </div>
+  );
+}
+
 // Rendered only while open (parent does `{wheelOpen && <WheelModal .../>}`,
 // same pattern as ProductPopup) so a fresh mount is what resets state —
 // no reset-on-close effect needed.
 export default function WheelModal({ onClose, eligibility, onSpun, customer, onGoToAccount }) {
   const dialogRef = useModalA11y(onClose);
-  const [phase, setPhase] = useState("idle"); // idle | spinning | result
+  const [phase, setPhase] = useState("idle"); // idle | spinning | landed | result
   const [rotation, setRotation] = useState(0);
+  const [landedIndex, setLandedIndex] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  // Lazy initializer, not an effect — this only ever mounts client-side
+  // (parent conditionally renders it), so window is always available here.
+  const [reducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
   // Already connected when the result lands — claim immediately in the
   // background, no extra tap. Fire-and-forget: the UI shows success
@@ -96,6 +183,9 @@ export default function WheelModal({ onClose, eligibility, onSpun, customer, onG
     }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
+
+  const spinDurationMs = reducedMotion ? 300 : SPIN_DURATION_MS;
+  const landedDurationMs = reducedMotion ? 100 : LANDED_DURATION_MS;
 
   async function handleSpin() {
     setError(null);
@@ -120,10 +210,14 @@ export default function WheelModal({ onClose, eligibility, onSpun, customer, onG
       setRotation(FULL_TURNS_DEG + landingOffset);
 
       setTimeout(() => {
-        setResult({ reward: data.reward, code: data.code, expiresAt: data.expiresAt });
-        setPhase("result");
+        setLandedIndex(data.sliceIndex);
+        setPhase("landed");
         onSpun();
-      }, SPIN_DURATION_MS);
+        setTimeout(() => {
+          setResult({ reward: data.reward, code: data.code, expiresAt: data.expiresAt, sliceIndex: data.sliceIndex });
+          setPhase("result");
+        }, landedDurationMs);
+      }, spinDurationMs);
     } catch {
       setError("Impossible de contacter le serveur, réessaie.");
       setPhase("idle");
@@ -134,7 +228,7 @@ export default function WheelModal({ onClose, eligibility, onSpun, customer, onG
 
   return (
     <div className="fixed inset-0 z-50 flex items-end">
-      <div className="absolute inset-0 bg-black/40" onClick={phase === "spinning" ? undefined : onClose} />
+      <div className="absolute inset-0 bg-black/40" onClick={phase === "spinning" || phase === "landed" ? undefined : onClose} />
 
       <div
         ref={dialogRef}
@@ -146,12 +240,12 @@ export default function WheelModal({ onClose, eligibility, onSpun, customer, onG
         style={{ backgroundColor: MOKA.cream }}
       >
         <div className="flex items-start justify-between mb-4">
-          <h2 id="wheel-modal-title" className="text-lg font-black" style={{ color: MOKA.brown }}>
+          <h2 id="wheel-modal-title" className="text-lg font-black" style={{ color: MOKA.brown, fontFamily: FONT_STACK }}>
             Roue de la chance
           </h2>
           <button
             onClick={onClose}
-            disabled={phase === "spinning"}
+            disabled={phase === "spinning" || phase === "landed"}
             className="w-11 h-11 -mt-2 -mr-2 rounded-full bg-white shadow flex items-center justify-center cursor-pointer shrink-0"
             style={{ color: MOKA.brown }}
             aria-label="Fermer"
@@ -167,30 +261,24 @@ export default function WheelModal({ onClose, eligibility, onSpun, customer, onG
               className="absolute inset-0"
               style={{
                 transform: `rotate(${rotation}deg)`,
-                transition: phase === "spinning" ? `transform ${SPIN_DURATION_MS}ms cubic-bezier(0.15, 0.65, 0.25, 1)` : "none",
+                transition: phase === "spinning" ? `transform ${spinDurationMs}ms cubic-bezier(0.76, 0, 0.24, 1)` : "none",
                 filter: `drop-shadow(0 8px 16px ${MOKA.navShadow})`,
               }}
             >
-              <WheelSlices />
+              <WheelSlices highlightIndex={phase === "landed" ? landedIndex : null} />
             </svg>
-            <div
-              className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 z-10"
-              style={{
-                borderLeft: "10px solid transparent",
-                borderRight: "10px solid transparent",
-                borderTop: `16px solid ${MOKA.brown}`,
-              }}
-              aria-hidden="true"
-            />
+            <WheelCenterHub />
+            <WheelPointer />
+            {phase === "landed" && <Confetti />}
           </div>
         )}
 
-        {phase === "result" && result && (
+        {result && phase === "result" && (
           <div className="text-center py-4">
             <p className="text-xs font-bold uppercase tracking-wide" style={{ color: MOKA.brownLight }}>
               Tu as gagné
             </p>
-            <p className="text-xl font-black mt-1" style={{ color: MOKA.coral }}>
+            <p className="text-xl font-black mt-1" style={{ color: MOKA.coral, fontFamily: FONT_STACK }}>
               {result.reward}
             </p>
             <p className="text-xs mt-2" style={{ color: MOKA.brownLight }}>
@@ -224,7 +312,7 @@ export default function WheelModal({ onClose, eligibility, onSpun, customer, onG
           </div>
         )}
 
-        {phase !== "result" && (
+        {(phase === "idle" || phase === "spinning") && (
           <>
             {error && (
               <p role="alert" className="text-sm font-semibold text-center mb-3" style={{ color: "#8C2F2F" }}>
@@ -243,10 +331,13 @@ export default function WheelModal({ onClose, eligibility, onSpun, customer, onG
             <button
               onClick={handleSpin}
               disabled={!canSpinNow}
-              className={`w-full py-3.5 rounded-full font-bold text-white flex items-center justify-center min-h-[44px] ${
-                canSpinNow ? "cursor-pointer" : "cursor-not-allowed opacity-60"
+              className={`w-full py-3.5 rounded-full font-bold flex items-center justify-center min-h-[44px] ${
+                canSpinNow ? "cursor-pointer" : "cursor-not-allowed"
               }`}
-              style={{ backgroundColor: MOKA.coral }}
+              style={{
+                backgroundColor: canSpinNow ? MOKA.coral : MOKA.placeholderTan,
+                color: canSpinNow ? "#FFFFFF" : MOKA.brownLight,
+              }}
             >
               {phase === "spinning" ? "Ça tourne…" : "Tourner la roue"}
             </button>

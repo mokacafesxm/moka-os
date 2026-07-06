@@ -50,25 +50,8 @@ export const REWARD_LINES = {
   [REWARD.DESSERT_FREE]: ["Dessert", "offert"],
 };
 
-export const REWARD_COLOR = {
-  [REWARD.ICED_COFFEE_BOGO]: "#976146",
-  [REWARD.PERCENT_5]: "#A3B987",
-  [REWARD.PERCENT_10]: "#587F25",
-  [REWARD.PERCENT_15]: "#C24755",
-  [REWARD.PERCENT_20]: "#8C2F2F",
-  [REWARD.BRUNCH_FREE]: "#8C4F2F",
-  [REWARD.BIG_SMALL_JUICE]: "#3F5C1C",
-  [REWARD.COFFEE_FREE]: "#B98257",
-  [REWARD.PASTRY_FREE]: "#D9A55C",
-  [REWARD.SMOOTHIE_FREE]: "#8FA870",
-  [REWARD.REPLAY_TOMORROW]: "#C9BBA8",
-  [REWARD.DESSERT_FREE]: "#D97A85",
-};
-
-// Text color per slice — most slice fills are dark enough for white text;
-// the two lightest fills (pastry gold, replay-tomorrow tan) need dark text
-// to stay readable (contrast check done visually, see WheelModal screenshots).
-export const REWARD_TEXT_COLOR = {
-  [REWARD.PASTRY_FREE]: "#4A2F18",
-  [REWARD.REPLAY_TOMORROW]: "#4A2F18",
-};
+// Only the 4 non-cream MOKA brand colors, repeating in a fixed 4-tone
+// sequence around the 12 slices (3 full cycles) — no off-brand hues.
+// All four are dark/saturated enough for white slice text + icons.
+const PALETTE_CYCLE = ["#976146", "#8C4F2F", "#587F25", "#C24755"]; // brownLight, brown, green, coral
+export const REWARD_COLOR = Object.fromEntries(SLICES.map((reward, i) => [reward, PALETTE_CYCLE[i % PALETTE_CYCLE.length]]));

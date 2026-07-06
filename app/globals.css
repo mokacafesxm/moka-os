@@ -81,6 +81,17 @@ body {
   .animate-swipe-in { animation: none; }
 }
 
+/* Wheel of fortune — confetti burst on the winning slice at the stop */
+@keyframes confettiBurst {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.35); opacity: 0; }
+}
+.animate-confetti { animation: confettiBurst 0.9s cubic-bezier(0.15, 0.65, 0.3, 1) forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-confetti { animation: none; opacity: 0; }
+}
+
 /* Category rail — thin, low-key scrollbar (instead of hiding it) hints that
    the list continues below the fold. */
 .category-rail-scroll {
