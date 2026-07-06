@@ -1,7 +1,9 @@
 import { DB, corsHeaders, createPage, updatePage, titleProp, textProp, selectProp, numberProp, dateProp, relationProp } from "../../_notion";
 import { getStripe, isStripeConfigured } from "../../_stripe";
 import { isValidSlot, slotLabel, computeTotal, buildArticlesText, orderCodeFromPageId } from "../_shared";
-import { resolveActiveReward, round2 } from "../../wheel/_shared";
+import { resolveActiveRewardForClient, round2 } from "../../wheel/_shared";
+import { getPhoneFromRequest } from "../../_session";
+import { findClientByPhone, clearClientActiveReward } from "../../_clients";
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -12,7 +14,7 @@ export async function OPTIONS() {
 // for the team to prepare, and returns the order code shown to the customer.
 export async function POST(request) {
   try {
-    const { items, slot, guest, paymentIntentId, testMode, deviceId } = await request.json();
+    const { items, slot, guest, paymentIntentId, testMode } = await request.json();
 
     if (!Array.isArray(items) || !items.length) {
       return Response.json({ error: "Le panier est vide" }, { status: 400, headers: corsHeaders });
@@ -44,7 +46,9 @@ export async function POST(request) {
     // Re-validate independently rather than trusting whatever discount the
     // client remembers from the checkout step — the source of truth is
     // Notion (reward status) + the live cart, same as the checkout route.
-    const rewardResult = await resolveActiveReward(deviceId, items);
+    const phone = getPhoneFromRequest(request);
+    const client = phone ? await findClientByPhone(phone) : null;
+    const rewardResult = client ? await resolveActiveRewardForClient(client, items) : null;
     const rewardApplied = rewardResult?.valid ? rewardResult : null;
     const total = Math.max(0, round2(subtotal - (rewardApplied?.discount || 0)));
 
@@ -65,10 +69,13 @@ export async function POST(request) {
     await updatePage(page.id, { "Commande": titleProp(orderCode) });
 
     if (rewardApplied) {
-      await updatePage(rewardApplied.spinId, {
-        "Statut": selectProp("Utilisée"),
-        "Commande liée": relationProp(page.id),
-      });
+      await Promise.all([
+        updatePage(rewardApplied.spinId, {
+          "Statut": selectProp("Utilisée"),
+          "Commande liée": relationProp(page.id),
+        }),
+        clearClientActiveReward(client.id),
+      ]);
     }
 
     return Response.json(

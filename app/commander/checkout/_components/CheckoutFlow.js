@@ -6,7 +6,6 @@ import { ChevronLeft } from "lucide-react";
 import { MOKA } from "../../_lib/theme";
 import { useCart } from "../../_lib/CartContext";
 import { PICKUP_SLOTS } from "../../_lib/pickupSlots";
-import { getDeviceId } from "../../_lib/deviceId";
 import PickupStep from "./PickupStep";
 import PaymentStep from "./PaymentStep";
 import SuccessStep from "./SuccessStep";
@@ -53,7 +52,7 @@ export default function CheckoutFlow() {
       const res = await fetch("/api/orders/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: cart.items, slot, deviceId: getDeviceId() }),
+        body: JSON.stringify({ items: cart.items, slot }),
       });
       const data = await res.json();
 
@@ -85,7 +84,7 @@ export default function CheckoutFlow() {
     const res = await fetch("/api/orders/confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: cart.items, slot, guest, paymentIntentId, testMode, deviceId: getDeviceId() }),
+      body: JSON.stringify({ items: cart.items, slot, guest, paymentIntentId, testMode }),
     });
     const data = await res.json();
 

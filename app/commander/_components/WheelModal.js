@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Coffee, Percent, Sandwich, CupSoda, Croissant, GlassWater, RotateCcw, Cake } from "lucide-react";
 import { MOKA } from "../_lib/theme";
 import { useModalA11y } from "../_lib/useModalA11y";
-import { getDeviceId } from "../_lib/deviceId";
+import { getScreenResolution } from "../_lib/screenResolution";
 import { SLICES, REWARD, REWARD_COLOR, REWARD_LINES } from "../_lib/wheelSlices";
 
 const SLICE_DEG = 360 / SLICES.length;
@@ -158,7 +158,7 @@ function Confetti() {
 // Rendered only while open (parent does `{wheelOpen && <WheelModal .../>}`,
 // same pattern as ProductPopup) so a fresh mount is what resets state —
 // no reset-on-close effect needed.
-export default function WheelModal({ onClose, eligibility, onSpun, customer, onGoToAccount }) {
+export default function WheelModal({ onClose, eligibility, onSpun, customer, onGoToAccount, onWinPendingVerification }) {
   const dialogRef = useModalA11y(onClose);
   const [phase, setPhase] = useState("idle"); // idle | spinning | landed | result
   const [rotation, setRotation] = useState(0);
@@ -169,34 +169,18 @@ export default function WheelModal({ onClose, eligibility, onSpun, customer, onG
   // (parent conditionally renders it), so window is always available here.
   const [reducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
-  // Already connected when the result lands — claim immediately in the
-  // background, no extra tap. Fire-and-forget: the UI shows success
-  // optimistically since this call reliably succeeds in practice, and the
-  // reward stays visible/usable via the eligibility check either way.
-  useEffect(() => {
-    if (phase !== "result" || !customer.connected || !result) return;
-    const deviceId = getDeviceId();
-    fetch("/api/wheel/claim", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deviceId, prenom: customer.prenom }),
-    }).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
-
   const spinDurationMs = reducedMotion ? 300 : SPIN_DURATION_MS;
   const landedDurationMs = reducedMotion ? 100 : LANDED_DURATION_MS;
 
   async function handleSpin() {
     setError(null);
     setPhase("spinning");
-    const deviceId = getDeviceId();
 
     try {
       const res = await fetch("/api/wheel/spin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceId }),
+        body: JSON.stringify({ screenResolution: getScreenResolution() }),
       });
       const data = await res.json();
 
@@ -214,7 +198,12 @@ export default function WheelModal({ onClose, eligibility, onSpun, customer, onG
         setPhase("landed");
         onSpun();
         setTimeout(() => {
-          setResult({ reward: data.reward, code: data.code, expiresAt: data.expiresAt, sliceIndex: data.sliceIndex });
+          setResult(data);
+          // Not connected: nothing was persisted server-side — the reward
+          // only becomes real once the phone is verified (see AccountView).
+          if (data.requiresVerification) {
+            onWinPendingVerification({ reward: data.reward, code: data.code, expiresAt: data.expiresAt, sliceIndex: data.sliceIndex });
+          }
           setPhase("result");
         }, landedDurationMs);
       }, spinDurationMs);
@@ -285,7 +274,11 @@ export default function WheelModal({ onClose, eligibility, onSpun, customer, onG
               Code {result.code} — utilisable jusqu&apos;à demain, même heure.
             </p>
 
-            {customer.connected ? (
+            {result.blockedByExistingReward ? (
+              <p className="text-sm font-semibold mt-4" style={{ color: MOKA.brown }}>
+                Tu as déjà une récompense active ({result.existingReward.reward}) — ce nouveau gain n&apos;est pas enregistré.
+              </p>
+            ) : customer.connected ? (
               <p className="text-sm font-semibold mt-4" style={{ color: MOKA.green }}>
                 Récompense enregistrée sur ton compte.
               </p>

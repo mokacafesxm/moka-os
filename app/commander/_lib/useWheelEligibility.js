@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getDeviceId } from "./deviceId";
+import { getScreenResolution } from "./screenResolution";
 
 async function fetchEligibility() {
-  const deviceId = getDeviceId();
-  if (!deviceId) return null;
-  const res = await fetch(`/api/wheel/eligibility?deviceId=${encodeURIComponent(deviceId)}`);
+  const params = new URLSearchParams({ screenResolution: getScreenResolution() });
+  const res = await fetch(`/api/wheel/eligibility?${params}`);
   return res.json();
 }
 
@@ -16,7 +15,6 @@ export function useWheelEligibility() {
     canSpin: false,
     nextResetAt: null,
     activeReward: null,
-    pendingUnclaimed: null,
   });
 
   useEffect(() => {

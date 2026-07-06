@@ -32,7 +32,7 @@ function matches(product, query) {
 export default function MenuCatalog({ data }) {
   const { categories, promos, products } = data;
   const cart = useCart();
-  const { customer } = useCustomer();
+  const { customer, setPendingWheelReward } = useCustomer();
   const wheelEligibility = useWheelEligibility();
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [activeCategory, setActiveCategory] = useState(() => categories[0] || null);
@@ -143,6 +143,7 @@ export default function MenuCatalog({ data }) {
           onSpun={wheelEligibility.refresh}
           customer={customer}
           onGoToAccount={goToAccount}
+          onWinPendingVerification={setPendingWheelReward}
         />
       )}
 
