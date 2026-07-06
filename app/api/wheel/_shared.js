@@ -1,4 +1,6 @@
-import { DB, queryDatabase, getPage, getTitle, getText, getSelect, getNumber, getCheckbox, getDate } from "../_notion";
+import crypto from "crypto";
+import { DB, queryDatabase, getPage, createPage, updatePage, getSelect, getDate, titleProp, dateProp } from "../_notion";
+import { clientHasActiveReward } from "../_clients";
 
 // Reward catalogue — kept as literal strings matching the Notion "Récompense"
 // select options exactly (see the DB's schema, updated via the Notion API).
@@ -205,30 +207,6 @@ export function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
-function toSpin(page) {
-  const props = page.properties;
-  return {
-    id: page.id,
-    code: getTitle(props, "Code"),
-    deviceId: getText(props, "Device ID"),
-    prenom: getText(props, "Client"),
-    reward: getSelect(props, "Récompense"),
-    slice: getNumber(props, "Case"),
-    wonAt: getDate(props, "Gagné le"),
-    expiresAt: getDate(props, "Expire le"),
-    claimed: getCheckbox(props, "Réclamée"),
-    status: getSelect(props, "Statut"),
-  };
-}
-
-export async function findSpinsByDevice(deviceId) {
-  const pages = await queryDatabase(DB.ROUE_CHANCE, {
-    property: "Device ID",
-    rich_text: { equals: deviceId },
-  });
-  return pages.map(toSpin).sort((a, b) => new Date(b.wonAt) - new Date(a.wonAt));
-}
-
 async function resolveCartCategories(items) {
   const uniqueIds = [...new Set(items.map((i) => i.id))];
   const categoryById = {};
@@ -249,20 +227,49 @@ async function resolveCartCategories(items) {
   return categoryById;
 }
 
-// Looks up this device's claimed, active, unexpired reward (if any) and
-// validates it against the live cart. Re-run independently by both the
-// checkout route (to size the PaymentIntent) and the confirm route (to
-// mark it used) — never trust a client-supplied discount amount.
-export async function resolveActiveReward(deviceId, items) {
-  if (!deviceId) return null;
-
-  const spins = await findSpinsByDevice(deviceId);
-  const now = new Date();
-  const active = spins.find((s) => s.claimed && s.status === "Active" && new Date(s.expiresAt) > now);
-  if (!active || active.reward === REWARD.REPLAY_TOMORROW) return null;
+// Validates the client's active reward (already fetched by the caller —
+// checkout/confirm both need the Client record for other reasons anyway,
+// so this never re-fetches it) against the live cart. Re-run independently
+// by both the checkout route (to size the PaymentIntent) and the confirm
+// route (to mark it used) — never trust a client-supplied discount amount.
+export async function resolveActiveRewardForClient(client, items) {
+  if (!clientHasActiveReward(client) || client.activeReward === REWARD.REPLAY_TOMORROW) return null;
 
   const categoryById = await resolveCartCategories(items);
-  const { valid, discount, error } = computeRewardDiscount(active.reward, items, categoryById);
+  const { valid, discount, error } = computeRewardDiscount(client.activeReward, items, categoryById);
 
-  return { spinId: active.id, reward: active.reward, valid, discount, error: error || null };
+  return { spinId: client.activeSpinId, reward: client.activeReward, valid, discount, error: error || null };
+}
+
+// A random, non-guessable code for a spin that hasn't been persisted to
+// Notion yet (anonymous spin, pending phone verification) — once verified,
+// this same code is written as the spin record's title.
+export function randomSpinCode() {
+  return `LUCKY-${crypto.randomBytes(3).toString("hex").toUpperCase().slice(0, 5)}`;
+}
+
+// Anonymous anti-abuse: a coarse fingerprint (never a substitute for a real
+// account — just enough friction to stop a casual "clear localStorage and
+// spin again" retry) hashed from request signals the client can't easily
+// fake without also faking their whole network/browser identity.
+export function computeFingerprint(request, screenResolution) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+  const ua = request.headers.get("user-agent") || "unknown";
+  return crypto.createHash("sha256").update(`${ip}|${ua}|${screenResolution || "unknown"}`).digest("hex");
+}
+
+export async function findAnonymousSpin(hash) {
+  const pages = await queryDatabase(DB.SPINS_ANONYMES, { property: "Hash", title: { equals: hash } }, null, 1);
+  if (!pages[0]) return null;
+  return { id: pages[0].id, lastSpin: getDate(pages[0].properties, "Dernier spin") };
+}
+
+export async function recordAnonymousSpin(hash) {
+  const existing = await findAnonymousSpin(hash);
+  const now = dateProp(new Date().toISOString());
+  if (existing) {
+    await updatePage(existing.id, { "Dernier spin": now });
+  } else {
+    await createPage(DB.SPINS_ANONYMES, { "Hash": titleProp(hash), "Dernier spin": now });
+  }
 }
