@@ -4,6 +4,7 @@ import { computeTotal, isValidSlot } from "../_shared";
 import { resolveActiveRewardForClient, round2 } from "../../wheel/_shared";
 import { getPhoneFromRequest } from "../../_session";
 import { findClientByPhone } from "../../_clients";
+import { resolvePrimaryCardForClient } from "../../_cards";
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -58,7 +59,8 @@ export async function POST(request) {
     const total = Math.max(0, round2(subtotal - (rewardApplied?.discount || 0)));
 
     const rewardBlocked = rewardResult && !rewardResult.valid ? rewardResult : null;
-    const savedCard = client?.cardLabel ? { label: client.cardLabel } : null;
+    const primaryCard = client ? await resolvePrimaryCardForClient(client.id) : null;
+    const savedCard = primaryCard ? { label: `${primaryCard.brand} •••• ${primaryCard.last4}` } : null;
 
     if (!isStripeConfigured()) {
       return Response.json({ testMode: true, total, subtotal, rewardApplied, rewardBlocked, savedCard }, { headers: corsHeaders });
@@ -68,7 +70,12 @@ export async function POST(request) {
     const intent = await stripe.paymentIntents.create({
       amount: Math.round(total * 100),
       currency: "eur",
-      automatic_payment_methods: { enabled: true },
+      // Cards only (Apple Pay / Google Pay ride on "card" and still show up
+      // automatically via the Express Checkout Element) — no Link, Amazon
+      // Pay, MB WAY, Bancontact, EPS, none of which fit a Saint-Martin
+      // customer base. Deliberately not automatic_payment_methods: that
+      // would let the Stripe Dashboard config re-introduce all of those.
+      payment_method_types: ["card"],
     });
 
     return Response.json(

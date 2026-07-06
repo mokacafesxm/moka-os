@@ -4,6 +4,7 @@ import { computeTotal, isValidSlot } from "../_shared";
 import { resolveActiveRewardForClient, round2 } from "../../wheel/_shared";
 import { getPhoneFromRequest } from "../../_session";
 import { findClientByPhone } from "../../_clients";
+import { resolvePrimaryCardForClient } from "../../_cards";
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -28,7 +29,8 @@ export async function POST(request) {
 
     const phone = getPhoneFromRequest(request);
     const client = phone ? await findClientByPhone(phone) : null;
-    if (!client?.stripeCustomerId || !client?.paymentMethodId) {
+    const card = client ? await resolvePrimaryCardForClient(client.id) : null;
+    if (!client?.stripeCustomerId || !card) {
       return Response.json({ error: "Aucune carte enregistrée." }, { status: 400, headers: corsHeaders });
     }
 
@@ -66,7 +68,8 @@ export async function POST(request) {
       amount: Math.round(total * 100),
       currency: "eur",
       customer: client.stripeCustomerId,
-      payment_method: client.paymentMethodId,
+      payment_method: card.paymentMethodId,
+      payment_method_types: ["card"],
       off_session: false,
       confirm: true,
     });

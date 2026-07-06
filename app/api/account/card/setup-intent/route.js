@@ -33,9 +33,11 @@ export async function POST(request) {
       await setClientStripeCustomerId(client.id, customerId);
     }
 
+    // Cards only — same restriction as checkout's PaymentIntent, so "Ajouter
+    // une carte" doesn't offer Bancontact/Klarna/Link/Amazon Pay/etc. either.
     const setupIntent = await stripe.setupIntents.create({
       customer: customerId,
-      automatic_payment_methods: { enabled: true },
+      payment_method_types: ["card"],
     });
 
     return Response.json({ clientSecret: setupIntent.client_secret }, { headers: corsHeaders });
