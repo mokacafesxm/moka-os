@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
+import { Elements, ExpressCheckoutElement, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { MOKA } from "../../_lib/theme";
 import { formatPrice } from "../../_lib/variants";
 import { getStripeClient } from "../../_lib/stripeClient";
@@ -30,6 +30,42 @@ function PayButton({ total, submitting, disabled, label }) {
     >
       {submitting ? "Paiement en cours…" : `${label} — ${formatPrice(total)}`}
     </button>
+  );
+}
+
+// Apple Pay / Google Pay / Link, shown alongside (never instead of) the
+// card form below. The wallet already supplies name/contact details, so no
+// extra billing fields are configured here — that's the whole point of
+// using the wallet in the first place.
+function ExpressCheckout({ onSuccess, onError }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [hasMethods, setHasMethods] = useState(false);
+
+  async function handleConfirm() {
+    if (!stripe || !elements) return;
+    onError(null);
+
+    const { error, paymentIntent } = await stripe.confirmPayment({ elements, redirect: "if_required" });
+    if (error) {
+      onError(error.message || "Le paiement a échoué. Réessaie ou utilise une carte.");
+      return;
+    }
+    onSuccess(paymentIntent.id);
+  }
+
+  return (
+    <div>
+      <ExpressCheckoutElement
+        onReady={(event) => setHasMethods(Boolean(event.availablePaymentMethods && Object.keys(event.availablePaymentMethods).length))}
+        onConfirm={handleConfirm}
+      />
+      {hasMethods && (
+        <p className="text-center text-xs my-3" style={{ color: MOKA.brownLight }}>
+          ou payer par carte
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -168,6 +204,7 @@ export default function PaymentStep({
         </p>
       )}
       <Elements stripe={stripePromise} options={{ clientSecret, appearance: STRIPE_APPEARANCE }}>
+        <ExpressCheckout onSuccess={onSuccess} onError={onError} />
         <StripeForm total={total} submitting={submitting} setSubmitting={setSubmitting} onSuccess={onSuccess} onError={onError} />
       </Elements>
       {error && (
