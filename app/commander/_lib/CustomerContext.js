@@ -1,20 +1,42 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 const CustomerContext = createContext(null);
 
-// No real customer accounts yet — AccountView's mock login writes here so the
-// personalized header (Header.js) has something real to reflect end to end.
-// Swap the mock login for a real auth call later; Header and anything else
-// reading useCustomer() won't need to change.
+// Real accounts now (phone + Twilio SMS code, see AccountView) — session is a
+// signed cookie set by /api/auth/verify-code, restored here on mount via
+// /api/auth/me so a reload doesn't sign the customer back out.
 export function CustomerProvider({ children }) {
-  const [customer, setCustomer] = useState({ connected: false, prenom: null, photoUrl: null });
+  const [customer, setCustomer] = useState({ connected: false, prenom: null, telephone: null, photoUrl: null });
+  // A wheel reward won while signed out, held here (not persisted) until the
+  // customer verifies their phone — see WheelModal / AccountView.
+  const [pendingWheelReward, setPendingWheelReward] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data.connected) {
+          setCustomer({ connected: true, prenom: data.prenom, telephone: data.telephone, photoUrl: null });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const value = {
     customer,
-    signIn: (prenom, photoUrl = null) => setCustomer({ connected: true, prenom, photoUrl }),
-    signOut: () => setCustomer({ connected: false, prenom: null, photoUrl: null }),
+    signIn: (prenom, telephone, photoUrl = null) => setCustomer({ connected: true, prenom, telephone, photoUrl }),
+    signOut: () => {
+      setCustomer({ connected: false, prenom: null, telephone: null, photoUrl: null });
+      fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    },
+    pendingWheelReward,
+    setPendingWheelReward,
   };
 
   return <CustomerContext value={value}>{children}</CustomerContext>;

@@ -4,31 +4,77 @@ import { useState } from "react";
 import { User, Bell, ChevronRight } from "lucide-react";
 import { MOKA } from "../_lib/theme";
 import { useCustomer } from "../_lib/CustomerContext";
-import { getDeviceId } from "../_lib/deviceId";
 
-// No real auth backend yet — this is a visual mock (mirrors how the location
-// selector was built ahead of real multi-restaurant support). Submitting the
-// form signs in through CustomerContext so the personalized header (Header.js)
-// reflects it too. Swap this for a real auth call later; nothing downstream
-// needs to change.
+const PHONE_PATTERN = /^\+[1-9]\d{6,14}$/;
+
+// Real phone-based accounts: send-code -> verify-code (Twilio Verify SMS).
+// The session cookie set by verify-code is what CustomerContext restores on
+// reload via /api/auth/me — nothing here manages the session itself.
 export default function AccountView() {
-  const { customer, signIn, signOut } = useCustomer();
-  const [form, setForm] = useState({ prenom: "", email: "", password: "" });
+  const { customer, signIn, signOut, pendingWheelReward, setPendingWheelReward } = useCustomer();
+  const [step, setStep] = useState("phone"); // phone | code
+  const [phone, setPhone] = useState("");
+  const [prenom, setPrenom] = useState("");
+  const [code, setCode] = useState("");
+  const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSendCode(e) {
     e.preventDefault();
-    const prenom = form.prenom.trim() || "MÖKA";
-    signIn(prenom);
-
-    // Attach any wheel-of-fortune reward won anonymously on this device to
-    // the now-known identity — a no-op if there's nothing pending.
-    const deviceId = getDeviceId();
-    if (deviceId) {
-      fetch("/api/wheel/claim", {
+    setError(null);
+    if (!PHONE_PATTERN.test(phone.trim())) {
+      setError("Format international requis, ex. +590690123456");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceId, prenom }),
-      }).catch(() => {});
+        body: JSON.stringify({ phone: phone.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Impossible d'envoyer le code.");
+        return;
+      }
+      setStep("code");
+    } catch {
+      setError("Impossible de contacter le serveur, réessaie.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleVerifyCode(e) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phone.trim(), code: code.trim(), prenom: prenom.trim(), pendingReward: pendingWheelReward }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Code invalide.");
+        return;
+      }
+
+      signIn(data.prenom, data.telephone);
+      setPendingWheelReward(null);
+
+      if (data.blockedByExistingReward) {
+        setNotice(`Tu as déjà une récompense active (${data.existingReward.reward}) — ton nouveau gain n'a pas été enregistré.`);
+      } else if (data.rewardSaved) {
+        setNotice("Ta récompense a bien été enregistrée sur ton compte.");
+      }
+    } catch {
+      setError("Impossible de contacter le serveur, réessaie.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -69,6 +115,11 @@ export default function AccountView() {
 
       {customer.connected ? (
         <div className="space-y-2">
+          {notice && (
+            <p className="text-sm font-semibold rounded-2xl bg-white px-4 py-3" style={{ color: MOKA.green }}>
+              {notice}
+            </p>
+          )}
           {["Mes commandes", "Mes informations", "Favoris"].map((label) => (
             <button
               key={label}
@@ -87,59 +138,93 @@ export default function AccountView() {
             Se déconnecter
           </button>
         </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-3">
+      ) : step === "phone" ? (
+        <form onSubmit={handleSendCode} className="space-y-3">
           <label htmlFor="account-prenom" className="sr-only">
             Prénom
           </label>
           <input
             id="account-prenom"
-            required
             placeholder="Prénom"
-            value={form.prenom}
-            onChange={(e) => setForm((f) => ({ ...f, prenom: e.target.value }))}
+            value={prenom}
+            onChange={(e) => setPrenom(e.target.value)}
             className={inputClass}
             style={inputStyle}
           />
-          <label htmlFor="account-email" className="sr-only">
-            Email
+          <label htmlFor="account-phone" className="sr-only">
+            Téléphone
           </label>
           <input
-            id="account-email"
+            id="account-phone"
             required
-            type="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+            type="tel"
+            placeholder="+590690123456"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
             className={inputClass}
             style={inputStyle}
           />
-          <label htmlFor="account-password" className="sr-only">
-            Mot de passe
-          </label>
-          <input
-            id="account-password"
-            required
-            type="password"
-            placeholder="Mot de passe"
-            value={form.password}
-            onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-            className={inputClass}
-            style={inputStyle}
-          />
+          {error && (
+            <p role="alert" className="text-sm font-semibold" style={{ color: "#8C2F2F" }}>
+              {error}
+            </p>
+          )}
           <button
             type="submit"
-            className="w-full py-3.5 rounded-full font-bold text-white cursor-pointer min-h-[44px]"
+            disabled={submitting}
+            className={`w-full py-3.5 rounded-full font-bold text-white flex items-center justify-center min-h-[44px] ${
+              submitting ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+            }`}
             style={{ backgroundColor: MOKA.coral }}
           >
-            Se connecter
+            {submitting ? "Envoi…" : "Recevoir un code par SMS"}
           </button>
-          <p className="text-center text-xs pt-1" style={{ color: MOKA.brownLight }}>
-            Pas de compte ?{" "}
-            <span className="underline font-semibold" style={{ color: MOKA.brown }}>
-              Créer un compte
-            </span>
+        </form>
+      ) : (
+        <form onSubmit={handleVerifyCode} className="space-y-3">
+          <p className="text-sm" style={{ color: MOKA.brownLight }}>
+            Code envoyé au {phone}.
           </p>
+          <label htmlFor="account-code" className="sr-only">
+            Code de vérification
+          </label>
+          <input
+            id="account-code"
+            required
+            inputMode="numeric"
+            placeholder="Code à 6 chiffres"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            className={inputClass}
+            style={inputStyle}
+          />
+          {error && (
+            <p role="alert" className="text-sm font-semibold" style={{ color: "#8C2F2F" }}>
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={submitting}
+            className={`w-full py-3.5 rounded-full font-bold text-white flex items-center justify-center min-h-[44px] ${
+              submitting ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+            }`}
+            style={{ backgroundColor: MOKA.coral }}
+          >
+            {submitting ? "Vérification…" : "Confirmer"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setStep("phone");
+              setError(null);
+              setCode("");
+            }}
+            className="w-full text-center text-xs pt-1 cursor-pointer underline"
+            style={{ color: MOKA.brownLight }}
+          >
+            Changer de numéro
+          </button>
         </form>
       )}
     </div>
