@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Coffee, Percent, Sandwich, CupSoda, Croissant, GlassWater, RotateCcw, Cake } from "lucide-react";
+import { Coffee, Gift } from "lucide-react";
 import { MOKA } from "../_lib/theme";
 import { useModalA11y } from "../_lib/useModalA11y";
 import { getScreenResolution } from "../_lib/screenResolution";
@@ -16,21 +16,19 @@ const OUTER_R = 96;
 const ICON_R = 74;
 const TEXT_R = 54;
 const FONT_STACK = "var(--font-geist-sans), Arial, Helvetica, sans-serif";
+// The pointer sits at 3 o'clock (90° clockwise from top), not 12 — the
+// landing-rotation math below targets this same angle.
+const POINTER_ANGLE_DEG = 90;
 
-const REWARD_ICON = {
-  [REWARD.ICED_COFFEE_BOGO]: Coffee,
-  [REWARD.PERCENT_5]: Percent,
-  [REWARD.PERCENT_10]: Percent,
-  [REWARD.PERCENT_15]: Percent,
-  [REWARD.PERCENT_20]: Percent,
-  [REWARD.BRUNCH_FREE]: Sandwich,
-  [REWARD.BIG_SMALL_JUICE]: CupSoda,
-  [REWARD.COFFEE_FREE]: Coffee,
-  [REWARD.PASTRY_FREE]: Croissant,
-  [REWARD.SMOOTHIE_FREE]: GlassWater,
-  [REWARD.REPLAY_TOMORROW]: RotateCcw,
-  [REWARD.DESSERT_FREE]: Cake,
-};
+// One simple gift icon for concrete-item wins only — percentage discounts
+// and the no-win slice stay text-only, closer to a classic raffle wheel.
+const NO_ICON_REWARDS = new Set([
+  REWARD.PERCENT_5,
+  REWARD.PERCENT_10,
+  REWARD.PERCENT_15,
+  REWARD.PERCENT_20,
+  REWARD.REPLAY_TOMORROW,
+]);
 
 function formatResetTime(iso) {
   if (!iso) return "";
@@ -63,11 +61,14 @@ function WheelSlices({ highlightIndex }) {
         const start = polarPoint(startAngle, OUTER_R);
         const end = polarPoint(endAngle, OUTER_R);
         const lines = REWARD_LINES[reward] || [reward];
-        const Icon = REWARD_ICON[reward];
+        const hasIcon = !NO_ICON_REWARDS.has(reward);
         const flip = midAngle > 90 && midAngle < 270;
         const isHighlighted = i === highlightIndex;
         const iconY = CENTER - ICON_R;
-        const textY = CENTER - TEXT_R;
+        // No-icon slices center their text a bit further out, roughly where
+        // the icon+text pair's midpoint would have sat, instead of looking
+        // low/off-balance in the space the icon would have used.
+        const textY = hasIcon ? CENTER - TEXT_R : CENTER - (ICON_R + TEXT_R) / 2;
         const pivotY = (iconY + textY) / 2;
 
         return (
@@ -81,9 +82,11 @@ function WheelSlices({ highlightIndex }) {
             />
             <g transform={`rotate(${midAngle}, ${CENTER}, ${CENTER})`}>
               <g transform={flip ? `rotate(180, ${CENTER}, ${pivotY})` : undefined}>
-                <g transform={`translate(${CENTER - 7}, ${iconY - 7})`}>
-                  <Icon size={14} color="#FFFFFF" strokeWidth={2.5} />
-                </g>
+                {hasIcon && (
+                  <g transform={`translate(${CENTER - 7}, ${iconY - 7})`}>
+                    <Gift size={14} color="#FFFFFF" strokeWidth={2.5} />
+                  </g>
+                )}
                 <text x={CENTER} y={textY} textAnchor="middle" fill="#FFFFFF" fontSize="8.5" fontWeight="700" fontFamily={FONT_STACK}>
                   {lines.map((line, li) => (
                     <tspan key={li} x={CENTER} dy={li === 0 ? 0 : 10}>
@@ -114,14 +117,15 @@ function WheelCenterHub() {
   );
 }
 
+// At 3 o'clock now (was 12) — points left, into the wheel.
 function WheelPointer() {
   return (
-    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center" aria-hidden="true">
-      <Coffee className="w-5 h-5 mb-[-3px]" style={{ color: MOKA.brown }} strokeWidth={2.5} />
+    <div className="absolute top-1/2 -right-3 -translate-y-1/2 z-10 flex items-center" aria-hidden="true">
       <div
         className="w-0 h-0"
-        style={{ borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: `14px solid ${MOKA.brown}` }}
+        style={{ borderTop: "8px solid transparent", borderBottom: "8px solid transparent", borderRight: `14px solid ${MOKA.brown}` }}
       />
+      <Coffee className="w-5 h-5 ml-[-3px]" style={{ color: MOKA.brown }} strokeWidth={2.5} />
     </div>
   );
 }
@@ -190,7 +194,10 @@ export default function WheelModal({ onClose, eligibility, onSpun, customer, onG
         return;
       }
 
-      const landingOffset = 360 - (data.sliceIndex * SLICE_DEG + SLICE_DEG / 2);
+      // Rotate so the winning slice's own midpoint angle ends up exactly at
+      // the pointer's fixed screen angle (3 o'clock) once the spin stops.
+      const sliceMidAngle = data.sliceIndex * SLICE_DEG + SLICE_DEG / 2;
+      const landingOffset = ((POINTER_ANGLE_DEG - sliceMidAngle) % 360 + 360) % 360;
       setRotation(FULL_TURNS_DEG + landingOffset);
 
       setTimeout(() => {
