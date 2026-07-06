@@ -12,6 +12,9 @@ function toClient(page) {
     rewardExpiresAt: getDate(props, "Récompense expire le"),
     activeSpinId: getText(props, "Spin actif ID") || null,
     lastSpin: getDate(props, "Dernier spin"),
+    stripeCustomerId: getText(props, "Stripe Customer ID") || null,
+    cardLabel: getText(props, "Carte enregistrée") || null,
+    paymentMethodId: getText(props, "Payment Method ID") || null,
   };
 }
 
@@ -45,6 +48,10 @@ export async function touchLastLogin(clientId) {
   await updatePage(clientId, { "Dernière connexion": dateProp(new Date().toISOString()) });
 }
 
+export async function setClientPrenom(clientId, prenom) {
+  await updatePage(clientId, { "Prénom": textProp(prenom) });
+}
+
 export function clientHasActiveReward(client, now = new Date()) {
   return Boolean(client?.activeReward && client.rewardExpiresAt && new Date(client.rewardExpiresAt) > now);
 }
@@ -66,5 +73,23 @@ export async function clearClientActiveReward(clientId) {
     "Récompense active": textProp(""),
     "Récompense expire le": dateProp(null),
     "Spin actif ID": textProp(""),
+  });
+}
+
+export async function setClientStripeCustomerId(clientId, stripeCustomerId) {
+  await updatePage(clientId, { "Stripe Customer ID": textProp(stripeCustomerId) });
+}
+
+export async function setClientCard(clientId, { paymentMethodId, cardLabel }) {
+  await updatePage(clientId, {
+    "Payment Method ID": textProp(paymentMethodId),
+    "Carte enregistrée": textProp(cardLabel),
+  });
+}
+
+export async function clearClientCard(clientId) {
+  await updatePage(clientId, {
+    "Payment Method ID": textProp(""),
+    "Carte enregistrée": textProp(""),
   });
 }

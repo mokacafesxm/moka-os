@@ -7,12 +7,14 @@ import { useCustomer } from "../_lib/CustomerContext";
 
 const PHONE_PATTERN = /^\+[1-9]\d{6,14}$/;
 
-// Real phone-based accounts: send-code -> verify-code (Twilio Verify SMS).
-// The session cookie set by verify-code is what CustomerContext restores on
-// reload via /api/auth/me — nothing here manages the session itself.
+// Real phone-based accounts, single entry point for both sign-in and
+// signup: phone -> SMS code -> (existing number: connected immediately) or
+// (new number: one prenom-only step, then connected). The session cookie
+// set by verify-code is what CustomerContext restores on reload via
+// /api/auth/me — nothing here manages the session itself.
 export default function AccountView() {
   const { customer, signIn, signOut, pendingWheelReward, setPendingWheelReward } = useCustomer();
-  const [step, setStep] = useState("phone"); // phone | code
+  const [step, setStep] = useState("phone"); // phone | code | prenom
   const [phone, setPhone] = useState("");
   const [prenom, setPrenom] = useState("");
   const [code, setCode] = useState("");
@@ -55,7 +57,7 @@ export default function AccountView() {
       const res = await fetch("/api/auth/verify-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.trim(), code: code.trim(), prenom: prenom.trim(), pendingReward: pendingWheelReward }),
+        body: JSON.stringify({ phone: phone.trim(), code: code.trim(), pendingReward: pendingWheelReward }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -63,14 +65,45 @@ export default function AccountView() {
         return;
       }
 
-      signIn(data.prenom, data.telephone);
       setPendingWheelReward(null);
-
       if (data.blockedByExistingReward) {
         setNotice(`Tu as déjà une récompense active (${data.existingReward.reward}) — ton nouveau gain n'a pas été enregistré.`);
       } else if (data.rewardSaved) {
         setNotice("Ta récompense a bien été enregistrée sur ton compte.");
       }
+
+      if (data.isNewClient) {
+        setStep("prenom");
+      } else {
+        signIn(data.prenom, data.telephone);
+      }
+    } catch {
+      setError("Impossible de contacter le serveur, réessaie.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleSetPrenom(e) {
+    e.preventDefault();
+    setError(null);
+    if (!prenom.trim()) {
+      setError("Entre ton prénom");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/set-prenom", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prenom: prenom.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Impossible d'enregistrer ton prénom.");
+        return;
+      }
+      signIn(data.prenom, phone.trim());
     } catch {
       setError("Impossible de contacter le serveur, réessaie.");
     } finally {
@@ -130,6 +163,7 @@ export default function AccountView() {
               <ChevronRight className="w-4 h-4" style={{ color: MOKA.brownLight }} />
             </button>
           ))}
+
           <button
             onClick={signOut}
             className="w-full mt-4 py-3.5 rounded-full font-bold cursor-pointer min-h-[44px]"
@@ -140,17 +174,6 @@ export default function AccountView() {
         </div>
       ) : step === "phone" ? (
         <form onSubmit={handleSendCode} className="space-y-3">
-          <label htmlFor="account-prenom" className="sr-only">
-            Prénom
-          </label>
-          <input
-            id="account-prenom"
-            placeholder="Prénom"
-            value={prenom}
-            onChange={(e) => setPrenom(e.target.value)}
-            className={inputClass}
-            style={inputStyle}
-          />
           <label htmlFor="account-phone" className="sr-only">
             Téléphone
           </label>
@@ -180,7 +203,7 @@ export default function AccountView() {
             {submitting ? "Envoi…" : "Recevoir un code par SMS"}
           </button>
         </form>
-      ) : (
+      ) : step === "code" ? (
         <form onSubmit={handleVerifyCode} className="space-y-3">
           <p className="text-sm" style={{ color: MOKA.brownLight }}>
             Code envoyé au {phone}.
@@ -224,6 +247,39 @@ export default function AccountView() {
             style={{ color: MOKA.brownLight }}
           >
             Changer de numéro
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={handleSetPrenom} className="space-y-3">
+          <p className="text-sm" style={{ color: MOKA.brownLight }}>
+            Numéro vérifié — encore une info et c&apos;est prêt.
+          </p>
+          <label htmlFor="account-new-prenom" className="sr-only">
+            Prénom
+          </label>
+          <input
+            id="account-new-prenom"
+            required
+            placeholder="Prénom"
+            value={prenom}
+            onChange={(e) => setPrenom(e.target.value)}
+            className={inputClass}
+            style={inputStyle}
+          />
+          {error && (
+            <p role="alert" className="text-sm font-semibold" style={{ color: "#8C2F2F" }}>
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={submitting}
+            className={`w-full py-3.5 rounded-full font-bold text-white flex items-center justify-center min-h-[44px] ${
+              submitting ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+            }`}
+            style={{ backgroundColor: MOKA.coral }}
+          >
+            {submitting ? "Enregistrement…" : "Créer mon compte"}
           </button>
         </form>
       )}

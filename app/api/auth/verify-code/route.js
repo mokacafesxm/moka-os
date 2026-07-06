@@ -1,6 +1,6 @@
 import { DB, corsHeaders, createPage, titleProp, textProp, selectProp, numberProp, dateProp, relationProp } from "../../_notion";
 import { checkVerificationCode } from "../../_twilio";
-import { findOrCreateClient, touchLastLogin, clientHasActiveReward, setClientLastSpin, setClientActiveReward } from "../../_clients";
+import { findClientByPhone, findOrCreateClient, touchLastLogin, clientHasActiveReward, setClientLastSpin, setClientActiveReward } from "../../_clients";
 import { sessionCookieHeader } from "../../_session";
 
 export async function OPTIONS() {
@@ -10,9 +10,13 @@ export async function OPTIONS() {
 // Step 2 of phone sign-in: verifies the Twilio code, finds-or-creates the
 // Client record, and — if the customer won a wheel spin while signed out —
 // persists that reward now (never before this point; see wheel/_shared.js).
+// A brand-new phone number gets no prenom here — the client is signed in
+// immediately regardless, and AccountView asks for just a first name in a
+// single follow-up step (see /api/auth/set-prenom) rather than bundling a
+// full signup form before the number is even verified.
 export async function POST(request) {
   try {
-    const { phone, code, prenom, pendingReward } = await request.json();
+    const { phone, code, pendingReward } = await request.json();
     if (!phone || !code) {
       return Response.json({ error: "Numéro et code requis" }, { status: 400, headers: corsHeaders });
     }
@@ -34,7 +38,9 @@ export async function POST(request) {
       return Response.json({ error: "Code invalide ou expiré." }, { status: 400, headers: corsHeaders });
     }
 
-    const client = await findOrCreateClient(phone, prenom);
+    const existingClient = await findClientByPhone(phone);
+    const client = existingClient || (await findOrCreateClient(phone));
+    const isNewClient = !existingClient;
     await touchLastLogin(client.id);
 
     let rewardSaved = false;
@@ -51,7 +57,7 @@ export async function POST(request) {
 
         const spinPage = await createPage(DB.ROUE_CHANCE, {
           "Code": titleProp(pendingReward.code || "LUCKY"),
-          "Client": textProp(client.prenom || prenom || ""),
+          "Client": textProp(client.prenom || ""),
           "Téléphone": { phone_number: phone },
           "Fiche client": relationProp(client.id),
           "Récompense": selectProp(pendingReward.reward),
@@ -70,8 +76,9 @@ export async function POST(request) {
 
     return Response.json(
       {
-        prenom: client.prenom || prenom || "",
+        prenom: client.prenom || "",
         telephone: phone,
+        isNewClient,
         rewardSaved,
         blockedByExistingReward,
         existingReward,
