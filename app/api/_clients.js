@@ -13,8 +13,6 @@ function toClient(page) {
     activeSpinId: getText(props, "Spin actif ID") || null,
     lastSpin: getDate(props, "Dernier spin"),
     stripeCustomerId: getText(props, "Stripe Customer ID") || null,
-    cardLabel: getText(props, "Carte enregistrée") || null,
-    paymentMethodId: getText(props, "Payment Method ID") || null,
   };
 }
 
@@ -78,18 +76,4 @@ export async function clearClientActiveReward(clientId) {
 
 export async function setClientStripeCustomerId(clientId, stripeCustomerId) {
   await updatePage(clientId, { "Stripe Customer ID": textProp(stripeCustomerId) });
-}
-
-export async function setClientCard(clientId, { paymentMethodId, cardLabel }) {
-  await updatePage(clientId, {
-    "Payment Method ID": textProp(paymentMethodId),
-    "Carte enregistrée": textProp(cardLabel),
-  });
-}
-
-export async function clearClientCard(clientId) {
-  await updatePage(clientId, {
-    "Payment Method ID": textProp(""),
-    "Carte enregistrée": textProp(""),
-  });
 }

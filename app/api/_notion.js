@@ -16,6 +16,7 @@ export const DB = {
   ROUE_CHANCE:        "3949512c-f66a-81dc-89fc-f4f493e4c846",
   CLIENTS:            "3959512c-f66a-81ea-be0f-f614915dbdd1",
   SPINS_ANONYMES:     "3959512c-f66a-8105-a0f8-f068f1f58df0",
+  CARTES_ENREGISTREES: "3959512c-f66a-811c-bdb8-f9b714eb6545",
 };
 
 export const corsHeaders = {
@@ -89,6 +90,15 @@ export async function updatePage(pageId, properties) {
     console.error(`Notion update ${pageId} failed: ${res.status}`, body);
     throw new Error(`Notion update ${pageId} failed: ${res.status} — ${body.slice(0, 300)}`);
   }
+  return res.json();
+}
+
+export async function archivePage(pageId) {
+  const res = await notionFetch(`/pages/${pageId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ archived: true }),
+  });
+  if (!res.ok) throw new Error(`Notion archive ${pageId} failed: ${res.status}`);
   return res.json();
 }
 

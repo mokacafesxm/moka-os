@@ -1,7 +1,8 @@
 import { corsHeaders } from "../../../_notion";
 import { getStripe, isStripeConfigured } from "../../../_stripe";
 import { getPhoneFromRequest } from "../../../_session";
-import { findClientByPhone, setClientCard } from "../../../_clients";
+import { findClientByPhone } from "../../../_clients";
+import { addClientCard } from "../../../_cards";
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -10,7 +11,8 @@ export async function OPTIONS() {
 // Step 2: once the customer confirms the SetupIntent client-side, look up
 // the resulting payment method (Stripe already attached it to the customer
 // as part of confirming a customer-scoped SetupIntent) and store only its
-// id + a display label — never any raw card data, that's Stripe's job.
+// id + display details — never any raw card data, that's Stripe's job.
+// Adds a new card rather than replacing one — a client can have several.
 export async function POST(request) {
   try {
     const phone = getPhoneFromRequest(request);
@@ -38,7 +40,10 @@ export async function POST(request) {
     }
 
     const paymentMethod = await stripe.paymentMethods.retrieve(setupIntent.payment_method);
-    const cardLabel = paymentMethod.card ? `${paymentMethod.card.brand} •••• ${paymentMethod.card.last4}` : "Carte enregistrée";
+    const card = paymentMethod.card;
+    const brand = card?.brand || "carte";
+    const last4 = card?.last4 || "----";
+    const expiry = card ? `${String(card.exp_month).padStart(2, "0")}/${String(card.exp_year).slice(-2)}` : "";
 
     if (client.stripeCustomerId) {
       await stripe.customers.update(client.stripeCustomerId, {
@@ -46,8 +51,8 @@ export async function POST(request) {
       });
     }
 
-    await setClientCard(client.id, { paymentMethodId: paymentMethod.id, cardLabel });
-    return Response.json({ cardLabel }, { headers: corsHeaders });
+    await addClientCard(client.id, { paymentMethodId: paymentMethod.id, brand, last4, expiry });
+    return Response.json({ paymentMethodId: paymentMethod.id, brand, last4, expiry }, { headers: corsHeaders });
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500, headers: corsHeaders });
   }

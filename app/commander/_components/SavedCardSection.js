@@ -18,6 +18,10 @@ const STRIPE_APPEARANCE = {
   },
 };
 
+// This form only ever adds a card — no wallets or Link's inline promo,
+// same restriction as the checkout PaymentElement.
+const PAYMENT_ELEMENT_WALLETS = { applePay: "never", googlePay: "never", link: "never" };
+
 function AddCardForm({ onSaved, onCancel, onError }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -48,7 +52,7 @@ function AddCardForm({ onSaved, onCancel, onError }) {
         onError(data.error || "Impossible d'enregistrer cette carte.");
         return;
       }
-      onSaved(data.cardLabel);
+      onSaved(data);
     } catch {
       onError("Impossible de contacter le serveur, réessaie.");
     } finally {
@@ -58,7 +62,7 @@ function AddCardForm({ onSaved, onCancel, onError }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <PaymentElement onReady={() => setReady(true)} />
+      <PaymentElement options={{ wallets: PAYMENT_ELEMENT_WALLETS }} onReady={() => setReady(true)} />
       <div className="flex gap-2">
         <button
           type="button"
@@ -83,24 +87,50 @@ function AddCardForm({ onSaved, onCancel, onError }) {
   );
 }
 
+function CardRow({ card, onRemove, removing }) {
+  return (
+    <div className="bg-white rounded-2xl px-4 py-3.5 flex items-center justify-between">
+      <div className="flex items-center gap-3 min-w-0">
+        <CreditCard className="w-5 h-5 shrink-0" style={{ color: MOKA.brown }} />
+        <span className="font-semibold text-sm truncate" style={{ color: MOKA.brown }}>
+          <span className="capitalize">{card.brand}</span> •••• {card.last4}
+          <span className="font-normal ml-1.5" style={{ color: MOKA.brownLight }}>
+            exp. {card.expiry}
+          </span>
+        </span>
+      </div>
+      <button
+        onClick={() => onRemove(card.paymentMethodId)}
+        disabled={removing}
+        className={`text-sm font-semibold shrink-0 ml-2 ${removing ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+        style={{ color: MOKA.coral }}
+      >
+        {removing ? "…" : "Supprimer"}
+      </button>
+    </div>
+  );
+}
+
 // PCI compliance is Stripe's job, not ours — a SetupIntent collects and
-// validates the card with no charge attached, and only the resulting
-// payment method id + a display label ("visa •••• 4242") ever reach Notion.
-// Raw card data never touches this app's servers.
+// validates each card with no charge attached, and only the resulting
+// payment method id + display details (brand, last4, expiry) ever reach
+// Notion. Raw card data never touches this app's servers. A client can
+// hold several cards; the most recently added one is offered first at
+// checkout (see /api/orders/checkout's savedCard).
 export default function SavedCardSection() {
-  const [cardLabel, setCardLabel] = useState(null);
+  const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [clientSecret, setClientSecret] = useState(null);
   const [error, setError] = useState(null);
-  const [removing, setRemoving] = useState(false);
+  const [removingId, setRemovingId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     fetch("/api/account/card")
       .then((res) => res.json())
       .then((data) => {
-        if (!cancelled) setCardLabel(data.cardLabel || null);
+        if (!cancelled) setCards(data.cards || []);
       })
       .catch(() => {})
       .finally(() => {
@@ -127,21 +157,21 @@ export default function SavedCardSection() {
     }
   }
 
-  async function handleRemove() {
-    setRemoving(true);
+  async function handleRemove(paymentMethodId) {
+    setRemovingId(paymentMethodId);
     setError(null);
     try {
-      const res = await fetch("/api/account/card", { method: "DELETE" });
+      const res = await fetch(`/api/account/card?paymentMethodId=${encodeURIComponent(paymentMethodId)}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Impossible de supprimer la carte.");
         return;
       }
-      setCardLabel(null);
+      setCards((list) => list.filter((c) => c.paymentMethodId !== paymentMethodId));
     } catch {
       setError("Impossible de contacter le serveur, réessaie.");
     } finally {
-      setRemoving(false);
+      setRemovingId(null);
     }
   }
 
@@ -153,29 +183,20 @@ export default function SavedCardSection() {
         Moyens de paiement
       </h3>
 
-      {loading ? null : cardLabel ? (
-        <div className="bg-white rounded-2xl px-4 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CreditCard className="w-5 h-5" style={{ color: MOKA.brown }} />
-            <span className="font-semibold text-sm" style={{ color: MOKA.brown }}>
-              {cardLabel}
-            </span>
-          </div>
-          <button
-            onClick={handleRemove}
-            disabled={removing}
-            className={`text-sm font-semibold ${removing ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
-            style={{ color: MOKA.coral }}
-          >
-            {removing ? "…" : "Supprimer"}
-          </button>
+      {!loading && cards.length > 0 && (
+        <div className="space-y-2 mb-2">
+          {cards.map((card) => (
+            <CardRow key={card.paymentMethodId} card={card} onRemove={handleRemove} removing={removingId === card.paymentMethodId} />
+          ))}
         </div>
-      ) : adding && stripePromise && clientSecret ? (
+      )}
+
+      {adding && stripePromise && clientSecret ? (
         <div className="bg-white rounded-2xl p-4">
           <Elements stripe={stripePromise} options={{ clientSecret, appearance: STRIPE_APPEARANCE }}>
             <AddCardForm
-              onSaved={(label) => {
-                setCardLabel(label);
+              onSaved={(card) => {
+                setCards((list) => [card, ...list]);
                 setAdding(false);
                 setClientSecret(null);
               }}
@@ -189,14 +210,16 @@ export default function SavedCardSection() {
           </Elements>
         </div>
       ) : (
-        <button
-          onClick={handleStartAdd}
-          className="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-3.5 min-h-[44px] text-left font-semibold cursor-pointer"
-          style={{ color: MOKA.brown }}
-        >
-          Ajouter une carte
-          <CreditCard className="w-4 h-4" style={{ color: MOKA.brownLight }} />
-        </button>
+        !loading && (
+          <button
+            onClick={handleStartAdd}
+            className="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-3.5 min-h-[44px] text-left font-semibold cursor-pointer"
+            style={{ color: MOKA.brown }}
+          >
+            Ajouter une carte
+            <CreditCard className="w-4 h-4" style={{ color: MOKA.brownLight }} />
+          </button>
+        )
       )}
 
       {error && (
