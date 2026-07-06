@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Coffee, Gift } from "lucide-react";
+import { Gift } from "lucide-react";
 import { MOKA } from "../_lib/theme";
 import { useModalA11y } from "../_lib/useModalA11y";
 import { getScreenResolution } from "../_lib/screenResolution";
@@ -12,9 +12,14 @@ const SPIN_DURATION_MS = 4200;
 const LANDED_DURATION_MS = 1000;
 const FULL_TURNS_DEG = 6 * 360;
 const CENTER = 100;
-const OUTER_R = 96;
-const ICON_R = 74;
-const TEXT_R = 54;
+// The dial is smaller than the full viewBox now — the freed-up radius
+// (OUTER_R to ICON_RING_R) is the icon ring's lane, sitting just inside the
+// 100-unit edge instead of on top of the slice text.
+const OUTER_R = 78;
+const TEXT_R = 51;
+const ICON_RING_R = 89;
+const ICON_BADGE_R = 9;
+const LINE_HEIGHT = 8.5;
 const FONT_STACK = "var(--font-geist-sans), Arial, Helvetica, sans-serif";
 // The pointer sits at 3 o'clock (90° clockwise from top), not 12 — the
 // landing-rotation math below targets this same angle.
@@ -46,11 +51,10 @@ function polarPoint(angleDeg, r) {
   return { x: CENTER + r * Math.sin(rad), y: CENTER - r * Math.cos(rad) };
 }
 
-// Text is drawn "upright" at the top (angle 0) then the whole slice group is
-// rotated into place. Slices in the bottom half would end up upside down
-// after that rotation, so labels there get an extra 180° flip around their
-// own pivot to stay readable right-side up (icon position is unaffected —
-// it's part of the same flipped group, so it stays paired with its text).
+// Labels sit at their slice's own position but are never rotated — they
+// stay screen-horizontal no matter where the slice lands, instead of the
+// previous radial orientation that read sideways/upside-down off the
+// 3-o'clock pointer.
 function WheelSlices({ highlightIndex }) {
   return (
     <>
@@ -61,15 +65,9 @@ function WheelSlices({ highlightIndex }) {
         const start = polarPoint(startAngle, OUTER_R);
         const end = polarPoint(endAngle, OUTER_R);
         const lines = REWARD_LINES[reward] || [reward];
-        const hasIcon = !NO_ICON_REWARDS.has(reward);
-        const flip = midAngle > 90 && midAngle < 270;
         const isHighlighted = i === highlightIndex;
-        const iconY = CENTER - ICON_R;
-        // No-icon slices center their text a bit further out, roughly where
-        // the icon+text pair's midpoint would have sat, instead of looking
-        // low/off-balance in the space the icon would have used.
-        const textY = hasIcon ? CENTER - TEXT_R : CENTER - (ICON_R + TEXT_R) / 2;
-        const pivotY = (iconY + textY) / 2;
+        const textPos = polarPoint(midAngle, TEXT_R);
+        const firstDy = -(LINE_HEIGHT * (lines.length - 1)) / 2;
 
         return (
           <g key={i}>
@@ -80,21 +78,53 @@ function WheelSlices({ highlightIndex }) {
               strokeWidth={isHighlighted ? 3 : 1}
               style={isHighlighted ? { filter: "drop-shadow(0 0 6px rgba(255,255,255,0.95))" } : undefined}
             />
-            <g transform={`rotate(${midAngle}, ${CENTER}, ${CENTER})`}>
-              <g transform={flip ? `rotate(180, ${CENTER}, ${pivotY})` : undefined}>
-                {hasIcon && (
-                  <g transform={`translate(${CENTER - 7}, ${iconY - 7})`}>
-                    <Gift size={14} color="#FFFFFF" strokeWidth={2.5} />
-                  </g>
-                )}
-                <text x={CENTER} y={textY} textAnchor="middle" fill="#FFFFFF" fontSize="8.5" fontWeight="700" fontFamily={FONT_STACK}>
-                  {lines.map((line, li) => (
-                    <tspan key={li} x={CENTER} dy={li === 0 ? 0 : 10}>
-                      {line}
-                    </tspan>
-                  ))}
-                </text>
-              </g>
+            <text
+              x={textPos.x}
+              y={textPos.y}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#FFFFFF"
+              fontSize="7.2"
+              fontWeight="700"
+              fontFamily={FONT_STACK}
+            >
+              {lines.map((line, li) => (
+                <tspan key={li} x={textPos.x} dy={li === 0 ? firstDy : LINE_HEIGHT}>
+                  {line}
+                </tspan>
+              ))}
+            </text>
+          </g>
+        );
+      })}
+    </>
+  );
+}
+
+// A separate ring just outside the dial: one clean badge per concrete-item
+// slice (percentage/no-win slices get none), so the icon never competes
+// with the label for space inside the triangle.
+function WheelIconRing({ highlightIndex }) {
+  return (
+    <>
+      {SLICES.map((reward, i) => {
+        if (NO_ICON_REWARDS.has(reward)) return null;
+        const midAngle = i * SLICE_DEG + SLICE_DEG / 2;
+        const pos = polarPoint(midAngle, ICON_RING_R);
+        const isHighlighted = i === highlightIndex;
+
+        return (
+          <g key={i}>
+            <circle
+              cx={pos.x}
+              cy={pos.y}
+              r={ICON_BADGE_R}
+              fill={MOKA.cream}
+              stroke={REWARD_COLOR[reward]}
+              strokeWidth={isHighlighted ? 2.5 : 1.5}
+            />
+            <g transform={`translate(${pos.x - 6}, ${pos.y - 6})`}>
+              <Gift size={12} color={MOKA.brown} strokeWidth={2.5} />
             </g>
           </g>
         );
@@ -117,15 +147,20 @@ function WheelCenterHub() {
   );
 }
 
-// At 3 o'clock now (was 12) — points left, into the wheel.
-function WheelPointer() {
+// At 3 o'clock, points left into the wheel. Bold coral + drop shadow so it
+// reads clearly against any of the 4 slice tones; bumps once when the spin
+// lands (see the "landed" phase) to underline the stop.
+function WheelPointer({ bounce }) {
   return (
-    <div className="absolute top-1/2 -right-3 -translate-y-1/2 z-10 flex items-center" aria-hidden="true">
+    <div
+      className={`absolute top-1/2 -right-2 -translate-y-1/2 z-10 ${bounce ? "animate-bump" : ""}`}
+      style={{ filter: "drop-shadow(0 2px 4px rgba(44,26,16,0.45))" }}
+      aria-hidden="true"
+    >
       <div
         className="w-0 h-0"
-        style={{ borderTop: "8px solid transparent", borderBottom: "8px solid transparent", borderRight: `14px solid ${MOKA.brown}` }}
+        style={{ borderTop: "11px solid transparent", borderBottom: "11px solid transparent", borderRight: `20px solid ${MOKA.coral}` }}
       />
-      <Coffee className="w-5 h-5 ml-[-3px]" style={{ color: MOKA.brown }} strokeWidth={2.5} />
     </div>
   );
 }
@@ -262,9 +297,10 @@ export default function WheelModal({ onClose, eligibility, onSpun, customer, onG
               }}
             >
               <WheelSlices highlightIndex={phase === "landed" ? landedIndex : null} />
+              <WheelIconRing highlightIndex={phase === "landed" ? landedIndex : null} />
             </svg>
             <WheelCenterHub />
-            <WheelPointer />
+            <WheelPointer bounce={phase === "landed"} />
             {phase === "landed" && <Confetti />}
           </div>
         )}
