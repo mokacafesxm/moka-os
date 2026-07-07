@@ -100,7 +100,7 @@ export default function MenuCatalog({ data }) {
 
       <main key={activeTab} className="animate-fade-in">
         {activeTab === "account" ? (
-          <AccountView />
+          <AccountView onOpenWheel={() => setWheelOpen(true)} />
         ) : activeTab === "cart" ? (
           <CartView onGoHome={goHome} />
         ) : activeTab === "favorites" ? (

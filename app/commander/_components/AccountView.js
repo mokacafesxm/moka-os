@@ -6,6 +6,8 @@ import { MOKA } from "../_lib/theme";
 import { useCustomer } from "../_lib/CustomerContext";
 import SavedCardSection from "./SavedCardSection";
 import PhoneNumberInput from "./PhoneNumberInput";
+import AccountInfoForm from "./AccountInfoForm";
+import AccountPromos from "./AccountPromos";
 
 const PHONE_PATTERN = /^\+[1-9]\d{6,14}$/;
 
@@ -14,9 +16,10 @@ const PHONE_PATTERN = /^\+[1-9]\d{6,14}$/;
 // (new number: one prenom-only step, then connected). The session cookie
 // set by verify-code is what CustomerContext restores on reload via
 // /api/auth/me — nothing here manages the session itself.
-export default function AccountView() {
+export default function AccountView({ onOpenWheel }) {
   const { customer, signIn, signOut, pendingWheelReward, setPendingWheelReward } = useCustomer();
   const [step, setStep] = useState("phone"); // phone | code | prenom
+  const [connectedView, setConnectedView] = useState("menu"); // menu | info | promos
   const [phone, setPhone] = useState("");
   const [prenom, setPrenom] = useState("");
   const [code, setCode] = useState("");
@@ -117,6 +120,16 @@ export default function AccountView() {
     "w-full rounded-full border bg-white px-5 py-3.5 text-sm outline-none min-h-[44px] focus:ring-2 focus:ring-offset-2 focus:ring-[#587F25]";
   const inputStyle = { borderColor: MOKA.brownLight, color: MOKA.brown };
 
+  // Focused sub-screens for a connected client — each has its own back
+  // button and title, so they replace the whole account view rather than
+  // nesting inside it.
+  if (customer.connected && connectedView === "info") {
+    return <AccountInfoForm onBack={() => setConnectedView("menu")} />;
+  }
+  if (customer.connected && connectedView === "promos") {
+    return <AccountPromos onBack={() => setConnectedView("menu")} onOpenWheel={onOpenWheel} />;
+  }
+
   return (
     <div className="px-4 pt-4 pb-12">
       <div className="flex items-center justify-between mb-6">
@@ -155,9 +168,14 @@ export default function AccountView() {
               {notice}
             </p>
           )}
-          {["Mes commandes", "Mes informations", "Favoris"].map((label) => (
+          {[
+            { label: "Mes commandes", onClick: undefined },
+            { label: "Mes informations", onClick: () => setConnectedView("info") },
+            { label: "Mes promos", onClick: () => setConnectedView("promos") },
+          ].map(({ label, onClick }) => (
             <button
               key={label}
+              onClick={onClick}
               className="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-3.5 min-h-[44px] text-left font-semibold cursor-pointer"
               style={{ color: MOKA.brown }}
             >
