@@ -25,9 +25,15 @@ export async function POST(request) {
     try {
       approved = await checkVerificationCode(phone, code);
     } catch (err) {
-      // Twilio throws (rather than returning approved:false) when there's no
-      // pending verification for this number, among other account-side
-      // issues — never surface that raw error, just ask them to retry.
+      // Twilio throws a 404 (error code 20404) — rather than returning
+      // approved: false — once a verification is already used/expired and
+      // no longer pending for this number. That's a normal "wrong code"
+      // outcome from the customer's perspective, not a system failure.
+      if (err.status === 404) {
+        return Response.json({ error: "Code invalide ou expiré." }, { status: 400, headers: corsHeaders });
+      }
+      // Any other Twilio failure (account-side issues, etc.) never surfaces
+      // its raw error — just ask them to retry.
       console.error("Twilio checkVerificationCode failed:", err.message);
       return Response.json(
         { error: "Un problème est survenu, réessaie dans quelques instants." },
