@@ -5,6 +5,7 @@ import { User, Bell, ChevronRight } from "lucide-react";
 import { MOKA } from "../_lib/theme";
 import { useCustomer } from "../_lib/CustomerContext";
 import SavedCardSection from "./SavedCardSection";
+import PhoneNumberInput from "./PhoneNumberInput";
 
 const PHONE_PATTERN = /^\+[1-9]\d{6,14}$/;
 
@@ -177,19 +178,7 @@ export default function AccountView() {
         </div>
       ) : step === "phone" ? (
         <form onSubmit={handleSendCode} className="space-y-3">
-          <label htmlFor="account-phone" className="sr-only">
-            Téléphone
-          </label>
-          <input
-            id="account-phone"
-            required
-            type="tel"
-            placeholder="+590690123456"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className={inputClass}
-            style={inputStyle}
-          />
+          <PhoneNumberInput onChange={setPhone} inputId="account-phone" inputClassName={inputClass} inputStyle={inputStyle} />
           {error && (
             <p role="alert" className="text-sm font-semibold" style={{ color: "#8C2F2F" }}>
               {error}
