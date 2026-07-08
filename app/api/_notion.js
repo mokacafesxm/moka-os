@@ -33,11 +33,35 @@ function notionHeaders() {
   };
 }
 
+// Notion enforces ~3 req/s per integration and answers 429 when exceeded — a
+// real risk during `next build`, where several DB queries fire at once. A 429
+// means the request was *rejected*, never processed, so retrying is always safe
+// even for POST/PATCH mutations (unlike 5xx, which we deliberately don't retry).
+// Notion's guidance: wait and retry rather than fail. Honor Retry-After, else
+// exponential backoff with jitter.
+const NOTION_MAX_RETRIES = 5;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export async function notionFetch(path, options = {}) {
-  return fetch(`${NOTION_BASE}${path}`, {
-    ...options,
-    headers: { ...notionHeaders(), ...(options.headers || {}) },
-  });
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${NOTION_BASE}${path}`, {
+      ...options,
+      headers: { ...notionHeaders(), ...(options.headers || {}) },
+    });
+
+    if (res.status !== 429 || attempt >= NOTION_MAX_RETRIES) return res;
+
+    const retryAfter = Number(res.headers.get("retry-after"));
+    const backoffMs =
+      Number.isFinite(retryAfter) && retryAfter > 0
+        ? retryAfter * 1000
+        : Math.min(1000 * 2 ** attempt, 15000);
+    const waitMs = backoffMs + Math.floor(Math.random() * 250);
+    // Drain the body so the socket is released before we wait/retry.
+    await res.arrayBuffer().catch(() => {});
+    console.warn(`[notion] 429 on ${path} — retry ${attempt + 1}/${NOTION_MAX_RETRIES} in ${waitMs}ms`);
+    await sleep(waitMs);
+  }
 }
 
 export async function queryDatabase(dbId, filter, sorts, pageSize = 100, fetchOptions) {

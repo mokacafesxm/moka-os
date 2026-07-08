@@ -14,7 +14,16 @@ import { FOOD_CATEGORY_ID, hasUnmappedCategory } from "./categoryMatch";
 
 // Public menu changes rarely (new products/photos) — cache for 2 minutes so a
 // burst of visitors doesn't hammer the Notion API (3 req/s limit).
+//
+// `next: { revalidate }` still tightens the /commander route's revalidation
+// window, but Next.js only caches GET fetches — Notion queries are POST, so the
+// Data Cache does NOT dedupe them. We back the intended 2-minute cache with a
+// process-level TTL cache below, which works identically at build (dedupes the
+// prerender's queries) and at runtime (one Notion round-trip per instance / 2m).
+const CACHE_TTL_MS = 120_000;
 const CACHE = { next: { revalidate: 120 } };
+
+let menuCache = null; // { data, expires }
 
 async function fetchCategories() {
   const pages = await queryDatabase(DB.CATEGORIES_WEBSITE, null, null, 100, CACHE);
@@ -72,6 +81,8 @@ async function fetchProducts() {
 }
 
 export async function getMenuData() {
+  if (menuCache && menuCache.expires > Date.now()) return menuCache.data;
+
   const [categories, promos, products] = await Promise.all([
     fetchCategories(),
     fetchPromos(),
@@ -83,10 +94,14 @@ export async function getMenuData() {
     ? [...categories, { id: FOOD_CATEGORY_ID, nom: "FOOD", photo: "", ordre: Infinity }]
     : categories;
 
-  return {
+  const data = {
     categories: allCategories,
     promos,
     products,
     generatedAt: Date.now(),
   };
+
+  // Only cache successful assembles — a thrown fetch above never reaches here.
+  menuCache = { data, expires: Date.now() + CACHE_TTL_MS };
+  return data;
 }
