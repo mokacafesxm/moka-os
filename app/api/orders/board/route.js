@@ -1,4 +1,4 @@
-import { DB, corsHeaders, queryDatabase, getTitle, getText, getNumber, getSelect, getDate, getCheckbox } from "../../_notion";
+import { DB, corsHeaders, queryDatabase, withNotionCache, getTitle, getText, getNumber, getSelect, getDate, getCheckbox } from "../../_notion";
 import { mapOrderProps } from "../_shared";
 
 const EXTRACTORS = { getTitle, getText, getNumber, getSelect, getDate, getCheckbox };
@@ -20,14 +20,17 @@ function startOfTodayPR() {
 // groups them into the four status columns.
 export async function GET() {
   try {
-    const pages = await queryDatabase(DB.COMMANDES_CLIENTS, {
-      property: "Date création",
-      date: { on_or_after: startOfTodayPR() },
+    // Cached ~5s with single-flight — same reasoning as /pending. Every KDS
+    // device polls this every 5s; the server serves them from one Notion query.
+    const orders = await withNotionCache("orders-board", 5000, async () => {
+      const pages = await queryDatabase(DB.COMMANDES_CLIENTS, {
+        property: "Date création",
+        date: { on_or_after: startOfTodayPR() },
+      });
+      return pages
+        .map((p) => ({ id: p.id, ...mapOrderProps(p.properties, EXTRACTORS) }))
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     });
-
-    const orders = pages
-      .map((p) => ({ id: p.id, ...mapOrderProps(p.properties, EXTRACTORS) }))
-      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
     return Response.json({ orders }, { headers: { ...corsHeaders, "Cache-Control": "no-store" } });
   } catch (err) {

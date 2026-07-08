@@ -85,17 +85,46 @@ export async function notionFetch(path, options = {}) {
   }
 }
 
-// Process-level TTL cache for hot, slow-changing reads. Collapses the OrderPad's
-// repeated polls (many devices, short intervals) into one Notion round-trip per
-// key per TTL — the same trick as the /commander menu cache. Only successful
-// producer results are cached (a throw propagates and caches nothing).
-const notionCache = new Map();
+// Process-level cache for hot reads, with the three properties that matter
+// under a polling flood:
+//   1. TTL dedup      — repeat calls within ttlMs skip Notion entirely.
+//   2. single-flight  — concurrent callers for the same key share ONE in-flight
+//                       query instead of each firing their own.
+//   3. stale-on-error — if a refresh 429s, serve the last known value instead of
+//                       failing. This breaks the vicious cycle where a rate-limit
+//                       storm keeps every request re-hammering Notion and the
+//                       cache never lands a success to store. Failed refreshes
+//                       get a short grace so we don't re-attempt on every call.
+const NOTION_STALE_GRACE_MS = 5000;
+const notionCache = new Map(); // key -> { data, expires }
+const notionInflight = new Map(); // key -> Promise
+
 export async function withNotionCache(key, ttlMs, producer) {
   const hit = notionCache.get(key);
   if (hit && hit.expires > Date.now()) return hit.data;
-  const data = await producer();
-  notionCache.set(key, { data, expires: Date.now() + ttlMs });
-  return data;
+  const pending = notionInflight.get(key);
+  if (pending) return pending;
+
+  const refresh = (async () => {
+    try {
+      const data = await producer();
+      notionCache.set(key, { data, expires: Date.now() + ttlMs });
+      return data;
+    } catch (err) {
+      if (hit) {
+        // Serve stale and hold it briefly so we don't retry-storm the refresh.
+        console.warn(`[notion] ${key} refresh failed (${err.message}) — serving stale`);
+        notionCache.set(key, { data: hit.data, expires: Date.now() + NOTION_STALE_GRACE_MS });
+        return hit.data;
+      }
+      throw err; // nothing cached yet — surface the error to seed on a later call
+    } finally {
+      notionInflight.delete(key);
+    }
+  })();
+
+  notionInflight.set(key, refresh);
+  return refresh;
 }
 
 export async function queryDatabase(dbId, filter, sorts, pageSize = 100, fetchOptions) {
