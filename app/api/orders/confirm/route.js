@@ -4,6 +4,7 @@ import { isValidSlot, slotLabel, computeTotal, buildArticlesText, orderCodeFromP
 import { resolveActiveRewardForClient, round2 } from "../../wheel/_shared";
 import { getPhoneFromRequest } from "../../_session";
 import { findClientByPhone, clearClientActiveReward } from "../../_clients";
+import { notifyInternalNewOrder } from "../_notify";
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -67,6 +68,16 @@ export async function POST(request) {
 
     const orderCode = orderCodeFromPageId(page.id);
     await updatePage(page.id, { "Commande": titleProp(orderCode) });
+
+    // Internal WhatsApp alert to owner + chef — best-effort, never blocks the
+    // order confirmation the customer is waiting on.
+    notifyInternalNewOrder({
+      code: orderCode,
+      client: guest.prenom,
+      articles: buildArticlesText(items),
+      total,
+      creneau: slotLabel(slot),
+    }).catch((err) => console.warn("[confirm] internal alert failed:", err.message));
 
     if (rewardApplied) {
       await Promise.all([
