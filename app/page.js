@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import ClientOrdersKDS from "./_components/ClientOrdersKDS";
+import NewOrderAlert from "./_components/NewOrderAlert";
 
 const PRODUCTS_URL = "/api/products";
 
@@ -3795,7 +3797,7 @@ export default function MokaOrderPad() {
 
           {/* ── MAIN SECTION ─────────────────────────── */}
           <section className={
-            (isAdmin && adminSection !== "dashboard" && ["products", "inventory", "settings", "orders", "reports"].includes(adminSection)) || isIphone
+            (isAdmin && adminSection !== "dashboard" && ["products", "inventory", "settings", "orders", "clientOrders", "reports"].includes(adminSection)) || isIphone
               ? "col-span-12"
               : "col-span-12 sm:col-span-8 xl:col-span-9"
           }>
@@ -4501,7 +4503,7 @@ export default function MokaOrderPad() {
           </section>
 
           {/* ── CART / ASIDE ─────────────────────────── */}
-          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 ${isIphone || activeTab === "stock" || (isAdmin && adminSection !== "dashboard" && ["products", "inventory", "settings", "orders", "reports"].includes(adminSection)) ? "hidden" : ""}`}>
+          <aside className={`col-span-12 sm:col-span-4 xl:col-span-3 ${isIphone || activeTab === "stock" || (isAdmin && adminSection !== "dashboard" && ["products", "inventory", "settings", "orders", "clientOrders", "reports"].includes(adminSection)) ? "hidden" : ""}`}>
             <div className="bg-white rounded-2xl border border-[#ddc9b5] shadow-md sm:sticky sm:top-[72px] overflow-hidden">
               {/* Cart header */}
               <div className="px-4 py-3.5 border-b border-[#f0e8dc] bg-[#faf5ef]">
@@ -4812,12 +4814,14 @@ export default function MokaOrderPad() {
                   {adminSection === "settings" && <svg className="w-4 h-4 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>}
                   {adminSection === "products" && <svg className="w-4 h-4 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>}
                   {adminSection === "inventory" && <svg className="w-4 h-4 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect width="6" height="4" x="9" y="3" rx="1"/><path d="m9 14 2 2 4-4"/></svg>}
+                  {adminSection === "clientOrders" && <svg className="w-4 h-4 text-[#f5ede0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 3h16a1 1 0 0 1 1 1v17l-3-2-2 2-2-2-2 2-2-2-3 2V4a1 1 0 0 1 1-1Z"/><line x1="8" x2="16" y1="8" y2="8"/><line x1="8" x2="16" y1="12" y2="12"/></svg>}
                 </div>
                 <div>
                   <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">MÖKA OS · Admin</div>
                   <h1 className="text-xl font-black text-[#2c1a10] leading-tight">
                     {adminSection === "dashboard" && "Dashboard"}
                     {adminSection === "orders" && "Commandes"}
+                    {adminSection === "clientOrders" && "Commandes clients"}
                     {adminSection === "reports" && "Rapports & IA"}
                     {adminSection === "settings" && "Paramètres"}
                     {adminSection === "products" && "Catalogue produits"}
@@ -4829,6 +4833,9 @@ export default function MokaOrderPad() {
           </div>
 
           <div className="max-w-screen-2xl mx-auto px-4 py-4">
+
+            {/* CLIENT ORDERS KDS */}
+            {adminSection === "clientOrders" && <ClientOrdersKDS />}
 
             {/* PRODUCTS PANEL */}
             {adminSection === "products" && (
@@ -6025,6 +6032,12 @@ export default function MokaOrderPad() {
         </div>
       )}
 
+      {/* ── NEW-ORDER ALERT (global, every device with MÖKA OS open) ─── */}
+      {/* Not gated on admin mode: kitchen/counter staff run the pad without the
+          admin PIN and still need to see + hear incoming orders. MÖKA OS is the
+          internal staff interface, so the alert is always on here. */}
+      <NewOrderAlert enabled={true} />
+
       {/* ── ADMIN BOTTOM NAV — glassmorphism ─────────── */}
       {isAdmin && (
         <div
@@ -6052,12 +6065,14 @@ export default function MokaOrderPad() {
               { id: "products", label: "Produits", icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/><circle cx="18.5" cy="15.5" r="2.5"/><path d="M20.27 17.27 22 19"/></svg> },
               { id: "inventory", label: "Inventaire", icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect width="6" height="4" x="9" y="3" rx="1"/><path d="m9 12 2 2 4-4"/></svg> },
               { id: "orders", label: "Commandes", icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" x2="21" y1="6" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> },
+              { id: "clientOrders", label: "Clients", icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M4 3h16a1 1 0 0 1 1 1v17l-3-2-2 2-2-2-2 2-2-2-3 2V4a1 1 0 0 1 1-1Z"/><line x1="8" x2="16" y1="8" y2="8"/><line x1="8" x2="16" y1="12" y2="12"/></svg> },
               { id: "reports", label: "Rapports", icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg> },
               ...(!isIphone ? [{ id: "settings", label: "Paramètres", icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> }] : []),
             ].map(({ id, icon, label }) => (
               <button
                 key={id}
                 onClick={() => setAdminSection(id)}
+                aria-label={label}
                 className="relative flex flex-col items-center justify-center w-12 h-12 rounded-[1.1rem] transition-all duration-200 cursor-pointer shrink-0"
                 style={adminSection === id ? {
                   background: "rgba(255,255,255,0.7)",
