@@ -80,14 +80,26 @@ async function fetchProducts() {
   });
 }
 
+const EMPTY_MENU = { categories: [], promos: [], products: [] };
+
 export async function getMenuData() {
   if (menuCache && menuCache.expires > Date.now()) return menuCache.data;
 
-  const [categories, promos, products] = await Promise.all([
-    fetchCategories(),
-    fetchPromos(),
-    fetchProducts(),
-  ]);
+  let categories, promos, products;
+  try {
+    [categories, promos, products] = await Promise.all([
+      fetchCategories(),
+      fetchPromos(),
+      fetchProducts(),
+    ]);
+  } catch (err) {
+    // A transient Notion failure (e.g. a 429 during `next build` or an ISR
+    // revalidation) must never crash the whole render. Serve an empty menu
+    // WITHOUT caching it, so the next request retries and populates once Notion
+    // frees up — the page revalidates every 2 min regardless.
+    console.warn("[getMenuData] Notion fetch failed, serving empty menu:", err.message);
+    return { ...EMPTY_MENU, generatedAt: Date.now() };
+  }
 
   // Pin the FOOD catch-all last so it reads as a fallback, not a primary category.
   const allCategories = hasUnmappedCategory(products)

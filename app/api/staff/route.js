@@ -1,4 +1,4 @@
-import { DB, corsHeaders, queryDatabase, getTitle, getText, getSelect, getCheckbox } from "../_notion";
+import { DB, corsHeaders, queryDatabase, withNotionCache, getTitle, getText, getSelect, getCheckbox } from "../_notion";
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -6,12 +6,13 @@ export async function OPTIONS() {
 
 export async function GET() {
   try {
+    const staff = await withNotionCache("staff", 60000, async () => {
     const pages = await queryDatabase(DB.STAFF, {
       property: "Actif",
       checkbox: { equals: true },
     });
 
-    const staff = pages.map((page) => {
+    return pages.map((page) => {
       const p = page.properties;
       return {
         id: page.id,
@@ -21,6 +22,7 @@ export async function GET() {
         email: getText(p, "Email", "email"),
         actif: getCheckbox(p, "Actif", "actif", "Active"),
       };
+    });
     });
 
     return Response.json(staff, { headers: corsHeaders });

@@ -1,4 +1,4 @@
-import { DB, corsHeaders, queryDatabase, getTitle, getText, getSelect, getNumber, getFormula, getRelationIds } from "../_notion";
+import { DB, corsHeaders, queryDatabase, withNotionCache, getTitle, getText, getSelect, getNumber, getFormula, getRelationIds } from "../_notion";
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -6,6 +6,7 @@ export async function OPTIONS() {
 
 export async function GET() {
   try {
+    const stock = await withNotionCache("stock", 30000, async () => {
     const [stockPages, ingredientPages] = await Promise.all([
       queryDatabase(DB.STOCK),
       queryDatabase(DB.INGREDIENTS),
@@ -20,7 +21,7 @@ export async function GET() {
       if (subcat) subcatMap[p.id] = subcat;
     });
 
-    const stock = stockPages.map(page => {
+    return stockPages.map(page => {
       const p = page.properties;
       const ingredientIds = getRelationIds(p, "MOKA_Ingredients_Master");
       const ingredientId = ingredientIds[0] || null;
@@ -39,6 +40,7 @@ export async function GET() {
         subcategory: subcatMap[ingredientId] || "",
         ingredientId,
       };
+    });
     });
 
     return Response.json(stock, { headers: corsHeaders });

@@ -1,4 +1,4 @@
-import { DB, corsHeaders, queryDatabase, getTitle, getText, getSelect, getNumber, getDate } from "../_notion";
+import { DB, corsHeaders, queryDatabase, withNotionCache, getTitle, getText, getSelect, getNumber, getDate } from "../_notion";
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -6,9 +6,10 @@ export async function OPTIONS() {
 
 export async function GET() {
   try {
+    const preps = await withNotionCache("preps", 30000, async () => {
     const pages = await queryDatabase(DB.PREPS, null, null, 200);
 
-    const preps = pages
+    return pages
       .map((page) => {
         const p = page.properties;
         return {
@@ -29,6 +30,7 @@ export async function GET() {
         const name = String(p.name || "").trim();
         return name && name !== "Préparation" && name.length > 3;
       });
+    });
 
     return Response.json(preps, { headers: corsHeaders });
   } catch (err) {

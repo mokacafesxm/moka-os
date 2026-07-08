@@ -33,17 +33,38 @@ function notionHeaders() {
   };
 }
 
-// Notion enforces ~3 req/s per integration and answers 429 when exceeded — a
-// real risk during `next build`, where several DB queries fire at once. A 429
-// means the request was *rejected*, never processed, so retrying is always safe
-// even for POST/PATCH mutations (unlike 5xx, which we deliberately don't retry).
-// Notion's guidance: wait and retry rather than fail. Honor Retry-After, else
-// exponential backoff with jitter.
-const NOTION_MAX_RETRIES = 5;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Notion allows ~3 requests/second per integration. The OrderPad polls several
+// modules at once (multiple devices, KDS every 4-5s), which blows past that
+// ceiling and triggers 429s. Rather than absorb 429s after the fact (a retry
+// storm that keeps re-adding load and never lets the limiter recover), we gate
+// every outgoing Notion request through a single in-process queue that spaces
+// dispatches ~340ms apart (~2.9 req/s) — staying under the limit at the source.
+// Note: this gate is per serverless instance; combined with withNotionCache
+// (which collapses repeat reads) it keeps total volume well under the limit for
+// this workload. Retries below are a thin safety net for the rare residual 429.
+const NOTION_MIN_GAP_MS = 340;
+let notionGate = Promise.resolve();
+let notionLastDispatch = 0;
+function notionThrottle() {
+  notionGate = notionGate.then(async () => {
+    const wait = notionLastDispatch + NOTION_MIN_GAP_MS - Date.now();
+    if (wait > 0) await sleep(wait);
+    notionLastDispatch = Date.now();
+  });
+  return notionGate;
+}
+
+// A 429 means the request was rejected and never processed, so retrying is safe
+// even for POST/PATCH mutations (unlike 5xx, which we deliberately don't retry).
+// Bounded short so a residual 429 never hangs a request: 3 tries, backoff capped
+// at 4s (~7s worst case), honoring Retry-After when present.
+const NOTION_MAX_RETRIES = 3;
 
 export async function notionFetch(path, options = {}) {
   for (let attempt = 0; ; attempt++) {
+    await notionThrottle();
     const res = await fetch(`${NOTION_BASE}${path}`, {
       ...options,
       headers: { ...notionHeaders(), ...(options.headers || {}) },
@@ -54,14 +75,27 @@ export async function notionFetch(path, options = {}) {
     const retryAfter = Number(res.headers.get("retry-after"));
     const backoffMs =
       Number.isFinite(retryAfter) && retryAfter > 0
-        ? retryAfter * 1000
-        : Math.min(1000 * 2 ** attempt, 15000);
+        ? Math.min(retryAfter * 1000, 4000)
+        : Math.min(1000 * 2 ** attempt, 4000);
     const waitMs = backoffMs + Math.floor(Math.random() * 250);
     // Drain the body so the socket is released before we wait/retry.
     await res.arrayBuffer().catch(() => {});
     console.warn(`[notion] 429 on ${path} — retry ${attempt + 1}/${NOTION_MAX_RETRIES} in ${waitMs}ms`);
     await sleep(waitMs);
   }
+}
+
+// Process-level TTL cache for hot, slow-changing reads. Collapses the OrderPad's
+// repeated polls (many devices, short intervals) into one Notion round-trip per
+// key per TTL — the same trick as the /commander menu cache. Only successful
+// producer results are cached (a throw propagates and caches nothing).
+const notionCache = new Map();
+export async function withNotionCache(key, ttlMs, producer) {
+  const hit = notionCache.get(key);
+  if (hit && hit.expires > Date.now()) return hit.data;
+  const data = await producer();
+  notionCache.set(key, { data, expires: Date.now() + ttlMs });
+  return data;
 }
 
 export async function queryDatabase(dbId, filter, sorts, pageSize = 100, fetchOptions) {

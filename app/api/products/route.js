@@ -1,4 +1,4 @@
-import { DB, corsHeaders, queryDatabase, getTitle, getText, getSelect, getCheckbox, getNumber, getRelationIds } from "../_notion";
+import { DB, corsHeaders, queryDatabase, withNotionCache, getTitle, getText, getSelect, getCheckbox, getNumber, getRelationIds } from "../_notion";
 
 async function buildSupplierMap() {
   const pages = await queryDatabase(DB.FOURNISSEURS);
@@ -15,12 +15,13 @@ export async function OPTIONS() {
 
 export async function GET() {
   try {
+    const products = await withNotionCache("products", 60000, async () => {
     const [pages, supplierMap] = await Promise.all([
       queryDatabase(DB.INGREDIENTS, null, null, 300),
       buildSupplierMap(),
     ]);
 
-    const products = pages.map((page) => {
+    return pages.map((page) => {
       const p = page.properties;
       const supplierIds = getRelationIds(p, "Fournisseur par defaut");
       const supplier = supplierIds.length ? (supplierMap[supplierIds[0]] || "") : "";
@@ -49,6 +50,7 @@ export async function GET() {
         methodeSuivi: getSelect(p, "Methode_suivi"),
         photo: p["photo"]?.files?.[0]?.file?.url || p["photo"]?.files?.[0]?.external?.url || "",
       };
+    });
     });
 
     return Response.json(products, { headers: corsHeaders });

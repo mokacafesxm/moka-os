@@ -1,4 +1,4 @@
-import { DB, corsHeaders, queryDatabase, getText, getSelect, getDate } from "../_notion";
+import { DB, corsHeaders, queryDatabase, withNotionCache, getText, getSelect, getDate } from "../_notion";
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -6,6 +6,7 @@ export async function OPTIONS() {
 
 export async function GET() {
   try {
+    const statusMap = await withNotionCache("clock-status", 15000, async () => {
     const todaySXM = new Date().toLocaleDateString("en-CA", {
       timeZone: "America/Puerto_Rico",
     });
@@ -33,6 +34,9 @@ export async function GET() {
         else if (a === "retour pause") statusMap[staff] = "present";
         else if (a === "départ") statusMap[staff] = "done";
       });
+
+      return statusMap;
+    });
 
     return Response.json(statusMap, { headers: corsHeaders });
   } catch (err) {
