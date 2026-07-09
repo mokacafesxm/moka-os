@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { MOKA } from "../../_lib/theme";
 import { useCart } from "../../_lib/CartContext";
+import { useCustomer } from "../../_lib/CustomerContext";
 import { PICKUP_SLOTS } from "../../_lib/pickupSlots";
 import PickupStep from "./PickupStep";
 import PaymentStep from "./PaymentStep";
@@ -15,10 +16,10 @@ const STEP_TITLES = { pickup: "Votre commande", payment: "Paiement" };
 export default function CheckoutFlow() {
   const router = useRouter();
   const cart = useCart();
+  const { customer } = useCustomer();
 
   const [step, setStep] = useState("pickup");
   const [slot, setSlot] = useState("asap");
-  const [guest, setGuest] = useState({ prenom: "", telephone: "" });
   const [unavailable, setUnavailable] = useState([]);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -33,12 +34,15 @@ export default function CheckoutFlow() {
   const [confirmation, setConfirmation] = useState(null);
 
   useEffect(() => {
-    if (step !== "success" && cart.items.length === 0) {
+    // Wait for the cart to hydrate from sessionStorage first — otherwise a hard
+    // load / refresh here bounces to /commander before the saved cart loads.
+    if (cart.hydrated && step !== "success" && cart.items.length === 0) {
       router.replace("/commander");
     }
-    // Only re-check when the cart empties out or the step changes past success.
+    // Only re-check when hydration finishes, the cart empties out, or the step
+    // changes past success.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cart.items.length, step]);
+  }, [cart.hydrated, cart.items.length, step]);
 
   function removeUnavailable(id) {
     cart.items.filter((i) => i.id === id).forEach((i) => cart.removeItem(i.id, i.variant));
@@ -119,6 +123,9 @@ export default function CheckoutFlow() {
   }
 
   async function submitConfirmation({ paymentIntentId, testMode }) {
+    // Coordinates always come from the connected account now — checkout can't
+    // reach this point signed out (PickupStep gates "Continuer" on connection).
+    const guest = { prenom: customer.prenom, telephone: customer.telephone };
     const res = await fetch("/api/orders/confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -169,8 +176,6 @@ export default function CheckoutFlow() {
           total={cart.subtotal}
           slot={slot}
           onSelectSlot={setSlot}
-          guest={guest}
-          onGuestChange={setGuest}
           unavailable={unavailable}
           onRemoveUnavailable={removeUnavailable}
           error={error}

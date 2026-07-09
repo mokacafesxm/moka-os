@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { User } from "lucide-react";
 import { MOKA } from "../_lib/theme";
@@ -27,7 +27,9 @@ function GreetingSlide({ customer, onGoToAccount }) {
       ) : (
         <button
           onClick={onGoToAccount}
-          className="font-black text-sm truncate shrink-0 cursor-pointer p-2 -m-2 min-h-[44px]"
+          // Same font size as the location pill in Header.js (text-xs) so the
+          // two header controls read as one aligned, legible row.
+          className="font-black text-xs truncate shrink-0 cursor-pointer p-2 -m-2 min-h-[44px]"
           style={{ color: MOKA.brown }}
         >
           Connectez-vous
@@ -40,45 +42,41 @@ function GreetingSlide({ customer, onGoToAccount }) {
 function QuoteSlide({ quote }) {
   return (
     <div>
-      <div className="text-[0.625rem] font-bold uppercase tracking-wide" style={{ color: MOKA.brownLight }}>
-        Quote of the day
-      </div>
-      <p className="text-sm font-semibold mt-0.5 line-clamp-2" style={{ color: MOKA.brown }}>
-        {quote}
+      <p className="text-sm font-semibold line-clamp-2" style={{ color: MOKA.brown }}>
+        « {quote.text} »
       </p>
+      <div className="text-[0.625rem] font-bold uppercase tracking-wide mt-0.5" style={{ color: MOKA.brownLight }}>
+        {quote.author}
+      </div>
     </div>
   );
 }
 
-// Alternates the *entire* greeting block (avatar, name) with a "quote of the
-// day" slide — the whole block swipes out as one unit, not just a text
-// line, cycling through each daily quote in turn, automatically. The
-// location pill lives outside this component now (see Header.js) so it
-// never disappears mid-swipe.
-export default function HeaderGreetingSwipe({ customer, quotes, onGoToAccount }) {
-  const sequence = useMemo(() => {
-    if (!quotes.length) return ["greeting"];
-    return quotes.flatMap((quote) => ["greeting", quote]);
-  }, [quotes]);
-
-  const [index, setIndex] = useState(0);
+// Alternates the *entire* greeting block (avatar, name) with the current
+// hourly quote slide — the whole block swipes out as one unit, not just a
+// text line. There's a single quote per hour now (same for everyone, picked
+// server-side), so this just toggles greeting <-> that one quote; it does not
+// cycle through a list. The location pill lives outside this component (see
+// Header.js) so it never disappears mid-swipe.
+export default function HeaderGreetingSwipe({ customer, quote, onGoToAccount }) {
+  const hasQuote = Boolean(quote?.text);
+  const [showQuote, setShowQuote] = useState(false);
 
   useEffect(() => {
-    if (sequence.length <= 1) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % sequence.length), STEP_MS);
+    if (!hasQuote) return;
+    const id = setInterval(() => setShowQuote((s) => !s), STEP_MS);
     return () => clearInterval(id);
-  }, [sequence]);
+  }, [hasQuote]);
 
-  // Guards against a stale index if `sequence` shrinks (fallback -> fetched quotes).
-  const current = sequence[index % sequence.length];
+  const showingQuote = hasQuote && showQuote;
 
   return (
     <div className="min-h-[44px] flex items-center overflow-hidden">
-      <div key={index} className="w-full animate-swipe-in">
-        {current === "greeting" ? (
-          <GreetingSlide customer={customer} onGoToAccount={onGoToAccount} />
+      <div key={showingQuote ? `quote-${quote.text}` : "greeting"} className="w-full animate-swipe-in">
+        {showingQuote ? (
+          <QuoteSlide quote={quote} />
         ) : (
-          <QuoteSlide quote={current} />
+          <GreetingSlide customer={customer} onGoToAccount={onGoToAccount} />
         )}
       </div>
     </div>

@@ -5,120 +5,17 @@ import { User, Bell, ChevronRight } from "lucide-react";
 import { MOKA } from "../_lib/theme";
 import { useCustomer } from "../_lib/CustomerContext";
 import SavedCardSection from "./SavedCardSection";
-import PhoneNumberInput from "./PhoneNumberInput";
+import PhoneAuthFlow from "./PhoneAuthFlow";
 import AccountInfoForm from "./AccountInfoForm";
 import AccountPromos from "./AccountPromos";
 
-const PHONE_PATTERN = /^\+[1-9]\d{6,14}$/;
-
-// Real phone-based accounts, single entry point for both sign-in and
-// signup: phone -> SMS code -> (existing number: connected immediately) or
-// (new number: one prenom-only step, then connected). The session cookie
-// set by verify-code is what CustomerContext restores on reload via
-// /api/auth/me — nothing here manages the session itself.
+// Real phone-based accounts — the sign-in / signup flow itself lives in the
+// shared PhoneAuthFlow so the checkout can reuse the exact same steps. This
+// view just frames it and, once connected, shows the account menu.
 export default function AccountView({ onOpenWheel }) {
-  const { customer, signIn, signOut, pendingWheelReward, setPendingWheelReward } = useCustomer();
-  const [step, setStep] = useState("phone"); // phone | code | prenom
+  const { customer, signOut } = useCustomer();
   const [connectedView, setConnectedView] = useState("menu"); // menu | info | promos
-  const [phone, setPhone] = useState("");
-  const [prenom, setPrenom] = useState("");
-  const [code, setCode] = useState("");
-  const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  async function handleSendCode(e) {
-    e.preventDefault();
-    setError(null);
-    if (!PHONE_PATTERN.test(phone.trim())) {
-      setError("Format international requis, ex. +590690123456");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/auth/send-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Impossible d'envoyer le code.");
-        return;
-      }
-      setStep("code");
-    } catch {
-      setError("Impossible de contacter le serveur, réessaie.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleVerifyCode(e) {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/auth/verify-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.trim(), code: code.trim(), pendingReward: pendingWheelReward }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Code invalide.");
-        return;
-      }
-
-      setPendingWheelReward(null);
-      if (data.blockedByExistingReward) {
-        setNotice(`Tu as déjà une récompense active (${data.existingReward.reward}) — ton nouveau gain n'a pas été enregistré.`);
-      } else if (data.rewardSaved) {
-        setNotice("Ta récompense a bien été enregistrée sur ton compte.");
-      }
-
-      if (data.isNewClient) {
-        setStep("prenom");
-      } else {
-        signIn(data.prenom, data.telephone);
-      }
-    } catch {
-      setError("Impossible de contacter le serveur, réessaie.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleSetPrenom(e) {
-    e.preventDefault();
-    setError(null);
-    if (!prenom.trim()) {
-      setError("Entre ton prénom");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/auth/set-prenom", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prenom: prenom.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Impossible d'enregistrer ton prénom.");
-        return;
-      }
-      signIn(data.prenom, phone.trim());
-    } catch {
-      setError("Impossible de contacter le serveur, réessaie.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  const inputClass =
-    "w-full rounded-full border bg-white px-5 py-3.5 text-sm outline-none min-h-[44px] focus:ring-2 focus:ring-offset-2 focus:ring-[#587F25]";
-  const inputStyle = { borderColor: MOKA.brownLight, color: MOKA.brown };
 
   // Focused sub-screens for a connected client — each has its own back
   // button and title, so they replace the whole account view rather than
@@ -194,104 +91,8 @@ export default function AccountView({ onOpenWheel }) {
             Se déconnecter
           </button>
         </div>
-      ) : step === "phone" ? (
-        <form onSubmit={handleSendCode} className="space-y-3">
-          <PhoneNumberInput onChange={setPhone} inputId="account-phone" inputClassName={inputClass} inputStyle={inputStyle} />
-          {error && (
-            <p role="alert" className="text-sm font-semibold" style={{ color: "#8C2F2F" }}>
-              {error}
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={submitting}
-            className={`w-full py-3.5 rounded-full font-bold text-white flex items-center justify-center min-h-[44px] ${
-              submitting ? "cursor-not-allowed opacity-60" : "cursor-pointer"
-            }`}
-            style={{ backgroundColor: MOKA.coral }}
-          >
-            {submitting ? "Envoi…" : "Recevoir un code par SMS"}
-          </button>
-        </form>
-      ) : step === "code" ? (
-        <form onSubmit={handleVerifyCode} className="space-y-3">
-          <p className="text-sm" style={{ color: MOKA.brownLight }}>
-            Code envoyé au {phone}.
-          </p>
-          <label htmlFor="account-code" className="sr-only">
-            Code de vérification
-          </label>
-          <input
-            id="account-code"
-            required
-            inputMode="numeric"
-            placeholder="Code à 6 chiffres"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            className={inputClass}
-            style={inputStyle}
-          />
-          {error && (
-            <p role="alert" className="text-sm font-semibold" style={{ color: "#8C2F2F" }}>
-              {error}
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={submitting}
-            className={`w-full py-3.5 rounded-full font-bold text-white flex items-center justify-center min-h-[44px] ${
-              submitting ? "cursor-not-allowed opacity-60" : "cursor-pointer"
-            }`}
-            style={{ backgroundColor: MOKA.coral }}
-          >
-            {submitting ? "Vérification…" : "Confirmer"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setStep("phone");
-              setError(null);
-              setCode("");
-            }}
-            className="w-full text-center text-xs pt-1 cursor-pointer underline"
-            style={{ color: MOKA.brownLight }}
-          >
-            Changer de numéro
-          </button>
-        </form>
       ) : (
-        <form onSubmit={handleSetPrenom} className="space-y-3">
-          <p className="text-sm" style={{ color: MOKA.brownLight }}>
-            Numéro vérifié — encore une info et c&apos;est prêt.
-          </p>
-          <label htmlFor="account-new-prenom" className="sr-only">
-            Prénom
-          </label>
-          <input
-            id="account-new-prenom"
-            required
-            placeholder="Prénom"
-            value={prenom}
-            onChange={(e) => setPrenom(e.target.value)}
-            className={inputClass}
-            style={inputStyle}
-          />
-          {error && (
-            <p role="alert" className="text-sm font-semibold" style={{ color: "#8C2F2F" }}>
-              {error}
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={submitting}
-            className={`w-full py-3.5 rounded-full font-bold text-white flex items-center justify-center min-h-[44px] ${
-              submitting ? "cursor-not-allowed opacity-60" : "cursor-pointer"
-            }`}
-            style={{ backgroundColor: MOKA.coral }}
-          >
-            {submitting ? "Enregistrement…" : "Créer mon compte"}
-          </button>
-        </form>
+        <PhoneAuthFlow idPrefix="account" onNotice={setNotice} />
       )}
     </div>
   );

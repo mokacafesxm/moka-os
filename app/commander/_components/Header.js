@@ -5,13 +5,13 @@ import { MapPin } from "lucide-react";
 import { MOKA } from "../_lib/theme";
 import { useLocation } from "../_lib/LocationContext";
 import { useCustomer } from "../_lib/CustomerContext";
-import { useDailyQuotes } from "../_lib/useDailyQuotes";
+import { useHourlyQuote } from "../_lib/useHourlyQuote";
 import HeaderGreetingSwipe from "./HeaderGreetingSwipe";
 
 export default function Header({ onGoToAccount }) {
   const { openPanel } = useLocation();
   const { customer } = useCustomer();
-  const quotes = useDailyQuotes();
+  const quote = useHourlyQuote();
 
   return (
     // pt-safe + this wrapper's own background (not just the page root's) is what
@@ -21,9 +21,9 @@ export default function Header({ onGoToAccount }) {
 
       {/* Location pill is a sibling of the swipe block, not inside it — it
           must never disappear mid-swipe or move between states. */}
-      <div className="flex items-start gap-2 px-4 pt-3 pb-2">
+      <div className="flex items-center gap-2 px-4 pt-3 pb-2">
         <div className="flex-1 min-w-0">
-          <HeaderGreetingSwipe customer={customer} quotes={quotes} onGoToAccount={onGoToAccount} />
+          <HeaderGreetingSwipe customer={customer} quote={quote} onGoToAccount={onGoToAccount} />
         </div>
 
         <button
@@ -32,7 +32,7 @@ export default function Header({ onGoToAccount }) {
           className="shrink-0 flex items-center justify-center cursor-pointer p-3 -m-3 min-h-[44px] min-w-[44px]"
         >
           <span
-            className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[0.625rem] font-semibold whitespace-nowrap"
+            className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold whitespace-nowrap"
             style={{ borderColor: MOKA.brownLight, color: MOKA.brown }}
           >
             <MapPin className="w-3 h-3" style={{ color: MOKA.coral }} />

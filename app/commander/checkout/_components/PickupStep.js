@@ -2,6 +2,8 @@
 
 import { MOKA } from "../../_lib/theme";
 import { PICKUP_SLOTS } from "../../_lib/pickupSlots";
+import { useCustomer } from "../../_lib/CustomerContext";
+import PhoneAuthFlow from "../../_components/PhoneAuthFlow";
 import OrderSummary from "./OrderSummary";
 
 function SlotPill({ slot, selected, onSelect }) {
@@ -22,24 +24,21 @@ function SlotPill({ slot, selected, onSelect }) {
   );
 }
 
-const inputClass =
-  "w-full rounded-full border bg-white px-5 py-3.5 text-sm outline-none min-h-[44px] focus:ring-2 focus:ring-offset-2 focus:ring-[#587F25]";
-const inputStyle = { borderColor: MOKA.brownLight, color: MOKA.brown };
-
 export default function PickupStep({
   items,
   total,
   slot,
   onSelectSlot,
-  guest,
-  onGuestChange,
   unavailable,
   onRemoveUnavailable,
   error,
   submitting,
   onContinue,
 }) {
-  const canContinue = Boolean(slot) && guest.prenom.trim() && guest.telephone.trim() && !unavailable.length;
+  const { customer } = useCustomer();
+  // Coordinates are the connected account's, not a free-text form — so
+  // continuing to payment requires being signed in (and the cart intact).
+  const canContinue = customer.connected && Boolean(slot) && !unavailable.length;
 
   return (
     <div className="px-4 pt-4 pb-4 space-y-5">
@@ -77,40 +76,32 @@ export default function PickupStep({
         <h2 className="text-sm font-bold uppercase tracking-wide mb-2" style={{ color: MOKA.brownLight }}>
           Vos coordonnées
         </h2>
-        <div className="space-y-2.5">
-          <div>
-            <label htmlFor="checkout-prenom" className="sr-only">
-              Prénom
-            </label>
-            <input
-              id="checkout-prenom"
-              required
-              placeholder="Prénom"
-              value={guest.prenom}
-              onChange={(e) => onGuestChange({ ...guest, prenom: e.target.value })}
-              className={inputClass}
-              style={inputStyle}
-            />
+        {customer.connected ? (
+          // Already known from the account — shown read-only, never re-asked.
+          <div className="rounded-2xl bg-white px-4 py-3.5 space-y-0.5" style={{ border: `1px solid ${MOKA.brownLight}` }}>
+            <p className="text-sm font-bold" style={{ color: MOKA.brown }}>
+              {customer.prenom}
+            </p>
+            <p className="text-sm" style={{ color: MOKA.brownLight }}>
+              {customer.telephone}
+            </p>
           </div>
-          <div>
-            <label htmlFor="checkout-telephone" className="sr-only">
-              Téléphone
-            </label>
-            <input
-              id="checkout-telephone"
-              required
-              type="tel"
-              placeholder="Téléphone"
-              value={guest.telephone}
-              onChange={(e) => onGuestChange({ ...guest, telephone: e.target.value })}
-              className={inputClass}
-              style={inputStyle}
-            />
+        ) : (
+          // Not the free-text form anymore — the same phone → SMS code flow as
+          // the Compte tab. On success the customer is connected and the
+          // read-only card + "Continuer" appear in place of this block.
+          <div className="rounded-2xl bg-white px-4 py-4 space-y-3" style={{ border: `1px solid ${MOKA.brownLight}` }}>
+            <p className="text-sm" style={{ color: MOKA.brownLight }}>
+              Connectez-vous pour finaliser votre commande — on vous préviendra dès qu&apos;elle est prête.
+            </p>
+            <PhoneAuthFlow idPrefix="checkout" sendLabel="Se connecter pour commander" />
           </div>
-        </div>
-        <p className="text-xs mt-2" style={{ color: MOKA.brownLight }}>
-          Pour vous appeler quand votre commande est prête.
-        </p>
+        )}
+        {customer.connected && (
+          <p className="text-xs mt-2" style={{ color: MOKA.brownLight }}>
+            Pour vous appeler quand votre commande est prête.
+          </p>
+        )}
       </div>
 
       <OrderSummary items={items} total={total} />
@@ -121,16 +112,18 @@ export default function PickupStep({
         </p>
       )}
 
-      <button
-        onClick={onContinue}
-        disabled={!canContinue || submitting}
-        className={`w-full py-3.5 rounded-full font-bold text-white flex items-center justify-center min-h-[44px] ${
-          canContinue && !submitting ? "cursor-pointer" : "cursor-not-allowed opacity-60"
-        }`}
-        style={{ backgroundColor: MOKA.coral }}
-      >
-        {submitting ? "Vérification…" : "Continuer vers le paiement"}
-      </button>
+      {customer.connected && (
+        <button
+          onClick={onContinue}
+          disabled={!canContinue || submitting}
+          className={`w-full py-3.5 rounded-full font-bold text-white flex items-center justify-center min-h-[44px] ${
+            canContinue && !submitting ? "cursor-pointer" : "cursor-not-allowed opacity-60"
+          }`}
+          style={{ backgroundColor: MOKA.coral }}
+        >
+          {submitting ? "Vérification…" : "Continuer vers le paiement"}
+        </button>
+      )}
     </div>
   );
 }
