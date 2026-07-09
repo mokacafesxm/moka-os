@@ -1,6 +1,6 @@
 import { DB, corsHeaders, getPage, getCheckbox } from "../../_notion";
 import { getStripe, isStripeConfigured } from "../../_stripe";
-import { computeTotal, isValidSlot } from "../_shared";
+import { computeTotal, isValidSlot, isFreeOrder } from "../_shared";
 import { resolveActiveRewardForClient, round2 } from "../../wheel/_shared";
 import { getPhoneFromRequest } from "../../_session";
 import { findClientByPhone } from "../../_clients";
@@ -62,6 +62,15 @@ export async function POST(request) {
     const rewardResult = await resolveActiveRewardForClient(client, items);
     const rewardApplied = rewardResult?.valid ? rewardResult : null;
     const total = Math.max(0, round2(subtotal - (rewardApplied?.discount || 0)));
+
+    // Free order (reward zeroed it out): nothing to charge — let the client
+    // confirm it directly, same as the no-card free path.
+    if (isFreeOrder(total)) {
+      return Response.json(
+        { status: "free", total, subtotal, rewardApplied, rewardBlocked: rewardResult && !rewardResult.valid ? rewardResult : null },
+        { headers: corsHeaders }
+      );
+    }
 
     const stripe = getStripe();
     const intent = await stripe.paymentIntents.create({

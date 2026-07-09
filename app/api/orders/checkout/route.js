@@ -1,6 +1,6 @@
 import { DB, corsHeaders, getPage, getCheckbox } from "../../_notion";
 import { getStripe, isStripeConfigured } from "../../_stripe";
-import { computeTotal, isValidSlot } from "../_shared";
+import { computeTotal, isValidSlot, isFreeOrder } from "../_shared";
 import { resolveActiveRewardForClient, round2 } from "../../wheel/_shared";
 import { getPhoneFromRequest } from "../../_session";
 import { findClientByPhone } from "../../_clients";
@@ -59,6 +59,14 @@ export async function POST(request) {
     const total = Math.max(0, round2(subtotal - (rewardApplied?.discount || 0)));
 
     const rewardBlocked = rewardResult && !rewardResult.valid ? rewardResult : null;
+
+    // Reward brought the order to €0 (or below Stripe's minimum): confirm it as
+    // free, no PaymentIntent, no saved-card prompt — Stripe would reject a
+    // sub-minimum charge. confirm re-derives this from the total independently.
+    if (isFreeOrder(total)) {
+      return Response.json({ free: true, total, subtotal, rewardApplied, rewardBlocked }, { headers: corsHeaders });
+    }
+
     const primaryCard = client ? await resolvePrimaryCardForClient(client.id) : null;
     const savedCard = primaryCard ? { label: `${primaryCard.brand} •••• ${primaryCard.last4}` } : null;
 

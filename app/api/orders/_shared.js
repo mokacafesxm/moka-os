@@ -8,6 +8,17 @@ export function isValidSlot(slotId) {
   return PICKUP_SLOTS.some((s) => s.id === slotId);
 }
 
+// Stripe's minimum charge for EUR is €0.50. A wheel reward can bring an order
+// to €0 (or below that floor) — those orders skip payment entirely and are
+// confirmed as free rather than sent to Stripe (which rejects sub-minimum
+// amounts). Checked server-side in checkout / pay-saved-card / confirm so a
+// free order is decided from the recomputed total, never a client claim.
+export const STRIPE_MIN_CHARGE_EUR = 0.5;
+
+export function isFreeOrder(total) {
+  return total < STRIPE_MIN_CHARGE_EUR;
+}
+
 export function slotLabel(slotId) {
   return PICKUP_SLOTS.find((s) => s.id === slotId)?.label || slotId;
 }

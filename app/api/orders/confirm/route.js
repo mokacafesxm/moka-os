@@ -1,6 +1,6 @@
 import { DB, corsHeaders, createPage, updatePage, titleProp, textProp, selectProp, numberProp, dateProp, relationProp } from "../../_notion";
 import { getStripe, isStripeConfigured } from "../../_stripe";
-import { isValidSlot, slotLabel, computeTotal, buildArticlesText, orderCodeFromPageId } from "../_shared";
+import { isValidSlot, slotLabel, computeTotal, buildArticlesText, orderCodeFromPageId, isFreeOrder } from "../_shared";
 import { resolveActiveRewardForClient, round2 } from "../../wheel/_shared";
 import { getPhoneFromRequest } from "../../_session";
 import { findClientByPhone, clearClientActiveReward } from "../../_clients";
@@ -27,8 +27,26 @@ export async function POST(request) {
       return Response.json({ error: "Prénom et téléphone requis" }, { status: 400, headers: corsHeaders });
     }
 
-    let paymentReference = "TEST-MODE";
-    if (!testMode) {
+    const subtotal = computeTotal(items);
+    // Re-validate independently rather than trusting whatever discount the
+    // client remembers from the checkout step — the source of truth is
+    // Notion (reward status) + the live cart, same as the checkout route.
+    const phone = getPhoneFromRequest(request);
+    const client = phone ? await findClientByPhone(phone) : null;
+    const rewardResult = client ? await resolveActiveRewardForClient(client, items) : null;
+    const rewardApplied = rewardResult?.valid ? rewardResult : null;
+    const total = Math.max(0, round2(subtotal - (rewardApplied?.discount || 0)));
+
+    // Payment path is decided from the server-recomputed total, never a client
+    // flag: a reward-zeroed order is free (no Stripe), otherwise a real intent
+    // is required (test mode aside). This is what lets "Café offert" & co.
+    // actually complete instead of erroring on a sub-minimum Stripe charge.
+    let paymentReference;
+    if (isFreeOrder(total)) {
+      paymentReference = "OFFERT";
+    } else if (testMode) {
+      paymentReference = "TEST-MODE";
+    } else {
       if (!isStripeConfigured()) {
         return Response.json({ error: "Paiement non configuré" }, { status: 503, headers: corsHeaders });
       }
@@ -42,16 +60,6 @@ export async function POST(request) {
       }
       paymentReference = intent.id;
     }
-
-    const subtotal = computeTotal(items);
-    // Re-validate independently rather than trusting whatever discount the
-    // client remembers from the checkout step — the source of truth is
-    // Notion (reward status) + the live cart, same as the checkout route.
-    const phone = getPhoneFromRequest(request);
-    const client = phone ? await findClientByPhone(phone) : null;
-    const rewardResult = client ? await resolveActiveRewardForClient(client, items) : null;
-    const rewardApplied = rewardResult?.valid ? rewardResult : null;
-    const total = Math.max(0, round2(subtotal - (rewardApplied?.discount || 0)));
 
     const page = await createPage(DB.COMMANDES_CLIENTS, {
       "Commande": titleProp("En cours"),

@@ -25,6 +25,7 @@ export default function CheckoutFlow() {
   const [submitting, setSubmitting] = useState(false);
   const [payment, setPayment] = useState({
     testMode: true,
+    free: false,
     clientSecret: null,
     total: 0,
     rewardApplied: null,
@@ -72,6 +73,7 @@ export default function CheckoutFlow() {
 
       setPayment({
         testMode: !!data.testMode,
+        free: !!data.free,
         clientSecret: data.clientSecret || null,
         total: data.total,
         rewardApplied: data.rewardApplied || null,
@@ -104,6 +106,11 @@ export default function CheckoutFlow() {
       }
       if (!res.ok) {
         setError(data.error || "Le paiement avec la carte enregistrée a échoué.");
+        return;
+      }
+      if (data.status === "free") {
+        // Reward zeroed the order out — nothing to charge, confirm as free.
+        await submitConfirmation({ paymentIntentId: null, testMode: false });
         return;
       }
       if (data.status !== "succeeded") {
@@ -187,6 +194,7 @@ export default function CheckoutFlow() {
       {step === "payment" && (
         <PaymentStep
           testMode={payment.testMode}
+          free={payment.free}
           clientSecret={payment.clientSecret}
           total={payment.total}
           rewardApplied={payment.rewardApplied}
@@ -198,6 +206,7 @@ export default function CheckoutFlow() {
           onError={setError}
           onSuccess={(paymentIntentId) => submitConfirmation({ paymentIntentId, testMode: false })}
           onSimulate={() => submitConfirmation({ paymentIntentId: null, testMode: true })}
+          onConfirmFree={() => submitConfirmation({ paymentIntentId: null, testMode: false })}
         />
       )}
 

@@ -158,6 +158,7 @@ function SavedCardOption({ savedCard, submitting, onPaySavedCard, onUseAnother }
 
 export default function PaymentStep({
   testMode,
+  free,
   clientSecret,
   total,
   rewardApplied,
@@ -169,9 +170,42 @@ export default function PaymentStep({
   onError,
   error,
   onSimulate,
+  onConfirmFree,
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [useAnotherCard, setUseAnotherCard] = useState(false);
+
+  // Reward brought the order to €0 — no payment step, just confirm.
+  if (free) {
+    return (
+      <div className="px-4 pt-4 pb-4 space-y-4">
+        <div className="rounded-2xl p-4 text-sm font-semibold" style={{ backgroundColor: `${MOKA.green}1a`, color: MOKA.green }}>
+          Votre récompense couvre l&apos;intégralité de la commande — c&apos;est offert&nbsp;! 🎉
+        </div>
+        <RewardBanner rewardApplied={rewardApplied} rewardBlocked={rewardBlocked} />
+        {error && (
+          <p role="alert" className="text-sm font-semibold" style={{ color: "#8C2F2F" }}>
+            {error}
+          </p>
+        )}
+        <button
+          onClick={async () => {
+            setSubmitting(true);
+            onError(null);
+            await onConfirmFree();
+            setSubmitting(false);
+          }}
+          disabled={submitting}
+          className={`w-full py-3.5 rounded-full font-bold text-white flex items-center justify-center min-h-[44px] ${
+            !submitting ? "cursor-pointer" : "cursor-not-allowed opacity-60"
+          }`}
+          style={{ backgroundColor: MOKA.coral }}
+        >
+          {submitting ? "Envoi…" : `Confirmer la commande offerte — ${formatPrice(total)}`}
+        </button>
+      </div>
+    );
+  }
 
   if (testMode) {
     return (
