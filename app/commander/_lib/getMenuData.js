@@ -10,7 +10,6 @@ import {
   getMultiSelect,
 } from "../../api/_notion";
 import { parseVariants, hasRealOptions, priceFrom } from "./variants";
-import { FOOD_CATEGORY_ID, hasUnmappedCategory } from "./categoryMatch";
 
 // Public menu changes rarely (new products/photos) — cache for 2 minutes so a
 // burst of visitors doesn't hammer the Notion API (3 req/s limit).
@@ -101,13 +100,8 @@ export async function getMenuData() {
     return { ...EMPTY_MENU, generatedAt: Date.now() };
   }
 
-  // Pin the FOOD catch-all last so it reads as a fallback, not a primary category.
-  const allCategories = hasUnmappedCategory(products)
-    ? [...categories, { id: FOOD_CATEGORY_ID, nom: "FOOD", photo: "", ordre: Infinity }]
-    : categories;
-
   const data = {
-    categories: allCategories,
+    categories,
     promos,
     products,
     generatedAt: Date.now(),

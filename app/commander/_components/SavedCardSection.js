@@ -87,6 +87,18 @@ function AddCardForm({ onSaved, onCancel, onError }) {
   );
 }
 
+// Shown while the saved-card list is loading from Stripe — mirrors CardRow's
+// layout (icon + two text lines) so the section doesn't jump around once the
+// real cards arrive, with a slow opacity pulse instead of a generic spinner.
+function CardRowSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl px-4 py-3.5 flex items-center gap-3 animate-pulse-slow">
+      <div className="w-5 h-5 rounded-full shrink-0" style={{ backgroundColor: MOKA.placeholderTan }} />
+      <div className="h-3.5 rounded-full flex-1 max-w-[180px]" style={{ backgroundColor: MOKA.placeholderTan }} />
+    </div>
+  );
+}
+
 function CardRow({ card, onRemove, removing }) {
   return (
     <div className="bg-white rounded-2xl px-4 py-3.5 flex items-center justify-between">
@@ -183,12 +195,18 @@ export default function SavedCardSection() {
         Moyens de paiement
       </h3>
 
-      {!loading && cards.length > 0 && (
+      {loading ? (
         <div className="space-y-2 mb-2">
-          {cards.map((card) => (
-            <CardRow key={card.paymentMethodId} card={card} onRemove={handleRemove} removing={removingId === card.paymentMethodId} />
-          ))}
+          <CardRowSkeleton />
         </div>
+      ) : (
+        cards.length > 0 && (
+          <div className="space-y-2 mb-2">
+            {cards.map((card) => (
+              <CardRow key={card.paymentMethodId} card={card} onRemove={handleRemove} removing={removingId === card.paymentMethodId} />
+            ))}
+          </div>
+        )
       )}
 
       {adding && stripePromise && clientSecret ? (

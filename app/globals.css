@@ -92,6 +92,18 @@ body {
   .animate-confetti { animation: none; opacity: 0; }
 }
 
+/* Skeleton placeholders (saved cards loading, initial /commander splash) — a
+   slow, subtle opacity pulse, never a spinner. */
+@keyframes pulseSlow {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+.animate-pulse-slow { animation: pulseSlow 1.6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-slow { animation: none; opacity: 0.75; }
+}
+
 /* Category rail — thin, low-key scrollbar (instead of hiding it) hints that
    the list continues below the fold. */
 .category-rail-scroll {

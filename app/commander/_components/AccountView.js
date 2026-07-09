@@ -8,13 +8,14 @@ import SavedCardSection from "./SavedCardSection";
 import PhoneAuthFlow from "./PhoneAuthFlow";
 import AccountInfoForm from "./AccountInfoForm";
 import AccountPromos from "./AccountPromos";
+import AccountOrders from "./AccountOrders";
 
 // Real phone-based accounts — the sign-in / signup flow itself lives in the
 // shared PhoneAuthFlow so the checkout can reuse the exact same steps. This
 // view just frames it and, once connected, shows the account menu.
 export default function AccountView({ onOpenWheel }) {
   const { customer, signOut } = useCustomer();
-  const [connectedView, setConnectedView] = useState("menu"); // menu | info | promos
+  const [connectedView, setConnectedView] = useState("menu"); // menu | info | promos | orders
   const [notice, setNotice] = useState(null);
 
   // Focused sub-screens for a connected client — each has its own back
@@ -25,6 +26,9 @@ export default function AccountView({ onOpenWheel }) {
   }
   if (customer.connected && connectedView === "promos") {
     return <AccountPromos onBack={() => setConnectedView("menu")} onOpenWheel={onOpenWheel} />;
+  }
+  if (customer.connected && connectedView === "orders") {
+    return <AccountOrders onBack={() => setConnectedView("menu")} />;
   }
 
   return (
@@ -66,7 +70,7 @@ export default function AccountView({ onOpenWheel }) {
             </p>
           )}
           {[
-            { label: "Mes commandes", onClick: undefined },
+            { label: "Mes commandes", onClick: () => setConnectedView("orders") },
             { label: "Mes informations", onClick: () => setConnectedView("info") },
             { label: "Mes promos", onClick: () => setConnectedView("promos") },
           ].map(({ label, onClick }) => (
