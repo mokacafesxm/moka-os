@@ -66,20 +66,19 @@ body {
 }
 .animate-bump { animation: bump 0.35s ease-out; }
 .animate-pop { animation: popIn 0.3s ease-out; }
-.animate-sheet-up { animation: sheetUp 0.28s ease-out; }
-.animate-toast-in { animation: toastIn 0.25s ease-out; }
-.animate-fade-in { animation: fadeIn 0.2s ease-out; }
-
-/* Header greeting auto-swipe (greeting block <-> daily quote) */
-@keyframes swipeIn {
-  from { opacity: 0; transform: translateX(20px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-.animate-swipe-in { animation: swipeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-swipe-in { animation: none; }
-}
+.animate-sheet-up { animation: sheetUp 0.28s ease-out forwards; }
+/* forwards is load-bearing here (unlike the other one-shot animations above):
+   toastIn's end frame is translate(-50%, 0), not the identity transform, since
+   -50% recenters the toast against its own `left: 50%`. Without forwards, the
+   animation's default fill-mode (none) drops that transform the instant the
+   0.25s animation ends, snapping the toast to `left: 50%` with NO horizontal
+   compensation — sitting well off-center for the rest of its ~1.8s visible
+   life. Cross-browser CSS spec behavior, not a Safari-only quirk, but easy to
+   miss in testing: any screenshot taken inside that 0.25s window (e.g. an
+   automated check that fires right after the click) never sees the drift.
+   Confirmed by testing past the 250ms mark, not just mid-animation. */
+.animate-toast-in { animation: toastIn 0.25s ease-out forwards; }
+.animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
 
 /* Wheel of fortune — confetti burst on the winning slice at the stop */
 @keyframes confettiBurst {

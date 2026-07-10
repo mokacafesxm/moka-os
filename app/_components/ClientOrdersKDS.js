@@ -25,6 +25,11 @@ function OrderCard({ order, accent, action, onAdvance, busy }) {
       </div>
       <div className="text-xs font-semibold text-[#2c1a10] mt-0.5">{order.client}</div>
       {order.articles && <div className="text-[11px] text-[#6b4a3d] mt-1 whitespace-pre-line leading-tight">{order.articles}</div>}
+      {order.comment && (
+        <div className="text-[11px] font-semibold text-[#8c4f2f] bg-[#fdf3e0] rounded-lg px-2 py-1 mt-1.5 whitespace-pre-line leading-tight">
+          📝 {order.comment}
+        </div>
+      )}
       <div className="text-[11px] font-bold text-[#2c1a10] mt-1">{Number(order.total || 0).toFixed(2)}€</div>
       {order.acknowledgedBy && <div className="text-[10px] text-[#9a7060] mt-0.5">Vu par {order.acknowledgedBy}</div>}
       {action && (

@@ -119,6 +119,7 @@ export function mapOrderProps(props, extractors) {
     client: getText(props, "Client"),
     telephone: getText(props, "Téléphone"),
     articles: getText(props, "Articles"),
+    comment: getText(props, "Commentaire"),
     total: getNumber(props, "Total"),
     creneau: getSelect(props, "Créneau"),
     prepStatus: getSelect(props, "Statut préparation"),

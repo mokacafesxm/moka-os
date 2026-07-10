@@ -14,7 +14,7 @@ export async function OPTIONS() {
 // for the team to prepare, and returns the order code shown to the customer.
 export async function POST(request) {
   try {
-    const { items, slot, guest, paymentIntentId, testMode } = await request.json();
+    const { items, slot, guest, paymentIntentId, testMode, comment } = await request.json();
 
     if (!Array.isArray(items) || !items.length) {
       return Response.json({ error: "Le panier est vide" }, { status: 400, headers: corsHeaders });
@@ -59,6 +59,8 @@ export async function POST(request) {
       paymentReference = intent.id;
     }
 
+    const trimmedComment = comment?.trim() || "";
+
     const page = await createPage(DB.COMMANDES_CLIENTS, {
       "Commande": titleProp("En cours"),
       "Client": textProp(guest.prenom),
@@ -70,6 +72,7 @@ export async function POST(request) {
       "Statut préparation": selectProp("Nouvelle"),
       "Stripe Payment Intent": textProp(paymentReference),
       "Date création": dateProp(new Date().toISOString()),
+      "Commentaire": textProp(trimmedComment),
     });
 
     const orderCode = orderCodeFromPageId(page.id);
@@ -83,6 +86,7 @@ export async function POST(request) {
       articles: buildArticlesText(items),
       total,
       creneau: slotLabel(slot),
+      comment: trimmedComment,
     }).catch((err) => console.warn("[confirm] internal alert failed:", err.message));
 
     if (rewardApplied) {

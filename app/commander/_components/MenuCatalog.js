@@ -5,6 +5,8 @@ import { MOKA } from "../_lib/theme";
 import { useCart } from "../_lib/CartContext";
 import { useCustomer } from "../_lib/CustomerContext";
 import { useWheelEligibility } from "../_lib/useWheelEligibility";
+import { useScrollBackResistance } from "../_lib/useScrollBackResistance";
+import { useScrollDownCommit } from "../_lib/useScrollDownCommit";
 import { productsForCategory } from "../_lib/categoryMatch";
 import Header from "./Header";
 import SearchBar from "./SearchBar";
@@ -42,8 +44,16 @@ export default function MenuCatalog({ data }) {
   const [toast, setToast] = useState(null);
   const [wheelOpen, setWheelOpen] = useState(false);
   const searchRef = useRef(null);
-  const topRef = useRef(null);
   const toastTimer = useRef(null);
+  // Home tab's two-zone scroll-snap: outerRef is the snap container (Zone 1
+  // header/promo, Zone 2 order screen); zone2Ref is Zone 2's own independent
+  // scroller, so browsing products never touches the outer snap position —
+  // see useScrollBackResistance for why going back up needs a harder pull.
+  const outerRef = useRef(null);
+  const zone1Ref = useRef(null);
+  const zone2Ref = useRef(null);
+  useScrollDownCommit(outerRef, zone1Ref, activeTab === "home");
+  useScrollBackResistance(zone2Ref, outerRef, activeTab === "home");
 
   function goToAccount() {
     setActiveTab("account");
@@ -60,7 +70,10 @@ export default function MenuCatalog({ data }) {
   function goHome() {
     setActiveTab("home");
     setQuery("");
-    topRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Already-mounted case (e.g. tapping "Accueil" while mid-browse) — jump
+    // straight back to Zone 1. A fresh mount (coming from another tab) starts
+    // at scrollTop 0 on its own, so this is a no-op then.
+    outerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function showFavorites() {
@@ -95,26 +108,27 @@ export default function MenuCatalog({ data }) {
   }
 
   return (
-    <div className="min-h-screen pb-28" style={{ backgroundColor: MOKA.cream }}>
-      <div ref={topRef} />
-      <Header onGoToAccount={goToAccount} />
-
-      <main key={activeTab} className="animate-fade-in">
-        {activeTab === "account" ? (
-          <AccountView onOpenWheel={() => setWheelOpen(true)} />
-        ) : activeTab === "cart" ? (
-          <CartView onGoHome={goHome} />
-        ) : activeTab === "favorites" ? (
-          favoriteProducts.length > 0 ? (
-            <CategorySection nom="Favoris" produits={favoriteProducts} {...cardProps} />
-          ) : (
-            <EmptyState icon={Heart} message="Aucun favori pour l'instant" actionLabel="Voir le menu" onAction={goHome} />
-          )
-        ) : (
-          <>
+    <div className="min-h-screen" style={{ backgroundColor: MOKA.cream }}>
+      {activeTab === "home" ? (
+        // Two-zone scroll-snap: Zone 1 (header + promo) is short, so any
+        // downward scroll intent immediately resolves to the only other snap
+        // point — Zone 2's start — via mandatory snap, giving the "one swipe
+        // jumps straight past the header" behavior with no free scroll
+        // between them. Zone 2 owns its own internal scroller (independent
+        // of the outer snap position) so browsing products afterwards is
+        // completely free; see useScrollBackResistance for the up direction.
+        <div ref={outerRef} className="snap-y snap-mandatory overflow-y-auto" style={{ height: "100dvh", WebkitOverflowScrolling: "touch" }}>
+          <div ref={zone1Ref} className="snap-start">
+            <Header onGoToAccount={goToAccount} />
             <PromoCarousel promos={promos} />
-            <SearchBar ref={searchRef} value={query} onChange={setQuery} />
+          </div>
 
+          <div
+            ref={zone2Ref}
+            className="snap-start overflow-y-auto overscroll-y-contain pb-28"
+            style={{ height: "100dvh", WebkitOverflowScrolling: "touch" }}
+          >
+            <SearchBar ref={searchRef} value={query} onChange={setQuery} />
             <div className="flex items-start">
               <CategoryRail categories={categories} activeCategory={activeCategory} onSelect={setActiveCategory} />
               <ProductGrid
@@ -125,9 +139,24 @@ export default function MenuCatalog({ data }) {
                 {...cardProps}
               />
             </div>
-          </>
-        )}
-      </main>
+          </div>
+        </div>
+      ) : (
+        <>
+          <Header onGoToAccount={goToAccount} />
+          <main key={activeTab} className="animate-fade-in pb-28">
+            {activeTab === "account" ? (
+              <AccountView onOpenWheel={() => setWheelOpen(true)} />
+            ) : activeTab === "cart" ? (
+              <CartView onGoHome={goHome} />
+            ) : favoriteProducts.length > 0 ? (
+              <CategorySection nom="Favoris" produits={favoriteProducts} {...cardProps} />
+            ) : (
+              <EmptyState icon={Heart} message="Aucun favori pour l'instant" actionLabel="Voir le menu" onAction={goHome} />
+            )}
+          </main>
+        </>
+      )}
 
       {selectedProduct && (
         <ProductPopup product={selectedProduct} onClose={() => setSelectedProduct(null)} onAdd={addToCart} />

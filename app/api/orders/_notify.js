@@ -18,7 +18,7 @@ function internalAlertNumbers() {
 // New order → free-form WhatsApp to owner + chef (they've opened the 24h
 // window via the sandbox / by messaging us first). Best-effort: never blocks
 // or fails order creation, just logs.
-export async function notifyInternalNewOrder({ code, client, articles, total, creneau }) {
+export async function notifyInternalNewOrder({ code, client, articles, total, creneau, comment }) {
   const numbers = internalAlertNumbers();
   if (!numbers.length || !isWhatsAppConfigured()) return;
 
@@ -27,7 +27,8 @@ export async function notifyInternalNewOrder({ code, client, articles, total, cr
     `Client : ${client || "—"}\n` +
     `Créneau : ${creneau || "—"}\n` +
     `${articles || ""}\n` +
-    `Total : ${Number(total || 0).toFixed(2)}€`;
+    `Total : ${Number(total || 0).toFixed(2)}€` +
+    (comment ? `\n📝 ${comment}` : "");
 
   await Promise.allSettled(numbers.map((n) => sendWhatsAppText(n, body)));
 }

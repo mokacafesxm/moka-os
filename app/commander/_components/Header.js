@@ -5,13 +5,11 @@ import { MapPin } from "lucide-react";
 import { MOKA } from "../_lib/theme";
 import { useLocation } from "../_lib/LocationContext";
 import { useCustomer } from "../_lib/CustomerContext";
-import { useHourlyQuote } from "../_lib/useHourlyQuote";
-import HeaderGreetingSwipe from "./HeaderGreetingSwipe";
+import HeaderGreeting from "./HeaderGreeting";
 
 export default function Header({ onGoToAccount }) {
   const { openPanel } = useLocation();
   const { customer } = useCustomer();
-  const quote = useHourlyQuote();
 
   return (
     // pt-safe + this wrapper's own background (not just the page root's) is what
@@ -19,11 +17,9 @@ export default function Header({ onGoToAccount }) {
     <div className="pt-safe" style={{ backgroundColor: MOKA.cream }}>
       <h1 className="sr-only">Menu MÖKA Café — Saint-Martin</h1>
 
-      {/* Location pill is a sibling of the swipe block, not inside it — it
-          must never disappear mid-swipe or move between states. */}
       <div className="flex items-center gap-2 px-4 pt-3 pb-2">
         <div className="flex-1 min-w-0">
-          <HeaderGreetingSwipe customer={customer} quote={quote} onGoToAccount={onGoToAccount} />
+          <HeaderGreeting customer={customer} onGoToAccount={onGoToAccount} />
         </div>
 
         <button

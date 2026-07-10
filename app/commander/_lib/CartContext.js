@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useMemo, useReducer } from "react
 const CartContext = createContext(null);
 const STORAGE_KEY = "moka-commander-cart";
 
-const INITIAL_STATE = { items: [], hydrated: false };
+const INITIAL_STATE = { items: [], comment: "", hydrated: false };
 
 // Extras are a plain string list (see ProductPopup) — sorted+joined so two
 // identical selections in a different click order still collapse into one
@@ -26,7 +26,7 @@ function lineKey(id, variant, extras) {
 function reducer(state, action) {
   switch (action.type) {
     case "HYDRATE":
-      return { items: action.items, hydrated: true };
+      return { items: action.items, comment: action.comment || "", hydrated: true };
 
     case "MARK_HYDRATED":
       return { ...state, hydrated: true };
@@ -72,8 +72,11 @@ function reducer(state, action) {
       };
     }
 
+    case "SET_COMMENT":
+      return { ...state, comment: action.comment };
+
     case "CLEAR":
-      return { ...state, items: [] };
+      return { ...state, items: [], comment: "" };
 
     default:
       return state;
@@ -83,13 +86,19 @@ function reducer(state, action) {
 // sessionStorage only — cart resets when the tab closes, by design.
 export function CartProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
-  const { items, hydrated } = state;
+  const { items, comment, hydrated } = state;
 
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (raw) {
-        dispatch({ type: "HYDRATE", items: JSON.parse(raw) });
+        const parsed = JSON.parse(raw);
+        // Older sessions stored a bare items array; new ones store
+        // { items, comment }. Either way this is just ephemeral
+        // sessionStorage, so no real migration is needed beyond not crashing.
+        const parsedItems = Array.isArray(parsed) ? parsed : parsed.items || [];
+        const parsedComment = Array.isArray(parsed) ? "" : parsed.comment || "";
+        dispatch({ type: "HYDRATE", items: parsedItems, comment: parsedComment });
         return;
       }
     } catch {}
@@ -101,9 +110,9 @@ export function CartProvider({ children }) {
     // first pass would overwrite the saved cart with the empty initial state.
     if (!hydrated) return;
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ items, comment }));
     } catch {}
-  }, [items, hydrated]);
+  }, [items, comment, hydrated]);
 
   const api = useMemo(() => {
     const count = items.reduce((sum, i) => sum + i.qty, 0);
@@ -112,13 +121,15 @@ export function CartProvider({ children }) {
       items,
       count,
       subtotal,
+      comment,
       hydrated,
       addItem: (product, variant, qty = 1, extras) => dispatch({ type: "ADD_ITEM", product, variant, qty, extras }),
       removeItem: (id, variant, extras) => dispatch({ type: "REMOVE_ITEM", id, variant, extras }),
       updateQty: (id, variant, qty, extras) => dispatch({ type: "UPDATE_QTY", id, variant, qty, extras }),
+      setComment: (comment) => dispatch({ type: "SET_COMMENT", comment }),
       clearCart: () => dispatch({ type: "CLEAR" }),
     };
-  }, [items, hydrated]);
+  }, [items, comment, hydrated]);
 
   return <CartContext value={api}>{children}</CartContext>;
 }

@@ -138,7 +138,7 @@ export default function CheckoutFlow() {
     const res = await fetch("/api/orders/confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: cart.items, slot, guest, paymentIntentId, testMode }),
+      body: JSON.stringify({ items: cart.items, slot, guest, paymentIntentId, testMode, comment: cart.comment }),
     });
     const data = await res.json();
 

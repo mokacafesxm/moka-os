@@ -88,7 +88,7 @@ function CartLine({ item, onUpdateQty, onRemove }) {
 }
 
 export default function CartView({ onGoHome }) {
-  const { items, subtotal, updateQty, removeItem, clearCart } = useCart();
+  const { items, subtotal, updateQty, removeItem, clearCart, comment, setComment } = useCart();
 
   if (items.length === 0) {
     return <EmptyState icon={ShoppingBag} message="Votre panier est vide" actionLabel="Voir le menu" onAction={onGoHome} />;
@@ -130,6 +130,22 @@ export default function CartView({ onGoHome }) {
         >
           Vider le panier
         </button>
+      </div>
+
+      <div className="mt-4">
+        <label htmlFor="cart-comment" className="text-xs font-bold uppercase tracking-wide mb-2 block" style={{ color: MOKA.brownLight }}>
+          Commentaire pour la cuisine (optionnel)
+        </label>
+        <textarea
+          id="cart-comment"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          maxLength={300}
+          rows={2}
+          placeholder="Ex. Sans sucre, allergie fruits à coque…"
+          className="w-full rounded-2xl border bg-white px-4 py-3 text-sm outline-none resize-none focus:ring-2 focus:ring-offset-2 focus:ring-[#587F25]"
+          style={{ borderColor: MOKA.brownLight, color: MOKA.brown }}
+        />
       </div>
 
       <div className="fixed bottom-24 left-0 right-0 px-4 z-20">
