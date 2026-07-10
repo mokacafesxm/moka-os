@@ -113,7 +113,17 @@ function StripeForm({ total, submitting, setSubmitting, onSuccess, onError }) {
   );
 }
 
-function RewardBanner({ rewardApplied, rewardBlocked }) {
+// firstOrderApplied and rewardApplied are mutually exclusive by construction
+// (see orders/_shared.js's resolveOrderDiscount — the first-order promo
+// always wins when both would apply), so at most one banner ever renders.
+function RewardBanner({ rewardApplied, rewardBlocked, firstOrderApplied }) {
+  if (firstOrderApplied) {
+    return (
+      <div className="rounded-2xl p-4 text-sm font-semibold" style={{ backgroundColor: `${MOKA.green}1a`, color: MOKA.green }}>
+        Promo -10% première commande appliquée (-{formatPrice(firstOrderApplied.discount)})
+      </div>
+    );
+  }
   if (rewardApplied) {
     return (
       <div className="rounded-2xl p-4 text-sm font-semibold" style={{ backgroundColor: `${MOKA.green}1a`, color: MOKA.green }}>
@@ -163,6 +173,7 @@ export default function PaymentStep({
   total,
   rewardApplied,
   rewardBlocked,
+  firstOrderApplied,
   savedCard,
   submittingSavedCard,
   onPaySavedCard,
@@ -175,14 +186,15 @@ export default function PaymentStep({
   const [submitting, setSubmitting] = useState(false);
   const [useAnotherCard, setUseAnotherCard] = useState(false);
 
-  // Reward brought the order to €0 — no payment step, just confirm.
+  // A discount (reward or first-order promo) brought the order to €0 — no
+  // payment step, just confirm.
   if (free) {
     return (
       <div className="px-4 pt-4 pb-4 space-y-4">
         <div className="rounded-2xl p-4 text-sm font-semibold" style={{ backgroundColor: `${MOKA.green}1a`, color: MOKA.green }}>
-          Votre récompense couvre l&apos;intégralité de la commande — c&apos;est offert&nbsp;! 🎉
+          Cette commande est entièrement couverte — c&apos;est offert&nbsp;! 🎉
         </div>
-        <RewardBanner rewardApplied={rewardApplied} rewardBlocked={rewardBlocked} />
+        <RewardBanner rewardApplied={rewardApplied} rewardBlocked={rewardBlocked} firstOrderApplied={firstOrderApplied} />
         {error && (
           <p role="alert" className="text-sm font-semibold" style={{ color: "#8C2F2F" }}>
             {error}
@@ -213,7 +225,7 @@ export default function PaymentStep({
         <div className="rounded-2xl p-4 text-sm font-semibold" style={{ backgroundColor: "#FDF3E0", color: MOKA.brown }}>
           Mode test — aucun compte de paiement n&apos;est encore configuré. Cette commande sera enregistrée sans paiement réel.
         </div>
-        <RewardBanner rewardApplied={rewardApplied} rewardBlocked={rewardBlocked} />
+        <RewardBanner rewardApplied={rewardApplied} rewardBlocked={rewardBlocked} firstOrderApplied={firstOrderApplied} />
         {error && (
           <p role="alert" className="text-sm font-semibold" style={{ color: "#8C2F2F" }}>
             {error}
@@ -257,7 +269,7 @@ export default function PaymentStep({
 
   return (
     <div className="px-4 pt-4 pb-4 space-y-4">
-      <RewardBanner rewardApplied={rewardApplied} rewardBlocked={rewardBlocked} />
+      <RewardBanner rewardApplied={rewardApplied} rewardBlocked={rewardBlocked} firstOrderApplied={firstOrderApplied} />
       {showSavedCard ? (
         <SavedCardOption
           savedCard={savedCard}

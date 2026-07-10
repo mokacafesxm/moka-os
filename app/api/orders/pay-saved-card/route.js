@@ -1,7 +1,6 @@
 import { DB, corsHeaders, getPage, getCheckbox } from "../../_notion";
 import { getStripe, isStripeConfigured } from "../../_stripe";
-import { computeTotal, isValidSlot, isFreeOrder } from "../_shared";
-import { resolveActiveRewardForClient, round2 } from "../../wheel/_shared";
+import { isValidSlot, isFreeOrder, resolveOrderDiscount } from "../_shared";
 import { getPhoneFromRequest } from "../../_session";
 import { findClientByPhone } from "../../_clients";
 import { resolvePrimaryCardForClient } from "../../_cards";
@@ -58,18 +57,18 @@ export async function POST(request) {
       return Response.json({ unavailable }, { status: 409, headers: corsHeaders });
     }
 
-    const subtotal = computeTotal(items);
-    const rewardResult = await resolveActiveRewardForClient(client, items);
-    const rewardApplied = rewardResult?.valid ? rewardResult : null;
-    const total = Math.max(0, round2(subtotal - (rewardApplied?.discount || 0)));
+    // First-order promo always wins over an active wheel reward when both
+    // apply — never both at once. See orders/_shared.js.
+    const { subtotal, total, rewardApplied, rewardBlocked, firstOrderApplied } = await resolveOrderDiscount({
+      client,
+      phone,
+      items,
+    });
 
-    // Free order (reward zeroed it out): nothing to charge — let the client
+    // Discount zeroed the order out: nothing to charge — let the client
     // confirm it directly, same as the no-card free path.
     if (isFreeOrder(total)) {
-      return Response.json(
-        { status: "free", total, subtotal, rewardApplied, rewardBlocked: rewardResult && !rewardResult.valid ? rewardResult : null },
-        { headers: corsHeaders }
-      );
+      return Response.json({ status: "free", total, subtotal, rewardApplied, rewardBlocked, firstOrderApplied }, { headers: corsHeaders });
     }
 
     const stripe = getStripe();
@@ -91,7 +90,8 @@ export async function POST(request) {
         total,
         subtotal,
         rewardApplied,
-        rewardBlocked: rewardResult && !rewardResult.valid ? rewardResult : null,
+        rewardBlocked,
+        firstOrderApplied,
       },
       { headers: corsHeaders }
     );

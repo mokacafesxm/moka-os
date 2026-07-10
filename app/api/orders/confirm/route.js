@@ -1,7 +1,6 @@
 import { DB, corsHeaders, createPage, updatePage, titleProp, textProp, selectProp, numberProp, dateProp, relationProp } from "../../_notion";
 import { getStripe, isStripeConfigured } from "../../_stripe";
-import { isValidSlot, slotLabel, computeTotal, buildArticlesText, orderCodeFromPageId, isFreeOrder } from "../_shared";
-import { resolveActiveRewardForClient, round2 } from "../../wheel/_shared";
+import { isValidSlot, slotLabel, buildArticlesText, orderCodeFromPageId, isFreeOrder, resolveOrderDiscount } from "../_shared";
 import { getPhoneFromRequest } from "../../_session";
 import { findClientByPhone, clearClientActiveReward } from "../../_clients";
 import { notifyInternalNewOrder } from "../_notify";
@@ -27,15 +26,14 @@ export async function POST(request) {
       return Response.json({ error: "Prénom et téléphone requis" }, { status: 400, headers: corsHeaders });
     }
 
-    const subtotal = computeTotal(items);
     // Re-validate independently rather than trusting whatever discount the
     // client remembers from the checkout step — the source of truth is
-    // Notion (reward status) + the live cart, same as the checkout route.
+    // Notion (reward + order history) + the live cart, same as the checkout
+    // route. First-order promo always wins over an active wheel reward when
+    // both apply — never both at once. See orders/_shared.js.
     const phone = getPhoneFromRequest(request);
     const client = phone ? await findClientByPhone(phone) : null;
-    const rewardResult = client ? await resolveActiveRewardForClient(client, items) : null;
-    const rewardApplied = rewardResult?.valid ? rewardResult : null;
-    const total = Math.max(0, round2(subtotal - (rewardApplied?.discount || 0)));
+    const { total, rewardApplied, firstOrderApplied } = await resolveOrderDiscount({ client, phone, items });
 
     // Payment path is decided from the server-recomputed total, never a client
     // flag: a reward-zeroed order is free (no Stripe), otherwise a real intent
@@ -98,7 +96,13 @@ export async function POST(request) {
     }
 
     return Response.json(
-      { orderCode, slotLabel: slotLabel(slot), total, rewardApplied: rewardApplied ? { reward: rewardApplied.reward, discount: rewardApplied.discount } : null },
+      {
+        orderCode,
+        slotLabel: slotLabel(slot),
+        total,
+        rewardApplied: rewardApplied ? { reward: rewardApplied.reward, discount: rewardApplied.discount } : null,
+        firstOrderApplied,
+      },
       { headers: corsHeaders }
     );
   } catch (err) {

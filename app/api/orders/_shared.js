@@ -1,3 +1,6 @@
+import { DB, queryDatabase } from "../_notion";
+import { resolveActiveRewardForClient, round2 } from "../wheel/_shared";
+
 export const PICKUP_SLOTS = [
   { id: "asap", label: "Dès que possible" },
   { id: "30min", label: "Dans 30 min" },
@@ -29,9 +32,62 @@ export function computeTotal(items) {
   return items.reduce((sum, i) => sum + i.price * i.qty, 0);
 }
 
+// -10% automatically applied on a connected client's very first order ever —
+// no code to enter. "First order" = zero prior rows in COMMANDES_CLIENTS for
+// this phone, regardless of status (even a still-"Nouvelle" order counts as
+// already having ordered once).
+const FIRST_ORDER_PERCENT = 0.1;
+
+export async function isFirstOrderClient(phone) {
+  if (!phone) return false;
+  const pages = await queryDatabase(DB.COMMANDES_CLIENTS, { property: "Téléphone", phone_number: { equals: phone } }, null, 1);
+  return pages.length === 0;
+}
+
+// Applies at most ONE discount, never both at once:
+//   1. The first-order promo, if the client qualifies — always wins over an
+//      active wheel reward when both are available (product decision: simpler
+//      than comparing amounts, and the reward is left untouched for next time).
+//   2. Otherwise, the client's active wheel reward, exactly as before.
+// Shared by checkout / pay-saved-card / confirm so the three routes can never
+// drift apart on which discount actually applied.
+export async function resolveOrderDiscount({ client, phone, items }) {
+  const subtotal = computeTotal(items);
+  const firstOrder = Boolean(client && phone && (await isFirstOrderClient(phone)));
+
+  if (firstOrder) {
+    const discount = round2(subtotal * FIRST_ORDER_PERCENT);
+    return {
+      subtotal,
+      discount,
+      total: Math.max(0, round2(subtotal - discount)),
+      rewardApplied: null,
+      rewardBlocked: null,
+      firstOrderApplied: { discount },
+    };
+  }
+
+  const rewardResult = client ? await resolveActiveRewardForClient(client, items) : null;
+  const rewardApplied = rewardResult?.valid ? rewardResult : null;
+  const rewardBlocked = rewardResult && !rewardResult.valid ? rewardResult : null;
+  const discount = rewardApplied?.discount || 0;
+
+  return {
+    subtotal,
+    discount,
+    total: Math.max(0, round2(subtotal - discount)),
+    rewardApplied,
+    rewardBlocked,
+    firstOrderApplied: null,
+  };
+}
+
 export function buildArticlesText(items) {
   return items
-    .map((i) => `${i.qty}x ${i.name}${i.variant ? ` (${i.variant})` : ""} — ${(i.price * i.qty).toFixed(2)}€`)
+    .map((i) => {
+      const extras = i.extras?.length ? ` + ${i.extras.join(", ")}` : "";
+      return `${i.qty}x ${i.name}${i.variant ? ` (${i.variant})` : ""}${extras} — ${(i.price * i.qty).toFixed(2)}€`;
+    })
     .join("\n");
 }
 

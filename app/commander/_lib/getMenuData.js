@@ -10,6 +10,7 @@ import {
   getMultiSelect,
 } from "../../api/_notion";
 import { parseVariants, hasRealOptions, priceFrom } from "./variants";
+import { parseExtras } from "./extras";
 
 // Public menu changes rarely (new products/photos) — cache for 2 minutes so a
 // burst of visitors doesn't hammer the Notion API (3 req/s limit).
@@ -70,6 +71,7 @@ async function fetchProducts() {
       variants,
       hasVariants: hasRealOptions(variants),
       priceFrom: priceFrom(variants, prix),
+      extras: parseExtras(props["Extras"]),
       photo: getFileUrl(props, "Photo"),
       categorie: getSelect(props, "Catégorie"),
       tags: getMultiSelect(props, "Tags"),

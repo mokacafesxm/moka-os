@@ -32,7 +32,10 @@ export default function OrderSummary({ items, total }) {
       {open && (
         <div className="px-4 pb-4 space-y-2 border-t" style={{ borderColor: `${MOKA.brownLight}22` }}>
           {items.map((item) => (
-            <div key={`${item.id}::${item.variant || ""}`} className="flex items-center justify-between gap-3 pt-3 text-sm">
+            <div
+              key={`${item.id}::${item.variant || ""}::${(item.extras || []).join("|")}`}
+              className="flex items-center justify-between gap-3 pt-3 text-sm"
+            >
               <div className="min-w-0">
                 <div className="font-semibold truncate" style={{ color: MOKA.brown }}>
                   {item.qty}× {item.name}
@@ -40,6 +43,11 @@ export default function OrderSummary({ items, total }) {
                 {item.variant && (
                   <div className="text-xs truncate" style={{ color: MOKA.brownLight }}>
                     {item.variant}
+                  </div>
+                )}
+                {item.extras?.length > 0 && (
+                  <div className="text-xs truncate" style={{ color: MOKA.brownLight }}>
+                    {item.extras.join(", ")}
                   </div>
                 )}
               </div>

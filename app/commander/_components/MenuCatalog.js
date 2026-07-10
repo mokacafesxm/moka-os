@@ -81,11 +81,12 @@ export default function MenuCatalog({ data }) {
 
   const cardProps = { onSelectProduct: setSelectedProduct, favorites, onToggleFavorite: toggleFavorite };
 
-  function addToCart({ variantLabel, unitPrice, quantity }) {
+  function addToCart({ variantLabel, unitPrice, quantity, extras }) {
     cart.addItem(
       { id: selectedProduct.id, name: selectedProduct.nom, photo: selectedProduct.photo, price: unitPrice },
       variantLabel,
-      quantity
+      quantity,
+      extras
     );
     setToast(`Ajouté au panier · ${selectedProduct.nom}`);
     clearTimeout(toastTimer.current);

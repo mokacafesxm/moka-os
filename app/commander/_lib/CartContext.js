@@ -7,8 +7,15 @@ const STORAGE_KEY = "moka-commander-cart";
 
 const INITIAL_STATE = { items: [], hydrated: false };
 
-function lineKey(id, variant) {
-  return `${id}::${variant || ""}`;
+// Extras are a plain string list (see ProductPopup) — sorted+joined so two
+// identical selections in a different click order still collapse into one
+// cart line, while any different selection gets its own line.
+function extrasKey(extras) {
+  return [...(extras || [])].sort().join("|");
+}
+
+function lineKey(id, variant, extras) {
+  return `${id}::${variant || ""}::${extrasKey(extras)}`;
 }
 
 // State carries a `hydrated` flag alongside the items: hydration from
@@ -25,35 +32,43 @@ function reducer(state, action) {
       return { ...state, hydrated: true };
 
     case "ADD_ITEM": {
-      const { product, variant, qty } = action;
-      const key = lineKey(product.id, variant);
-      const existing = state.items.find((i) => lineKey(i.id, i.variant) === key);
+      const { product, variant, qty, extras } = action;
+      const key = lineKey(product.id, variant, extras);
+      const existing = state.items.find((i) => lineKey(i.id, i.variant, i.extras) === key);
       if (existing) {
         return {
           ...state,
-          items: state.items.map((i) => (lineKey(i.id, i.variant) === key ? { ...i, qty: i.qty + qty } : i)),
+          items: state.items.map((i) => (lineKey(i.id, i.variant, i.extras) === key ? { ...i, qty: i.qty + qty } : i)),
         };
       }
       return {
         ...state,
         items: [
           ...state.items,
-          { id: product.id, name: product.name, photo: product.photo, price: product.price, qty, variant: variant || null },
+          {
+            id: product.id,
+            name: product.name,
+            photo: product.photo,
+            price: product.price,
+            qty,
+            variant: variant || null,
+            extras: extras && extras.length ? extras : null,
+          },
         ],
       };
     }
 
     case "REMOVE_ITEM": {
-      const key = lineKey(action.id, action.variant);
-      return { ...state, items: state.items.filter((i) => lineKey(i.id, i.variant) !== key) };
+      const key = lineKey(action.id, action.variant, action.extras);
+      return { ...state, items: state.items.filter((i) => lineKey(i.id, i.variant, i.extras) !== key) };
     }
 
     case "UPDATE_QTY": {
-      const key = lineKey(action.id, action.variant);
-      if (action.qty <= 0) return { ...state, items: state.items.filter((i) => lineKey(i.id, i.variant) !== key) };
+      const key = lineKey(action.id, action.variant, action.extras);
+      if (action.qty <= 0) return { ...state, items: state.items.filter((i) => lineKey(i.id, i.variant, i.extras) !== key) };
       return {
         ...state,
-        items: state.items.map((i) => (lineKey(i.id, i.variant) === key ? { ...i, qty: action.qty } : i)),
+        items: state.items.map((i) => (lineKey(i.id, i.variant, i.extras) === key ? { ...i, qty: action.qty } : i)),
       };
     }
 
@@ -98,9 +113,9 @@ export function CartProvider({ children }) {
       count,
       subtotal,
       hydrated,
-      addItem: (product, variant, qty = 1) => dispatch({ type: "ADD_ITEM", product, variant, qty }),
-      removeItem: (id, variant) => dispatch({ type: "REMOVE_ITEM", id, variant }),
-      updateQty: (id, variant, qty) => dispatch({ type: "UPDATE_QTY", id, variant, qty }),
+      addItem: (product, variant, qty = 1, extras) => dispatch({ type: "ADD_ITEM", product, variant, qty, extras }),
+      removeItem: (id, variant, extras) => dispatch({ type: "REMOVE_ITEM", id, variant, extras }),
+      updateQty: (id, variant, qty, extras) => dispatch({ type: "UPDATE_QTY", id, variant, qty, extras }),
       clearCart: () => dispatch({ type: "CLEAR" }),
     };
   }, [items, hydrated]);

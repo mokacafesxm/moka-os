@@ -1,7 +1,6 @@
 import { DB, corsHeaders, getPage, getCheckbox } from "../../_notion";
 import { getStripe, isStripeConfigured } from "../../_stripe";
-import { computeTotal, isValidSlot, isFreeOrder } from "../_shared";
-import { resolveActiveRewardForClient, round2 } from "../../wheel/_shared";
+import { isValidSlot, isFreeOrder, resolveOrderDiscount } from "../_shared";
 import { getPhoneFromRequest } from "../../_session";
 import { findClientByPhone } from "../../_clients";
 import { resolvePrimaryCardForClient } from "../../_cards";
@@ -51,27 +50,31 @@ export async function POST(request) {
       return Response.json({ unavailable }, { status: 409, headers: corsHeaders });
     }
 
-    const subtotal = computeTotal(items);
     const phone = getPhoneFromRequest(request);
     const client = phone ? await findClientByPhone(phone) : null;
-    const rewardResult = client ? await resolveActiveRewardForClient(client, items) : null;
-    const rewardApplied = rewardResult?.valid ? rewardResult : null;
-    const total = Math.max(0, round2(subtotal - (rewardApplied?.discount || 0)));
+    // First-order promo always wins over an active wheel reward when both
+    // apply — never both at once. See orders/_shared.js.
+    const { subtotal, total, rewardApplied, rewardBlocked, firstOrderApplied } = await resolveOrderDiscount({
+      client,
+      phone,
+      items,
+    });
 
-    const rewardBlocked = rewardResult && !rewardResult.valid ? rewardResult : null;
-
-    // Reward brought the order to €0 (or below Stripe's minimum): confirm it as
-    // free, no PaymentIntent, no saved-card prompt — Stripe would reject a
+    // Discount brought the order to €0 (or below Stripe's minimum): confirm it
+    // as free, no PaymentIntent, no saved-card prompt — Stripe would reject a
     // sub-minimum charge. confirm re-derives this from the total independently.
     if (isFreeOrder(total)) {
-      return Response.json({ free: true, total, subtotal, rewardApplied, rewardBlocked }, { headers: corsHeaders });
+      return Response.json({ free: true, total, subtotal, rewardApplied, rewardBlocked, firstOrderApplied }, { headers: corsHeaders });
     }
 
     const primaryCard = client ? await resolvePrimaryCardForClient(client.id) : null;
     const savedCard = primaryCard ? { label: `${primaryCard.brand} •••• ${primaryCard.last4}` } : null;
 
     if (!isStripeConfigured()) {
-      return Response.json({ testMode: true, total, subtotal, rewardApplied, rewardBlocked, savedCard }, { headers: corsHeaders });
+      return Response.json(
+        { testMode: true, total, subtotal, rewardApplied, rewardBlocked, firstOrderApplied, savedCard },
+        { headers: corsHeaders }
+      );
     }
 
     const stripe = getStripe();
@@ -93,6 +96,7 @@ export async function POST(request) {
         subtotal,
         rewardApplied,
         rewardBlocked,
+        firstOrderApplied,
         savedCard,
         clientSecret: intent.client_secret,
       },

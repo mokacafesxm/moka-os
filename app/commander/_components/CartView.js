@@ -34,12 +34,17 @@ function CartLine({ item, onUpdateQty, onRemove }) {
             {item.variant}
           </div>
         )}
+        {item.extras?.length > 0 && (
+          <div className="text-xs truncate" style={{ color: MOKA.brownLight }}>
+            {item.extras.join(", ")}
+          </div>
+        )}
         <div
           className="flex items-center gap-2 mt-2 rounded-full border px-1 py-0.5 w-fit"
           style={{ borderColor: MOKA.brownLight }}
         >
           <button
-            onClick={() => onUpdateQty(item.id, item.variant, item.qty - 1)}
+            onClick={() => onUpdateQty(item.id, item.variant, item.qty - 1, item.extras)}
             className="flex items-center justify-center cursor-pointer font-bold p-2.5 -m-2.5 min-w-[44px]"
             style={{ color: MOKA.brown }}
             aria-label="Retirer un"
@@ -50,7 +55,7 @@ function CartLine({ item, onUpdateQty, onRemove }) {
             {item.qty}
           </span>
           <button
-            onClick={() => onUpdateQty(item.id, item.variant, item.qty + 1)}
+            onClick={() => onUpdateQty(item.id, item.variant, item.qty + 1, item.extras)}
             className="flex items-center justify-center cursor-pointer font-bold p-2.5 -m-2.5 min-w-[44px]"
             style={{ color: MOKA.brown }}
             aria-label="Ajouter un"
@@ -62,7 +67,7 @@ function CartLine({ item, onUpdateQty, onRemove }) {
 
       <div className="flex flex-col items-end justify-between self-stretch shrink-0">
         <button
-          onClick={() => onRemove(item.id, item.variant)}
+          onClick={() => onRemove(item.id, item.variant, item.extras)}
           aria-label="Supprimer"
           className="cursor-pointer p-3.5 -m-3.5"
           style={{ color: MOKA.brownLight }}
@@ -97,7 +102,12 @@ export default function CartView({ onGoHome }) {
 
       <div className="space-y-3">
         {items.map((item) => (
-          <CartLine key={`${item.id}::${item.variant || ""}`} item={item} onUpdateQty={updateQty} onRemove={removeItem} />
+          <CartLine
+            key={`${item.id}::${item.variant || ""}::${(item.extras || []).join("|")}`}
+            item={item}
+            onUpdateQty={updateQty}
+            onRemove={removeItem}
+          />
         ))}
       </div>
 

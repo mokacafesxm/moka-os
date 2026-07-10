@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import { MOKA } from "../_lib/theme";
 import { formatPrice, groupOptionValues, findMatchingVariant } from "../_lib/variants";
 import { useModalA11y } from "../_lib/useModalA11y";
 import VariantSegmented from "./VariantSegmented";
+import ExtrasGroup from "./ExtrasGroup";
 
 const DESCRIPTION_TRUNCATE_LENGTH = 90;
 
 export default function ProductPopup({ product, onClose, onAdd }) {
   const optionGroups = product.hasVariants ? groupOptionValues(product.variants) : [];
+  const extraGroups = product.extras || [];
 
   const [selection, setSelection] = useState(() => {
     const initial = {};
@@ -21,11 +23,58 @@ export default function ProductPopup({ product, onClose, onAdd }) {
   });
   const [quantity, setQuantity] = useState(1);
   const [descExpanded, setDescExpanded] = useState(false);
+  // Optional add-ons, kept separate from `selection` (the mandatory Variantes
+  // dimensions): { [groupName]: string | null } for "single" groups,
+  // { [groupName]: string[] } for "multi" groups.
+  const [extrasSelection, setExtrasSelection] = useState({});
+  const [extrasFreeText, setExtrasFreeText] = useState({}); // { [optionLabel]: string }
 
   const matchedVariant = product.hasVariants ? findMatchingVariant(product.variants, selection) : null;
-  const unitPrice = matchedVariant ? parseFloat(matchedVariant.price) : product.priceFrom;
-  const total = unitPrice * quantity;
+  const baseUnitPrice = matchedVariant ? parseFloat(matchedVariant.price) : product.priceFrom;
   const variantLabel = product.hasVariants ? Object.values(selection).join(", ") : null;
+
+  // Every selected extra option's price, flattened across all groups.
+  // Depends on `product.extras` (stable reference from getMenuData) rather
+  // than the `extraGroups` fallback expression, which would otherwise be a
+  // fresh array literal every render.
+  const selectedExtraOptions = useMemo(() => {
+    const result = [];
+    for (const group of extraGroups) {
+      const picked = extrasSelection[group.name];
+      const labels = group.type === "multi" ? picked || [] : picked ? [picked] : [];
+      for (const label of labels) {
+        const option = group.options.find((o) => o.label === label);
+        if (option) result.push({ group: group.name, option });
+      }
+    }
+    return result;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.extras, extrasSelection]);
+
+  const extrasCost = selectedExtraOptions.reduce((sum, { option }) => sum + (option.price || 0), 0);
+  const unitPrice = baseUnitPrice + extrasCost;
+  const total = unitPrice * quantity;
+
+  // Human-readable lines for the cart/order text — same simple-string
+  // convention as `variant`, so downstream (cart, order confirmation) doesn't
+  // need to understand the extras data shape at all.
+  const extrasLines = selectedExtraOptions.map(({ option }) => {
+    const detail = option.freeText && extrasFreeText[option.label]?.trim() ? `: ${extrasFreeText[option.label].trim()}` : "";
+    const priceSuffix = option.price > 0 ? ` (+${formatPrice(option.price)})` : "";
+    return `${option.label}${detail}${priceSuffix}`;
+  });
+
+  function toggleExtra(groupName, type, label) {
+    setExtrasSelection((prev) => {
+      if (type === "multi") {
+        const current = prev[groupName] || [];
+        const next = current.includes(label) ? current.filter((l) => l !== label) : [...current, label];
+        return { ...prev, [groupName]: next };
+      }
+      // single: clicking the selected chip again clears it (optional group).
+      return { ...prev, [groupName]: prev[groupName] === label ? null : label };
+    });
+  }
 
   const isLongDescription = (product.description?.length || 0) > DESCRIPTION_TRUNCATE_LENGTH;
   const dialogRef = useModalA11y(onClose);
@@ -122,6 +171,17 @@ export default function ProductPopup({ product, onClose, onAdd }) {
                 />
               </div>
             ))}
+
+            {extraGroups.map((group) => (
+              <ExtrasGroup
+                key={group.name}
+                group={group}
+                selected={extrasSelection[group.name] ?? (group.type === "multi" ? [] : null)}
+                freeText={extrasFreeText}
+                onToggle={(label, type) => toggleExtra(group.name, type, label)}
+                onFreeTextChange={(label, value) => setExtrasFreeText((prev) => ({ ...prev, [label]: value }))}
+              />
+            ))}
           </div>
         </div>
 
@@ -152,7 +212,7 @@ export default function ProductPopup({ product, onClose, onAdd }) {
           </div>
 
           <button
-            onClick={() => product.disponible && onAdd({ variantLabel, unitPrice, quantity })}
+            onClick={() => product.disponible && onAdd({ variantLabel, unitPrice, quantity, extras: extrasLines })}
             disabled={!product.disponible}
             className={`flex-1 py-3.5 rounded-full font-bold text-white flex items-center justify-center gap-2 min-h-[44px] ${
               product.disponible ? "cursor-pointer" : "cursor-not-allowed opacity-60"

@@ -30,6 +30,7 @@ export default function CheckoutFlow() {
     total: 0,
     rewardApplied: null,
     rewardBlocked: null,
+    firstOrderApplied: null,
     savedCard: null,
   });
   const [confirmation, setConfirmation] = useState(null);
@@ -46,7 +47,7 @@ export default function CheckoutFlow() {
   }, [cart.hydrated, cart.items.length, step]);
 
   function removeUnavailable(id) {
-    cart.items.filter((i) => i.id === id).forEach((i) => cart.removeItem(i.id, i.variant));
+    cart.items.filter((i) => i.id === id).forEach((i) => cart.removeItem(i.id, i.variant, i.extras));
     setUnavailable((list) => list.filter((i) => i.id !== id));
   }
 
@@ -78,6 +79,7 @@ export default function CheckoutFlow() {
         total: data.total,
         rewardApplied: data.rewardApplied || null,
         rewardBlocked: data.rewardBlocked || null,
+        firstOrderApplied: data.firstOrderApplied || null,
         savedCard: data.savedCard || null,
       });
       setStep("payment");
@@ -199,6 +201,7 @@ export default function CheckoutFlow() {
           total={payment.total}
           rewardApplied={payment.rewardApplied}
           rewardBlocked={payment.rewardBlocked}
+          firstOrderApplied={payment.firstOrderApplied}
           savedCard={payment.savedCard}
           submittingSavedCard={submitting}
           onPaySavedCard={handlePaySavedCard}
