@@ -14,7 +14,7 @@ import { useEffect, useRef } from "react";
 // scrolling and snapping back.
 const TOUCH_EPSILON = 4;
 
-export function useScrollDownCommit(outerRef, zone1Ref, zone2Ref, enabled) {
+export function useScrollDownCommit(outerRef, zone1Ref, enabled) {
   const atZone1Ref = useRef(true);
 
   useEffect(() => {
@@ -30,26 +30,6 @@ export function useScrollDownCommit(outerRef, zone1Ref, zone2Ref, enabled) {
       if (!atZone1Ref.current) return;
       atZone1Ref.current = false;
       outer.scrollTo({ top: zone1.offsetHeight, behavior: "smooth" });
-
-      // The category rail is its own scroll region (position:sticky + its
-      // own max-h-screen overflow-y-auto), independent of both the outer
-      // snap position and Zone 2's own scroll — landing at scrollTop 0 on
-      // both left it starting ~50px down (below the search bar, so its
-      // sticky pin hadn't engaged yet) *and* short by however much its own
-      // content (all 10 categories) overflows its capped box, so the last
-      // entry ("Sides") was cut off on both counts. Scroll Zone 2 by
-      // exactly that top gap (engages the rail's sticky pin, recovering the
-      // lost space) and the rail's own overflow to its end (reveals its
-      // last entry) — so it lands already showing the bottom of the list,
-      // not just closer to it.
-      const zone2 = zone2Ref?.current;
-      const rail = zone2?.querySelector("aside");
-      if (zone2 && rail) {
-        const gap = rail.getBoundingClientRect().top - zone2.getBoundingClientRect().top;
-        if (gap > 0) zone2.scrollTo({ top: gap, behavior: "smooth" });
-        const railMaxScroll = rail.scrollHeight - rail.clientHeight;
-        if (railMaxScroll > 0) rail.scrollTo({ top: railMaxScroll, behavior: "smooth" });
-      }
     }
 
     function handleWheel(e) {
@@ -88,5 +68,5 @@ export function useScrollDownCommit(outerRef, zone1Ref, zone2Ref, enabled) {
       outer.removeEventListener("touchmove", handleTouchMove);
       outer.removeEventListener("scroll", handleScroll);
     };
-  }, [outerRef, zone1Ref, zone2Ref, enabled]);
+  }, [outerRef, zone1Ref, enabled]);
 }

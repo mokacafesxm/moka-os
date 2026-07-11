@@ -8,11 +8,13 @@ import { useEffect } from "react";
 // a plain reversed scroll-snap would release just as eagerly in both
 // directions, so the asymmetry has to be built by hand:
 //
-//   1. `overscroll-behavior-y: contain` on the inner (Zone 2) scroller — set
-//      via className where this hook is used — stops the browser's own
-//      scroll-chaining from ever bleeding a fast fling straight through to
-//      the outer snap container. Reaching the top of Zone 2 only ever stops
-//      there; it never leaks into a jump back to Zone 1 on its own.
+//   1. `overscroll-behavior-y: contain` on the inner scroller (Zone 2's
+//      product grid — its own independent scroll region, separate from the
+//      category rail's) — set via className where this hook is used — stops
+//      the browser's own scroll-chaining from ever bleeding a fast fling
+//      straight through to the outer snap container. Reaching the top of the
+//      grid only ever stops there; it never leaks into a jump back to Zone 1
+//      on its own.
 //   2. This hook adds the deliberate "second gesture" on top: release only
 //      fires for a pull that STARTS while already at the inner top — a long
 //      single swipe that merely scrolls through the list and carries past 0

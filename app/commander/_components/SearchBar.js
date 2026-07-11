@@ -5,7 +5,10 @@ import { MOKA } from "../_lib/theme";
 
 const SearchBar = forwardRef(function SearchBar({ value, onChange }, ref) {
   return (
-    <div className="px-4 pb-3">
+    // Clean breathing room below the status bar/Dynamic Island when this lands
+    // at the top after the Zone 2 scroll-snap — env() alone can be 0 on
+    // devices without a notch, so a fixed 12px floor guarantees the gap.
+    <div className="px-4 pb-3" style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}>
       <div
         className="flex items-center gap-2 rounded-full border bg-white px-4 py-2.5 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-[#587F25]"
         style={{ borderColor: MOKA.brownLight }}

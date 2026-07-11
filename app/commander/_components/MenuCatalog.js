@@ -47,14 +47,16 @@ export default function MenuCatalog({ data, paymentNoticeEnabled = false }) {
   const searchRef = useRef(null);
   const toastTimer = useRef(null);
   // Home tab's two-zone scroll-snap: outerRef is the snap container (Zone 1
-  // header/promo, Zone 2 order screen); zone2Ref is Zone 2's own independent
-  // scroller, so browsing products never touches the outer snap position —
-  // see useScrollBackResistance for why going back up needs a harder pull.
+  // header/promo, Zone 2 order screen). Zone 2 itself is a fixed 100dvh
+  // frame that never scrolls as a whole — only its two children do, each
+  // independently: the category rail (own overflow) and the product grid
+  // (gridScrollRef). See useScrollBackResistance for why going back up
+  // needs a harder pull once the grid is scrolled to its own top.
   const outerRef = useRef(null);
   const zone1Ref = useRef(null);
-  const zone2Ref = useRef(null);
-  useScrollDownCommit(outerRef, zone1Ref, zone2Ref, activeTab === "home");
-  useScrollBackResistance(zone2Ref, outerRef, activeTab === "home");
+  const gridScrollRef = useRef(null);
+  useScrollDownCommit(outerRef, zone1Ref, activeTab === "home");
+  useScrollBackResistance(gridScrollRef, outerRef, activeTab === "home");
 
   function goToAccount() {
     setActiveTab("account");
@@ -115,30 +117,34 @@ export default function MenuCatalog({ data, paymentNoticeEnabled = false }) {
         // downward scroll intent immediately resolves to the only other snap
         // point — Zone 2's start — via mandatory snap, giving the "one swipe
         // jumps straight past the header" behavior with no free scroll
-        // between them. Zone 2 owns its own internal scroller (independent
-        // of the outer snap position) so browsing products afterwards is
-        // completely free; see useScrollBackResistance for the up direction.
+        // between them. Zone 2 itself is a fixed 100dvh frame (never scrolls
+        // as a whole, so its landing position — search bar clean below the
+        // status bar — never shifts); only its two children scroll, each on
+        // their own: the category rail and the product grid. See
+        // useScrollBackResistance for the up direction.
         <div ref={outerRef} className="snap-y snap-mandatory overflow-y-auto" style={{ height: "100dvh", WebkitOverflowScrolling: "touch" }}>
           <div ref={zone1Ref} className="snap-start">
             <Header onGoToAccount={goToAccount} />
             <PromoCarousel promos={promos} />
           </div>
 
-          <div
-            ref={zone2Ref}
-            className="snap-start overflow-y-auto overscroll-y-contain pb-28"
-            style={{ height: "100dvh", WebkitOverflowScrolling: "touch" }}
-          >
+          <div className="snap-start flex flex-col" style={{ height: "100dvh" }}>
             <SearchBar ref={searchRef} value={query} onChange={setQuery} />
-            <div className="flex items-start">
+            <div className="flex items-stretch flex-1 min-h-0">
               <CategoryRail categories={categories} activeCategory={activeCategory} onSelect={setActiveCategory} />
-              <ProductGrid
-                products={displayedProducts}
-                emptyMessage={
-                  query ? "Aucun produit ne correspond à ta recherche." : "Aucun produit dans cette catégorie pour l'instant."
-                }
-                {...cardProps}
-              />
+              <div
+                ref={gridScrollRef}
+                className="flex-1 min-w-0 overflow-y-auto overscroll-y-contain pb-28"
+                style={{ WebkitOverflowScrolling: "touch" }}
+              >
+                <ProductGrid
+                  products={displayedProducts}
+                  emptyMessage={
+                    query ? "Aucun produit ne correspond à ta recherche." : "Aucun produit dans cette catégorie pour l'instant."
+                  }
+                  {...cardProps}
+                />
+              </div>
             </div>
           </div>
         </div>

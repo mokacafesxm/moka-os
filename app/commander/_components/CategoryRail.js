@@ -3,19 +3,19 @@
 import { MOKA } from "../_lib/theme";
 import CategoryIcon from "./CategoryIcon";
 
-// Kiosk-style category rail: sticky left column, icon-only-ish on mobile
-// (~80px, label still fits below the icon), icon+label row on desktop
-// (~224px). Only the sibling product grid scrolls — this rail sticks via
-// position:sticky and scrolls internally if it's ever taller than the
-// viewport (max-h-screen + overflow-y-auto). The thin scrollbar (rather
-// than a hidden one) is what signals there's more to scroll to.
+// Kiosk-style category rail: icon-only-ish on mobile (~80px, label still fits
+// below the icon), icon+label row on desktop (~224px). Fills the full height
+// of its fixed-height parent (Zone 2's flex row) and scrolls its own content
+// independently (overflow-y-auto) — sibling product grid has its own separate
+// scroller, so scrolling one never moves the other. The thin scrollbar
+// (rather than a hidden one) is what signals there's more to scroll to.
 export default function CategoryRail({ categories, activeCategory, onSelect }) {
   if (!categories.length) return null;
 
   return (
     <aside
-      className="sticky top-0 self-start shrink-0 max-h-screen overflow-y-auto category-rail-scroll
-                 w-20 md:w-56 border-r"
+      className="h-full overflow-y-auto overscroll-y-contain category-rail-scroll
+                 shrink-0 w-20 md:w-56 border-r"
       style={{ borderColor: `${MOKA.brownLight}33`, backgroundColor: `${MOKA.cream}f5` }}
     >
       {categories.map((cat) => {
