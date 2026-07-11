@@ -13,5 +13,11 @@ export const revalidate = 120;
 
 export default async function CommanderPage() {
   const data = await getMenuData();
-  return <MenuCatalog data={data} />;
+  // Temporary payment-unavailable notice (Stripe Live activation in progress)
+  // — toggled purely via this env var so it can be turned off from Vercel's
+  // dashboard alone once Stripe confirms, no code change needed. Requires a
+  // redeploy to take effect (this page is ISR-cached), not instant — but no
+  // recoding either way.
+  const paymentNoticeEnabled = process.env.PAYMENT_UNAVAILABLE_NOTICE === "true";
+  return <MenuCatalog data={data} paymentNoticeEnabled={paymentNoticeEnabled} />;
 }

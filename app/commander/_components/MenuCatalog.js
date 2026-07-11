@@ -23,6 +23,7 @@ import AccountView from "./AccountView";
 import EmptyState from "./EmptyState";
 import WheelFab from "./WheelFab";
 import WheelModal from "./WheelModal";
+import PaymentNoticeModal from "./PaymentNoticeModal";
 import { Heart } from "lucide-react";
 
 function matches(product, query) {
@@ -31,7 +32,7 @@ function matches(product, query) {
   return product.nom.toLowerCase().includes(q) || product.description?.toLowerCase().includes(q);
 }
 
-export default function MenuCatalog({ data }) {
+export default function MenuCatalog({ data, paymentNoticeEnabled = false }) {
   const { categories, promos, products } = data;
   const cart = useCart();
   const { customer, setPendingWheelReward } = useCustomer();
@@ -52,7 +53,7 @@ export default function MenuCatalog({ data }) {
   const outerRef = useRef(null);
   const zone1Ref = useRef(null);
   const zone2Ref = useRef(null);
-  useScrollDownCommit(outerRef, zone1Ref, activeTab === "home");
+  useScrollDownCommit(outerRef, zone1Ref, zone2Ref, activeTab === "home");
   useScrollBackResistance(zone2Ref, outerRef, activeTab === "home");
 
   function goToAccount() {
@@ -164,6 +165,7 @@ export default function MenuCatalog({ data }) {
 
       <LocationSheet />
       <Toast message={toast} />
+      <PaymentNoticeModal enabled={paymentNoticeEnabled} />
 
       <WheelFab canSpin={wheelEligibility.canSpin} onClick={() => setWheelOpen(true)} />
       {wheelOpen && (
