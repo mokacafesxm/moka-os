@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import ClientOrdersKDS from "./_components/ClientOrdersKDS";
-import NewOrderAlert from "./_components/NewOrderAlert";
+import ClientOrdersKDS from "../_components/ClientOrdersKDS";
+import NewOrderAlert from "../_components/NewOrderAlert";
+import { resolveOperationId, clearOperationId } from "../../lib/stock/operation-id";
 
 const PRODUCTS_URL = "/api/products";
 
@@ -400,6 +401,7 @@ export default function MokaOrderPad() {
   const [stockReceiveWeight, setStockReceiveWeight] = useState("");
   const [stockReceiveUnit, setStockReceiveUnit] = useState("");
   const [stockReceiveMode, setStockReceiveMode] = useState("add");
+  const [stockReceiveOperationId, setStockReceiveOperationId] = useState(null);
   const [savingStockReceive, setSavingStockReceive] = useState(false);
   const [invoiceModal, setInvoiceModal] = useState(false);
   const [invoiceImage, setInvoiceImage] = useState(null);
@@ -432,6 +434,24 @@ export default function MokaOrderPad() {
   const [adminSection, setAdminSection] = useState("dashboard");
   const [settingsPanel, setSettingsPanel] = useState("");
   const [settingsData, setSettingsData] = useState([]);
+  // Recipe Catalogue foundation (lib/recipes) — self-contained panel, no
+  // shared state with settingsPanel/settingsData above (those drive the
+  // generic single-level Suppliers/Staff/référentiels CRUD; recipes need a
+  // two-level product -> ingredient-lines view, kept fully separate).
+  const [showRecipesPanel, setShowRecipesPanel] = useState(false);
+  const [recipesSoldProducts, setRecipesSoldProducts] = useState([]);
+  const [recipesLoadingList, setRecipesLoadingList] = useState(false);
+  const [recipesSelectedProductId, setRecipesSelectedProductId] = useState(null);
+  const [recipesLines, setRecipesLines] = useState([]);
+  const [recipesLoadingLines, setRecipesLoadingLines] = useState(false);
+  const [recipesNewProduct, setRecipesNewProduct] = useState({ name: "", productKey: "", category: "" });
+  const [recipesSavingProduct, setRecipesSavingProduct] = useState(false);
+  const [recipesNewLine, setRecipesNewLine] = useState({ ingredientId: "", quantity: "", unit: "" });
+  const [recipesSavingLine, setRecipesSavingLine] = useState(false);
+  const [recipesLineErrors, setRecipesLineErrors] = useState([]);
+  const [recipesConsumptionQty, setRecipesConsumptionQty] = useState("");
+  const [recipesConsumptionResult, setRecipesConsumptionResult] = useState(null);
+  const [recipesConsumptionLoading, setRecipesConsumptionLoading] = useState(false);
   const [referentiels, setReferentiels] = useState(() => {
     if (typeof window === "undefined") return { categories: [], sousCategories: [], unites: [], zones: [] };
     try {
@@ -1607,6 +1627,147 @@ export default function MokaOrderPad() {
     }
   };
 
+  // ── Recipe Catalogue foundation (lib/recipes) — minimal admin panel ──────
+  // Read-only from Stock's perspective: nothing here ever calls a stock
+  // endpoint. See docs/ARCHITECTURE.md "Recipe Catalogue foundation".
+  const openRecipesPanel = () => {
+    setShowRecipesPanel(true);
+    setRecipesSelectedProductId(null);
+    setRecipesLines([]);
+    setRecipesConsumptionResult(null);
+    loadRecipesSoldProducts();
+  };
+
+  const loadRecipesSoldProducts = async () => {
+    setRecipesLoadingList(true);
+    try {
+      const res = await fetch("/api/recipes/sold-products");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      setRecipesSoldProducts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      showToast(
+        err.message?.includes("CONFIG_MISSING")
+          ? "Recettes non configurées — bases Notion pas encore créées"
+          : "Erreur chargement produits : " + err.message,
+        "error"
+      );
+    } finally {
+      setRecipesLoadingList(false);
+    }
+  };
+
+  const openRecipeProduct = async (productId) => {
+    setRecipesSelectedProductId(productId);
+    setRecipesConsumptionResult(null);
+    setRecipesLineErrors([]);
+    setRecipesLoadingLines(true);
+    try {
+      const res = await fetch(`/api/recipes/lines?soldProductId=${productId}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      setRecipesLines(Array.isArray(data) ? data : []);
+    } catch (err) {
+      showToast("Erreur chargement recette : " + err.message, "error");
+    } finally {
+      setRecipesLoadingLines(false);
+    }
+  };
+
+  const saveNewSoldProduct = async () => {
+    if (!recipesNewProduct.name.trim() || !recipesNewProduct.productKey.trim()) {
+      showToast("Nom et clé produit requis", "error");
+      return;
+    }
+    setRecipesSavingProduct(true);
+    try {
+      const res = await fetch("/api/recipes/sold-products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(recipesNewProduct),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
+      setRecipesNewProduct({ name: "", productKey: "", category: "" });
+      showToast("Produit créé");
+      loadRecipesSoldProducts();
+    } catch (err) {
+      showToast("Erreur création produit : " + err.message, "error");
+    } finally {
+      setRecipesSavingProduct(false);
+    }
+  };
+
+  const saveNewRecipeLine = async () => {
+    if (!recipesSelectedProductId || !recipesNewLine.ingredientId || !recipesNewLine.quantity || !recipesNewLine.unit) {
+      showToast("Ingrédient, quantité et unité requis", "error");
+      return;
+    }
+    setRecipesSavingLine(true);
+    setRecipesLineErrors([]);
+    try {
+      const res = await fetch("/api/recipes/lines", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          soldProductId: recipesSelectedProductId,
+          ingredientId: recipesNewLine.ingredientId,
+          quantity: Number(recipesNewLine.quantity),
+          unit: recipesNewLine.unit,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setRecipesLineErrors(data.errors || [data.error].filter(Boolean));
+        return;
+      }
+      setRecipesNewLine({ ingredientId: "", quantity: "", unit: "" });
+      showToast("Ligne de recette ajoutée");
+      openRecipeProduct(recipesSelectedProductId);
+    } catch (err) {
+      showToast("Erreur ajout ligne : " + err.message, "error");
+    } finally {
+      setRecipesSavingLine(false);
+    }
+  };
+
+  const archiveRecipeLineUI = async (lineId) => {
+    try {
+      const res = await fetch("/api/recipes/lines", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: lineId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
+      showToast("Ligne archivée");
+      openRecipeProduct(recipesSelectedProductId);
+    } catch (err) {
+      showToast("Erreur archivage : " + err.message, "error");
+    }
+  };
+
+  const previewRecipeConsumption = async () => {
+    if (!recipesSelectedProductId || !recipesConsumptionQty) return;
+    setRecipesConsumptionLoading(true);
+    try {
+      const res = await fetch("/api/recipes/consumption-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [{ soldProductId: recipesSelectedProductId, quantitySold: Number(recipesConsumptionQty), sourceRef: "preview" }],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      setRecipesConsumptionResult(data.perItem?.[0] || null);
+    } catch (err) {
+      showToast("Erreur prévisualisation : " + err.message, "error");
+    } finally {
+      setRecipesConsumptionLoading(false);
+    }
+  };
+
   const orderValue = (order, keys, fallback = "—") => {
     for (const key of keys) {
       const value = order?.[key];
@@ -1898,66 +2059,76 @@ export default function MokaOrderPad() {
       norm(s.ingredient) === norm(product.name)
     );
 
-    try {
-      if (stockItem?.id) {
-        await fetch(STOCK_UPDATE_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: stockItem.id,
-            poidsTotal: Number(receiveQty) || product.qty || 1,
-            mode: "add",
-            Unite: receiveUnit || product.unit || stockItem.uniteStock || "",
-          }),
-        });
-      } else {
-        await fetch(STOCK_UPDATE_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: product.name,
-            poidsTotal: Number(receiveQty) || product.qty || 1,
-            mode: "upsert",
-            Unite: receiveUnit || product.unit || "",
-            source: "Réception commande",
-          }),
-        });
-      }
-    } catch (e) {
-      console.error("[confirmReceiveStep] Erreur stock:", e);
-    }
-
     const newConfirmed = [...confirmed, {
       ...product,
+      stockId: stockItem?.id || null,
       receivedQty: Number(receiveQty) || product.qty || 1,
-      receivedUnit: receiveUnit || product.unit || "",
+      receivedUnit: receiveUnit || product.unit || stockItem?.uniteStock || "",
     }];
 
-    if (currentStep < totalSteps - 1) {
+    const isFinal = currentStep >= totalSteps - 1;
+
+    // One consolidated call per step — replaces the previous unrelated
+    // "POST stock update" + "PATCH order status" pair. Sends every line
+    // confirmed so far (cumulative); the server derives a deterministic
+    // idempotency key per line, so resending an already-applied line on a
+    // later step (or a retry after a crash mid-flow) never double-credits
+    // stock. The order is only marked "Reçu" on the isFinal call, and only
+    // if every line in it succeeded. See docs/ARCHITECTURE.md "Stock safety patch".
+    let saga = null;
+    try {
+      const response = await fetch("/api/supplier-orders/receive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: order.id,
+          isFinal,
+          lines: newConfirmed.map((line) => ({
+            stockId: line.stockId,
+            name: line.name,
+            quantity: line.receivedQty,
+            unite: line.receivedUnit,
+          })),
+        }),
+      });
+      saga = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(saga?.error || `Erreur réception ${response.status}`);
+    } catch (e) {
+      console.error("[confirmReceiveStep] Erreur réception:", e);
+      showToast("Erreur réception stock — réessaie, rien n'a été perdu", "error");
+      return;
+    }
+
+    if (!isFinal) {
       const nextProduct = products[currentStep + 1];
       setReceiveModal(prev => ({ ...prev, currentStep: currentStep + 1, confirmed: newConfirmed }));
       setReceiveQty(String(nextProduct.qty || ""));
       setReceiveUnit(nextProduct.unit || "");
-    } else {
-      setReceiveModal(null);
-      setReceiveQty("");
-      setReceiveUnit("");
-      try {
-        await fetch("/api/supplier-orders", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: order.id, statut: "Reçu" }),
-        });
-      } catch (e) {
-        console.error("[confirmReceiveStep] PATCH Reçu:", e);
-      }
-      setSupplierOrders(prev => prev.map(o =>
-        o.id === order.id ? { ...o, statut: "Reçu", status: "Reçu" } : o
-      ));
-      setOrdStatusFilter("Reçu");
-      showToast(`Commande ${getOrderSupplier(order) || order.fournisseur} reçue — ${newConfirmed.length} produit${newConfirmed.length > 1 ? "s" : ""} mis en stock ✅`);
-      refreshAll();
+      return;
     }
+
+    setReceiveModal(null);
+    setReceiveQty("");
+    setReceiveUnit("");
+
+    if (!saga?.fullyReceived) {
+      const failedLines = (saga?.lines || []).filter((l) => l.status === "rejected");
+      showToast(
+        failedLines.length
+          ? `Réception partielle — ${failedLines.length} ligne(s) en échec, réessaie`
+          : "Réception enregistrée, en attente de confirmation",
+        "error"
+      );
+      refreshAll();
+      return;
+    }
+
+    setSupplierOrders(prev => prev.map(o =>
+      o.id === order.id ? { ...o, statut: "Reçu", status: "Reçu" } : o
+    ));
+    setOrdStatusFilter("Reçu");
+    showToast(`Commande ${getOrderSupplier(order) || order.fournisseur} reçue — ${newConfirmed.length} produit${newConfirmed.length > 1 ? "s" : ""} mis en stock ✅`);
+    refreshAll();
   };
 
   const handleScanZFile = (file) => {
@@ -2231,6 +2402,18 @@ export default function MokaOrderPad() {
     }
   };
 
+  // Ingredient Catalogue — single shared loading trigger for the whole admin
+  // session. Fires once per isAdmin activation (not per tab visit), so
+  // every consumer (Produits, Recettes, and any future module — Preps,
+  // Stock, Purchasing, Stock Movements) can just read `productsDb` without
+  // independently calling loadProductsDatabase() itself. Mirrors the same
+  // "fire once on isAdmin" pattern already used by the admin/sync-stock
+  // effect above. Reuses the existing state/function/cache key unchanged.
+  useEffect(() => {
+    if (!isAdmin) return;
+    loadProductsDatabase(true);
+  }, [isAdmin]);
+
   useEffect(() => {
     if (!isAdmin || adminSection !== "products") return;
 
@@ -2240,8 +2423,6 @@ export default function MokaOrderPad() {
         if (cached.length) setProductsDb(cached);
       } catch {}
     }
-
-    loadProductsDatabase(true);
 
     if (!settingsCache.suppliers?.length) {
       fetchSettingsResource("suppliers")
@@ -3102,6 +3283,14 @@ export default function MokaOrderPad() {
     setStockReceiveWeight(suggestedQty !== null ? String(suggestedQty) : "");
     setStockReceiveUnit(item?.uniteStock || item?.unit || item?.unite || "");
     setStockReceiveMode(mode);
+    // Persisted per stock-item (sessionStorage), not just per-render: reused
+    // across retries AND across closing/reopening the modal, so an ambiguous
+    // outcome (request succeeded server-side but the response never arrived)
+    // can't silently double the stock increment on a later reopen. Only
+    // cleared once a save for this item actually succeeds (see saveStockReceive).
+    setStockReceiveOperationId(
+      resolveOperationId(item?.id, typeof window !== "undefined" ? window.sessionStorage : null)
+    );
     setTimeout(() => {
       document.getElementById("stockReceiveInput")?.focus();
     }, 100);
@@ -3118,21 +3307,31 @@ export default function MokaOrderPad() {
     setSavingStockReceive(true);
 
     try {
+      const isAdditive = stockReceiveMode !== "replace";
+      const body = {
+        id: stockReceiveItem.id,
+        poidsTotal: Number(stockReceiveWeight),
+        mode: stockReceiveMode,
+        Unite: stockReceiveUnit || stockReceiveItem.uniteStock || stockReceiveItem.unit || "kg",
+      };
+      if (isAdditive) {
+        body.idempotencyKey = `manual-receipt:${stockReceiveOperationId}:${stockReceiveItem.id}`;
+      }
+
       const response = await fetch(STOCK_UPDATE_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: stockReceiveItem.id,
-          poidsTotal: Number(stockReceiveWeight),
-          mode: stockReceiveMode,
-          Unite: stockReceiveUnit || stockReceiveItem.uniteStock || stockReceiveItem.unit || "kg",
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) throw new Error(`Erreur réception stock ${response.status}`);
 
+      if (isAdditive) {
+        clearOperationId(stockReceiveItem.id, typeof window !== "undefined" ? window.sessionStorage : null);
+      }
       setStockReceiveItem(null);
       setStockReceiveWeight("");
+      setStockReceiveOperationId(null);
       showToast(stockReceiveMode === "replace" ? "Stock corrigé" : "Stock reçu ajouté");
 
       fetch(STOCK_URL)
@@ -3323,14 +3522,34 @@ export default function MokaOrderPad() {
     if (!toSave.length) return;
     setInvoiceSaving(true);
     try {
-      await Promise.all(toSave.map((item) =>
-        fetch(STOCK_UPDATE_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: item.matched.id, poidsTotal: item.quantite, Unite: item.unite, mode: "add" })
-        })
-      ));
-      showToast(`${toSave.length} produit(s) ajouté(s) au stock`);
+      // One call, keyed by the server-recomputed invoice hash — a duplicate
+      // confirmation of the same invoice photo cannot add stock again. See
+      // docs/ARCHITECTURE.md "Stock safety patch" and lib/stock/invoice-receipt.js.
+      // Invoice scanning is currently a receipt origin independent from
+      // supplier-order receiving (no automatic invoice-to-order matching yet).
+      const response = await fetch("/api/analyze-invoice/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          base64: invoiceImage,
+          items: toSave.map((item) => ({
+            stockId: item.matched.id,
+            name: item.matched.ingredient || item.matched.name || item.name,
+            quantity: item.quantite,
+            unite: item.unite,
+          })),
+        }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || `Erreur ${response.status}`);
+
+      const rejected = (result?.lines || []).filter((l) => l.status === "rejected");
+      showToast(
+        rejected.length
+          ? `${toSave.length - rejected.length}/${toSave.length} produit(s) ajouté(s) — ${rejected.length} en échec`
+          : `${toSave.length} produit(s) ajouté(s) au stock`,
+        rejected.length ? "error" : undefined
+      );
       setInvoiceModal(false);
       setInvoiceResults([]);
       setInvoiceImage(null);
@@ -5759,6 +5978,17 @@ export default function MokaOrderPad() {
                   <div className="text-base font-black text-[#2c1a10]">Sécurité</div>
                   <p className="text-[11px] text-[#9a7060] mt-1">PIN admin & accès</p>
                 </button>
+                {/* Recettes tile — Recipe Catalogue foundation (self-contained panel, not the generic settingsPanel CRUD) */}
+                <button
+                  onClick={openRecipesPanel}
+                  className="bg-white rounded-2xl p-5 border border-[#e5d5c5] shadow-sm text-left hover:shadow-md hover:border-[#d0c0b0] transition-all cursor-pointer active:scale-[0.98] group"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-[#f0e8dc] flex items-center justify-center text-[#6b4a3d] mb-3 group-hover:bg-[#2c1a10] group-hover:text-[#f5ede0] transition-all">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                  </div>
+                  <div className="text-base font-black text-[#2c1a10]">Recettes</div>
+                  <p className="text-[11px] text-[#9a7060] mt-1">Produits vendus & compositions</p>
+                </button>
               </div>
               </div>
             )}
@@ -6228,6 +6458,147 @@ export default function MokaOrderPad() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── RECIPE CATALOGUE PANEL (lib/recipes) ─────── */}
+      {showRecipesPanel && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="backdrop-blur-2xl bg-white/90 rounded-2xl shadow-2xl border border-white/50 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-[#e5d5c5] flex justify-between items-center shrink-0">
+              <div>
+                <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Recettes</div>
+                <h2 className="text-base font-black text-[#2c1a10] mt-0.5">
+                  {recipesSelectedProductId ? "🧾 Composition" : "🧾 Produits vendus"}
+                </h2>
+              </div>
+              <div className="flex items-center gap-2">
+                {recipesSelectedProductId && (
+                  <button onClick={() => setRecipesSelectedProductId(null)} className="h-8 px-3 rounded-xl bg-[#f0e8dc] text-xs font-bold text-[#6b4a3d] cursor-pointer">← Produits</button>
+                )}
+                <button onClick={() => setShowRecipesPanel(false)} className="w-8 h-8 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer font-black">×</button>
+              </div>
+            </div>
+
+            <div className="p-4 overflow-y-auto space-y-4">
+              {!recipesSelectedProductId ? (
+                <>
+                  <div className="rounded-2xl border border-[#e5d5c5] p-4 space-y-2">
+                    <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Nouveau produit vendu</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <input value={recipesNewProduct.name} onChange={(e) => setRecipesNewProduct((p) => ({ ...p, name: e.target.value }))}
+                        placeholder="Nom (ex: Latte)" className="h-9 px-3 rounded-xl border border-[#e5d5c5] text-sm" />
+                      <input value={recipesNewProduct.productKey} onChange={(e) => setRecipesNewProduct((p) => ({ ...p, productKey: e.target.value }))}
+                        placeholder="product_key (ex: moka-latte)" className="h-9 px-3 rounded-xl border border-[#e5d5c5] text-sm" />
+                      <input value={recipesNewProduct.category} onChange={(e) => setRecipesNewProduct((p) => ({ ...p, category: e.target.value }))}
+                        placeholder="Catégorie" className="h-9 px-3 rounded-xl border border-[#e5d5c5] text-sm" />
+                    </div>
+                    <button onClick={saveNewSoldProduct} disabled={recipesSavingProduct}
+                      className="h-9 px-4 rounded-xl bg-[#2c1a10] text-white text-xs font-bold cursor-pointer disabled:opacity-40">
+                      {recipesSavingProduct ? "Création…" : "+ Ajouter"}
+                    </button>
+                  </div>
+
+                  {recipesLoadingList ? (
+                    <div className="text-sm text-[#9a7060] text-center py-6">Chargement…</div>
+                  ) : recipesSoldProducts.length === 0 ? (
+                    <div className="text-sm text-[#9a7060] text-center py-6">Aucun produit vendu créé pour l'instant.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {recipesSoldProducts.map((product) => (
+                        <button key={product.id} onClick={() => openRecipeProduct(product.id)}
+                          className="w-full flex items-center justify-between p-3 rounded-2xl bg-white border border-[#e5d5c5] hover:border-[#d0c0b0] transition-colors text-left cursor-pointer">
+                          <div>
+                            <div className="text-sm font-bold text-[#2c1a10]">{product.name}</div>
+                            <div className="text-[11px] text-[#9a7060]">{product.productKey}{product.category ? ` · ${product.category}` : ""}</div>
+                          </div>
+                          <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${product.active ? "bg-[#f0f7e5] text-[#5a7828]" : "bg-red-50 text-red-500"}`}>
+                            {product.active ? "Actif" : "Archivé"}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {recipesLineErrors.length > 0 && (
+                    <div className="rounded-xl bg-red-50 border border-red-100 p-3 text-xs text-red-600 font-bold">
+                      {recipesLineErrors.join(", ")}
+                    </div>
+                  )}
+
+                  <div className="rounded-2xl border border-[#e5d5c5] p-4 space-y-2">
+                    <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Ajouter une ligne de recette</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <select value={recipesNewLine.ingredientId} onChange={(e) => setRecipesNewLine((l) => ({ ...l, ingredientId: e.target.value }))}
+                        className="h-9 px-3 rounded-xl border border-[#e5d5c5] text-sm">
+                        <option value="">Ingrédient…</option>
+                        {productsDb.map((p) => (
+                          <option key={p.id} value={p.id}>{p.ingredient || p.name}</option>
+                        ))}
+                      </select>
+                      <input type="number" value={recipesNewLine.quantity} onChange={(e) => setRecipesNewLine((l) => ({ ...l, quantity: e.target.value }))}
+                        placeholder="Quantité" className="h-9 px-3 rounded-xl border border-[#e5d5c5] text-sm" />
+                      <input value={recipesNewLine.unit} onChange={(e) => setRecipesNewLine((l) => ({ ...l, unit: e.target.value }))}
+                        placeholder="Unité (g, kg, ml, l, pièce)" className="h-9 px-3 rounded-xl border border-[#e5d5c5] text-sm" />
+                    </div>
+                    <button onClick={saveNewRecipeLine} disabled={recipesSavingLine}
+                      className="h-9 px-4 rounded-xl bg-[#2c1a10] text-white text-xs font-bold cursor-pointer disabled:opacity-40">
+                      {recipesSavingLine ? "Ajout…" : "+ Ajouter la ligne"}
+                    </button>
+                  </div>
+
+                  {recipesLoadingLines ? (
+                    <div className="text-sm text-[#9a7060] text-center py-6">Chargement…</div>
+                  ) : recipesLines.length === 0 ? (
+                    <div className="text-sm text-[#9a7060] text-center py-6">Aucune ligne — recette non mappée.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {recipesLines.map((line) => {
+                        const ingredient = productsDb.find((p) => p.id === line.ingredientId);
+                        return (
+                          <div key={line.id} className="flex items-center justify-between p-3 rounded-2xl bg-white border border-[#e5d5c5]">
+                            <div>
+                              <div className="text-sm font-bold text-[#2c1a10]">{ingredient?.ingredient || ingredient?.name || line.ingredientId}</div>
+                              <div className="text-[11px] text-[#9a7060]">{line.quantity} {line.unit} {line.active ? "" : "· archivée"}</div>
+                            </div>
+                            <button onClick={() => archiveRecipeLineUI(line.id)} className="h-8 px-3 rounded-xl bg-red-50 border border-red-100 text-xs font-bold text-red-500 hover:bg-red-100 transition-colors cursor-pointer">🗑</button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="rounded-2xl border border-[#e5d5c5] p-4 space-y-2">
+                    <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Prévisualiser la consommation théorique</div>
+                    <div className="flex gap-2">
+                      <input type="number" value={recipesConsumptionQty} onChange={(e) => setRecipesConsumptionQty(e.target.value)}
+                        placeholder="Quantité vendue" className="h-9 px-3 rounded-xl border border-[#e5d5c5] text-sm flex-1" />
+                      <button onClick={previewRecipeConsumption} disabled={recipesConsumptionLoading}
+                        className="h-9 px-4 rounded-xl bg-[#5a7828] text-white text-xs font-bold cursor-pointer disabled:opacity-40">
+                        {recipesConsumptionLoading ? "Calcul…" : "Prévisualiser"}
+                      </button>
+                    </div>
+                    {recipesConsumptionResult && (
+                      <div className="space-y-1 pt-1">
+                        {recipesConsumptionResult.missingMapping && <div className="text-xs text-red-500 font-bold">Produit non mappé.</div>}
+                        {recipesConsumptionResult.incompleteRecipe && <div className="text-xs text-orange-500 font-bold">Recette incomplète — certaines lignes ne sont pas résolues.</div>}
+                        {recipesConsumptionResult.lines?.map((l, i) => (
+                          <div key={i} className="text-xs text-[#2c1a10] flex justify-between">
+                            <span>{l.ingredientName || l.ingredientId}</span>
+                            <span className={l.valid ? "font-bold" : "text-red-500 font-bold"}>
+                              {l.valid ? `${l.consumedQuantity?.toFixed(3)} ${l.unit}${l.unresolvedUnit ? " (unité non résolue)" : ""}` : (l.reason || "invalide")}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
