@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +40,35 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# catch-all — contents of any "fixtures/*/real/" directory (any test suite,
+# any depth) are real data by convention here and must never be committed,
+# even before anyone remembers to add a specific rule for it. Matches
+# contents (trailing /*), not the directory itself — excluding the directory
+# would make a later "!.../.gitkeep" exception unable to re-include anything
+# (git cannot re-include a file whose parent directory is excluded).
+**/fixtures/*/real/*
+
+# importer — real financial/POS files must never be committed
+/imports/incoming/*
+!/imports/incoming/.gitkeep
+/imports/processed/*
+!/imports/processed/.gitkeep
+/imports/rejected/*
+!/imports/rejected/.gitkeep
+/imports/review/*
+!/imports/review/.gitkeep
+/imports/duplicates/*
+!/imports/duplicates/.gitkeep
+/imports/logs/*
+!/imports/logs/.gitkeep
+
+# real bank statements dropped locally for PR2A/PR3 test development —
+# never committed (see README_IMPORTER.md "Fixtures et anonymisation")
+/lib/importer/__tests__/fixtures/bank/real/*
+!/lib/importer/__tests__/fixtures/bank/real/.gitkeep
+
+# real AddicTill POS exports dropped locally for PR3 test development —
+# never committed (contains real business sales data)
+/lib/importer/__tests__/fixtures/pos/real/*
+!/lib/importer/__tests__/fixtures/pos/real/.gitkeep
