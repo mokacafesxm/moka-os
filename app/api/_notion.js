@@ -21,6 +21,12 @@ export const DB = {
   ZONES_PHYSIQUES: "3a69512c-f66a-81c5-910a-d5d1ce205577",
   EQUIPEMENTS:     "3a69512c-f66a-8135-b822-d1015459367f",
   TACHES:          "3a69512c-f66a-814b-984d-ea40c4372bb0",
+  // MÖKA OS v2 — Sprint 3, suite (incidents/SOP/certifications/exécutions/ventes)
+  INCIDENTS:        "3a79512c-f66a-811a-870e-d998199887c0",
+  SOP:              "3a79512c-f66a-8120-8ae8-d6f318e1f6ef",
+  CERTIFICATIONS:   "3a79512c-f66a-8119-abb7-ca253e2f6d22",
+  EXECUTIONS_TACHES: "3a79512c-f66a-8157-8e56-cccc6d2ef624",
+  SALES_HISTORY:    "3a79512c-f66a-81dc-a1fa-d8b37d509f64",
 };
 
 export const corsHeaders = {
