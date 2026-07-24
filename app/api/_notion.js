@@ -17,6 +17,10 @@ export const DB = {
   CLIENTS:            "3959512c-f66a-81ea-be0f-f614915dbdd1",
   SPINS_ANONYMES:     "3959512c-f66a-8105-a0f8-f068f1f58df0",
   CARTES_ENREGISTREES: "3959512c-f66a-811c-bdb8-f9b714eb6545",
+  // MÖKA OS v2 — Sprint 3, bases physiques (zones/équipements/tâches)
+  ZONES_PHYSIQUES: "3a69512c-f66a-81c5-910a-d5d1ce205577",
+  EQUIPEMENTS:     "3a69512c-f66a-8135-b822-d1015459367f",
+  TACHES:          "3a69512c-f66a-814b-984d-ea40c4372bb0",
 };
 
 export const corsHeaders = {
@@ -307,3 +311,4 @@ export const numberProp = (v) => ({ number: v !== undefined && v !== null && v !
 export const checkboxProp = (v) => ({ checkbox: Boolean(v) });
 export const dateProp   = (v) => (v ? { date: { start: v } } : { date: null });
 export const relationProp = (...ids) => ({ relation: ids.filter(Boolean).map((id) => ({ id })) });
+export const urlProp    = (v) => ({ url: v || null });
