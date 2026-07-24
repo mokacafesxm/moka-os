@@ -6,6 +6,7 @@ import { useRealTime } from "./RealTimeContext";
 const CLOCK_URL = "/api/clock";
 const CLOCK_STATUS_URL = "/api/clock-status";
 const SESSION_KEY = "mokaStaffSession";
+const ZONE_KEY = "mokaMyZone";
 const CLOCK_CACHE_KEY = "mokaClockStatuses"; // même clé que page.js — un seul cache partagé
 
 function loadClockStatusesCache() {
@@ -40,6 +41,15 @@ function loadSession() {
   }
 }
 
+function loadZone() {
+  if (typeof window === "undefined") return null;
+  try {
+    return JSON.parse(localStorage.getItem(ZONE_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
 const STATUS_AFTER_ACTION = {
   "Arrivée": "present",
   "Départ pause": "pause",
@@ -52,12 +62,23 @@ const StaffContext = createContext(null);
 export function StaffProvider({ children }) {
   const { subscribe } = useRealTime();
 
-  const [selectedStaff, setSelectedStaffState] = useState(() => loadSession());
+  // Ces 3 états démarrent volontairement "vides" (identiques au rendu SSR, où
+  // localStorage n'existe pas) puis se chargent dans un useEffect après le
+  // montage — lire localStorage dans l'initializer de useState fait diverger
+  // le premier rendu client du HTML serveur et déclenche une erreur
+  // d'hydratation React (constaté en test navigateur sur /poste).
+  const [selectedStaff, setSelectedStaffState] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [clockStatuses, setClockStatuses] = useState(() => loadClockStatusesCache());
+  const [clockStatuses, setClockStatuses] = useState({});
   const [clockSending, setClockSending] = useState(false);
-  const [myTasks, setMyTasks] = useState([]); // branché en Sprint 3 (MOKA_Taches)
-  const [myZone, setMyZone] = useState(null); // branché en Sprint 3 (MOKA_Zones_Physiques)
+  const [myTasks, setMyTasks] = useState([]); // dérivé côté page /taches (Sprint 4) depuis AppContext.taches
+  const [myZone, setMyZoneState] = useState(null);
+
+  useEffect(() => {
+    setSelectedStaffState(loadSession());
+    setClockStatuses(loadClockStatusesCache());
+    setMyZoneState(loadZone());
+  }, []);
 
   const selectedStaffName = selectedStaff?.name || selectedStaff?.prenom || selectedStaff?.nom || "";
   const status = clockStatuses[selectedStaffName] || "absent";
@@ -116,6 +137,15 @@ export function StaffProvider({ children }) {
     }
   }, []);
 
+  // Pas d'affectation staff -> zone dans MOKA_Staff pour l'instant : le staff
+  // choisit son poste à l'arrivée (PRD "Mon Poste"), persisté pour la session.
+  const setMyZone = useCallback((zone) => {
+    setMyZoneState(zone);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(ZONE_KEY, JSON.stringify(zone));
+    }
+  }, []);
+
   const sendClockAction = useCallback(async (action) => {
     if (!selectedStaffName) return;
     setClockSending(true);
@@ -164,6 +194,7 @@ export function StaffProvider({ children }) {
         myTasks,
         myZone,
         setStaff,
+        setMyZone,
         setIsAdmin,
         clockIn,
         clockOut,

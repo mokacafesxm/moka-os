@@ -10,6 +10,9 @@ const PREPS_URL = "/api/preps";
 const REFERENTIELS_URL = "/api/settings/referentiels";
 const SUPPLIERS_URL = "/api/settings/suppliers";
 const SUPPLIER_ORDERS_URL = "/api/supplier-orders";
+const ZONES_URL = "/api/zones";
+const EQUIPEMENTS_URL = "/api/equipements";
+const TACHES_URL = "/api/taches";
 
 function normalizeArray(data, key) {
   if (Array.isArray(data)) return data;
@@ -46,10 +49,13 @@ export function AppProvider({ children }) {
   const [staff, setStaff] = useState([]);
   const [supplierOrders, setSupplierOrders] = useState([]);
 
-  // Bases Notion pas encore créées (Sprint 3) — placeholders en attendant les routes API.
   const [zonesPhysiques, setZonesPhysiques] = useState([]);
   const [equipements, setEquipements] = useState([]);
   const [taches, setTaches] = useState([]);
+
+  // Recettes: la page Poste lit directement /api/recipes/sold-products (système
+  // existant, voir docs/MOKA_OS_V2_BLUEPRINT.md) — pas dupliqué ici.
+  // Incidents: route /api/incidents pas encore construite (hors scope Sprint 4).
   const [recettes, setRecettes] = useState([]);
   const [incidents, setIncidents] = useState([]);
 
@@ -83,6 +89,21 @@ export function AppProvider({ children }) {
     if (list) setSupplierOrders(list);
   }, []);
 
+  const refreshZones = useCallback(async () => {
+    const list = await fetchArraySilent(ZONES_URL, "zones");
+    if (list) setZonesPhysiques(list);
+  }, []);
+
+  const refreshEquipements = useCallback(async () => {
+    const list = await fetchArraySilent(EQUIPEMENTS_URL, "equipements");
+    if (list) setEquipements(list);
+  }, []);
+
+  const refreshTaches = useCallback(async () => {
+    const list = await fetchArraySilent(TACHES_URL, "taches");
+    if (list) setTaches(list);
+  }, []);
+
   const refreshReferentiels = useCallback(async () => {
     try {
       const res = await fetch(REFERENTIELS_URL);
@@ -108,8 +129,14 @@ export function AppProvider({ children }) {
       refreshSuppliers(),
       refreshSupplierOrders(),
       refreshReferentiels(),
+      refreshZones(),
+      refreshEquipements(),
+      refreshTaches(),
     ]);
-  }, [refreshProducts, refreshStock, refreshStaff, refreshPreps, refreshSuppliers, refreshSupplierOrders, refreshReferentiels]);
+  }, [
+    refreshProducts, refreshStock, refreshStaff, refreshPreps, refreshSuppliers,
+    refreshSupplierOrders, refreshReferentiels, refreshZones, refreshEquipements, refreshTaches,
+  ]);
 
   useEffect(() => {
     refreshAll();
