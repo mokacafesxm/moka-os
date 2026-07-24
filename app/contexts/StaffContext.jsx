@@ -181,6 +181,23 @@ export function StaffProvider({ children }) {
   const startBreak = useCallback(() => sendClockAction("Départ pause"), [sendClockAction]);
   const endBreak = useCallback(() => sendClockAction("Retour pause"), [sendClockAction]);
 
+  // Même clés localStorage que le PIN admin de page.js (mokaAdminEnabled /
+  // mokaPinCode) — une seule source de vérité pour le code, même si le
+  // booléen "déverrouillé" reste par arbre de composants (page.js et cette
+  // app (os) ne partagent pas de state React) et se réinitialise au reload,
+  // comme le fait déjà page.js.
+  const unlockAdmin = useCallback((pin) => {
+    if (typeof window === "undefined") return false;
+    const adminEnabled = localStorage.getItem("mokaAdminEnabled") !== "false";
+    if (!adminEnabled) return false;
+    const savedPin = localStorage.getItem("mokaPinCode") || "3578";
+    if (pin !== savedPin) return false;
+    setIsAdmin(true);
+    return true;
+  }, []);
+
+  const lockAdmin = useCallback(() => setIsAdmin(false), []);
+
   return (
     <StaffContext.Provider
       value={{
@@ -196,6 +213,8 @@ export function StaffProvider({ children }) {
         setStaff,
         setMyZone,
         setIsAdmin,
+        unlockAdmin,
+        lockAdmin,
         clockIn,
         clockOut,
         startBreak,

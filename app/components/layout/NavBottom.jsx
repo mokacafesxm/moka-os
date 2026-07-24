@@ -1,14 +1,19 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
 export const NAV_ITEMS = [
-  { key: "home", label: "Accueil", icon: "🏠" },
-  { key: "poste", label: "Mon Poste", icon: "🍽" },
-  { key: "taches", label: "Mes Tâches", icon: "✅" },
-  { key: "recherche", label: "Recherche", icon: "🔍" },
-  { key: "profil", label: "Profil", icon: "👤" },
+  { key: "home", label: "Accueil", icon: "🏠", href: "/home" },
+  { key: "poste", label: "Mon Poste", icon: "🍽", href: "/poste" },
+  { key: "taches", label: "Mes Tâches", icon: "✅", href: "/taches" },
+  { key: "recherche", label: "Recherche", icon: "🔍", href: null },
+  { key: "profil", label: "Profil", icon: "👤", href: null },
 ];
 
-export default function NavBottom({ active, onNavigate }) {
+export default function NavBottom() {
+  const pathname = usePathname();
+
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-2"
@@ -25,22 +30,34 @@ export default function NavBottom({ active, onNavigate }) {
         }}
       >
         {NAV_ITEMS.map((item) => {
-          const isActive = active === item.key;
-          return (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => onNavigate?.(item.key)}
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 min-h-11 py-1.5 rounded-2xl cursor-pointer transition-colors"
-              style={{ background: isActive ? "rgba(90,120,40,0.14)" : "transparent" }}
-            >
+          const isActive = item.href && pathname === item.href;
+          const content = (
+            <>
               <span className="text-lg leading-none">{item.icon}</span>
               <span
                 className={`text-[9px] font-black uppercase tracking-wide ${isActive ? "text-[#5a7828]" : "text-[#9a7060]"}`}
               >
                 {item.label}
               </span>
-            </button>
+            </>
+          );
+          const className = `flex-1 flex flex-col items-center justify-center gap-0.5 min-h-11 py-1.5 rounded-2xl transition-colors ${
+            item.href ? "cursor-pointer" : "cursor-default opacity-40"
+          }`;
+          const style = { background: isActive ? "rgba(90,120,40,0.14)" : "transparent" };
+
+          if (!item.href) {
+            return (
+              <div key={item.key} className={className} style={style}>
+                {content}
+              </div>
+            );
+          }
+
+          return (
+            <Link key={item.key} href={item.href} className={className} style={style}>
+              {content}
+            </Link>
           );
         })}
       </div>
