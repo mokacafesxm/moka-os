@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
@@ -30,6 +31,7 @@ export default function ManagerHomePage() {
   const { zonesPhysiques } = useAppContext();
 
   const [dashboard, setDashboard] = useState(null);
+  const [recettesMappees, setRecettesMappees] = useState(null);
 
   useEffect(() => {
     if (!isAdmin) router.replace("/home");
@@ -42,6 +44,23 @@ export default function ManagerHomePage() {
       .then((r) => r.json())
       .then((data) => { if (!ignore) setDashboard(data); })
       .catch((error) => console.error("[ManagerHomePage] dashboard fetch failed", error));
+    return () => { ignore = true; };
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let ignore = false;
+    Promise.all([
+      fetch("/api/recipes/sold-products").then((r) => r.json()),
+      fetch("/api/recipes/lines").then((r) => r.json()),
+    ])
+      .then(([soldProducts, lines]) => {
+        if (ignore) return;
+        if (!Array.isArray(soldProducts) || !Array.isArray(lines)) return;
+        const mappedIds = new Set(lines.filter((l) => l.active).map((l) => l.soldProductId));
+        setRecettesMappees(soldProducts.filter((p) => mappedIds.has(p.id)).length);
+      })
+      .catch((error) => console.error("[ManagerHomePage] recipes fetch failed", error));
     return () => { ignore = true; };
   }, [isAdmin]);
 
@@ -79,6 +98,22 @@ export default function ManagerHomePage() {
           </div>
         ))}
       </div>
+
+      <Link
+        href="/recettes"
+        className="flex items-center justify-between rounded-2xl border border-[#e5d5c5] bg-white p-4 cursor-pointer"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">📖</span>
+          <div>
+            <div className="font-black text-sm text-[#2c1a10]">Fiches Recettes</div>
+            <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
+              {recettesMappees === null ? "Chargement…" : `${recettesMappees} recette${recettesMappees !== 1 ? "s" : ""} mappée${recettesMappees !== 1 ? "s" : ""}`}
+            </div>
+          </div>
+        </div>
+        <span className="text-lg text-[#9a7060]">→</span>
+      </Link>
 
       <SectionCard title="Alertes prioritaires">
         {alertes.length === 0 ? (
