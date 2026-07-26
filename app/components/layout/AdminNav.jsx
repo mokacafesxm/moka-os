@@ -16,6 +16,7 @@ const ADMIN_ITEMS = [
   { key: "stock", label: "Stock", icon: "📦", href: "/" },
   { key: "commandes", label: "Commandes", icon: "📋", href: "/" },
   { key: "rapports", label: "Rapports", icon: "📈", href: "/" },
+  { key: "incidents", label: "Incidents", icon: "🚨", href: "/incidents" },
 ];
 
 export default function AdminNav() {

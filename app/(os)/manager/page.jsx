@@ -115,7 +115,20 @@ export default function ManagerHomePage() {
         <span className="text-lg text-[#9a7060]">→</span>
       </Link>
 
-      <SectionCard title="Alertes prioritaires">
+      <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">Alertes prioritaires</span>
+            {incidentsOuverts > 0 && (
+              <span className="text-[10px] font-black text-white px-1.5 py-0.5 rounded-full leading-none" style={{ background: "#b91c1c" }}>
+                {incidentsOuverts}
+              </span>
+            )}
+          </div>
+          <Link href="/incidents" className="text-[10px] font-bold text-[#9a7060] underline cursor-pointer shrink-0">
+            Incidents →
+          </Link>
+        </div>
         {alertes.length === 0 ? (
           <div className="text-sm text-[#9a7060] py-2">Aucune alerte — tout va bien 🎉</div>
         ) : (
@@ -128,7 +141,7 @@ export default function ManagerHomePage() {
             ))}
           </div>
         )}
-      </SectionCard>
+      </div>
 
       <SectionCard title="Zones du restaurant">
         <div className="grid grid-cols-2 gap-3">
