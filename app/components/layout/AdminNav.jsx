@@ -4,20 +4,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 
-// Stock/Commandes/Rapports pointent vers "/" (l'ancien page.js) — cette
-// app n'a pas de deep-link par URL vers un onglet précis (activeTab /
-// adminSection y sont de l'état React en mémoire, jamais reflété dans
-// l'URL) et page.js reste intouché (règle en vigueur depuis Sprint 4).
-// Un clic dans l'ancienne UI reste nécessaire pour atteindre l'onglet exact.
+// Sprint 14 — Stock et Commandes ont maintenant leurs propres routes dans
+// le nouveau shell (/stock, /commandes), migrées depuis adminSection
+// "products"/"inventory"/"stock" et "orders" de l'ancien page.js. Seul
+// Rapports pointe encore vers "/" (pas migré ce sprint).
 const ADMIN_ITEMS = [
   { key: "dashboard", label: "Dashboard", icon: "📊", href: "/manager" },
   { key: "restaurant", label: "Restaurant", icon: "🏪", href: "/restaurant" },
   { key: "equipe", label: "Équipe", icon: "👥", href: "/equipe" },
-  { key: "commandes", label: "Commandes", icon: "🛒", href: "/" },
+  { key: "commandes", label: "Commandes", icon: "🛒", href: "/commandes" },
   { key: "recettes", label: "Recettes", icon: "📖", href: "/recettes" },
-  { key: "stock", label: "Stock", icon: "📦", href: "/" },
+  { key: "stock", label: "Stock", icon: "📦", href: "/stock" },
   { key: "rapports", label: "Rapports", icon: "📈", href: "/" },
   { key: "incidents", label: "Incidents", icon: "🚨", href: "/incidents" },
+  { key: "parametres", label: "Paramètres", icon: "⚙️", href: "/" },
 ];
 
 export default function AdminNav() {

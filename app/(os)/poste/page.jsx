@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
+import ReceiveModal, { parseOrderProducts } from "../../components/shared/ReceiveModal";
 
 const POSTES = [
   { key: "Bar", nom: "Bar", emoji: "☕" },
@@ -40,85 +41,57 @@ function groupBy(list, key) {
   return groups;
 }
 
-function LivraisonReceiveModal({ group, fournisseur, onClose, onDone }) {
-  const [quantities, setQuantities] = useState(() =>
-    Object.fromEntries(group.map((o) => [o.id, o.quantite ?? 0]))
-  );
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
+// Sprint 14 — carte dédiée en haut de Mon Poste (Bar), séparée du bloc
+// Historique plus bas : "Réceptionner" ouvre le VRAI receiveModal (extrait
+// tel quel de l'ancien page.js, voir app/components/shared/ReceiveModal.jsx)
+// plutôt qu'un formulaire simplifié. Ne s'affiche pas du tout s'il n'y a
+// aucune livraison prévue aujourd'hui.
+function LivraisonsDuJour({ orders, todaySXM, refreshSupplierOrders }) {
+  const [receivingOrder, setReceivingOrder] = useState(null);
 
-  const submit = async () => {
-    setSaving(true);
-    setError(null);
-    try {
-      await Promise.all(
-        group.map((o) =>
-          fetch("/api/supplier-orders/receive", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              orderId: o.id,
-              isFinal: true,
-              lines: [{
-                name: o.produit,
-                quantity: Number(quantities[o.id]) || 0,
-                unite: o.unite,
-                notionProductId: o.produitId,
-              }],
-            }),
-          }).then((r) => r.json()).then((data) => {
-            if (data.error) throw new Error(data.error);
-          })
-        )
-      );
-      onDone();
-    } catch (err) {
-      setError("Erreur réception : " + err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
+  const today = useMemo(
+    () => orders.filter((o) => o.dateLivraisonPrevue?.slice(0, 10) === todaySXM && o.statut !== "Reçu"),
+    [orders, todaySXM]
+  );
+  const grouped = useMemo(() => groupBy(today, "fournisseur"), [today]);
+  const fournisseurs = Object.entries(grouped);
+
+  if (fournisseurs.length === 0) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
-      <div
-        className="relative w-full max-w-sm max-h-[85vh] overflow-y-auto rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-3"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-base font-black text-[#2c1a10]">🚚 Réceptionner — {fournisseur}</h2>
-        {error && <div className="rounded-xl bg-red-50 border border-red-100 p-3 text-xs font-bold text-red-500">{error}</div>}
-        <div className="space-y-2.5">
-          {group.map((o) => (
-            <div key={o.id} className="rounded-xl border border-[#e5d5c5] bg-white p-3">
-              <div className="text-sm font-bold text-[#2c1a10] mb-1.5">{o.produit}</div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  step="0.1"
-                  value={quantities[o.id]}
-                  onChange={(e) => setQuantities((q) => ({ ...q, [o.id]: e.target.value }))}
-                  className="h-10 px-3 rounded-xl border border-[#e5d5c5] bg-[#faf5ef] text-sm font-bold text-[#2c1a10] outline-none focus:border-[#5a7828] w-24"
-                />
-                <span className="text-xs font-semibold text-[#9a7060]">{o.unite}</span>
+    <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
+      <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-3">🚚 Livraisons prévues aujourd&apos;hui</div>
+      <div className="space-y-2">
+        {fournisseurs.map(([fournisseur, group]) => {
+          const order = group[0];
+          const produitsCount = parseOrderProducts(order).length || group.length;
+          return (
+            <div key={fournisseur} className="rounded-2xl border border-[#e5d5c5] bg-[#faf5ef] p-3.5 flex items-center justify-between gap-3">
+              <div>
+                <div className="font-black text-sm text-[#2c1a10]">{fournisseur}</div>
+                <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
+                  {produitsCount} produit{produitsCount !== 1 ? "s" : ""} attendu{produitsCount !== 1 ? "s" : ""}
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setReceivingOrder(order)}
+                className="h-9 px-4 rounded-xl bg-[#2c1a10] text-white text-xs font-black cursor-pointer shrink-0"
+              >
+                Réceptionner
+              </button>
             </div>
-          ))}
-        </div>
-        <div className="flex gap-3 pt-1">
-          <button type="button" onClick={onClose} className="flex-1 py-3 rounded-2xl text-[#9a7060] font-bold text-sm cursor-pointer">
-            Annuler
-          </button>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={saving}
-            className="flex-1 py-3 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-50"
-          >
-            {saving ? "Envoi…" : "Confirmer la réception"}
-          </button>
-        </div>
+          );
+        })}
       </div>
+
+      {receivingOrder && (
+        <ReceiveModal
+          order={receivingOrder}
+          onClose={() => setReceivingOrder(null)}
+          onReceived={() => { setReceivingOrder(null); refreshSupplierOrders(); }}
+        />
+      )}
     </div>
   );
 }
@@ -146,15 +119,11 @@ function LivraisonDetailModal({ order, onClose }) {
   );
 }
 
-function LivraisonsSection({ orders, todaySXM, refreshSupplierOrders }) {
-  const [receivingGroup, setReceivingGroup] = useState(null);
+// Sprint 14 — "Prévues aujourd'hui" a été déplacé vers LivraisonsDuJour
+// (nouvelle carte en haut de page, avec le vrai receiveModal) ; ce bloc ne
+// garde que l'historique pour éviter d'afficher deux fois la même chose.
+function LivraisonsSection({ orders }) {
   const [detailOrder, setDetailOrder] = useState(null);
-
-  const today = useMemo(
-    () => orders.filter((o) => o.dateLivraisonPrevue?.slice(0, 10) === todaySXM && o.statut !== "Reçu"),
-    [orders, todaySXM]
-  );
-  const grouped = useMemo(() => groupBy(today, "fournisseur"), [today]);
 
   const historique = useMemo(
     () => orders
@@ -165,66 +134,28 @@ function LivraisonsSection({ orders, todaySXM, refreshSupplierOrders }) {
   );
 
   return (
-    <SectionCard title="🚚 Livraisons">
-      <div className="space-y-4">
-        <div>
-          <div className="text-xs font-black text-[#2c1a10] uppercase tracking-wide mb-2">Prévues aujourd&apos;hui</div>
-          {Object.keys(grouped).length === 0 ? (
-            <div className="text-sm text-[#9a7060] py-2">Aucune livraison prévue aujourd&apos;hui</div>
-          ) : (
-            <div className="space-y-2">
-              {Object.entries(grouped).map(([fournisseur, group]) => (
-                <div key={fournisseur} className="rounded-2xl border border-[#e5d5c5] bg-[#faf5ef] p-3.5">
-                  <div className="font-black text-sm text-[#2c1a10]">{fournisseur}</div>
-                  <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5 mb-2.5">
-                    {group.map((o) => o.produit).join(", ")}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setReceivingGroup({ fournisseur, group })}
-                    className="w-full h-10 rounded-xl bg-[#2c1a10] text-white text-xs font-black cursor-pointer"
-                  >
-                    ✅ Réceptionner
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+    <SectionCard title="🚚 Livraisons — Historique">
+      {historique.length === 0 ? (
+        <div className="text-sm text-[#9a7060] py-2">Aucune livraison reçue récemment</div>
+      ) : (
+        <div className="space-y-2">
+          {historique.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => setDetailOrder(o)}
+              className="w-full flex items-center justify-between rounded-xl border border-[#e5d5c5] bg-white p-3 text-left cursor-pointer"
+            >
+              <div>
+                <div className="text-sm font-bold text-[#2c1a10]">{o.fournisseur}</div>
+                <div className="text-[11px] text-[#9a7060]">{o.produit} · {o.date?.slice(0, 10)}</div>
+              </div>
+              <span className="text-[9px] font-black px-2 py-1 rounded-lg bg-[#f0f7e5] text-[#5a7828] shrink-0">✅ Reçu</span>
+            </button>
+          ))}
         </div>
-
-        <div>
-          <div className="text-xs font-black text-[#2c1a10] uppercase tracking-wide mb-2">Historique</div>
-          {historique.length === 0 ? (
-            <div className="text-sm text-[#9a7060] py-2">Aucune livraison reçue récemment</div>
-          ) : (
-            <div className="space-y-2">
-              {historique.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  onClick={() => setDetailOrder(o)}
-                  className="w-full flex items-center justify-between rounded-xl border border-[#e5d5c5] bg-white p-3 text-left cursor-pointer"
-                >
-                  <div>
-                    <div className="text-sm font-bold text-[#2c1a10]">{o.fournisseur}</div>
-                    <div className="text-[11px] text-[#9a7060]">{o.produit} · {o.date?.slice(0, 10)}</div>
-                  </div>
-                  <span className="text-[9px] font-black px-2 py-1 rounded-lg bg-[#f0f7e5] text-[#5a7828] shrink-0">✅ Reçu</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {receivingGroup && (
-        <LivraisonReceiveModal
-          group={receivingGroup.group}
-          fournisseur={receivingGroup.fournisseur}
-          onClose={() => setReceivingGroup(null)}
-          onDone={() => { setReceivingGroup(null); refreshSupplierOrders(); }}
-        />
       )}
+
       {detailOrder && <LivraisonDetailModal order={detailOrder} onClose={() => setDetailOrder(null)} />}
     </SectionCard>
   );
@@ -434,6 +365,15 @@ export default function PostePage() {
 
       {poste === "Bar" && (
         <>
+          {canLivraisons && (
+            <div id="livraisons">
+              <LivraisonsDuJour
+                orders={supplierOrders}
+                todaySXM={todaySXM}
+                refreshSupplierOrders={refreshSupplierOrders}
+              />
+            </div>
+          )}
           <SectionCard title="Tâches du moment"><TachesList taches={zoneTaches} /></SectionCard>
           <SectionCard title="Recettes Bar">
             {recettesPoste.length === 0 ? (
@@ -450,15 +390,7 @@ export default function PostePage() {
           </SectionCard>
           <SectionCard title="Températures"><TempsList executions={executions} posteNom="Bar" /></SectionCard>
           <WorkflowButton posteKey="Bar" hourFrac={hourFrac} />
-          {canLivraisons && (
-            <div id="livraisons">
-              <LivraisonsSection
-                orders={supplierOrders}
-                todaySXM={todaySXM}
-                refreshSupplierOrders={refreshSupplierOrders}
-              />
-            </div>
-          )}
+          {canLivraisons && <LivraisonsSection orders={supplierOrders} />}
         </>
       )}
 
