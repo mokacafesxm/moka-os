@@ -40,17 +40,30 @@ const PIN_ERROR_MESSAGES = {
 export default function SplashScreen({ onDone }) {
   const router = useRouter();
   const { staff } = useAppContext();
-  const { clockStatuses, clockInAs, setStaff, unlockAdmin, setPoste } = useStaffContext();
+  const { clockStatuses, clockInAs, setStaff, unlockAdmin, unlockAdminAs, setPoste } = useStaffContext();
 
   const [phase, setPhase] = useState("poste"); // "poste" | "staff"
   const [selectedPoste, setSelectedPoste] = useState(null);
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminStep, setAdminStep] = useState("pin"); // "pin" | "identity"
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState(false);
 
+  // Sprint 14 — Guillaume/Thibaut n'ont pas de poste opérationnel (exclus de
+  // la grille phase 2 ci-dessous) donc jamais de selectedStaff à ce stade :
+  // après un PIN correct, on choisit l'identité admin parmi les staff ayant
+  // "Admin" dans Access, plutôt que d'exiger un staff déjà sélectionné.
+  const adminEligibleStaff = staff.filter((member) => member.access?.includes("Admin"));
+
   const posteInfo = POSTES.find((p) => p.key === selectedPoste);
+  // Sprint 14 — Manager Général/Admin n'ont pas de poste opérationnel : ils
+  // passent uniquement par "Mode Admin →" ci-dessous, jamais par cette grille.
   const staffFiltered = selectedPoste
-    ? staff.filter((member) => POSTE_MAPPING[selectedPoste]?.includes(member.poste))
+    ? staff.filter(
+        (member) =>
+          POSTE_MAPPING[selectedPoste]?.includes(member.poste) &&
+          !["Manager Général", "Admin"].includes(member.poste)
+      )
     : [];
 
   const handlePickPoste = (posteKey) => {
@@ -79,11 +92,33 @@ export default function SplashScreen({ onDone }) {
     }
   };
 
+  const closeAdminModal = () => {
+    setShowAdminModal(false);
+    setAdminStep("pin");
+    setPin("");
+    setPinError(false);
+  };
+
   const submitPin = () => {
     const result = unlockAdmin(pin);
     if (result.ok) {
       onDone();
+      return;
+    }
+    if ((result.reason === "no_staff" || result.reason === "no_access") && adminEligibleStaff.length > 0) {
+      setAdminStep("identity");
+      setPinError(false);
+      return;
+    }
+    setPinError(PIN_ERROR_MESSAGES[result.reason] || "Code incorrect");
+  };
+
+  const submitIdentity = (member) => {
+    const result = unlockAdminAs(pin, member);
+    if (result.ok) {
+      onDone();
     } else {
+      setAdminStep("pin");
       setPinError(PIN_ERROR_MESSAGES[result.reason] || "Code incorrect");
     }
   };
@@ -176,43 +211,71 @@ export default function SplashScreen({ onDone }) {
       </div>
 
       {showAdminModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4" onClick={() => setShowAdminModal(false)}>
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4" onClick={closeAdminModal}>
           <div className="absolute inset-0 bg-black/40" />
           <div
             className="relative w-full max-w-xs rounded-3xl bg-[#f7efe4] border border-[#e5d5c5] shadow-xl p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-1">Mode Admin</div>
-            <h2 className="text-lg font-black text-[#2c1a10] mb-4">Code à 4 chiffres</h2>
-            <input
-              type="password"
-              inputMode="numeric"
-              autoFocus
-              value={pin}
-              onChange={(e) => { setPin(e.target.value); setPinError(false); }}
-              onKeyDown={(e) => e.key === "Enter" && submitPin()}
-              className={`w-full rounded-xl border bg-white px-3 py-2.5 text-center text-lg tracking-[0.5em] font-black text-[#2c1a10] outline-none mb-1 ${
-                pinError ? "border-red-500" : "border-[#e5d5c5] focus:border-[#5a7828]"
-              }`}
-              placeholder="••••"
-            />
-            {pinError && <div className="text-xs text-red-600 font-bold mb-3">{pinError}</div>}
-            <div className="flex gap-2.5 mt-3">
-              <button
-                type="button"
-                onClick={() => { setShowAdminModal(false); setPin(""); setPinError(false); }}
-                className="flex-1 h-11 rounded-2xl border border-[#e5d5c5] bg-white font-black text-sm text-[#9a7060] cursor-pointer"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={submitPin}
-                className="flex-1 h-11 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer"
-              >
-                Déverrouiller
-              </button>
-            </div>
+
+            {adminStep === "pin" ? (
+              <>
+                <h2 className="text-lg font-black text-[#2c1a10] mb-4">Code à 4 chiffres</h2>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  autoFocus
+                  value={pin}
+                  onChange={(e) => { setPin(e.target.value); setPinError(false); }}
+                  onKeyDown={(e) => e.key === "Enter" && submitPin()}
+                  className={`w-full rounded-xl border bg-white px-3 py-2.5 text-center text-lg tracking-[0.5em] font-black text-[#2c1a10] outline-none mb-1 ${
+                    pinError ? "border-red-500" : "border-[#e5d5c5] focus:border-[#5a7828]"
+                  }`}
+                  placeholder="••••"
+                />
+                {pinError && <div className="text-xs text-red-600 font-bold mb-3">{pinError}</div>}
+                <div className="flex gap-2.5 mt-3">
+                  <button
+                    type="button"
+                    onClick={closeAdminModal}
+                    className="flex-1 h-11 rounded-2xl border border-[#e5d5c5] bg-white font-black text-sm text-[#9a7060] cursor-pointer"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitPin}
+                    className="flex-1 h-11 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer"
+                  >
+                    Déverrouiller
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-black text-[#2c1a10] mb-4">Qui es-tu ?</h2>
+                <div className="space-y-2 mb-3">
+                  {adminEligibleStaff.map((member) => (
+                    <button
+                      key={member.id}
+                      type="button"
+                      onClick={() => submitIdentity(member)}
+                      className="w-full rounded-2xl bg-white border border-[#e5d5c5] py-3 px-4 text-left font-black text-sm text-[#2c1a10] cursor-pointer active:scale-[0.98] transition-all hover:bg-[#f0e4d4]"
+                    >
+                      {getStaffName(member)}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={closeAdminModal}
+                  className="w-full h-11 rounded-2xl border border-[#e5d5c5] bg-white font-black text-sm text-[#9a7060] cursor-pointer"
+                >
+                  Annuler
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

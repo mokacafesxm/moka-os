@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useStaffContext } from "../../contexts/StaffContext";
 
 export const NAV_ITEMS = [
   { key: "home", label: "Accueil", icon: "🏠", href: "/home" },
@@ -11,8 +12,17 @@ export const NAV_ITEMS = [
   { key: "profil", label: "Profil", icon: "👤", href: "/profil" },
 ];
 
+// Sprint 14 — Beyonce (currently the only staff with canOrderPad) gets a 6th
+// tab straight to the old OrderPad (/). Inserted before Profil so the most
+// frequently used tabs stay clustered on the left.
+const ORDERPAD_ITEM = { key: "orderpad", label: "Order", icon: "📋", href: "/" };
+
 export default function NavBottom() {
   const pathname = usePathname();
+  const { canOrderPad } = useStaffContext();
+  const items = canOrderPad
+    ? [...NAV_ITEMS.slice(0, 4), ORDERPAD_ITEM, NAV_ITEMS[4]]
+    : NAV_ITEMS;
 
   return (
     <div
@@ -29,7 +39,7 @@ export default function NavBottom() {
           boxShadow: "0 8px 32px rgba(44,26,16,0.15), inset 0 1px 0 rgba(255,255,255,0.7)",
         }}
       >
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const isActive = item.href && pathname === item.href;
           const content = (
             <>

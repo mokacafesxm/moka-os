@@ -248,17 +248,34 @@ export function StaffProvider({ children }) {
   // the right message (wrong PIN vs. no staff picked vs. PIN correct but
   // this identity isn't authorized) — `ok` alone stays boolean-truthy-safe
   // for any caller that only checks success/failure.
-  const unlockAdmin = useCallback((pin) => {
-    if (typeof window === "undefined") return { ok: false, reason: "wrong_pin" };
+  const checkPin = useCallback((pin) => {
+    if (typeof window === "undefined") return false;
     const adminEnabled = localStorage.getItem("mokaAdminEnabled") !== "false";
-    if (!adminEnabled) return { ok: false, reason: "wrong_pin" };
+    if (!adminEnabled) return false;
     const savedPin = localStorage.getItem("mokaPinCode") || "3578";
-    if (pin !== savedPin) return { ok: false, reason: "wrong_pin" };
+    return pin === savedPin;
+  }, []);
+
+  const unlockAdmin = useCallback((pin) => {
+    if (!checkPin(pin)) return { ok: false, reason: "wrong_pin" };
     if (!selectedStaff) return { ok: false, reason: "no_staff" };
     if (!selectedStaff.access?.includes("Admin")) return { ok: false, reason: "no_access" };
     setIsAdmin(true);
     return { ok: true };
-  }, [selectedStaff]);
+  }, [checkPin, selectedStaff]);
+
+  // Sprint 14 — Guillaume/Thibaut n'ont plus de poste opérationnel (voir
+  // SplashScreen), donc jamais de selectedStaff au moment où ils tapent
+  // "Mode Admin →" depuis le splash. Cette variante prend l'identité admin
+  // en paramètre (choisie dans un petit picker) au lieu de dépendre d'un
+  // selectedStaff déjà posé par le flux Mon Poste.
+  const unlockAdminAs = useCallback((pin, member) => {
+    if (!checkPin(pin)) return { ok: false, reason: "wrong_pin" };
+    if (!member?.access?.includes("Admin")) return { ok: false, reason: "no_access" };
+    setStaff(member);
+    setIsAdmin(true);
+    return { ok: true };
+  }, [checkPin, setStaff]);
 
   const lockAdmin = useCallback(() => setIsAdmin(false), []);
 
@@ -287,6 +304,7 @@ export function StaffProvider({ children }) {
         setPoste,
         setIsAdmin,
         unlockAdmin,
+        unlockAdminAs,
         lockAdmin,
         clockIn,
         clockOut,
