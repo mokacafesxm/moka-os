@@ -1,0 +1,1 @@
+{"document_type": "bank_statement", "confidence": "high", "reasoning_summary": null}
