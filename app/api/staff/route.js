@@ -19,7 +19,10 @@ export async function GET() {
         name: getTitle(p, "Prénom", "prenom", "Nom", "nom", "Name", "name", "Staff"),
         // "Rôle" is rich_text in Notion, not select (lib/ops/staff-service.js
         // already documents this — this read path had never been fixed to match).
-        role: getText(p, "Rôle") || getSelect(p, "Role", "role", "Poste"),
+        role: getText(p, "Rôle") || getSelect(p, "Role", "role"),
+        // "Poste" (Sprint 12) — real select, distinct from the free-text
+        // "Rôle" above: drives SplashScreen/StaffContext station filtering.
+        poste: getSelect(p, "Poste"),
         telephone: getText(p, "Téléphone", "telephone", "Phone"),
         email: getText(p, "Email", "email"),
         actif: getCheckbox(p, "Actif", "actif", "Active"),
