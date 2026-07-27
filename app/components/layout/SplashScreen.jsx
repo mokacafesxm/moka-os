@@ -29,6 +29,14 @@ function initials(name) {
   return String(name || "?").trim().slice(0, 2).toUpperCase();
 }
 
+// Sprint 13 — unlockAdmin(pin) now returns { ok, reason } instead of a plain
+// boolean, since a correct PIN can still fail the Access check.
+const PIN_ERROR_MESSAGES = {
+  wrong_pin: "Code incorrect",
+  no_staff: "Sélectionne d'abord un staff",
+  no_access: "Accès admin non autorisé pour ce poste",
+};
+
 export default function SplashScreen({ onDone }) {
   const router = useRouter();
   const { staff } = useAppContext();
@@ -72,10 +80,11 @@ export default function SplashScreen({ onDone }) {
   };
 
   const submitPin = () => {
-    if (unlockAdmin(pin)) {
+    const result = unlockAdmin(pin);
+    if (result.ok) {
       onDone();
     } else {
-      setPinError(true);
+      setPinError(PIN_ERROR_MESSAGES[result.reason] || "Code incorrect");
     }
   };
 
@@ -155,6 +164,9 @@ export default function SplashScreen({ onDone }) {
                       {initials(staffName)}
                     </span>
                     <span className="text-sm font-black text-[#2c1a10] text-center">{staffName}</span>
+                    {member.access?.includes("OrderPad") && (
+                      <span className="text-[9px] font-bold text-[#9a7060]">📋 OrderPad</span>
+                    )}
                   </button>
                 );
               })}
@@ -184,7 +196,7 @@ export default function SplashScreen({ onDone }) {
               }`}
               placeholder="••••"
             />
-            {pinError && <div className="text-xs text-red-600 font-bold mb-3">Code incorrect</div>}
+            {pinError && <div className="text-xs text-red-600 font-bold mb-3">{pinError}</div>}
             <div className="flex gap-2.5 mt-3">
               <button
                 type="button"

@@ -1,4 +1,4 @@
-import { DB, corsHeaders, queryDatabase, withNotionCache, getTitle, getText, getSelect, getCheckbox } from "../_notion";
+import { DB, corsHeaders, queryDatabase, withNotionCache, getTitle, getText, getSelect, getCheckbox, getMultiSelect } from "../_notion";
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -23,6 +23,8 @@ export async function GET() {
         // "Poste" (Sprint 12) — real select, distinct from the free-text
         // "Rôle" above: drives SplashScreen/StaffContext station filtering.
         poste: getSelect(p, "Poste"),
+        // "Access" (Sprint 13) — multi_select gating Admin/OrderPad/Commandes/Livraisons.
+        access: getMultiSelect(p, "Access"),
         telephone: getText(p, "Téléphone", "telephone", "Phone"),
         email: getText(p, "Email", "email"),
         actif: getCheckbox(p, "Actif", "actif", "Active"),

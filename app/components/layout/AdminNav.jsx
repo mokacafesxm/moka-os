@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useStaffContext } from "../../contexts/StaffContext";
 
 // Stock/Commandes/Rapports pointent vers "/" (l'ancien page.js) — cette
 // app n'a pas de deep-link par URL vers un onglet précis (activeTab /
@@ -21,6 +22,11 @@ const ADMIN_ITEMS = [
 
 export default function AdminNav() {
   const pathname = usePathname();
+  const { canCommandes } = useStaffContext();
+
+  // Sprint 13 — Commandes stays hidden unless the currently signed-in
+  // identity has "Commandes" in Access (Thibaut/Guillaume only for now).
+  const items = ADMIN_ITEMS.filter((item) => item.key !== "commandes" || canCommandes);
 
   return (
     <div
@@ -37,7 +43,7 @@ export default function AdminNav() {
           boxShadow: "0 8px 32px rgba(44,26,16,0.15), inset 0 1px 0 rgba(255,255,255,0.7)",
         }}
       >
-        {ADMIN_ITEMS.map((item) => {
+        {items.map((item) => {
           const isActive = item.href !== "/" && pathname === item.href;
           return (
             <Link

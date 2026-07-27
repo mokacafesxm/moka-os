@@ -226,20 +226,39 @@ export function StaffProvider({ children }) {
     await sendClockAction("Arrivée", staffName);
   }, [sendClockAction]);
 
+  // Sprint 13 — Access (multi_select on Staff) gates which features the
+  // *currently selected* staff can reach, independent of the PIN itself.
+  const hasAccess = useCallback(
+    (feature) => Boolean(selectedStaff?.access?.includes(feature)),
+    [selectedStaff]
+  );
+  const canOrderPad = hasAccess("OrderPad");
+  const canCommandes = hasAccess("Commandes");
+  const canLivraisons = hasAccess("Livraisons");
+
   // Même clés localStorage que le PIN admin de page.js (mokaAdminEnabled /
   // mokaPinCode) — une seule source de vérité pour le code, même si le
   // booléen "déverrouillé" reste par arbre de composants (page.js et cette
   // app (os) ne partagent pas de state React) et se réinitialise au reload,
   // comme le fait déjà page.js.
+  //
+  // Sprint 13 — the PIN alone is no longer sufficient: isAdmin only ever
+  // gets set if the currently selected staff also has "Admin" in Access.
+  // Returns a reason string instead of a plain boolean so callers can show
+  // the right message (wrong PIN vs. no staff picked vs. PIN correct but
+  // this identity isn't authorized) — `ok` alone stays boolean-truthy-safe
+  // for any caller that only checks success/failure.
   const unlockAdmin = useCallback((pin) => {
-    if (typeof window === "undefined") return false;
+    if (typeof window === "undefined") return { ok: false, reason: "wrong_pin" };
     const adminEnabled = localStorage.getItem("mokaAdminEnabled") !== "false";
-    if (!adminEnabled) return false;
+    if (!adminEnabled) return { ok: false, reason: "wrong_pin" };
     const savedPin = localStorage.getItem("mokaPinCode") || "3578";
-    if (pin !== savedPin) return false;
+    if (pin !== savedPin) return { ok: false, reason: "wrong_pin" };
+    if (!selectedStaff) return { ok: false, reason: "no_staff" };
+    if (!selectedStaff.access?.includes("Admin")) return { ok: false, reason: "no_access" };
     setIsAdmin(true);
-    return true;
-  }, []);
+    return { ok: true };
+  }, [selectedStaff]);
 
   const lockAdmin = useCallback(() => setIsAdmin(false), []);
 
@@ -257,6 +276,10 @@ export function StaffProvider({ children }) {
         myTasks,
         myZone,
         poste,
+        hasAccess,
+        canOrderPad,
+        canCommandes,
+        canLivraisons,
         splashDone,
         setSplashDone,
         setStaff,

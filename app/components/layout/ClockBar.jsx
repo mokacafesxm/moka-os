@@ -15,6 +15,15 @@ function getStaffName(member) {
   return member?.name || member?.prenom || member?.nom || "Staff";
 }
 
+// Sprint 13 — unlockAdmin(pin) now returns { ok, reason } instead of a plain
+// boolean, since a correct PIN can still fail the Access check for the
+// currently selected identity.
+const PIN_ERROR_MESSAGES = {
+  wrong_pin: "Code incorrect",
+  no_staff: "Sélectionne d'abord un staff",
+  no_access: "Accès admin non autorisé pour ce poste",
+};
+
 const glassStyle = {
   background: "rgba(247, 239, 228, 0.45)",
   backdropFilter: "blur(32px) saturate(180%)",
@@ -58,11 +67,12 @@ export default function ClockBar() {
   };
 
   const submitPin = () => {
-    if (unlockAdmin(pin)) {
+    const result = unlockAdmin(pin);
+    if (result.ok) {
       setShowPinModal(false);
       setPin("");
     } else {
-      setPinError(true);
+      setPinError(PIN_ERROR_MESSAGES[result.reason] || "Code incorrect");
     }
   };
 
@@ -196,7 +206,7 @@ export default function ClockBar() {
               }`}
               placeholder="••••"
             />
-            {pinError && <div className="text-xs text-red-600 font-bold mb-3">Code incorrect</div>}
+            {pinError && <div className="text-xs text-red-600 font-bold mb-3">{pinError}</div>}
             <div className="flex gap-2.5 mt-3">
               <button
                 type="button"
