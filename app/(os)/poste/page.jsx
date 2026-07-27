@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
+
+const OUVERTURE_WORKFLOW_BY_ZONE = { Bar: "ouverture-bar", Cuisine: "ouverture-cuisine" };
 
 const CRITICITE_DOT = {
   Critique: "bg-[#b91c1c]",
@@ -66,6 +69,7 @@ export default function PostePage() {
 
   const zoneTaches = taches.filter((t) => t.zoneId === myZone.id);
   const zoneEquipements = equipements.filter((e) => e.zoneId === myZone.id);
+  const ouvertureWorkflowId = OUVERTURE_WORKFLOW_BY_ZONE[myZone.nom];
 
   return (
     <div className="min-h-dvh px-4 py-4" style={{ background: "#f7efe4" }}>
@@ -82,6 +86,15 @@ export default function PostePage() {
           Changer
         </button>
       </div>
+
+      {ouvertureWorkflowId && (
+        <Link
+          href={`/workflows/${ouvertureWorkflowId}`}
+          className="flex items-center justify-center gap-2 w-full h-12 rounded-2xl bg-[#2c1a10] text-white text-sm font-black cursor-pointer mb-4"
+        >
+          ▶ Démarrer l&apos;ouverture
+        </Link>
+      )}
 
       <div className="flex gap-2 mb-4">
         {TABS.map((t) => (

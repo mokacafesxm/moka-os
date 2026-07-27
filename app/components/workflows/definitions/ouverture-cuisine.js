@@ -1,0 +1,57 @@
+export default {
+  id: "ouverture-cuisine",
+  nom: "Ouverture Cuisine",
+  zone: "Cuisine",
+  steps: [
+    {
+      key: "poste-propre",
+      type: "checkbox",
+      label: "Poste de travail",
+      description: "Le plan de travail et la zone cuisine sont propres",
+    },
+    {
+      key: "temp-frigo-cuisine",
+      type: "temperature",
+      label: "Température frigo cuisine",
+      unit: "°C",
+      min: 0,
+      max: 4,
+      incidentCategorie: "Hygiène",
+      incidentCriticite: "Majeur",
+    },
+    {
+      key: "temp-congelateur",
+      type: "temperature",
+      label: "Température congélateur",
+      unit: "°C",
+      min: -20,
+      max: -15,
+      incidentCategorie: "Hygiène",
+      incidentCriticite: "Critique",
+    },
+    {
+      key: "mise-en-place",
+      type: "checklist",
+      label: "Mise en place",
+      items: [
+        "Ingrédients du jour sortis",
+        "Ustensiles propres à disposition",
+        "Plaques et four allumés et préchauffés",
+      ],
+    },
+    {
+      key: "stock-critique",
+      type: "stock-check",
+      label: "Vérification stock critique",
+      items: ["Pain", "Œufs", "Fromage", "Légumes du jour"],
+      incidentCategorie: "Stock",
+      incidentCriticite: "Majeur",
+    },
+    {
+      key: "notes-ouverture-cuisine",
+      type: "text",
+      label: "Notes d'ouverture cuisine",
+      description: "Remarques éventuelles (facultatif)",
+    },
+  ],
+};

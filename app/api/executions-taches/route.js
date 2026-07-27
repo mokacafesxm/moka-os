@@ -49,8 +49,9 @@ export async function GET(req) {
 export async function POST(req) {
   try {
     const data = await req.json();
-    if (!data.tacheId) return Response.json({ error: "tacheId required" }, { status: 400, headers: corsHeaders });
-
+    // tacheId is optional — WorkflowRunner (Sprint 8) logs one execution per
+    // completed workflow step without a linked Tache row (TACHES is schema-
+    // only, never seeded), relying on Nom/Notes to identify the step instead.
     const page = await createPage(DB.EXECUTIONS_TACHES, {
       Nom: titleProp(data.nom || `Tâche — ${new Date().toISOString()}`),
       Tache: relationProp(data.tacheId),
