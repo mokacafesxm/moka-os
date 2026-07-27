@@ -58,7 +58,7 @@ const PRIORITY_DOT = {
 };
 
 export default function HomePage() {
-  const { selectedStaff, selectedStaffName, setStaff } = useStaffContext();
+  const { selectedStaff, selectedStaffName, setStaff, canLivraisons } = useStaffContext();
   const { staff, stockLive, preps } = useAppContext();
 
   const [dashboard, setDashboard] = useState(null);
@@ -109,8 +109,23 @@ export default function HomePage() {
   const dateLabel = now ? now.toLocaleDateString("fr-FR", { timeZone: SXM_TIMEZONE, weekday: "long", day: "numeric", month: "long" }) : "";
   const timeLabel = now ? now.toLocaleTimeString("fr-FR", { timeZone: SXM_TIMEZONE, hour: "2-digit", minute: "2-digit" }) : "--:--";
 
+  const livraisonsAujourdhui = dashboard?.livraisons_aujourd_hui || [];
+
   return (
     <div className="min-h-dvh px-4 py-4 space-y-4" style={{ background: "#f7efe4" }}>
+      {canLivraisons && livraisonsAujourdhui.length > 0 && (
+        <Link
+          href="/poste#livraisons"
+          className="flex items-center justify-between rounded-2xl px-4 py-3.5 text-sm font-bold"
+          style={{ background: "#dbeafe", color: "#1e40af", border: "1px solid #93c5fd" }}
+        >
+          <span>
+            🚚 {livraisonsAujourdhui.length} livraison{livraisonsAujourdhui.length > 1 ? "s" : ""} prévue{livraisonsAujourdhui.length > 1 ? "s" : ""} aujourd&apos;hui
+          </span>
+          <span>Tap pour réceptionner →</span>
+        </Link>
+      )}
+
       <SectionCard title="Briefing du jour">
         <div className="text-lg font-black text-[#2c1a10]">Bonjour {selectedStaffName} 👋</div>
         <div className="text-xs text-[#9a7060] mt-0.5">Il est {timeLabel} · {dateLabel}</div>

@@ -1813,6 +1813,7 @@ export default function MokaOrderPad() {
       staff: orderValue(order, ["staff", "Staff", "property_staff"], "—"),
       dateCreation: orderValue(order, ["date", "dateCreation", "Date création", "property_date_cr_ation", "property_date_creation"], ""),
       dateEnvoi: orderValue(order, ["dateEnvoi", "date_envoi", "Envoyé le", "property_date_envoi", "property_envoy_le"], ""),
+      dateLivraisonPrevue: orderValue(order, ["dateLivraisonPrevue", "Date_Livraison_Prevue"], null),
       message: orderValue(order, ["message", "Message envoyé", "property_message_envoy", "property_message_envoye", "commentaire"], ""),
     };
   };
@@ -2792,10 +2793,15 @@ export default function MokaOrderPad() {
   };
 
   const unlockAdmin = () => {
-    if (unlockAdminShared(adminPin)) {
+    const result = unlockAdminShared(adminPin);
+    if (result.ok) {
       setShowAdminModal(false);
       setAdminPin("");
       showToast("Mode admin activé");
+    } else if (result.reason === "no_staff") {
+      showToast("Sélectionne d'abord un staff", "error");
+    } else if (result.reason === "no_access") {
+      showToast("Accès admin non autorisé pour ce poste", "error");
     } else {
       showToast("Code admin incorrect", "error");
     }
@@ -5455,6 +5461,11 @@ export default function MokaOrderPad() {
                                     <div className="flex items-center gap-2 mb-1">
                                       <OrdStatusBadge status={order.statut} />
                                       <span className="text-[10px] text-[#9a7060]">{formatDateSXM(order.dateCreation || order.dateEnvoi)}</span>
+                                      {order.dateLivraisonPrevue && order.statut !== "Reçu" && (
+                                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-[#fef3c7] text-[#854f0b]">
+                                          🚚 Livraison demain
+                                        </span>
+                                      )}
                                     </div>
                                     <div className="font-black text-sm text-[#2c1a10] truncate">{order.produit}</div>
                                     <div className="text-[11px] text-[#9a7060] mt-0.5 truncate">{order.fournisseur}</div>
@@ -7930,6 +7941,10 @@ function getGridCols(n) {
 function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
   const [currentStep, setCurrentStep] = React.useState(0);
   const [sentPanels, setSentPanels] = React.useState({});
+  // Sprint 13 — id of the just-created Besoin row per panel, so "Confirmer
+  // livraison prévue" can PATCH Date_Livraison_Prevue on the right one.
+  const [sentOrderIds, setSentOrderIds] = React.useState({});
+  const [deliveryConfirmed, setDeliveryConfirmed] = React.useState({});
   const [saving, setSaving] = React.useState(false);
   const touchStartX = React.useRef(null);
 
@@ -7941,7 +7956,8 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
   const wa = currentGroup.supplier ? ordGetSupplierWhatsapp(currentGroup.supplier) : null;
   const em = currentGroup.supplier ? ordGetSupplierEmail(currentGroup.supplier) : null;
   const isLast = currentStep === n - 1;
-  const isSent = !!sentPanels[currentGroup.fournisseurId || currentGroup.fournisseurNom];
+  const currentKey = currentGroup.fournisseurId || currentGroup.fournisseurNom;
+  const isSent = !!sentPanels[currentKey];
 
   const markSent = async (group) => {
     const key = group.fournisseurId || group.fournisseurNom;
@@ -7949,7 +7965,7 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
     setSaving(true);
     const msg = buildGroupedMessage(group.fournisseurNom, group.items);
     try {
-      await fetch("/api/supplier-orders", {
+      const res = await fetch("/api/supplier-orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -7963,11 +7979,29 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
           produits: group.items.map((p) => ({ name: p.name, qty: p.qty, unit: p.unit, produitId: p.id || null })),
         }),
       });
+      const data = await res.json();
       setSentPanels((prev) => ({ ...prev, [key]: true }));
+      if (data?.id) setSentOrderIds((prev) => ({ ...prev, [key]: data.id }));
     } catch (err) {
       console.error("Erreur markSent:", err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const confirmLivraisonDemain = async (key) => {
+    const orderId = sentOrderIds[key];
+    if (!orderId) return;
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    try {
+      await fetch("/api/supplier-orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: orderId, dateLivraisonPrevue: tomorrow }),
+      });
+      setDeliveryConfirmed((prev) => ({ ...prev, [key]: true }));
+    } catch (err) {
+      console.error("Erreur confirmLivraisonDemain:", err);
     }
   };
 
@@ -8042,6 +8076,17 @@ function OrdMultiPanelModal({ groups, onClose, onAllSent }) {
         {/* Footer fixe */}
         <div className="shrink-0 px-5 pt-3 space-y-2 border-t border-[#e5d5c5]"
           style={{ paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}>
+          {isSent && !deliveryConfirmed[currentKey] && (
+            <div className="rounded-2xl bg-[#fef3c7] border border-[#fcd34d] p-3 space-y-2">
+              <div className="text-xs font-bold text-[#854f0b]">
+                📦 Livraison prévue demain {new Date(Date.now() + 86400000).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}
+              </div>
+              <button onClick={() => confirmLivraisonDemain(currentKey)}
+                className="w-full py-2.5 rounded-xl bg-[#854f0b] text-white font-black text-xs cursor-pointer">
+                Confirmer livraison prévue
+              </button>
+            </div>
+          )}
           {n > 1 && (
             <div className="flex items-center justify-between mb-1">
               <button onClick={() => setCurrentStep((s) => s - 1)} disabled={currentStep === 0}

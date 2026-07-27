@@ -80,6 +80,34 @@ async function getLivraisonsAttendues() {
   return result;
 }
 
+async function getLivraisonsAujourdhui(todaySXM) {
+  const [orderPages, supplierPages] = await Promise.all([
+    queryDatabase(DB.BESOINS, {
+      property: "Date_Livraison_Prevue",
+      date: { equals: todaySXM },
+    }, null, 100),
+    queryDatabase(DB.FOURNISSEURS),
+  ]);
+
+  const supplierMap = {};
+  supplierPages.forEach((p) => {
+    const nom = getTitle(p.properties, "Fournisseur", "Nom", "nom");
+    if (p.id && nom) supplierMap[p.id] = nom;
+  });
+
+  return orderPages
+    .filter((page) => getSelect(page.properties, "Statut") !== "Reçu")
+    .map((page) => {
+      const p = page.properties;
+      const relIds = (p.Fournisseur?.relation || []).map((r) => r.id);
+      return {
+        id: page.id,
+        fournisseur: supplierMap[relIds[0]] || getText(p, "Fournisseur") || "Fournisseur",
+        produit: getTitle(p, "Besoin"),
+      };
+    });
+}
+
 async function getIncidentsOuverts() {
   const pages = await queryDatabase(DB.INCIDENTS, null, null, 200);
   return pages.filter((page) => {
@@ -146,10 +174,11 @@ export async function GET() {
   try {
     const todaySXM = getSXMDateString();
 
-    const [critiques, prepasUrgentes, livraisonsAttendues, incidentsOuverts, staffToday] = await Promise.all([
+    const [critiques, prepasUrgentes, livraisonsAttendues, livraisonsAujourdhui, incidentsOuverts, staffToday] = await Promise.all([
       getCritiques(),
       getPrepasUrgentes(todaySXM),
       getLivraisonsAttendues(),
+      getLivraisonsAujourdhui(todaySXM),
       getIncidentsOuverts(),
       getStaffToday(todaySXM),
     ]);
@@ -159,6 +188,7 @@ export async function GET() {
       critiques,
       prepas_urgentes: prepasUrgentes,
       livraisons_attendues: livraisonsAttendues,
+      livraisons_aujourd_hui: livraisonsAujourdhui,
       incidents_ouverts: incidentsOuverts,
       staff_today: staffToday,
       // Aucun import AddicTill réel n'a encore tourné en production (voir

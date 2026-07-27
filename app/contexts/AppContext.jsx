@@ -169,6 +169,7 @@ export function AppProvider({ children }) {
         refreshAll,
         refreshStock,
         refreshProducts,
+        refreshSupplierOrders,
       }}
     >
       {children}
