@@ -1,13 +1,13 @@
-import { DB, corsHeaders, updatePage, queryDatabase, titleProp, selectProp, numberProp, checkboxProp, relationProp } from "../../_notion";
+import { DB, corsHeaders, getPage, updatePage, createPage, queryDatabase, resolveName, archivePage } from "../../_notion";
+import { updateIngredient } from "../../../../lib/ops/ingredients-service";
 
-async function resolveSupplier(name) {
-  if (!name) return null;
-  const pages = await queryDatabase(DB.FOURNISSEURS, {
-    property: "Fournisseur",
-    title: { equals: name },
-  }, null, 1);
-  return pages[0]?.id || null;
-}
+// Not called by the current UI (app/page.js uses /api/settings/products) —
+// kept working rather than silently removed, now delegating to the same
+// canonical INGREDIENTS writer, in "full" mode to match this route's
+// original behavior exactly: every field is overwritten, and an unresolved
+// default supplier explicitly clears the relation (see
+// docs/ARCHITECTURE.md "Architecture cleanup — Phase 1").
+const notion = { getPage, updatePage, createPage, queryDatabase, resolveName, archivePage };
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -16,34 +16,11 @@ export async function OPTIONS() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const {
-      id, name, categorie, sousCategorie, visibleOrderPad,
-      fournisseurDefaut, zoneStockage, quantiteCommandee,
-      uniteStock, uniteCommande, portion, seuilAlerte, seuilCritique,
-    } = body;
-
+    const { id, ...data } = body;
     if (!id) {
       return Response.json({ error: "id required" }, { status: 400, headers: corsHeaders });
     }
-
-    const supplierPageId = await resolveSupplier(fournisseurDefaut);
-
-    const properties = {
-      "Ingredient":                  titleProp(name),
-      "Categorie":                   selectProp(categorie),
-      "Sous-categorie":              selectProp(sousCategorie),
-      "Visible_OrderPad":            checkboxProp(visibleOrderPad),
-      "Zone_stockage":               selectProp(zoneStockage),
-      "Quantite_commande_suggeree":  numberProp(quantiteCommandee),
-      "Unite_stock":                 selectProp(uniteStock),
-      "Unite_commande":              selectProp(uniteCommande),
-      "1 Portion (g)":               numberProp(portion),
-      "Seuil_alerte":                numberProp(seuilAlerte),
-      "Seuil_critique":              numberProp(seuilCritique),
-      "Fournisseur par defaut":      supplierPageId ? relationProp(supplierPageId) : { relation: [] },
-    };
-
-    await updatePage(id, properties);
+    await updateIngredient(id, data, { fournisseursDbId: DB.FOURNISSEURS, notion, mode: "full" });
     return Response.json({ success: true }, { headers: corsHeaders });
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500, headers: corsHeaders });

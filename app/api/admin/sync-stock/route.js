@@ -1,77 +1,42 @@
-const NOTION_API_KEY = process.env.NOTION_API_KEY;
-const NOTION_VERSION = "2022-06-28";
-const INGREDIENTS_DB = "3699512cf66a808fb9fdf39666926abb";
-const STOCK_DB = "3689512cf66a80aa8c43eb4f85347f8e";
+import { DB, corsHeaders, createPage, queryDatabase, getTitle, getSelect, getRelationIds } from "../../_notion";
+import { ensureStockRowForIngredient } from "../../../../lib/stock/ensure-stock-row";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
-
-const notionHeaders = () => ({
-  Authorization: `Bearer ${NOTION_API_KEY}`,
-  "Notion-Version": NOTION_VERSION,
-  "Content-Type": "application/json",
-});
-
-const queryDatabase = async (dbId, pageSize = 300) => {
-  const results = [];
-  let cursor;
-  do {
-    const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
-      method: "POST",
-      headers: notionHeaders(),
-      body: JSON.stringify({ page_size: pageSize, ...(cursor ? { start_cursor: cursor } : {}) }),
-    });
-    const data = await res.json();
-    results.push(...(data.results || []));
-    cursor = data.has_more ? data.next_cursor : null;
-  } while (cursor);
-  return results;
-};
-
-const createStockEntry = async (page) => {
-  const name = page.properties?.Ingredient?.title?.[0]?.plain_text || "";
-  if (!name) return null;
-  const unite = page.properties?.Unite_stock?.select?.name || "";
-  const properties = {
-    Produit: { title: [{ text: { content: name } }] },
-    Quantite_stock: { number: 0 },
-    MOKA_Ingredients_Master: { relation: [{ id: page.id }] },
-  };
-  if (unite) properties.Unite_stock = { select: { name: unite } };
-  const res = await fetch("https://api.notion.com/v1/pages", {
-    method: "POST",
-    headers: notionHeaders(),
-    body: JSON.stringify({ parent: { database_id: STOCK_DB }, properties }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || `Notion ${res.status}`);
-  return name;
-};
+// Backfills missing Stock rows for any Ingredient lacking one — Architecture
+// cleanup Phase 1. Delegates per-ingredient to the same canonical
+// ensureStockRowForIngredient used at ingredient-creation time
+// (app/api/settings/products) and by the additive stock-update path
+// (lib/stock/apply-addition.js), instead of its own independent
+// relation-only existence check — which could miss a legacy row never
+// linked via relation but already present by name, a latent duplicate-row
+// risk this consolidation fixes. Also now uses the shared DB.INGREDIENTS/
+// DB.STOCK config instead of its own hardcoded copies of the same ids.
+//
+// This route still auto-fires on every admin page load (app/page.js) — that
+// trigger is a UI/business-behavior concern, unchanged and out of scope for
+// this code-consolidation pass. What changes here is purely that the
+// operation it triggers is now provably idempotent and duplicate-row-safe,
+// including against a concurrent ingredient-creation bootstrap for the same
+// ingredient (both go through the same in-process lock).
+const notion = { createPage, queryDatabase };
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
 }
 
-// GET → load both DBs in parallel, identify missing entries by relation ID,
-//        create them in batches of 5.
 export async function GET() {
   try {
     const [ingredientPages, stockPages] = await Promise.all([
-      queryDatabase(INGREDIENTS_DB),
-      queryDatabase(STOCK_DB),
+      queryDatabase(DB.INGREDIENTS, null, null, 300),
+      queryDatabase(DB.STOCK, null, null, 300),
     ]);
 
-    // Set of ingredient IDs already linked to a stock entry via relation
     const linkedIngredientIds = new Set();
     for (const page of stockPages) {
-      const rel = page.properties?.MOKA_Ingredients_Master?.relation || [];
-      if (rel[0]?.id) linkedIngredientIds.add(rel[0].id);
+      const rel = getRelationIds(page.properties, "MOKA_Ingredients_Master");
+      if (rel[0]) linkedIngredientIds.add(rel[0]);
     }
 
-    const missing = ingredientPages.filter(p => !linkedIngredientIds.has(p.id));
+    const missing = ingredientPages.filter((p) => !linkedIngredientIds.has(p.id));
 
     const created = [];
     const errors = [];
@@ -79,14 +44,23 @@ export async function GET() {
     const BATCH_SIZE = 5;
     for (let i = 0; i < missing.length; i += BATCH_SIZE) {
       const batch = missing.slice(i, i + BATCH_SIZE);
-      const results = await Promise.allSettled(batch.map(createStockEntry));
+      const results = await Promise.allSettled(batch.map((page) => {
+        const name = getTitle(page.properties, "Ingredient");
+        const uniteStock = getSelect(page.properties, "Unite_stock");
+        return ensureStockRowForIngredient({
+          ingredientId: page.id,
+          ingredientName: name,
+          uniteStock,
+          stockDbId: DB.STOCK,
+          notion,
+        }).then((result) => ({ name, ...result }));
+      }));
       for (const r of results) {
-        if (r.status === "fulfilled" && r.value) created.push(r.value);
+        if (r.status === "fulfilled" && r.value.created) created.push(r.value.name);
         else if (r.status === "rejected") errors.push(r.reason?.message || "erreur inconnue");
       }
-      // Rate-limit pause between batches only (not after last batch)
       if (i + BATCH_SIZE < missing.length) {
-        await new Promise(r => setTimeout(r, 400));
+        await new Promise((r) => setTimeout(r, 400));
       }
     }
 

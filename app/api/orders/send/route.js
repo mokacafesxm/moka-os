@@ -1,14 +1,26 @@
-import { DB, corsHeaders, createPage, queryDatabase, titleProp, textProp, selectProp, numberProp, relationProp, getTitle } from "../../_notion";
+import { DB, corsHeaders, createPage, updatePage, queryDatabase, resolveName } from "../../_notion";
+import {
+  buildNameToIdMap,
+  createSupplierOrder,
+  groupItemsBySupplier,
+  buildOrderPadMessage,
+  buildOrderPadDateStr,
+} from "../../../../lib/ops/supplier-orders-service";
 
-async function buildIdMap(dbId, ...titleKeys) {
-  const pages = await queryDatabase(dbId, null, null, 200);
-  const map = {};
-  for (const p of pages) {
-    const name = getTitle(p.properties, ...titleKeys);
-    if (name) map[name.toLowerCase()] = p.id;
-  }
-  return map;
+const UUID_RE = /^[0-9a-f-]{36}$/i;
+function resolveFromMap(explicitId, name, map) {
+  if (explicitId && UUID_RE.test(String(explicitId))) return explicitId;
+  if (!name) return null;
+  return map[String(name).trim().toLowerCase()] || null;
 }
+
+// Staff-cart bulk supplier-order submission — Architecture cleanup Phase 1.
+// Delegates to the same canonical BESOINS writer as /api/supplier-orders.
+// Fixes the known bug where "Quantité suggérée" was written as the number of
+// distinct cart items in a supplier group instead of the real ordered
+// quantity (only meaningful, and only ever set, for a single-item group —
+// see lib/ops/supplier-orders-service.js).
+const notion = { createPage, updatePage, queryDatabase, resolveName };
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -22,51 +34,43 @@ export async function POST(request) {
       return Response.json({ error: "Array of order items required" }, { status: 400, headers: corsHeaders });
     }
 
+    const grouped = groupItemsBySupplier(items);
+    const dateStr = buildOrderPadDateStr();
+
+    // Resolved once for the whole request (not per supplier group) — matches
+    // the original route's single-query-per-database behavior, avoiding an
+    // N-groups-times-more-queries regression against Notion's rate limit.
     const [supplierMap, staffMap, productMap] = await Promise.all([
-      buildIdMap(DB.FOURNISSEURS, "Fournisseur"),
-      buildIdMap(DB.STAFF, "Prénom", "Nom", "Name"),
-      buildIdMap(DB.INGREDIENTS, "Ingredient"),
+      buildNameToIdMap(DB.FOURNISSEURS, "Fournisseur", notion),
+      buildNameToIdMap(DB.STAFF, "Nom", notion),
+      buildNameToIdMap(DB.INGREDIENTS, "Ingredient", notion),
     ]);
 
-    const grouped = {};
-    items.forEach((item) => {
-      const sup = item.Fournisseur || "Sans fournisseur";
-      if (!grouped[sup]) grouped[sup] = { items: [], staffName: item.StaffName || "Staff" };
-      grouped[sup].items.push(item);
-    });
+    const results = await Promise.all(Object.entries(grouped).map(async ([supplierName, { items: groupItems, staffName }]) => {
+      const fournisseurId = resolveFromMap(null, supplierName, supplierMap);
+      const staffId = resolveFromMap(null, staffName, staffMap);
 
-    const nowSXM = new Date().toLocaleString("sv-SE", { timeZone: "America/Puerto_Rico" }).replace(" ", "T") + "-04:00";
-    const dateStr = new Date().toLocaleDateString("fr-FR", {
-      weekday: "long", day: "numeric", month: "long", year: "numeric",
-      timeZone: "America/Puerto_Rico",
-    });
+      const resolvedItems = groupItems.map((p) => ({
+        name: p.Produit,
+        quantite: p["Quantité"],
+        unite: p.Unite,
+        resolvedId: resolveFromMap(p.id, p.Produit, productMap),
+      }));
 
-    const results = await Promise.all(Object.entries(grouped).map(async ([supName, { items: groupItems, staffName }]) => {
-      const foId    = supplierMap[supName.toLowerCase()];
-      const staffId = staffMap[staffName.toLowerCase()];
+      const message = buildOrderPadMessage(supplierName, groupItems, dateStr);
 
-      const lines   = groupItems.map((p) => `- ${p.Produit} — ${p["Quantité"]} ${p.Unite || ""}`.trim()).join("\n");
-      const message = `Bonjour ${supName} 👋\n\nCommande du ${dateStr} :\n\n${lines}\n\nMerci 🙏\n— Équipe MÖKA`;
-
-      const properties = {
-        "Besoin":            titleProp(`NEW ORDER : ${staffName}`),
-        "Quantité suggérée": numberProp(groupItems.length),
-        "Statut":            selectProp("À commander"),
-        "Source":            selectProp("OrderPad"),
-        "Message envoyé":    textProp(message),
-        "ID Produit":        textProp(groupItems.map((p) => p.Produit).join(", ")),
-        "Date création":     { date: { start: nowSXM } },
-      };
-
-      const produitIds = groupItems
-        .map((p) => (/^[0-9a-f-]{36}$/i.test(String(p.id || "")) ? p.id : null) || productMap[(p.Produit || "").toLowerCase()])
-        .filter(Boolean);
-      if (produitIds.length) properties["Produit"] = { relation: produitIds.map((id) => ({ id })) };
-      if (foId)    properties["Fournisseur"] = relationProp(foId);
-      if (staffId) properties["Staff"]       = relationProp(staffId);
-
-      const page = await createPage(DB.BESOINS, properties);
-      return page.id;
+      const { id } = await createSupplierOrder({
+        source: "OrderPad",
+        staffName,
+        staffId,
+        fournisseur: supplierName,
+        fournisseurId,
+        message,
+        items: resolvedItems,
+        besoinsDbId: DB.BESOINS,
+        notion,
+      });
+      return id;
     }));
 
     return Response.json({ success: true, ids: results }, { headers: corsHeaders });

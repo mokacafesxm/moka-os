@@ -1,50 +1,36 @@
-import { DB, corsHeaders, getPage, updatePage, createPage, resolveName, getNumber, selectProp, numberProp, titleProp } from "../../_notion";
+import { DB, corsHeaders, getPage, updatePage, createPage, resolveName, queryDatabase } from "../../_notion";
+import { handleStockUpdate } from "../../../../lib/stock/handle-stock-update";
+
+const notion = { getPage, updatePage, createPage, resolveName, queryDatabase };
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
 }
 
+// Additive stock changes (mode: "add" | "upsert") require an idempotencyKey
+// and can never apply the same delta twice — see docs/ARCHITECTURE.md
+// "Stock safety patch" and lib/stock/idempotency.js for the key formats.
+// `mode: "replace"` (manual physical count / full recount) is unchanged.
 export async function POST(request) {
   try {
-    const { id, poidsTotal, Unite, mode, name, notionProductId } = await request.json();
+    const { id, poidsTotal, Unite, mode, name, notionProductId, idempotencyKey } = await request.json();
 
-    let targetId = id || null;
+    const result = await handleStockUpdate({
+      id,
+      name,
+      notionProductId,
+      poidsTotal,
+      unite: Unite,
+      mode,
+      idempotencyKey,
+      stockDbId: DB.STOCK,
+      notion,
+    });
 
-    // Lookup by name if no id provided
-    if (!targetId && name) {
-      targetId = await resolveName(DB.STOCK, "Produit", String(name).trim());
+    if (!result.success) {
+      return Response.json({ error: result.error }, { status: 400, headers: corsHeaders });
     }
-
-    const quantity = Number(poidsTotal) || 0;
-
-    if (targetId) {
-      // UPDATE existing stock entry
-      let finalQuantity = quantity;
-      if (mode === "add") {
-        const page = await getPage(targetId);
-        const current = getNumber(page.properties, "Quantite_stock", "Quantité stock", "quantiteStock", "Quantite stock");
-        finalQuantity = (current || 0) + quantity;
-      }
-      const properties = { "Quantite_stock": numberProp(finalQuantity) };
-      if (Unite) properties["Unite_stock"] = selectProp(Unite);
-      await updatePage(targetId, properties);
-      return Response.json({ success: true, newQuantity: finalQuantity, action: "update" }, { headers: corsHeaders });
-    }
-
-    // CREATE new stock entry (upsert fallback)
-    if (!name) {
-      return Response.json({ error: "id or name required" }, { status: 400, headers: corsHeaders });
-    }
-    const properties = {
-      "Produit": titleProp(String(name).trim()),
-      "Quantite_stock": numberProp(quantity),
-    };
-    if (Unite) properties["Unite_stock"] = selectProp(Unite);
-    // Link to MOKA_Ingredients_Master if catalog page ID provided
-    if (notionProductId) properties["MOKA_Ingredients_Master"] = { relation: [{ id: notionProductId }] };
-
-    const page = await createPage(DB.STOCK, properties);
-    return Response.json({ success: true, newQuantity: quantity, action: "create", id: page.id }, { headers: corsHeaders });
+    return Response.json(result, { headers: corsHeaders });
   } catch (err) {
     console.error("[stock/update]", err.message);
     return Response.json({ error: err.message }, { status: 500, headers: corsHeaders });
