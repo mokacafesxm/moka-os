@@ -116,7 +116,7 @@ export default function ClockBar() {
           type="button"
           onClick={handleAdminToggle}
           aria-label={isAdmin ? "Désactiver le mode admin" : "Activer le mode admin"}
-          className={`w-9 h-9 shrink-0 rounded-full border flex items-center justify-center text-sm cursor-pointer active:scale-95 transition-transform ${
+          className={`w-11 h-11 shrink-0 rounded-full border flex items-center justify-center text-sm cursor-pointer active:scale-95 transition-transform ${
             isAdmin ? "bg-[#5a7828] border-[#5a7828] text-white" : "bg-white/80 border-[#e5d5c5]"
           }`}
         >

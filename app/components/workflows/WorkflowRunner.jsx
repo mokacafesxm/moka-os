@@ -256,7 +256,7 @@ export default function WorkflowRunner({ workflow }) {
                       key={choice}
                       type="button"
                       onClick={() => setValue({ ...(value || {}), [i]: choice })}
-                      className="h-8 px-3 rounded-xl text-xs font-black cursor-pointer transition-colors"
+                      className="h-11 px-3 rounded-xl text-xs font-black cursor-pointer transition-colors"
                       style={{
                         background: value?.[i] === choice ? (choice === "ok" ? "#5a7828" : "#b91c1c") : "#f0e8dc",
                         color: value?.[i] === choice ? "#fff" : "#9a7060",
@@ -277,7 +277,7 @@ export default function WorkflowRunner({ workflow }) {
                   type="button"
                   onClick={() => declareIncident(`Articles manquants lors de "${step.label}" : ${stockManqueItems.join(", ")}`)}
                   disabled={incidentDeclaring || incidentDeclared[step.key]}
-                  className="h-8 px-3 rounded-xl bg-red-500 text-white text-xs font-black cursor-pointer disabled:opacity-50"
+                  className="h-11 px-3 rounded-xl bg-red-500 text-white text-xs font-black cursor-pointer disabled:opacity-50"
                 >
                   {incidentDeclared[step.key] ? "Incident déclaré ✓" : incidentDeclaring ? "Envoi…" : "🚨 Déclarer un incident"}
                 </button>
@@ -309,7 +309,7 @@ export default function WorkflowRunner({ workflow }) {
                   type="button"
                   onClick={() => declareIncident(`Température relevée : ${value}${step.unit} (attendu ${step.min} à ${step.max}${step.unit}) — ${step.label}`)}
                   disabled={incidentDeclaring || incidentDeclared[step.key]}
-                  className="h-8 px-3 rounded-xl bg-red-500 text-white text-xs font-black cursor-pointer disabled:opacity-50"
+                  className="h-11 px-3 rounded-xl bg-red-500 text-white text-xs font-black cursor-pointer disabled:opacity-50"
                 >
                   {incidentDeclared[step.key] ? "Incident déclaré ✓" : incidentDeclaring ? "Envoi…" : "🚨 Déclarer un incident"}
                 </button>

@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import ClientOrdersKDS from "../_components/ClientOrdersKDS";
 import NewOrderAlert from "../_components/NewOrderAlert";
 import { resolveOperationId, clearOperationId } from "../../lib/stock/operation-id";
+import { useStaffContext } from "../contexts/StaffContext";
 
 const PRODUCTS_URL = "/api/products";
 
@@ -351,6 +352,13 @@ const ZONE_GROUPS = [
 ];
 
 export default function MokaOrderPad() {
+  // Sprint 10 — isAdmin shared via StaffContext (same source as ClockBar/
+  // AdminNav) instead of a local useState, so unlocking admin anywhere in
+  // the app also unlocks it here, and vice versa. unlockAdmin/lockAdmin
+  // read/write the same "mokaPinCode"/"mokaAdminEnabled" localStorage keys
+  // the old local unlockAdmin() below used to duplicate.
+  const { isAdmin, setIsAdmin, unlockAdmin: unlockAdminShared, lockAdmin } = useStaffContext();
+
   const [activeTab, setActiveTab] = useState("orderpad");
 
   const [products, setProducts] = useState(() => {
@@ -430,7 +438,6 @@ export default function MokaOrderPad() {
   const [settingsForm, setSettingsForm] = useState({});
   const [savingSettings, setSavingSettings] = useState(false);
 
-  const [isAdmin, setIsAdmin] = useState(false);
   const [adminSection, setAdminSection] = useState("dashboard");
   const [settingsPanel, setSettingsPanel] = useState("");
   const [settingsData, setSettingsData] = useState([]);
@@ -2785,11 +2792,7 @@ export default function MokaOrderPad() {
   };
 
   const unlockAdmin = () => {
-    const adminEnabled = localStorage.getItem("mokaAdminEnabled") !== "false";
-    if (!adminEnabled) { showToast("Mode admin désactivé", "error"); return; }
-    const savedPin = localStorage.getItem("mokaPinCode") || "3578";
-    if (adminPin === savedPin) {
-      setIsAdmin(true);
+    if (unlockAdminShared(adminPin)) {
       setShowAdminModal(false);
       setAdminPin("");
       showToast("Mode admin activé");
@@ -3852,97 +3855,32 @@ export default function MokaOrderPad() {
     >
 
       {/* ── HEADER ─────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 bg-[#f5ede0]/96 backdrop-blur-md border-b border-[#ddc9b5] px-4 pb-2.5 shadow-sm" style={{ paddingTop: "env(safe-area-inset-top)" }}>
-        <div className="max-w-screen-2xl mx-auto flex items-center justify-between gap-3">
-
-          {/* Brand gauche */}
-          <div className="flex items-center gap-2 shrink-0">
-            <div className={`rounded-2xl bg-[#2c1a10] flex items-center justify-center shadow-md ${isIphone ? "w-8 h-8" : "w-10 h-10"}`}>
-              <svg viewBox="0 0 24 24" fill="none" className={`text-[#f5ede0] ${isIphone ? "w-4 h-4" : "w-5 h-5"}`} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 8h1a4 4 0 0 1 0 8h-1"/>
-                <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/>
-                <line x1="6" x2="6" y1="2" y2="4"/>
-                <line x1="10" x2="10" y1="2" y2="4"/>
-                <line x1="14" x2="14" y1="2" y2="4"/>
-              </svg>
-            </div>
-            {!isIphone && (
-              <div>
-                <div className="font-black text-[#2c1a10] text-base leading-none tracking-tight">MÖKA</div>
-                <div className="text-[10px] text-[#9a7060] tracking-[0.25em] uppercase mt-0.5">Order Pad</div>
-                <div className="text-[9px] text-[#9a7060] flex items-center gap-1">
-                  {isSyncing ? (
-                    <>
-                      <svg className="w-2.5 h-2.5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30 60"/>
-                      </svg>
-                      Sync…
-                    </>
-                  ) : (
-                    <>Sync {lastSync.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Puerto_Rico" })}</>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Centre : Pointage */}
-          <button
-            onClick={openClockModal}
-            className={`relative rounded-xl bg-white border-2 border-[#e85d8a] text-[#e85d8a] font-black text-sm shadow-sm ring-2 ring-[#e85d8a]/25 hover:bg-[#fff0f5] transition-all cursor-pointer flex items-center gap-2 ${isIphone ? "h-9 px-2.5" : "h-10 px-4"}`}
-          >
-            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#e85d8a] animate-ping opacity-75" />
-            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/><path d="M9.5 2.5h5"/><path d="M12 2v2.5"/>
-            </svg>
-            {!isIphone && "Pointage"}
-          </button>
-
-          {/* Admin droite + Paramètres iPhone groupés */}
-          <div className="flex items-center gap-1.5">
-            {isAdmin && isIphone && (
-              <button
-                onClick={() => setAdminSection("settings")}
-                className={`h-9 w-9 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
-                  adminSection === "settings"
-                    ? "bg-[#5a7828] text-white border-[#5a7828]"
-                    : "bg-white text-[#6b4a3d] border-[#e5d5c5]"
-                }`}
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z"/>
-                  <path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
-                </svg>
-              </button>
-            )}
-            <button
-            onClick={() => {
-              if (isAdmin) {
-                setIsAdmin(false);
-                setAdminSection("dashboard");
-                showToast("Mode admin désactivé", "warning");
-              } else {
-                setShowAdminModal(true);
-              }
-            }}
-            className={`rounded-xl font-bold text-xs border shadow-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer ${isIphone ? "h-9 px-2.5" : "h-10 px-3.5"} ${
-              isAdmin
-                ? "bg-[#5a7828] text-white border-[#5a7828] hover:bg-[#4e6a22]"
-                : "bg-white text-[#2c1a10] border-[#e5d5c5] hover:bg-[#f0e4d4]"
-            }`}
-          >
-            {isAdmin ? (
-              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            ) : (
-              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            )}
-            {!isIphone && <span>{isAdmin ? "Admin ON" : "Admin"}</span>}
-          </button>
-          </div>
-        </div>
-      </header>
+      {/* Sprint 10 — old header (brand/Sync + Pointage + Admin toggle) removed:
+          AppShell's ClockBar already provides staff/pointage + the admin
+          lock icon (same shared isAdmin now, see useStaffContext() above),
+          and the "Paramètres" cog shortcut is superseded by Settings being
+          unconditionally in the ADMIN BOTTOM NAV below. The Pointage button
+          moved into the content area below (still needed — see comment
+          there); the ADMIN PIN MODAL (inline unlock for a locked action,
+          e.g. openSettings) is kept as-is, not reachable from shell chrome
+          but still reachable from those in-page actions. */}
 
       <div className="max-w-screen-2xl mx-auto px-3 py-3">
+
+        {/* ── POINTAGE (kiosk) ─────────────────────────── */}
+        {/* Shared-tablet punch clock — shows every staff member at once so
+            anyone can tap their own card to clock in/out, unlike ClockBar's
+            one-at-a-time picker. Not admin-gated: any staff clocks in. */}
+        <button
+          onClick={openClockModal}
+          className="relative rounded-xl bg-white border-2 border-[#e85d8a] text-[#e85d8a] font-black text-sm shadow-sm ring-2 ring-[#e85d8a]/25 hover:bg-[#fff0f5] transition-all cursor-pointer flex items-center gap-2 h-10 px-4 mb-4"
+        >
+          <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#e85d8a] animate-ping opacity-75" />
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/><path d="M9.5 2.5h5"/><path d="M12 2v2.5"/>
+          </svg>
+          Pointage
+        </button>
 
         {/* ── ADMIN KPI CARDS ──────────────────────────── */}
         {isAdmin && (
@@ -6269,24 +6207,27 @@ export default function MokaOrderPad() {
       <NewOrderAlert enabled={true} />
 
       {/* ── ADMIN BOTTOM NAV — glassmorphism ─────────── */}
+      {/* Stacked above AppShell's <AdminNav/> (fixed bottom, z-40) rather than
+          bottom-0/z-90 — since isAdmin is now shared via StaffContext (Sprint 10),
+          both bars render together whenever admin is on; this one switches
+          in-page adminSection panels, the shell one switches routes. */}
       {isAdmin && (
         <div
-          className="fixed bottom-0 left-0 right-0 z-[90] flex justify-center"
+          className="fixed bottom-24 left-0 right-0 z-30 flex justify-center"
           style={{
             transition: "opacity 0.25s ease, transform 0.25s ease",
             opacity: hasFixedBottomAction ? 0 : 1,
             transform: hasFixedBottomAction ? "translateY(20px)" : "translateY(0)",
             pointerEvents: hasFixedBottomAction ? "none" : "auto",
           }}
-          style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
         >
           <div
             className="flex items-center gap-1 px-2 py-2 rounded-[2rem]"
             style={{
-              background: "rgba(245, 237, 224, 0.45)",
+              background: "rgba(247,239,228,0.45)",
               backdropFilter: "blur(32px) saturate(180%)",
               WebkitBackdropFilter: "blur(32px) saturate(180%)",
-              border: "1px solid rgba(255,255,255,0.55)",
+              border: "1px solid rgba(255,255,255,0.5)",
               boxShadow: "0 8px 32px rgba(44,26,16,0.15), inset 0 1px 0 rgba(255,255,255,0.7)",
             }}
           >
@@ -6297,7 +6238,10 @@ export default function MokaOrderPad() {
               { id: "orders", label: "Commandes", icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" x2="21" y1="6" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> },
               { id: "clientOrders", label: "Clients", icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M4 3h16a1 1 0 0 1 1 1v17l-3-2-2 2-2-2-2 2-2-2-3 2V4a1 1 0 0 1 1-1Z"/><line x1="8" x2="16" y1="8" y2="8"/><line x1="8" x2="16" y1="12" y2="12"/></svg> },
               { id: "reports", label: "Rapports", icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg> },
-              ...(!isIphone ? [{ id: "settings", label: "Paramètres", icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> }] : []),
+              // Sprint 10 — was iPhone-excluded (`!isIphone ?`) with a separate
+              // cog shortcut in the old header covering iPhone; that header
+              // is gone now, so Settings lives here unconditionally instead.
+              { id: "settings", label: "Paramètres", icon: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> },
             ].map(({ id, icon, label }) => (
               <button
                 key={id}

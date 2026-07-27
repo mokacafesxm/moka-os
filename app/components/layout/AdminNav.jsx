@@ -30,10 +30,10 @@ export default function AdminNav() {
       <div
         className="flex items-stretch justify-between rounded-3xl px-2 py-1.5 mx-auto max-w-lg overflow-x-auto"
         style={{
-          background: "rgba(245, 237, 224, 0.55)",
+          background: "rgba(247,239,228,0.45)",
           backdropFilter: "blur(32px) saturate(180%)",
           WebkitBackdropFilter: "blur(32px) saturate(180%)",
-          border: "1px solid rgba(255,255,255,0.55)",
+          border: "1px solid rgba(255,255,255,0.5)",
           boxShadow: "0 8px 32px rgba(44,26,16,0.15), inset 0 1px 0 rgba(255,255,255,0.7)",
         }}
       >
