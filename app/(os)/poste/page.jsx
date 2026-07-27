@@ -11,46 +11,12 @@ const POSTES = [
   { key: "Plonge", nom: "Plonge", emoji: "🚿" },
 ];
 
-// Mapping poste -> mots-clés de rôle (comparaison insensible à la casse,
-// includes()) — le champ Rôle du staff est du texte libre (rich_text dans
-// Notion), jamais une liste fermée, donc pas d'égalité stricte possible.
-const POSTE_ROLES = {
-  Bar: ["barista", "bar", "manager"],
-  Cuisine: ["cuisine", "chef", "manager"],
-  Salle: ["serveur", "runner", "manager"],
-  Plonge: ["plonge", "manager"],
-};
-
 const OUVERTURE_WORKFLOW_BY_POSTE = { Bar: "ouverture-bar", Cuisine: "ouverture-cuisine" };
 const FERMETURE_WORKFLOW_BY_POSTE = { Bar: "fermeture-bar" };
 
 const SXM_TZ = "America/Puerto_Rico";
 const CLOSE_HOUR = 15;
 const OPEN_HOUR = 6;
-
-function getStaffName(member) {
-  return member?.name || member?.prenom || member?.nom || "Staff";
-}
-
-function initials(name) {
-  return String(name || "?").trim().slice(0, 2).toUpperCase();
-}
-
-function staffMatchesPoste(member, posteKey) {
-  const role = String(member.role || "").trim().toLowerCase();
-  if (!role) return true; // rôle non renseigné dans Notion -> visible partout (fail-open, jamais bloquant)
-  const keywords = POSTE_ROLES[posteKey] || [];
-  return keywords.some((kw) => role.includes(kw));
-}
-
-function loadStaffForPoste(posteKey) {
-  if (!posteKey || typeof window === "undefined") return null;
-  try { return JSON.parse(localStorage.getItem(`mokaSelectedStaff_${posteKey}`) || "null"); } catch { return null; }
-}
-function saveStaffForPoste(posteKey, member) {
-  if (!posteKey || typeof window === "undefined") return;
-  localStorage.setItem(`mokaSelectedStaff_${posteKey}`, JSON.stringify(member));
-}
 
 function getSXMParts(date) {
   const hour = Number(new Intl.DateTimeFormat("en-US", { timeZone: SXM_TZ, hour: "numeric", hour12: false }).format(date));
@@ -69,68 +35,6 @@ function SectionCard({ title, children }) {
     <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
       <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-3">{title}</div>
       {children}
-    </div>
-  );
-}
-
-function PostePicker({ onPick }) {
-  return (
-    <div className="min-h-dvh px-4 py-6 space-y-3" style={{ background: "#f7efe4" }}>
-      <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-1">Mon Poste</div>
-      <h1 className="text-xl font-black text-[#2c1a10] mb-4">Quel est ton poste aujourd&apos;hui ?</h1>
-      {POSTES.map((poste) => (
-        <button
-          key={poste.key}
-          type="button"
-          onClick={() => onPick(poste.key)}
-          className="w-full rounded-3xl bg-white border border-[#e5d5c5] shadow-sm py-6 px-8 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-[#f0e4d4]"
-        >
-          <div className="flex items-center gap-4">
-            <span className="text-4xl">{poste.emoji}</span>
-            <span className="text-2xl font-black text-[#2c1a10]">{poste.nom.toUpperCase()}</span>
-          </div>
-          <span className="text-xl text-[#9a7060]">→</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function StaffGridPicker({ posteKey, staffList, onPick, onBack }) {
-  const filtered = staffList.filter((m) => staffMatchesPoste(m, posteKey));
-  const poste = POSTES.find((p) => p.key === posteKey);
-
-  return (
-    <div className="min-h-dvh px-4 py-6" style={{ background: "#f7efe4" }}>
-      <button type="button" onClick={onBack} className="text-xs font-bold text-[#9a7060] underline cursor-pointer mb-2">
-        ← Changer de poste
-      </button>
-      <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-1">
-        {poste?.emoji} {poste?.nom}
-      </div>
-      <h1 className="text-xl font-black text-[#2c1a10] mb-6">Qui pointe ?</h1>
-      <div className="grid grid-cols-2 gap-3">
-        {filtered.map((member) => (
-          <button
-            key={member.id}
-            type="button"
-            onClick={() => onPick(member)}
-            className="rounded-3xl bg-white border border-[#e5d5c5] shadow-sm p-4 flex flex-col items-center gap-2 cursor-pointer active:scale-[0.97] transition-all hover:bg-[#f0e4d4]"
-          >
-            <span
-              className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-black text-white shrink-0"
-              style={{ background: "#2c1a10" }}
-            >
-              {initials(getStaffName(member))}
-            </span>
-            <span className="font-black text-sm text-[#2c1a10] text-center">{getStaffName(member)}</span>
-            {member.role && <span className="text-[10px] text-[#9a7060]">{member.role}</span>}
-          </button>
-        ))}
-        {filtered.length === 0 && (
-          <div className="col-span-2 text-center text-sm text-[#9a7060] py-8">Aucun staff trouvé pour ce poste</div>
-        )}
-      </div>
     </div>
   );
 }
@@ -203,10 +107,9 @@ function WorkflowButton({ posteKey, hourFrac }) {
 }
 
 export default function PostePage() {
-  const { poste, setPoste, resetPoste, selectedStaff, isClockedIn, clockInAs } = useStaffContext();
-  const { staff, taches, zonesPhysiques, preps } = useAppContext();
+  const { poste, setSplashDone } = useStaffContext();
+  const { taches, zonesPhysiques, preps } = useAppContext();
 
-  const [forceStaffStep, setForceStaffStep] = useState(false);
   const [now, setNow] = useState(null);
   const [executions, setExecutions] = useState([]);
   const [recettes, setRecettes] = useState([]);
@@ -235,23 +138,21 @@ export default function PostePage() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const step = !poste ? "poste" : (!forceStaffStep && selectedStaff && isClockedIn) ? "dashboard" : "staff";
-
   useEffect(() => {
-    if (step !== "dashboard") return;
+    if (!poste) return;
     fetch("/api/executions-taches")
       .then((r) => r.json())
       .then((data) => setExecutions(Array.isArray(data) ? data : []))
       .catch((error) => console.error("[PostePage] executions fetch failed", error));
-  }, [step]);
+  }, [poste]);
 
   useEffect(() => {
-    if (step !== "dashboard" || poste !== "Bar" || recettes.length > 0) return;
+    if (poste !== "Bar" || recettes.length > 0) return;
     fetch("/api/recipes/sold-products")
       .then((r) => r.json())
       .then((data) => setRecettes(Array.isArray(data) ? data : []))
       .catch((error) => console.error("[PostePage] recipes fetch failed", error));
-  }, [step, poste, recettes.length]);
+  }, [poste, recettes.length]);
 
   const zoneId = useMemo(() => zonesPhysiques.find((z) => z.nom === poste)?.id || null, [zonesPhysiques, poste]);
   const hourFrac = hour + minute / 60;
@@ -276,25 +177,21 @@ export default function PostePage() {
 
   const isOuvert = hour >= OPEN_HOUR && hour < CLOSE_HOUR;
 
-  const handlePickPoste = (posteKey) => {
-    setPoste(posteKey);
-    setForceStaffStep(true);
-  };
+  // "Changer de poste" ramène le SplashScreen (poste-first, voir Sprint 12)
+  // au lieu de son propre picker local — la sélection poste+staff vit
+  // maintenant au niveau AppShell, avant que cette page ne soit atteignable.
+  const handleChangerPoste = () => setSplashDone(false);
 
-  const handlePickStaff = async (member) => {
-    try {
-      await clockInAs(member);
-      saveStaffForPoste(poste, member);
-      setForceStaffStep(false);
-    } catch (error) {
-      console.error("[PostePage] clockInAs failed", error);
-    }
-  };
-
-  const handleBackToPoste = () => resetPoste();
-
-  if (step === "poste") return <PostePicker onPick={handlePickPoste} />;
-  if (step === "staff") return <StaffGridPicker posteKey={poste} staffList={staff} onPick={handlePickStaff} onBack={handleBackToPoste} />;
+  if (!poste) {
+    // Cas bord : mode admin débloqué via le PIN du splash sans jamais passer
+    // par la sélection poste+staff (voir SplashScreen.jsx) — /poste n'est de
+    // toute façon pas dans AdminNav, mais reste défensif en cas d'URL directe.
+    return (
+      <div className="min-h-dvh flex items-center justify-center text-center px-4" style={{ background: "#f7efe4" }}>
+        <p className="text-sm text-[#9a7060] font-semibold">Aucun poste sélectionné.</p>
+      </div>
+    );
+  }
 
   const posteInfo = POSTES.find((p) => p.key === poste);
 
@@ -313,7 +210,7 @@ export default function PostePage() {
             </span>
           </div>
         </div>
-        <button type="button" onClick={handleBackToPoste} className="text-xs font-bold text-[#9a7060] underline cursor-pointer shrink-0">
+        <button type="button" onClick={handleChangerPoste} className="text-xs font-bold text-[#9a7060] underline cursor-pointer shrink-0">
           Changer de poste
         </button>
       </div>

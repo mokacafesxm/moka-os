@@ -6,9 +6,19 @@ import { StaffProvider, useStaffContext } from "../../contexts/StaffContext";
 import ClockBar from "./ClockBar";
 import NavBottom from "./NavBottom";
 import AdminNav from "./AdminNav";
+import SplashScreen from "./SplashScreen";
 
 function ShellChrome({ children }) {
-  const { isAdmin } = useStaffContext();
+  // splashDone lives in StaffContext (not local state): never persisted, so
+  // a full reload remounts StaffProvider and resets it to false (splash
+  // reappears, as intended) — but living in context also lets "Changer de
+  // poste" elsewhere (e.g. /poste, /profil) call setSplashDone(false)
+  // directly to bring the splash back mid-session, no reload needed.
+  const { isAdmin, splashDone, setSplashDone } = useStaffContext();
+
+  if (!splashDone) {
+    return <SplashScreen onDone={() => setSplashDone(true)} />;
+  }
 
   return (
     <div className="min-h-full flex flex-col">

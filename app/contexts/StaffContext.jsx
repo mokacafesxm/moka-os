@@ -84,6 +84,10 @@ export function StaffProvider({ children }) {
   const [myTasks, setMyTasks] = useState([]); // dérivé côté page /taches (Sprint 4) depuis AppContext.taches
   const [myZone, setMyZoneState] = useState(null);
   const [poste, setPosteState] = useState(null); // Sprint 11 — poste-first entry flow (/poste)
+  // Sprint 12 — never loaded from/written to localStorage on purpose: a
+  // fresh mount (i.e. a page reload) must always start at false so the
+  // SplashScreen reappears every time, per spec.
+  const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
     setSelectedStaffState(loadSession());
@@ -169,11 +173,6 @@ export function StaffProvider({ children }) {
     else localStorage.removeItem(POSTE_KEY);
   }, []);
 
-  const resetPoste = useCallback(() => {
-    setPosteState(null);
-    if (typeof window !== "undefined") localStorage.removeItem(POSTE_KEY);
-  }, []);
-
   // staffNameOverride lets clockInAs fire the webhook with the just-picked
   // member's name immediately, instead of racing the async setStaff/
   // selectedStaffName state update (React state isn't readable synchronously
@@ -252,15 +251,17 @@ export function StaffProvider({ children }) {
         isAdmin,
         status,
         isClockedIn,
+        clockStatuses,
         clockSending,
         hoursWorked,
         myTasks,
         myZone,
         poste,
+        splashDone,
+        setSplashDone,
         setStaff,
         setMyZone,
         setPoste,
-        resetPoste,
         setIsAdmin,
         unlockAdmin,
         lockAdmin,

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 
 function initials(name) {
@@ -9,8 +8,7 @@ function initials(name) {
 }
 
 export default function ProfilPage() {
-  const router = useRouter();
-  const { selectedStaff, selectedStaffName, resetPoste } = useStaffContext();
+  const { selectedStaff, selectedStaffName, setSplashDone } = useStaffContext();
 
   const [heures, setHeures] = useState(null);
 
@@ -28,10 +26,7 @@ export default function ProfilPage() {
     return () => { ignore = true; };
   }, [selectedStaffName]);
 
-  const handleChangerPoste = () => {
-    resetPoste();
-    router.push("/poste");
-  };
+  const handleChangerPoste = () => setSplashDone(false);
 
   return (
     <div className="min-h-dvh px-4 py-4 space-y-4" style={{ background: "#f7efe4" }}>
