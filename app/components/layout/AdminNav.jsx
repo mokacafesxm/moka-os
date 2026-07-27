@@ -12,9 +12,9 @@ const ADMIN_ITEMS = [
   { key: "dashboard", label: "Dashboard", icon: "📊", href: "/manager" },
   { key: "restaurant", label: "Restaurant", icon: "🏪", href: "/restaurant" },
   { key: "equipe", label: "Équipe", icon: "👥", href: "/equipe" },
+  { key: "commandes", label: "Commandes", icon: "🛒", href: "/" },
   { key: "recettes", label: "Recettes", icon: "📖", href: "/recettes" },
   { key: "stock", label: "Stock", icon: "📦", href: "/" },
-  { key: "commandes", label: "Commandes", icon: "📋", href: "/" },
   { key: "rapports", label: "Rapports", icon: "📈", href: "/" },
   { key: "incidents", label: "Incidents", icon: "🚨", href: "/incidents" },
 ];

@@ -119,7 +119,7 @@ export async function GET(request) {
     const staffList = staffPages.map((p) => ({
       id: p.id,
       nom: getTitle(p.properties, "Prénom", "Nom", "Name"),
-      role: getSelect(p.properties, "Rôle") || "Staff",
+      role: getText(p.properties, "Rôle") || "Staff", // rich_text, not select — see /api/staff
       actif: p.properties["Actif"]?.checkbox ?? true,
     })).filter((s) => s.nom);
 

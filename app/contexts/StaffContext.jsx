@@ -7,6 +7,7 @@ const CLOCK_URL = "/api/clock";
 const CLOCK_STATUS_URL = "/api/clock-status";
 const SESSION_KEY = "mokaStaffSession";
 const ZONE_KEY = "mokaMyZone";
+const POSTE_KEY = "mokaSelectedPoste";
 const CLOCK_CACHE_KEY = "mokaClockStatuses"; // même clé que page.js — un seul cache partagé
 
 function loadClockStatusesCache() {
@@ -50,6 +51,15 @@ function loadZone() {
   }
 }
 
+function loadPoste() {
+  if (typeof window === "undefined") return null;
+  try {
+    return JSON.parse(localStorage.getItem(POSTE_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
 const STATUS_AFTER_ACTION = {
   "Arrivée": "present",
   "Départ pause": "pause",
@@ -73,11 +83,13 @@ export function StaffProvider({ children }) {
   const [clockSending, setClockSending] = useState(false);
   const [myTasks, setMyTasks] = useState([]); // dérivé côté page /taches (Sprint 4) depuis AppContext.taches
   const [myZone, setMyZoneState] = useState(null);
+  const [poste, setPosteState] = useState(null); // Sprint 11 — poste-first entry flow (/poste)
 
   useEffect(() => {
     setSelectedStaffState(loadSession());
     setClockStatuses(loadClockStatusesCache());
     setMyZoneState(loadZone());
+    setPosteState(loadPoste());
   }, []);
 
   const selectedStaffName = selectedStaff?.name || selectedStaff?.prenom || selectedStaff?.nom || "";
@@ -146,16 +158,37 @@ export function StaffProvider({ children }) {
     }
   }, []);
 
-  const sendClockAction = useCallback(async (action) => {
-    if (!selectedStaffName) return;
+  // Sprint 11 — poste-first entry flow. Distinct from myZone (Sprint 4,
+  // zone physique picker still used standalone elsewhere): poste is one of
+  // the 4 fixed stations (Bar/Cuisine/Salle/Plonge) driving both staff
+  // filtering and which Mon Poste interface renders.
+  const setPoste = useCallback((posteKey) => {
+    setPosteState(posteKey);
+    if (typeof window === "undefined") return;
+    if (posteKey) localStorage.setItem(POSTE_KEY, JSON.stringify(posteKey));
+    else localStorage.removeItem(POSTE_KEY);
+  }, []);
+
+  const resetPoste = useCallback(() => {
+    setPosteState(null);
+    if (typeof window !== "undefined") localStorage.removeItem(POSTE_KEY);
+  }, []);
+
+  // staffNameOverride lets clockInAs fire the webhook with the just-picked
+  // member's name immediately, instead of racing the async setStaff/
+  // selectedStaffName state update (React state isn't readable synchronously
+  // right after the setState call that would otherwise populate it).
+  const sendClockAction = useCallback(async (action, staffNameOverride) => {
+    const name = staffNameOverride || selectedStaffName;
+    if (!name) return;
     setClockSending(true);
     try {
       const response = await fetch(CLOCK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          staffId: selectedStaffName,
-          staffName: selectedStaffName,
+          staffId: name,
+          staffName: name,
           action,
           timestamp: new Date().toISOString(),
           source: "MOKA OS",
@@ -164,7 +197,7 @@ export function StaffProvider({ children }) {
       if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
 
       setClockStatuses((prev) => {
-        const next = { ...prev, [selectedStaffName]: STATUS_AFTER_ACTION[action] || prev[selectedStaffName] };
+        const next = { ...prev, [name]: STATUS_AFTER_ACTION[action] || prev[name] };
         saveClockStatusesCache(next);
         return next;
       });
@@ -180,6 +213,19 @@ export function StaffProvider({ children }) {
   const clockOut = useCallback(() => sendClockAction("Départ"), [sendClockAction]);
   const startBreak = useCallback(() => sendClockAction("Départ pause"), [sendClockAction]);
   const endBreak = useCallback(() => sendClockAction("Retour pause"), [sendClockAction]);
+
+  // Sprint 11 — atomic "pick this staff card and clock them in" for the
+  // poste-first flow: sets the session AND fires Arrivée in one call, using
+  // the member directly rather than the (not-yet-updated) selectedStaffName.
+  const clockInAs = useCallback(async (member) => {
+    const staffName = member?.name || member?.prenom || member?.nom || "";
+    if (!staffName) return;
+    setSelectedStaffState(member);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(member));
+    }
+    await sendClockAction("Arrivée", staffName);
+  }, [sendClockAction]);
 
   // Même clés localStorage que le PIN admin de page.js (mokaAdminEnabled /
   // mokaPinCode) — une seule source de vérité pour le code, même si le
@@ -210,8 +256,11 @@ export function StaffProvider({ children }) {
         hoursWorked,
         myTasks,
         myZone,
+        poste,
         setStaff,
         setMyZone,
+        setPoste,
+        resetPoste,
         setIsAdmin,
         unlockAdmin,
         lockAdmin,
@@ -219,6 +268,7 @@ export function StaffProvider({ children }) {
         clockOut,
         startBreak,
         endBreak,
+        clockInAs,
       }}
     >
       {children}

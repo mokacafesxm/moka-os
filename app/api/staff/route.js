@@ -17,7 +17,9 @@ export async function GET() {
       return {
         id: page.id,
         name: getTitle(p, "Prénom", "prenom", "Nom", "nom", "Name", "name", "Staff"),
-        role: getSelect(p, "Rôle", "Role", "role", "Poste"),
+        // "Rôle" is rich_text in Notion, not select (lib/ops/staff-service.js
+        // already documents this — this read path had never been fixed to match).
+        role: getText(p, "Rôle") || getSelect(p, "Role", "role", "Poste"),
         telephone: getText(p, "Téléphone", "telephone", "Phone"),
         email: getText(p, "Email", "email"),
         actif: getCheckbox(p, "Actif", "actif", "Active"),

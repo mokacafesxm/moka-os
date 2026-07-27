@@ -7,8 +7,8 @@ export const NAV_ITEMS = [
   { key: "home", label: "Accueil", icon: "🏠", href: "/home" },
   { key: "poste", label: "Mon Poste", icon: "🍽", href: "/poste" },
   { key: "taches", label: "Mes Tâches", icon: "✅", href: "/taches" },
-  { key: "recherche", label: "Recherche", icon: "🔍", href: null },
-  { key: "profil", label: "Profil", icon: "👤", href: null },
+  { key: "recherche", label: "Recherche", icon: "🔍", href: "/recherche" },
+  { key: "profil", label: "Profil", icon: "👤", href: "/profil" },
 ];
 
 export default function NavBottom() {
