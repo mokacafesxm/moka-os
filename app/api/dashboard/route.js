@@ -1,6 +1,6 @@
 import {
   DB, corsHeaders,
-  queryDatabase, getTitle, getText, getSelect, getDate,
+  queryDatabase, getTitle, getText, getSelect, getDate, getNumber,
 } from "../_notion";
 
 export async function OPTIONS() {
@@ -170,17 +170,90 @@ async function getStaffToday(todaySXM) {
     });
 }
 
+function parseDonneesJson(raw) {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function daysAgoSXM(n, todaySXM) {
+  const d = new Date(`${todaySXM}T00:00:00-04:00`);
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+// KPIs financiers — désormais alimentés par MOKA_Sales_History (voir
+// /api/imports/summary, seule route qui y écrit) et MOKA_Banque (voir
+// /api/imports/bank). Marge brute et valeur stock restent `null` : aucun
+// coût unitaire n'existe nulle part dans le modèle (STOCK/INGREDIENTS/
+// BESOINS) pour les calculer sans inventer un chiffre.
+async function getFinancialKpis(todaySXM) {
+  const weekStart = daysAgoSXM(7, todaySXM);
+  const monthStart = `${todaySXM.slice(0, 7)}-01`;
+
+  const [salesPages, banquePages] = await Promise.all([
+    queryDatabase(DB.SALES_HISTORY, { property: "Date", date: { on_or_after: daysAgoSXM(35, todaySXM) } }, null, 200),
+    queryDatabase(DB.BANQUE, null, null, 500).catch(() => []),
+  ]);
+
+  const rows = salesPages.map((page) => {
+    const p = page.properties;
+    return {
+      date: getDate(p, "Date"),
+      type: getSelect(p, "Type"),
+      caTtc: getNumber(p, "CA_TTC") || 0,
+      donnees: parseDonneesJson(getText(p, "Donnees_JSON")),
+    };
+  });
+
+  const quotidien = rows.filter((r) => r.type === "Quotidien" && r.date);
+  const caJour = quotidien.filter((r) => r.date === todaySXM).reduce((s, r) => s + r.caTtc, 0);
+  const caSemaine = quotidien.filter((r) => r.date >= weekStart).reduce((s, r) => s + r.caTtc, 0);
+  const caMois = quotidien.filter((r) => r.date >= monthStart).reduce((s, r) => s + r.caTtc, 0);
+
+  const moisRows = quotidien.filter((r) => r.date >= monthStart);
+  const totalTickets = moisRows.reduce((s, r) => s + (r.donnees?.nbTickets || 0), 0);
+  const totalCaMoisPourTicket = moisRows.reduce((s, r) => s + r.caTtc, 0);
+  const ticketMoyenMois = totalTickets > 0 ? Math.round((totalCaMoisPourTicket / totalTickets) * 100) / 100 : null;
+
+  const hebdo = rows.filter((r) => r.type === "Hebdomadaire" && r.date >= weekStart).sort((a, b) => (b.date > a.date ? 1 : -1));
+  const produitStarSemaine = hebdo[0]?.donnees?.produitStar?.nom || null;
+
+  const tresorerie = banquePages.length === 0
+    ? null
+    : banquePages.reduce((sum, page) => {
+        const montant = getNumber(page.properties, "Montant") || 0;
+        const type = getSelect(page.properties, "Type");
+        return sum + (type === "Débit" ? -montant : montant);
+      }, 0);
+
+  return {
+    ca_jour: caJour,
+    ca_semaine: caSemaine,
+    ca_mois: caMois,
+    ticket_moyen_mois: ticketMoyenMois,
+    produit_star_semaine: produitStarSemaine,
+    tresorerie,
+    marge_brute: null,
+    valeur_stock: null,
+  };
+}
+
 export async function GET() {
   try {
     const todaySXM = getSXMDateString();
 
-    const [critiques, prepasUrgentes, livraisonsAttendues, livraisonsAujourdhui, incidentsOuverts, staffToday] = await Promise.all([
+    const [critiques, prepasUrgentes, livraisonsAttendues, livraisonsAujourdhui, incidentsOuverts, staffToday, financier] = await Promise.all([
       getCritiques(),
       getPrepasUrgentes(todaySXM),
       getLivraisonsAttendues(),
       getLivraisonsAujourdhui(todaySXM),
       getIncidentsOuverts(),
       getStaffToday(todaySXM),
+      getFinancialKpis(todaySXM),
     ]);
 
     return Response.json({
@@ -191,10 +264,7 @@ export async function GET() {
       livraisons_aujourd_hui: livraisonsAujourdhui,
       incidents_ouverts: incidentsOuverts,
       staff_today: staffToday,
-      // Aucun import AddicTill réel n'a encore tourné en production (voir
-      // docs/MOKA_OS_V2_BLUEPRINT.md) — pas de CA/food-cost/tickets réels à
-      // rapporter tant que l'importateur n'est pas branché. Jamais inventé.
-      kpi_semaine: null,
+      financier,
     }, { headers: corsHeaders });
   } catch (err) {
     console.error("[GET dashboard]", err.message);

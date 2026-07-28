@@ -54,6 +54,127 @@ function FinanceButton({ emoji, title, subtitle, onClick }) {
   );
 }
 
+function daysSince(dateStr, todaySXM) {
+  if (!dateStr || !todaySXM) return null;
+  const d1 = new Date(`${String(dateStr).slice(0, 10)}T00:00:00-04:00`);
+  const d2 = new Date(`${todaySXM}T00:00:00-04:00`);
+  return Math.round((d2 - d1) / 86_400_000);
+}
+
+function formatDernierImport(dateStr, todaySXM) {
+  const days = daysSince(dateStr, todaySXM);
+  if (days === null) return "jamais";
+  if (days <= 0) return "aujourd'hui";
+  if (days === 1) return "il y a 1 jour";
+  if (days < 60) return `il y a ${days} jours`;
+  return `il y a ${Math.round(days / 30)} mois`;
+}
+
+// Une ligne d'action "Gestion quotidienne" — thresholdDays === null désactive
+// l'indicateur "dernier import"/badge (cas de l'Inventaire, jamais suivi
+// dans le temps par design, voir maquette du Dashboard).
+function GestionActionRow({ groupLabel, emoji, title, lastDate, todaySXM, thresholdDays, onClick }) {
+  const showIndicator = thresholdDays !== null;
+  const days = showIndicator ? daysSince(lastDate, todaySXM) : null;
+  const overdue = showIndicator && (days === null || days > thresholdDays);
+  return (
+    <div>
+      <div className="text-[9px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-1.5">{groupLabel}</div>
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full rounded-2xl bg-white border border-[#e5d5c5] shadow-sm p-4 flex items-center gap-3 cursor-pointer hover:shadow-md active:scale-[0.99] transition-all"
+      >
+        <span className="text-2xl shrink-0">{emoji}</span>
+        <div className="text-left flex-1 min-w-0">
+          <div className="font-black text-sm text-[#2c1a10]">{title}</div>
+          {showIndicator && (
+            <div className="text-xs text-[#9a7060]">Dernier import : {formatDernierImport(lastDate, todaySXM)}</div>
+          )}
+        </div>
+        {overdue && (
+          <span className="text-[9px] font-black px-2 py-1 rounded-full bg-orange-100 text-orange-700 shrink-0 whitespace-nowrap">
+            À faire
+          </span>
+        )}
+        <span className="text-[#9a7060] shrink-0">→</span>
+      </button>
+    </div>
+  );
+}
+
+// Procédure de gestion quotidienne — les 3 premières lignes lisent leur
+// "dernier import" depuis MOKA_Sales_History/MOKA_Banque (voir
+// /api/imports/summary et /api/imports/bank) ; l'Inventaire n'a pas
+// d'historique suivi par design.
+function GestionQuotidienneSection({ router, todaySXM }) {
+  const [lastDaily, setLastDaily] = useState(null);
+  const [lastWeekly, setLastWeekly] = useState(null);
+  const [lastBank, setLastBank] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/imports/summary?type=daily").then((r) => r.json()).then((d) => setLastDaily(d.lastDate || null)).catch(() => {});
+    fetch("/api/imports/summary?type=weekly").then((r) => r.json()).then((d) => setLastWeekly(d.lastDate || null)).catch(() => {});
+    fetch("/api/imports/bank").then((r) => r.json()).then((d) => setLastBank(d.lastDate || null)).catch(() => {});
+  }, []);
+
+  return (
+    <SectionCard title="📋 Gestion quotidienne">
+      <div className="space-y-4">
+        <GestionActionRow
+          groupLabel="Aujourd'hui (17h après service)"
+          emoji="📊"
+          title="Synthèse AddicTill"
+          lastDate={lastDaily}
+          todaySXM={todaySXM}
+          thresholdDays={1}
+          onClick={() => router.push("/imports?type=daily")}
+        />
+        <GestionActionRow
+          groupLabel="Cette semaine"
+          emoji="📈"
+          title="Palmarès Produits"
+          lastDate={lastWeekly}
+          todaySXM={todaySXM}
+          thresholdDays={7}
+          onClick={() => router.push("/imports?type=weekly")}
+        />
+        <GestionActionRow
+          groupLabel="Ce mois"
+          emoji="🏦"
+          title="Relevé Crédit Mutuel"
+          lastDate={lastBank}
+          todaySXM={todaySXM}
+          thresholdDays={35}
+          onClick={() => router.push("/imports?type=bank")}
+        />
+        <GestionActionRow
+          groupLabel="Inventaire"
+          emoji="📦"
+          title="Importer inventaire"
+          lastDate={null}
+          todaySXM={todaySXM}
+          thresholdDays={null}
+          onClick={() => router.push("/imports?type=inventory")}
+        />
+      </div>
+    </SectionCard>
+  );
+}
+
+function KpiStat({ label, value, format }) {
+  let display = "—";
+  if (value !== null && value !== undefined) {
+    display = format === "text" ? value : formatEuros(value);
+  }
+  return (
+    <div className="rounded-2xl border border-[#e5d5c5] bg-white p-3.5 min-w-0">
+      <div className="text-lg font-black text-[#2c1a10] truncate">{display}</div>
+      <div className="text-[9px] font-bold text-[#9a7060] uppercase tracking-wide mt-1">{label}</div>
+    </div>
+  );
+}
+
 function ModalShell({ title, onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -212,6 +333,8 @@ export default function ManagerHomePage() {
   const staffToday = dashboard?.staff_today || [];
   const incidentsOuverts = dashboard?.incidents_ouverts ?? 0;
   const enService = staffToday.filter((s) => s.statut === "present" || s.statut === "pause").length;
+  const financier = dashboard?.financier || {};
+  const todaySXM = dashboard?.date || null;
 
   const kpis = [
     { label: "Critiques", value: critiques.length, color: critiques.length > 0 ? "#b91c1c" : "#2c1a10" },
@@ -299,28 +422,27 @@ export default function ManagerHomePage() {
         )}
       </div>
 
-      <SectionCard title="📊 Données financières">
-        <div className="space-y-3">
-          <FinanceButton
-            emoji="📈"
-            title="Ventes AddicTill"
-            subtitle="Importer et analyser les ventes"
-            onClick={() => router.push("/imports")}
-          />
-          <FinanceButton
-            emoji="🏦"
-            title="Relevés bancaires"
-            subtitle="Importer les relevés Crédit Mutuel"
-            onClick={() => router.push("/imports?type=bank")}
-          />
-          <FinanceButton
-            emoji="📋"
-            title="Rapport mensuel"
-            subtitle="CA, achats et commandes du mois"
-            onClick={() => setShowMonthlyReport(true)}
-          />
+      <SectionCard title="💰 Indicateurs financiers">
+        <div className="grid grid-cols-2 gap-3">
+          <KpiStat label="CA du jour" value={financier.ca_jour} />
+          <KpiStat label="CA de la semaine" value={financier.ca_semaine} />
+          <KpiStat label="CA du mois" value={financier.ca_mois} />
+          <KpiStat label="Trésorerie" value={financier.tresorerie} />
+          <KpiStat label="Ticket moyen (mois)" value={financier.ticket_moyen_mois} />
+          <KpiStat label="Marge brute estimée" value={financier.marge_brute} />
+          <KpiStat label="Produit star (semaine)" value={financier.produit_star_semaine} format="text" />
+          <KpiStat label="Valeur stock théorique" value={financier.valeur_stock} />
         </div>
       </SectionCard>
+
+      <GestionQuotidienneSection router={router} todaySXM={todaySXM} />
+
+      <FinanceButton
+        emoji="📋"
+        title="Rapport mensuel"
+        subtitle="CA, achats et commandes du mois"
+        onClick={() => setShowMonthlyReport(true)}
+      />
 
       <SectionCard title="Zones du restaurant">
         <div className="grid grid-cols-2 gap-3">

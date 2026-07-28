@@ -1,4 +1,5 @@
-import ImportsClient from "./_components/ImportsClient";
+import { Suspense } from "react";
+import ImportsTabs from "./_components/ImportsTabs";
 
 export const metadata = {
   title: "Imports — MÖKA OS",
@@ -7,5 +8,9 @@ export const metadata = {
 };
 
 export default function ImportsPage() {
-  return <ImportsClient />;
+  return (
+    <Suspense fallback={null}>
+      <ImportsTabs />
+    </Suspense>
+  );
 }

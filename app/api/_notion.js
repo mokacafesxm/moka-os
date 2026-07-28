@@ -28,6 +28,7 @@ export const DB = {
   EXECUTIONS_TACHES: "3a79512c-f66a-8157-8e56-cccc6d2ef624",
   SALES_HISTORY:    "3a79512c-f66a-81dc-a1fa-d8b37d509f64",
   FICHES_TECHNIQUES: "3ab9512c-f66a-812a-9118-d95306122a9f",
+  BANQUE: "3ab9512c-f66a-8133-8e7a-f8c8454a53ec",
 };
 
 export const corsHeaders = {
