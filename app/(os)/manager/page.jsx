@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
+import LivraisonsAujourdhuiCard from "../../components/shared/LivraisonsAujourdhuiCard";
 
 const STATUS_LABEL = { present: "Présent", pause: "En pause", done: "Terminé", absent: "Absent" };
 const STATUS_COLOR = { present: "#5a7828", pause: "#d97706", done: "#9a7060", absent: "#e5d5c5" };
@@ -31,6 +32,93 @@ function DashboardSkeleton() {
   );
 }
 
+function formatEuros(value) {
+  return `${(value || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+}
+
+const financeButtonClass = "rounded-2xl bg-white border border-[#e5d5c5] w-full py-4 text-left px-5 font-black text-[#2c1a10] shadow-sm cursor-pointer active:scale-[0.99] transition-all";
+
+function ModalShell({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
+      <div
+        className="relative w-full max-w-sm max-h-[85vh] overflow-y-auto rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-black text-[#2c1a10]">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl bg-[#f0e8dc] flex items-center justify-center text-[#9a7060] hover:bg-[#e5d5c5] cursor-pointer font-black"
+          >
+            ×
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function BankStatementModal({ onClose }) {
+  return (
+    <ModalShell title="🏦 Relevés bancaires" onClose={onClose}>
+      <label className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#c8b4a8] bg-white py-10 px-4 cursor-pointer text-center">
+        <span className="text-3xl">📄</span>
+        <span className="text-sm font-bold text-[#2c1a10]">Upload d&apos;un relevé bancaire PDF ou Excel</span>
+        <span className="text-xs text-[#9a7060]">Glisser-déposer ou toucher pour sélectionner</span>
+        <input type="file" accept=".pdf,.xlsx,.csv" className="hidden" disabled />
+      </label>
+      <div className="rounded-2xl bg-[#f0e8dc] p-3.5 text-xs font-bold text-[#9a7060] text-center">
+        Analyse automatique par IA — en cours de déploiement
+      </div>
+    </ModalShell>
+  );
+}
+
+function MonthlyReportModal({ onClose }) {
+  const [summary, setSummary] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let ignore = false;
+    fetch("/api/reports/monthly-summary")
+      .then((r) => r.json().then((data) => ({ ok: r.ok, data })))
+      .then(({ ok, data }) => {
+        if (ignore) return;
+        if (!ok) throw new Error(data.error || "Erreur chargement rapport");
+        setSummary(data);
+      })
+      .catch((err) => { if (!ignore) setError(err.message); });
+    return () => { ignore = true; };
+  }, []);
+
+  return (
+    <ModalShell title="📋 Rapport mensuel" onClose={onClose}>
+      {error && <div className="text-xs font-bold text-red-600">{error}</div>}
+      {!error && !summary && <div className="text-sm text-[#9a7060] py-6 text-center">Chargement…</div>}
+      {summary && (
+        <div className="space-y-2.5">
+          <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
+            <div className="text-2xl font-black text-[#2c1a10]">{formatEuros(summary.caMois)}</div>
+            <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mt-1">CA du mois</div>
+          </div>
+          <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
+            <div className="text-2xl font-black text-[#2c1a10]">{summary.achatsFournisseurs}</div>
+            <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mt-1">Achats fournisseurs du mois</div>
+          </div>
+          <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
+            <div className="text-2xl font-black text-[#2c1a10]">{summary.commandesPassees} / {summary.commandesRecues}</div>
+            <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mt-1">Commandes passées / reçues</div>
+          </div>
+        </div>
+      )}
+    </ModalShell>
+  );
+}
+
 function formatHeures(decimal) {
   const h = Math.floor(decimal || 0);
   const m = Math.round(((decimal || 0) - h) * 60);
@@ -50,11 +138,13 @@ function SectionCard({ title, children }) {
 export default function ManagerHomePage() {
   const router = useRouter();
   const { isAdmin } = useStaffContext();
-  const { zonesPhysiques } = useAppContext();
+  const { zonesPhysiques, supplierOrders, refreshSupplierOrders } = useAppContext();
 
   const [dashboard, setDashboard] = useState(null);
   const [dashboardRefreshing, setDashboardRefreshing] = useState(false);
   const [recettesMappees, setRecettesMappees] = useState(null);
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [showMonthlyReport, setShowMonthlyReport] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) router.replace("/home");
@@ -146,6 +236,8 @@ export default function ManagerHomePage() {
       </div>
       <h1 className="text-xl font-black text-[#2c1a10] -mt-3">Vue manager</h1>
 
+      <LivraisonsAujourdhuiCard orders={supplierOrders} onReceived={refreshSupplierOrders} />
+
       <div className="grid grid-cols-2 gap-3">
         {kpis.map((k) => (
           <div key={k.label} className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
@@ -199,6 +291,25 @@ export default function ManagerHomePage() {
         )}
       </div>
 
+      <SectionCard title="📊 Données financières">
+        <div className="space-y-2.5">
+          <a
+            href="/imports"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={financeButtonClass}
+          >
+            📈 Importer ventes AddicTill
+          </a>
+          <button type="button" onClick={() => setShowBankModal(true)} className={financeButtonClass}>
+            🏦 Relevés bancaires
+          </button>
+          <button type="button" onClick={() => setShowMonthlyReport(true)} className={financeButtonClass}>
+            📋 Rapport mensuel
+          </button>
+        </div>
+      </SectionCard>
+
       <SectionCard title="Zones du restaurant">
         <div className="grid grid-cols-2 gap-3">
           {zonesPhysiques.map((zone) => (
@@ -235,6 +346,9 @@ export default function ManagerHomePage() {
           </div>
         )}
       </SectionCard>
+
+      {showBankModal && <BankStatementModal onClose={() => setShowBankModal(false)} />}
+      {showMonthlyReport && <MonthlyReportModal onClose={() => setShowMonthlyReport(false)} />}
     </div>
   );
 }

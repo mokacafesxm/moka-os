@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
-import ReceiveModal, { parseOrderProducts } from "../../components/shared/ReceiveModal";
+import LivraisonsAujourdhuiCard from "../../components/shared/LivraisonsAujourdhuiCard";
 
 const POSTES = [
   { key: "Bar", nom: "Bar", emoji: "☕" },
@@ -29,71 +29,6 @@ function momentForHour(hour) {
   if (hour < 10) return "Ouverture";
   if (hour < 14.5) return "Pendant service";
   return "Fermeture";
-}
-
-function groupBy(list, key) {
-  const groups = {};
-  for (const item of list) {
-    const k = item[key] || "—";
-    if (!groups[k]) groups[k] = [];
-    groups[k].push(item);
-  }
-  return groups;
-}
-
-// Sprint 14 — carte dédiée en haut de Mon Poste (Bar), séparée du bloc
-// Historique plus bas : "Réceptionner" ouvre le VRAI receiveModal (extrait
-// tel quel de l'ancien page.js, voir app/components/shared/ReceiveModal.jsx)
-// plutôt qu'un formulaire simplifié. Ne s'affiche pas du tout s'il n'y a
-// aucune livraison prévue aujourd'hui.
-function LivraisonsDuJour({ orders, todaySXM, refreshSupplierOrders }) {
-  const [receivingOrder, setReceivingOrder] = useState(null);
-
-  const today = useMemo(
-    () => orders.filter((o) => o.dateLivraisonPrevue?.slice(0, 10) === todaySXM && o.statut !== "Reçu"),
-    [orders, todaySXM]
-  );
-  const grouped = useMemo(() => groupBy(today, "fournisseur"), [today]);
-  const fournisseurs = Object.entries(grouped);
-
-  if (fournisseurs.length === 0) return null;
-
-  return (
-    <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
-      <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-3">🚚 Livraisons prévues aujourd&apos;hui</div>
-      <div className="space-y-2">
-        {fournisseurs.map(([fournisseur, group]) => {
-          const order = group[0];
-          const produitsCount = parseOrderProducts(order).length || group.length;
-          return (
-            <div key={fournisseur} className="rounded-2xl border border-[#e5d5c5] bg-[#faf5ef] p-3.5 flex items-center justify-between gap-3">
-              <div>
-                <div className="font-black text-sm text-[#2c1a10]">{fournisseur}</div>
-                <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
-                  {produitsCount} produit{produitsCount !== 1 ? "s" : ""} attendu{produitsCount !== 1 ? "s" : ""}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReceivingOrder(order)}
-                className="h-9 px-4 rounded-xl bg-[#2c1a10] text-white text-xs font-black cursor-pointer shrink-0"
-              >
-                Réceptionner
-              </button>
-            </div>
-          );
-        })}
-      </div>
-
-      {receivingOrder && (
-        <ReceiveModal
-          order={receivingOrder}
-          onClose={() => setReceivingOrder(null)}
-          onReceived={() => { setReceivingOrder(null); refreshSupplierOrders(); }}
-        />
-      )}
-    </div>
-  );
 }
 
 function LivraisonDetailModal({ order, onClose }) {
@@ -367,11 +302,7 @@ export default function PostePage() {
         <>
           {canLivraisons && (
             <div id="livraisons">
-              <LivraisonsDuJour
-                orders={supplierOrders}
-                todaySXM={todaySXM}
-                refreshSupplierOrders={refreshSupplierOrders}
-              />
+              <LivraisonsAujourdhuiCard orders={supplierOrders} onReceived={refreshSupplierOrders} />
             </div>
           )}
           <SectionCard title="Tâches du moment"><TachesList taches={zoneTaches} /></SectionCard>
@@ -396,6 +327,11 @@ export default function PostePage() {
 
       {poste === "Cuisine" && (
         <>
+          {canLivraisons && (
+            <div id="livraisons">
+              <LivraisonsAujourdhuiCard orders={supplierOrders} onReceived={refreshSupplierOrders} />
+            </div>
+          )}
           <SectionCard title="Prépas urgentes">
             {prepasUrgentes.length === 0 ? (
               <div className="text-sm text-[#9a7060] py-2">Aucune prépa urgente</div>
