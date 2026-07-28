@@ -15,10 +15,9 @@ export async function POST(request) {
       return Response.json({ error: "messages array required" }, { status: 400, headers: corsHeaders });
     }
 
-    const systemPrompt = `Tu es MOKA AI, l'assistant intelligent du café MÖKA à Saint-Martin (SXM).
-Tu aides l'équipe à analyser les données de leur café : stock, commandes fournisseurs, prépas, et pointages.
-Tu réponds en français, de façon concise et actionnable.
-Tu connais le contexte du café : café spécialisé haut de gamme, produits frais, équipe petite.
+    const systemPrompt = `Tu es MÖKA AI, l'assistant intelligent de MÖKA Café SXM.
+Tu as accès aux données en temps réel du restaurant : stock, commandes, staff, ventes.
+Réponds de façon concise et actionnable. Toujours en français.
 
 ${context ? `Données actuelles du tableau de bord :\n${JSON.stringify(context, null, 2)}` : ""}
 
