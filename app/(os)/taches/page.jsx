@@ -93,10 +93,11 @@ function TaskGroup({ title, color, items, onSelect }) {
 }
 
 export default function TachesPage() {
-  const { selectedStaff, selectedStaffName } = useStaffContext();
-  const { taches } = useAppContext();
+  const { selectedStaff, selectedStaffName, poste } = useStaffContext();
+  const { zonesPhysiques } = useAppContext();
 
   const [executions, setExecutions] = useState([]);
+  const [myTaches, setMyTaches] = useState([]);
   const [selectedTache, setSelectedTache] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -114,12 +115,18 @@ export default function TachesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const myTaches = useMemo(() => {
-    const role = String(selectedStaff?.role || "").toLowerCase();
-    if (!role) return taches.filter((t) => t.actif !== false);
-    const matching = taches.filter((t) => t.actif !== false && String(t.poste || "").toLowerCase().includes(role));
-    return matching.length > 0 ? matching : taches.filter((t) => t.actif !== false);
-  }, [taches, selectedStaff]);
+  // Filtrées côté serveur par zone du poste connecté (voir
+  // /api/taches?zone=) : Jeanne (Salle) ne voit que Zone=Salle, jamais les
+  // tâches des autres postes.
+  const zoneId = useMemo(() => zonesPhysiques.find((z) => z.nom === poste)?.id || null, [zonesPhysiques, poste]);
+
+  useEffect(() => {
+    if (!zoneId) { setMyTaches([]); return; }
+    fetch(`/api/taches?zone=${zoneId}`)
+      .then((r) => r.json())
+      .then((data) => setMyTaches(Array.isArray(data) ? data.filter((t) => t.actif !== false) : []))
+      .catch((error) => console.error("[TachesPage] taches fetch failed", error));
+  }, [zoneId]);
 
   const doneTacheIds = new Set(executions.map((e) => e.tacheId));
 

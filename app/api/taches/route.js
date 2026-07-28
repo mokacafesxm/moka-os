@@ -28,9 +28,13 @@ function normalizeTache(page) {
   };
 }
 
-export async function GET() {
+export async function GET(req) {
   try {
-    const pages = await queryDatabase(DB.TACHES, null, [
+    const { searchParams } = new URL(req.url);
+    const zone = searchParams.get("zone");
+    const filter = zone ? { property: "Zone", relation: { contains: zone } } : null;
+
+    const pages = await queryDatabase(DB.TACHES, filter, [
       { property: "Nom", direction: "ascending" },
     ]);
     return Response.json(pages.map(normalizeTache), { headers: corsHeaders });

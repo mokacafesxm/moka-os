@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { RealTimeProvider } from "../../contexts/RealTimeContext";
 import { AppProvider } from "../../contexts/AppContext";
 import { StaffProvider, useStaffContext } from "../../contexts/StaffContext";
@@ -15,6 +16,10 @@ function ShellChrome({ children }) {
   // poste" elsewhere (e.g. /poste, /profil) call setSplashDone(false)
   // directly to bring the splash back mid-session, no reload needed.
   const { isAdmin, splashDone, setSplashDone } = useStaffContext();
+  const pathname = usePathname();
+  // /poste renders its own greeting header + compact clock button (see
+  // PostePage), replacing the isolated-name ClockBar pill for that screen.
+  const showClockBar = pathname !== "/poste";
 
   if (!splashDone) {
     return <SplashScreen onDone={() => setSplashDone(true)} />;
@@ -22,7 +27,7 @@ function ShellChrome({ children }) {
 
   return (
     <div className="min-h-full flex flex-col">
-      <ClockBar />
+      {showClockBar && <ClockBar />}
       <main className="flex-1 pb-24">{children}</main>
       {isAdmin ? <AdminNav /> : <NavBottom />}
     </div>
