@@ -134,7 +134,7 @@ export default function SplashScreen({ onDone }) {
             <div className="text-4xl font-black text-[#2c1a10] mb-1">MÖKA</div>
             <div className="text-lg text-[#9a7060] mb-8 text-center">Bonjour 👋 · Quel est ton poste ?</div>
 
-            <div className="w-full max-w-sm space-y-3">
+            <div className="w-full max-w-sm md:max-w-2xl grid grid-cols-1 md:grid-cols-2 gap-3">
               {POSTES.map((poste) => (
                 <button
                   key={poste.key}
@@ -180,7 +180,7 @@ export default function SplashScreen({ onDone }) {
               <a href="/" className="text-xs font-black text-[#5a7828] underline">Voir les Paramètres</a>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {staffFiltered.map((member) => {
                 const staffName = getStaffName(member);
                 const alreadyClockedIn = ["present", "pause"].includes(clockStatuses[staffName]);

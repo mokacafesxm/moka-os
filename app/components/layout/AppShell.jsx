@@ -28,7 +28,10 @@ function ShellChrome({ children }) {
   return (
     <div className="min-h-full flex flex-col">
       {showClockBar && <ClockBar />}
-      <main className="flex-1 pb-24">{children}</main>
+      {/* Tablette (>= md) : la nav passe de barre basse à sidebar gauche fixe
+          (voir NavBottom/AdminNav) — le contenu perd son pb-24 mobile et
+          gagne une marge gauche égale à la largeur de la sidebar active. */}
+      <main className={`flex-1 pb-24 md:pb-4 ${isAdmin ? "md:pl-16" : "md:pl-20"}`}>{children}</main>
       {isAdmin ? <AdminNav /> : <NavBottom />}
     </div>
   );

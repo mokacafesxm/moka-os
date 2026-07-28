@@ -29,32 +29,57 @@ export default function AdminNav() {
   const items = ADMIN_ITEMS.filter((item) => item.key !== "commandes" || canCommandes);
 
   return (
-    <div
-      className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-2"
-      style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
-    >
+    <>
+      {/* Mobile (< md) — barre flottante en bas */}
       <div
-        className="flex items-stretch justify-between rounded-3xl px-2 py-1.5 mx-auto max-w-lg overflow-x-auto"
-        style={{
-          background: "rgba(247,239,228,0.45)",
-          backdropFilter: "blur(32px) saturate(180%)",
-          WebkitBackdropFilter: "blur(32px) saturate(180%)",
-          border: "1px solid rgba(255,255,255,0.5)",
-          boxShadow: "0 8px 32px rgba(44,26,16,0.15), inset 0 1px 0 rgba(255,255,255,0.7)",
-        }}
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 px-3 pb-2"
+        style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
       >
+        <div
+          className="flex items-stretch justify-between rounded-3xl px-2 py-1.5 mx-auto max-w-lg overflow-x-auto"
+          style={{
+            background: "rgba(247,239,228,0.45)",
+            backdropFilter: "blur(32px) saturate(180%)",
+            WebkitBackdropFilter: "blur(32px) saturate(180%)",
+            border: "1px solid rgba(255,255,255,0.5)",
+            boxShadow: "0 8px 32px rgba(44,26,16,0.15), inset 0 1px 0 rgba(255,255,255,0.7)",
+          }}
+        >
+          {items.map((item) => {
+            const isActive = item.href !== "/" && pathname === item.href;
+            return (
+              <Link
+                key={item.key}
+                href={item.href}
+                className="flex-1 flex flex-col items-center justify-center gap-0.5 min-h-11 py-1.5 px-1 rounded-2xl cursor-pointer transition-colors shrink-0"
+                style={{ background: isActive ? "rgba(255,255,255,0.7)" : "transparent" }}
+              >
+                <span className="text-base leading-none">{item.icon}</span>
+                <span
+                  className={`text-[9px] font-black uppercase tracking-wide whitespace-nowrap ${isActive ? "text-[#2c1a10]" : "text-[#9a7060]"}`}
+                >
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tablette (>= md) — sidebar gauche fixe, élargie à 64px, labels sous les icônes */}
+      <div className="hidden md:flex md:flex-col md:fixed md:left-0 md:top-0 md:h-full md:w-16 md:border-r md:border-[#e5d5c5] md:bg-white md:pt-8 md:pb-4 md:items-center md:gap-1.5 md:overflow-y-auto z-40">
         {items.map((item) => {
           const isActive = item.href !== "/" && pathname === item.href;
           return (
             <Link
               key={item.key}
               href={item.href}
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 min-h-11 py-1.5 px-1 rounded-2xl cursor-pointer transition-colors shrink-0"
-              style={{ background: isActive ? "rgba(255,255,255,0.7)" : "transparent" }}
+              className="w-14 flex flex-col items-center justify-center gap-1 min-h-12 py-1.5 px-1 rounded-2xl cursor-pointer transition-colors shrink-0"
+              style={{ background: isActive ? "rgba(90,120,40,0.14)" : "transparent" }}
             >
               <span className="text-base leading-none">{item.icon}</span>
               <span
-                className={`text-[9px] font-black uppercase tracking-wide whitespace-nowrap ${isActive ? "text-[#2c1a10]" : "text-[#9a7060]"}`}
+                className={`text-[8px] font-black uppercase tracking-wide text-center leading-tight ${isActive ? "text-[#2c1a10]" : "text-[#9a7060]"}`}
               >
                 {item.label}
               </span>
@@ -62,6 +87,6 @@ export default function AdminNav() {
           );
         })}
       </div>
-    </div>
+    </>
   );
 }

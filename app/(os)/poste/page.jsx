@@ -714,36 +714,51 @@ export default function PostePage() {
       {poste === "Bar" && (
         <>
           <LivraisonOrangeCard order={orderDuJour} onOpen={() => setReceivingOrder(orderDuJour)} />
-          <PosteStatusCard poste="Bar" status={posteStatus} />
-          <StocksBasCard items={stockBasBar} />
-          <PrepasAFaireCard preps={prepasBar} />
-          <ResumeTachesCard zoneTaches={zoneTaches} executions={executions} />
-          <RecettesSection
-            title="Recettes Bar"
-            recettes={recettesBar}
-            emoji="☕"
-            emptyLabel="Aucune recette classée « Bar » pour l'instant"
-          />
-          <SectionCard title="Températures"><TempsList executions={executions} posteNom="Bar" /></SectionCard>
-          {canLivraisons && <LivraisonsHistorySection orders={supplierOrders} />}
+          {/* Tablette (>= md) : 2 colonnes — gauche statut/stocks/tâches (60%),
+              droite recettes/températures/livraisons (40%). Sur mobile,
+              grid-cols-1 empile les deux colonnes dans le même ordre qu'avant. */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-[3fr_2fr] md:gap-6">
+            <div className="space-y-4">
+              <PosteStatusCard poste="Bar" status={posteStatus} />
+              <StocksBasCard items={stockBasBar} />
+              <PrepasAFaireCard preps={prepasBar} />
+              <ResumeTachesCard zoneTaches={zoneTaches} executions={executions} />
+            </div>
+            <div className="space-y-4">
+              <RecettesSection
+                title="Recettes Bar"
+                recettes={recettesBar}
+                emoji="☕"
+                emptyLabel="Aucune recette classée « Bar » pour l'instant"
+              />
+              <SectionCard title="Températures"><TempsList executions={executions} posteNom="Bar" /></SectionCard>
+              {canLivraisons && <LivraisonsHistorySection orders={supplierOrders} />}
+            </div>
+          </div>
         </>
       )}
 
       {poste === "Cuisine" && (
         <>
           <LivraisonOrangeCard order={orderDuJour} onOpen={() => setReceivingOrder(orderDuJour)} />
-          <PosteStatusCard poste="Cuisine" status={posteStatus} />
-          <StocksBasCard items={stockBasCuisine} />
-          <PrepasAFaireCard preps={prepasCuisine} />
-          <ResumeTachesCard zoneTaches={zoneTaches} executions={executions} />
-          <RecettesSection
-            title="Recettes"
-            recettes={recettesCuisine}
-            emoji="👨‍🍳"
-            emptyLabel="Aucune recette classée « Cuisine » pour l'instant"
-          />
-          <SectionCard title="Températures"><TempsList executions={executions} posteNom="Cuisine" /></SectionCard>
-          {canLivraisons && <LivraisonsHistorySection orders={supplierOrders} />}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-[3fr_2fr] md:gap-6">
+            <div className="space-y-4">
+              <PosteStatusCard poste="Cuisine" status={posteStatus} />
+              <StocksBasCard items={stockBasCuisine} />
+              <PrepasAFaireCard preps={prepasCuisine} />
+              <ResumeTachesCard zoneTaches={zoneTaches} executions={executions} />
+            </div>
+            <div className="space-y-4">
+              <RecettesSection
+                title="Recettes"
+                recettes={recettesCuisine}
+                emoji="👨‍🍳"
+                emptyLabel="Aucune recette classée « Cuisine » pour l'instant"
+              />
+              <SectionCard title="Températures"><TempsList executions={executions} posteNom="Cuisine" /></SectionCard>
+              {canLivraisons && <LivraisonsHistorySection orders={supplierOrders} />}
+            </div>
+          </div>
         </>
       )}
 

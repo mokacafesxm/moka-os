@@ -37,7 +37,22 @@ function formatEuros(value) {
   return `${(value || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
 }
 
-const financeButtonClass = "rounded-2xl bg-white border border-[#e5d5c5] w-full py-4 text-left px-5 font-black text-[#2c1a10] shadow-sm cursor-pointer active:scale-[0.99] transition-all";
+function FinanceButton({ emoji, title, subtitle, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full rounded-2xl bg-white border border-[#e5d5c5] shadow-sm p-4 flex items-center gap-4 cursor-pointer hover:shadow-md active:scale-[0.99] transition-all"
+    >
+      <span className="text-2xl">{emoji}</span>
+      <div className="text-left">
+        <div className="font-black text-sm text-[#2c1a10]">{title}</div>
+        <div className="text-xs text-[#9a7060]">{subtitle}</div>
+      </div>
+      <span className="ml-auto text-[#9a7060]">→</span>
+    </button>
+  );
+}
 
 function ModalShell({ title, onClose, children }) {
   return (
@@ -60,22 +75,6 @@ function ModalShell({ title, onClose, children }) {
         {children}
       </div>
     </div>
-  );
-}
-
-function BankStatementModal({ onClose }) {
-  return (
-    <ModalShell title="🏦 Relevés bancaires" onClose={onClose}>
-      <label className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#c8b4a8] bg-white py-10 px-4 cursor-pointer text-center">
-        <span className="text-3xl">📄</span>
-        <span className="text-sm font-bold text-[#2c1a10]">Upload d&apos;un relevé bancaire PDF ou Excel</span>
-        <span className="text-xs text-[#9a7060]">Glisser-déposer ou toucher pour sélectionner</span>
-        <input type="file" accept=".pdf,.xlsx,.csv" className="hidden" disabled />
-      </label>
-      <div className="rounded-2xl bg-[#f0e8dc] p-3.5 text-xs font-bold text-[#9a7060] text-center">
-        Analyse automatique par IA — en cours de déploiement
-      </div>
-    </ModalShell>
   );
 }
 
@@ -144,7 +143,6 @@ export default function ManagerHomePage() {
   const [dashboard, setDashboard] = useState(null);
   const [dashboardRefreshing, setDashboardRefreshing] = useState(false);
   const [recettesMappees, setRecettesMappees] = useState(null);
-  const [showBankModal, setShowBankModal] = useState(false);
   const [showMonthlyReport, setShowMonthlyReport] = useState(false);
   const [showCommandeClient, setShowCommandeClient] = useState(false);
 
@@ -302,21 +300,25 @@ export default function ManagerHomePage() {
       </div>
 
       <SectionCard title="📊 Données financières">
-        <div className="space-y-2.5">
-          <a
-            href="/imports"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={financeButtonClass}
-          >
-            📈 Importer ventes AddicTill
-          </a>
-          <button type="button" onClick={() => setShowBankModal(true)} className={financeButtonClass}>
-            🏦 Relevés bancaires
-          </button>
-          <button type="button" onClick={() => setShowMonthlyReport(true)} className={financeButtonClass}>
-            📋 Rapport mensuel
-          </button>
+        <div className="space-y-3">
+          <FinanceButton
+            emoji="📈"
+            title="Ventes AddicTill"
+            subtitle="Importer et analyser les ventes"
+            onClick={() => router.push("/imports")}
+          />
+          <FinanceButton
+            emoji="🏦"
+            title="Relevés bancaires"
+            subtitle="Importer les relevés Crédit Mutuel"
+            onClick={() => router.push("/imports?type=bank")}
+          />
+          <FinanceButton
+            emoji="📋"
+            title="Rapport mensuel"
+            subtitle="CA, achats et commandes du mois"
+            onClick={() => setShowMonthlyReport(true)}
+          />
         </div>
       </SectionCard>
 
@@ -357,7 +359,6 @@ export default function ManagerHomePage() {
         )}
       </SectionCard>
 
-      {showBankModal && <BankStatementModal onClose={() => setShowBankModal(false)} />}
       {showMonthlyReport && <MonthlyReportModal onClose={() => setShowMonthlyReport(false)} />}
       {showCommandeClient && <CommandeClientModal onClose={() => setShowCommandeClient(false)} />}
     </div>

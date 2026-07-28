@@ -565,7 +565,7 @@ export default function ParametresPage() {
   const showToast = (text, type = "success") => setToast({ text, type });
 
   return (
-    <div className="min-h-dvh px-4 py-4 space-y-4" style={{ background: "#f7efe4" }}>
+    <div className="min-h-dvh px-4 py-4 space-y-4 md:max-w-2xl md:mx-auto" style={{ background: "#f7efe4" }}>
       <div>
         <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">Admin</div>
         <h1 className="text-xl font-black text-[#2c1a10] -mt-0.5">⚙️ Paramètres</h1>
