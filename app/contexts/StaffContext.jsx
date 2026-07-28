@@ -60,6 +60,19 @@ function loadPoste() {
   }
 }
 
+// Sprint 17 — /parametres' Sécurité section stores new PINs hashed (never
+// plain text). checkPin below accepts either form so a PIN set by the old
+// plain-text flow (legacy page.js, or the "3578" factory default) keeps
+// working after this change — only newly-saved PINs are ever hashed.
+export function simpleHash(str) {
+  let hash = 0;
+  const s = String(str || "");
+  for (let i = 0; i < s.length; i++) {
+    hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+  }
+  return hash.toString(36);
+}
+
 const STATUS_AFTER_ACTION = {
   "Arrivée": "present",
   "Départ pause": "pause",
@@ -253,7 +266,7 @@ export function StaffProvider({ children }) {
     const adminEnabled = localStorage.getItem("mokaAdminEnabled") !== "false";
     if (!adminEnabled) return false;
     const savedPin = localStorage.getItem("mokaPinCode") || "3578";
-    return pin === savedPin;
+    return pin === savedPin || simpleHash(pin) === savedPin;
   }, []);
 
   const unlockAdmin = useCallback((pin) => {

@@ -15,9 +15,9 @@ const ADMIN_ITEMS = [
   { key: "commandes", label: "Commandes", icon: "🛒", href: "/commandes" },
   { key: "recettes", label: "Recettes", icon: "📖", href: "/recettes" },
   { key: "stock", label: "Stock", icon: "📦", href: "/stock" },
-  { key: "rapports", label: "Rapports", icon: "📈", href: "/" },
+  { key: "rapports", label: "Rapports", icon: "📈", href: "/rapports" },
   { key: "incidents", label: "Incidents", icon: "🚨", href: "/incidents" },
-  { key: "parametres", label: "Paramètres", icon: "⚙️", href: "/" },
+  { key: "parametres", label: "Paramètres", icon: "⚙️", href: "/parametres" },
 ];
 
 export default function AdminNav() {
