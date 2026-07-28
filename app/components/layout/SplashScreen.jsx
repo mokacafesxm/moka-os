@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
+import { hasStaffPin } from "../shared/staffPin";
+import PinEntryModal from "../shared/PinEntryModal";
 
 const POSTES = [
   { key: "Bar", nom: "Bar", emoji: "☕" },
@@ -44,6 +46,7 @@ export default function SplashScreen({ onDone }) {
 
   const [phase, setPhase] = useState("poste"); // "poste" | "staff"
   const [selectedPoste, setSelectedPoste] = useState(null);
+  const [pinGateMember, setPinGateMember] = useState(null); // staff picked but awaiting session PIN
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminStep, setAdminStep] = useState("pin"); // "pin" | "identity"
   const [pin, setPin] = useState("");
@@ -72,7 +75,7 @@ export default function SplashScreen({ onDone }) {
 
   const handleBack = () => setPhase("poste");
 
-  const handlePickStaff = async (member) => {
+  const proceedWithStaff = async (member) => {
     const staffName = getStaffName(member);
     const alreadyClockedIn = ["present", "pause"].includes(clockStatuses[staffName]);
     setPoste(selectedPoste);
@@ -89,6 +92,17 @@ export default function SplashScreen({ onDone }) {
     } catch (error) {
       console.error("[SplashScreen] clockInAs failed", error);
     }
+  };
+
+  // Profil → Sécurité lets a staff member set a local session PIN (per
+  // device, localStorage only — see staffPin.js) : re-picking their avatar
+  // here gates on that PIN before actually signing them in.
+  const handlePickStaff = (member) => {
+    if (hasStaffPin(member.id)) {
+      setPinGateMember(member);
+      return;
+    }
+    proceedWithStaff(member);
   };
 
   const closeAdminModal = () => {
@@ -282,6 +296,19 @@ export default function SplashScreen({ onDone }) {
             )}
           </div>
         </div>
+      )}
+
+      {pinGateMember && (
+        <PinEntryModal
+          staffId={pinGateMember.id}
+          staffName={getStaffName(pinGateMember)}
+          onClose={() => setPinGateMember(null)}
+          onVerified={() => {
+            const member = pinGateMember;
+            setPinGateMember(null);
+            proceedWithStaff(member);
+          }}
+        />
       )}
     </div>
   );

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useStaffContext } from "../../contexts/StaffContext";
+import { hasStaffPin } from "../../components/shared/staffPin";
+import PinSetupModal from "../../components/shared/PinSetupModal";
 
 function initials(name) {
   return String(name || "?").trim().slice(0, 2).toUpperCase();
@@ -11,6 +13,12 @@ export default function ProfilPage() {
   const { selectedStaff, selectedStaffName, setSplashDone } = useStaffContext();
 
   const [heures, setHeures] = useState(null);
+  const [staffHasPin, setStaffHasPin] = useState(false);
+  const [showPinSetup, setShowPinSetup] = useState(false);
+
+  useEffect(() => {
+    setStaffHasPin(hasStaffPin(selectedStaff?.id));
+  }, [selectedStaff?.id]);
 
   useEffect(() => {
     if (!selectedStaffName) return;
@@ -55,6 +63,31 @@ export default function ProfilPage() {
         </div>
       </div>
 
+      <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
+        <div className="text-xs font-black text-[#9a7060] uppercase tracking-wide mb-3">🔐 Sécurité</div>
+
+        {!staffHasPin ? (
+          <button
+            type="button"
+            onClick={() => setShowPinSetup(true)}
+            className="w-full py-3 rounded-xl bg-[#2c1a10] text-white font-black text-sm cursor-pointer"
+          >
+            Créer mon PIN de session
+          </button>
+        ) : (
+          <div className="space-y-2">
+            <div className="text-sm text-[#5a7828] font-bold">✅ PIN activé</div>
+            <button
+              type="button"
+              onClick={() => setShowPinSetup(true)}
+              className="text-xs text-[#9a7060] underline cursor-pointer"
+            >
+              Modifier mon PIN
+            </button>
+          </div>
+        )}
+      </div>
+
       <button
         type="button"
         onClick={handleChangerPoste}
@@ -62,6 +95,14 @@ export default function ProfilPage() {
       >
         Changer de poste
       </button>
+
+      {showPinSetup && (
+        <PinSetupModal
+          staffId={selectedStaff?.id}
+          onClose={() => setShowPinSetup(false)}
+          onSaved={() => setStaffHasPin(true)}
+        />
+      )}
     </div>
   );
 }
