@@ -133,15 +133,21 @@ export default function ClockBar() {
           {isAdmin ? "🛡️" : "🔒"}
         </button>
 
-        <button
-          type="button"
-          onClick={handleToggle}
-          disabled={clockSending}
-          aria-label={isClockedIn ? "Pointer le départ" : "Pointer l'arrivée"}
-          className="w-11 h-11 shrink-0 rounded-full bg-white/80 border border-[#e5d5c5] flex items-center justify-center text-lg disabled:opacity-50 cursor-pointer active:scale-95 transition-transform"
-        >
-          ↔️
-        </button>
+        {isAdmin ? (
+          <div className="shrink-0 h-11 px-3 rounded-full bg-[#2c1a10] text-white text-xs font-black flex items-center gap-1.5 whitespace-nowrap">
+            👑 Session Admin
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={handleToggle}
+            disabled={clockSending}
+            aria-label={isClockedIn ? "Pointer le départ" : "Pointer l'arrivée"}
+            className="w-11 h-11 shrink-0 rounded-full bg-white/80 border border-[#e5d5c5] flex items-center justify-center text-lg disabled:opacity-50 cursor-pointer active:scale-95 transition-transform"
+          >
+            ↔️
+          </button>
+        )}
       </div>
 
       {showPicker && (

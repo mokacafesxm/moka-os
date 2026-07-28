@@ -7,6 +7,11 @@ import { useAppContext } from "../../contexts/AppContext";
 
 const SXM_TIMEZONE = "America/Puerto_Rico";
 
+// Sprint 15 — stocks critiques / commandes à passer ne concernent que les
+// postes qui gèrent effectivement le stock (Bar, Cuisine) ; Salle et Plonge
+// ne doivent jamais voir cette alerte.
+const POSTES_WITH_STOCK_ALERTS = ["Bar", "Cuisine"];
+
 function getStaffName(member) {
   return member?.name || member?.prenom || member?.nom || "Staff";
 }
@@ -58,8 +63,10 @@ const PRIORITY_DOT = {
 };
 
 export default function HomePage() {
-  const { selectedStaff, selectedStaffName, setStaff, canLivraisons } = useStaffContext();
+  const { selectedStaff, selectedStaffName, setStaff, canLivraisons, poste } = useStaffContext();
   const { staff, stockLive, preps } = useAppContext();
+
+  const showStockAlerts = POSTES_WITH_STOCK_ALERTS.includes(poste);
 
   const [dashboard, setDashboard] = useState(null);
   // Démarre à null (identique au rendu SSR) — new Date() dans l'initializer
@@ -94,7 +101,7 @@ export default function HomePage() {
   const livraison = dashboard?.livraisons_attendues?.[0];
 
   const alertes = [
-    critiquesCount > 0 && { icon: "🚨", text: `${critiquesCount} produit${critiquesCount > 1 ? "s" : ""} critique${critiquesCount > 1 ? "s" : ""} à commander` },
+    showStockAlerts && critiquesCount > 0 && { icon: "🚨", text: `${critiquesCount} produit${critiquesCount > 1 ? "s" : ""} critique${critiquesCount > 1 ? "s" : ""} à commander` },
     prepasUrgentesCount > 0 && { icon: "✅", text: `${prepasUrgentesCount} prépa${prepasUrgentesCount > 1 ? "s" : ""} à terminer` },
     livraison && { icon: "📦", text: `Livraison ${livraison.fournisseur} attendue` },
   ].filter(Boolean).slice(0, 3);
