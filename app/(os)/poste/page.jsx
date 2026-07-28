@@ -6,6 +6,7 @@ import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
 import ReceiveModal, { parseOrderProducts } from "../../components/shared/ReceiveModal";
 import { getPosteStatus, setPosteStatus } from "../../components/shared/posteStatus";
+import CommandeClientModal from "../../components/shared/CommandeClientModal";
 
 const POSTES = [
   { key: "Bar", nom: "Bar", emoji: "☕" },
@@ -300,6 +301,7 @@ export default function PostePage() {
   const [toast, setToast] = useState(null);
   const [posteStatus, setPosteStatusState] = useState(null);
   const [receivingOrder, setReceivingOrder] = useState(null);
+  const [showCommandeClient, setShowCommandeClient] = useState(false);
   const closeToastFiredRef = useRef(null); // date (YYYY-MM-DD) où le toast 15h a déjà été montré
 
   useEffect(() => {
@@ -487,6 +489,13 @@ export default function PostePage() {
 
       {poste === "Salle" && (
         <>
+          <button
+            type="button"
+            onClick={() => setShowCommandeClient(true)}
+            className="bg-[#2c1a10] text-white rounded-2xl py-4 w-full font-black cursor-pointer active:scale-[0.98] transition-all"
+          >
+            🛎 Nouvelle commande client →
+          </button>
           <ResumeTachesCard zoneTaches={zoneTaches} executions={executions} />
           <SectionCard title="Tâches mise en place"><TachesList taches={zoneTaches} /></SectionCard>
           <PosteStatusCard poste="Salle" status={posteStatus} />
@@ -514,6 +523,8 @@ export default function PostePage() {
           onReceived={() => { setReceivingOrder(null); refreshSupplierOrders(); }}
         />
       )}
+
+      {showCommandeClient && <CommandeClientModal onClose={() => setShowCommandeClient(false)} />}
     </div>
   );
 }

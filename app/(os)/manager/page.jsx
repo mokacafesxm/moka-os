@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
 import LivraisonsAujourdhuiCard from "../../components/shared/LivraisonsAujourdhuiCard";
+import CommandeClientModal from "../../components/shared/CommandeClientModal";
 
 const STATUS_LABEL = { present: "Présent", pause: "En pause", done: "Terminé", absent: "Absent" };
 const STATUS_COLOR = { present: "#5a7828", pause: "#d97706", done: "#9a7060", absent: "#e5d5c5" };
@@ -145,6 +146,7 @@ export default function ManagerHomePage() {
   const [recettesMappees, setRecettesMappees] = useState(null);
   const [showBankModal, setShowBankModal] = useState(false);
   const [showMonthlyReport, setShowMonthlyReport] = useState(false);
+  const [showCommandeClient, setShowCommandeClient] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) router.replace("/home");
@@ -246,6 +248,14 @@ export default function ManagerHomePage() {
           </div>
         ))}
       </div>
+
+      <button
+        type="button"
+        onClick={() => setShowCommandeClient(true)}
+        className="bg-[#2c1a10] text-white rounded-2xl py-4 w-full font-black cursor-pointer active:scale-[0.98] transition-all"
+      >
+        🛎 Commande client
+      </button>
 
       <Link
         href="/recettes"
@@ -349,6 +359,7 @@ export default function ManagerHomePage() {
 
       {showBankModal && <BankStatementModal onClose={() => setShowBankModal(false)} />}
       {showMonthlyReport && <MonthlyReportModal onClose={() => setShowMonthlyReport(false)} />}
+      {showCommandeClient && <CommandeClientModal onClose={() => setShowCommandeClient(false)} />}
     </div>
   );
 }
