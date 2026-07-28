@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
+import ReceiveModal from "../../components/shared/ReceiveModal";
 
 const STATUTS = ["À commander", "Envoyé", "Livraison prévue", "Reçu"];
 
@@ -223,13 +224,122 @@ function displayStatut(order) {
   return order.statut;
 }
 
-function HistoriqueTab({ orders }) {
+const actionBtnClass = "flex-1 h-9 rounded-xl text-[11px] font-black cursor-pointer flex items-center justify-center gap-1";
+
+// Statut-driven footer actions — "À commander" (WhatsApp/copier/marquer envoyé),
+// "Envoyé" (re-envoyer/marquer reçu), "Reçu" (voir message), "Annulé" (rien).
+function OrderActions({ order, suppliers, onMarkSent, onOpenReceive, onViewMessage, showToast }) {
+  const statut = displayStatut(order);
+  if (statut === "Annulé") return null;
+
+  const supplier = suppliers.find((s) => s.name === order.fournisseur);
+  const wa = supplier?.whatsapp;
+  const message = order.message || `${order.fournisseur} — ${order.produit}`;
+  const waHref = wa ? `https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}` : null;
+
+  const copyMessage = (e) => {
+    e.stopPropagation();
+    navigator.clipboard?.writeText(message).then(() => showToast("Message copié ✅"));
+  };
+
+  if (statut === "À commander") {
+    return (
+      <div className="flex gap-2 px-3.5 pb-3.5" onClick={(e) => e.stopPropagation()}>
+        {waHref && (
+          <a href={waHref} target="_blank" rel="noreferrer" className={`${actionBtnClass} bg-[#25D366] text-white`}>
+            💬 WhatsApp
+          </a>
+        )}
+        <button type="button" onClick={copyMessage} className={`${actionBtnClass} bg-[#f0e8dc] text-[#2c1a10]`}>
+          📋 Copier
+        </button>
+        <button type="button" onClick={() => onMarkSent(order)} className={`${actionBtnClass} bg-[#5a7828] text-white`}>
+          ✅ Envoyé
+        </button>
+      </div>
+    );
+  }
+
+  if (statut === "Envoyé" || statut === "Livraison prévue") {
+    return (
+      <div className="flex gap-2 px-3.5 pb-3.5" onClick={(e) => e.stopPropagation()}>
+        {waHref && (
+          <a href={waHref} target="_blank" rel="noreferrer" className={`${actionBtnClass} bg-[#25D366] text-white`}>
+            💬 Re-envoyer
+          </a>
+        )}
+        <button type="button" onClick={() => onOpenReceive(order)} className={`${actionBtnClass} bg-[#5a7828] text-white`}>
+          ✅ Marquer reçu
+        </button>
+      </div>
+    );
+  }
+
+  if (statut === "Reçu" && order.message) {
+    return (
+      <div className="px-3.5 pb-3.5" onClick={(e) => e.stopPropagation()}>
+        <button type="button" onClick={() => onViewMessage(order)} className="text-[11px] font-bold text-[#9a7060] underline cursor-pointer">
+          📋 Voir le message
+        </button>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function HistoriqueTab({ orders, suppliers, onRefresh }) {
   const [filter, setFilter] = useState("Tous");
   const [detail, setDetail] = useState(null);
+  const [receivingOrder, setReceivingOrder] = useState(null);
+  const [overrides, setOverrides] = useState({});
+  const [toast, setToast] = useState(null);
 
-  const filtered = orders
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const showToast = (text, type = "success") => setToast({ text, type });
+
+  const withOverrides = useMemo(
+    () => orders.map((o) => (overrides[o.id] ? { ...o, ...overrides[o.id] } : o)),
+    [orders, overrides]
+  );
+
+  const filtered = withOverrides
     .filter((o) => filter === "Tous" || displayStatut(o) === filter)
     .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  // markOrderSent — same PATCH shape as the legacy page.js implementation:
+  // statut "Envoyé" + dateEnvoi, then reflect it in the list immediately
+  // rather than waiting on the next supplierOrders refresh.
+  const markOrderSent = async (order) => {
+    try {
+      const res = await fetch("/api/supplier-orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: order.id, statut: "Envoyé", dateEnvoi: new Date().toISOString() }),
+      });
+      if (!res.ok) throw new Error(`Erreur ${res.status}`);
+      setOverrides((cur) => ({ ...cur, [order.id]: { statut: "Envoyé" } }));
+      showToast("Commande marquée comme envoyée ✅");
+      onRefresh();
+    } catch (err) {
+      showToast("Erreur : " + err.message, "error");
+    }
+  };
+
+  // markOrderReceived — opens the real receiveModal (swipe per product); the
+  // saga behind /api/supplier-orders/receive flips statut to "Reçu" itself
+  // once every line is confirmed, so this only needs to reflect it locally.
+  const handleReceived = () => {
+    if (receivingOrder) setOverrides((cur) => ({ ...cur, [receivingOrder.id]: { statut: "Reçu" } }));
+    setReceivingOrder(null);
+    showToast("Commande marquée comme reçue ✅");
+    onRefresh();
+  };
 
   return (
     <div className="space-y-3">
@@ -251,20 +361,36 @@ function HistoriqueTab({ orders }) {
         <div className="text-center text-sm text-[#9a7060] py-10">Aucune commande</div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              onClick={() => setDetail(o)}
-              className="w-full flex items-center justify-between rounded-2xl border border-[#e5d5c5] bg-white p-3.5 text-left cursor-pointer"
-            >
-              <div className="min-w-0">
-                <div className="font-black text-sm text-[#2c1a10] truncate">{o.fournisseur}</div>
-                <div className="text-[11px] text-[#9a7060]">{o.date?.slice(0, 10)}</div>
+          {filtered.map((o) => {
+            const statut = displayStatut(o);
+            const isAnnule = statut === "Annulé";
+            return (
+              <div
+                key={o.id}
+                className={`rounded-2xl border border-[#e5d5c5] bg-white overflow-hidden ${isAnnule ? "opacity-50" : ""}`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setDetail(o)}
+                  className="w-full flex items-center justify-between p-3.5 text-left cursor-pointer"
+                >
+                  <div className="min-w-0">
+                    <div className="font-black text-sm text-[#2c1a10] truncate">{o.fournisseur}</div>
+                    <div className="text-[11px] text-[#9a7060]">{o.date?.slice(0, 10)}</div>
+                  </div>
+                  <StatutBadge statut={statut} />
+                </button>
+                <OrderActions
+                  order={o}
+                  suppliers={suppliers}
+                  onMarkSent={markOrderSent}
+                  onOpenReceive={setReceivingOrder}
+                  onViewMessage={setDetail}
+                  showToast={showToast}
+                />
               </div>
-              <StatutBadge statut={displayStatut(o)} />
-            </button>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -291,6 +417,19 @@ function HistoriqueTab({ orders }) {
               Fermer
             </button>
           </div>
+        </div>
+      )}
+
+      {receivingOrder && (
+        <ReceiveModal order={receivingOrder} onClose={() => setReceivingOrder(null)} onReceived={handleReceived} />
+      )}
+
+      {toast && (
+        <div
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-2xl text-sm font-bold text-white shadow-lg"
+          style={{ background: toast.type === "error" ? "#b91c1c" : "#5a7828" }}
+        >
+          {toast.text}
         </div>
       )}
     </div>
@@ -339,7 +478,7 @@ export default function CommandesPage() {
       <Tabs tab={tab} setTab={setTab} />
 
       {tab === "composer" && <ComposerTab suppliers={suppliers} products={products} onSent={refreshSupplierOrders} />}
-      {tab === "historique" && <HistoriqueTab orders={supplierOrders} />}
+      {tab === "historique" && <HistoriqueTab orders={supplierOrders} suppliers={suppliers} onRefresh={refreshSupplierOrders} />}
       {tab === "suivi" && <SuiviTab orders={supplierOrders} />}
     </div>
   );
