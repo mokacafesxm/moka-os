@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
-import ReceiveModal, { parseOrderProducts } from "../../components/shared/ReceiveModal";
+import ReceiveModal, { parseOrderProducts, getOrderSupplier } from "../../components/shared/ReceiveModal";
 import { getPosteStatus, setPosteStatus } from "../../components/shared/posteStatus";
 import CommandeClientModal from "../../components/shared/CommandeClientModal";
+import DeclareIncidentModal from "../../components/shared/DeclareIncidentModal";
 
 const POSTES = [
   { key: "Bar", nom: "Bar", emoji: "☕" },
@@ -274,21 +275,63 @@ function PrepasAFaireCard({ preps }) {
   );
 }
 
+// Detail complet d'une livraison reçue : produits (parsés du même helper que
+// ReceiveModal, seule source de vérité pour la casse "1 ligne Notion peut
+// représenter plusieurs produits") + aperçu et copie du message WhatsApp
+// envoyé au fournisseur.
 function LivraisonDetailModal({ order, onClose }) {
+  const [copied, setCopied] = useState(false);
+  const produits = useMemo(() => parseOrderProducts(order), [order]);
+
+  const copyMessage = () => {
+    if (!order.message) return;
+    navigator.clipboard?.writeText(order.message).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div
-        className="relative w-full max-w-sm rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-3"
+        className="relative w-full max-w-sm max-h-[85vh] overflow-y-auto rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-3"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-base font-black text-[#2c1a10]">{order.produit}</h2>
+        <h2 className="text-base font-black text-[#2c1a10]">{getOrderSupplier(order) || order.fournisseur}</h2>
         <div className="space-y-1.5 text-sm">
-          <div className="flex justify-between"><span className="text-[#9a7060]">Fournisseur</span><span className="font-bold text-[#2c1a10]">{order.fournisseur}</span></div>
-          <div className="flex justify-between"><span className="text-[#9a7060]">Quantité</span><span className="font-bold text-[#2c1a10]">{order.quantite} {order.unite}</span></div>
           <div className="flex justify-between"><span className="text-[#9a7060]">Statut</span><span className="font-bold text-[#2c1a10]">{order.statut}</span></div>
           <div className="flex justify-between"><span className="text-[#9a7060]">Date</span><span className="font-bold text-[#2c1a10]">{order.date?.slice(0, 10)}</span></div>
         </div>
+
+        {produits.length > 0 && (
+          <div className="pt-2 border-t border-[#e5d5c5] mt-2">
+            <div className="text-[10px] font-bold text-[#9a7060] uppercase mb-1.5">Produits</div>
+            <div className="space-y-1">
+              {produits.map((p, i) => (
+                <div key={i} className="flex justify-between text-xs">
+                  <span className="font-semibold text-[#2c1a10]">{p.name}</span>
+                  <span className="font-black text-[#2c1a10]">{p.qty} {p.unit}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {order.message && (
+          <div className="pt-2 border-t border-[#e5d5c5] mt-2">
+            <div className="text-[10px] font-bold text-[#9a7060] uppercase mb-1">Message WhatsApp envoyé</div>
+            <div className="text-xs text-[#2c1a10] whitespace-pre-wrap">{order.message}</div>
+            <button
+              type="button"
+              onClick={copyMessage}
+              className="mt-2 w-full py-2 rounded-xl bg-[#f0e8dc] text-[#2c1a10] text-xs font-black cursor-pointer"
+            >
+              {copied ? "✅ Copié" : "📋 Copier le message"}
+            </button>
+          </div>
+        )}
+
         <button type="button" onClick={onClose} className="w-full py-3 rounded-2xl text-[#9a7060] font-bold text-sm cursor-pointer">
           Fermer
         </button>
@@ -315,20 +358,27 @@ function LivraisonsHistorySection({ orders }) {
         <div className="text-sm text-[#9a7060] py-2">Aucune livraison reçue récemment</div>
       ) : (
         <div className="space-y-2">
-          {historique.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              onClick={() => setDetailOrder(o)}
-              className="w-full flex items-center justify-between rounded-xl border border-[#e5d5c5] bg-white p-3 text-left cursor-pointer"
-            >
-              <div>
-                <div className="text-sm font-bold text-[#2c1a10]">{o.fournisseur}</div>
-                <div className="text-[11px] text-[#9a7060]">{o.produit} · {o.date?.slice(0, 10)}</div>
+          {historique.map((o) => {
+            const nbProduits = parseOrderProducts(o).length || 1;
+            return (
+              <div key={o.id} className="rounded-xl border border-[#e5d5c5] bg-white p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-bold text-[#2c1a10]">{o.fournisseur}</div>
+                    <div className="text-[11px] text-[#9a7060]">{o.date?.slice(0, 10)} · {nbProduits} produit{nbProduits !== 1 ? "s" : ""}</div>
+                  </div>
+                  <span className="text-[9px] font-black px-2 py-1 rounded-lg bg-[#f0f7e5] text-[#5a7828] shrink-0">✅ Reçu</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDetailOrder(o)}
+                  className="mt-2 w-full py-2 rounded-xl border border-[#e5d5c5] text-[#9a7060] text-xs font-bold cursor-pointer"
+                >
+                  👁 Voir la commande
+                </button>
               </div>
-              <span className="text-[9px] font-black px-2 py-1 rounded-lg bg-[#f0f7e5] text-[#5a7828] shrink-0">✅ Reçu</span>
-            </button>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -486,7 +536,7 @@ function ClockSheet({ status, clockSending, onClose, onClockIn, onStartBreak, on
 }
 
 export default function PostePage() {
-  const { poste, setSplashDone, canOrderPad, canLivraisons, selectedStaffName, status, isClockedIn, clockSending, clockIn, clockOut, startBreak, endBreak } = useStaffContext();
+  const { poste, setSplashDone, canLivraisons, selectedStaffName, status, isClockedIn, clockSending, clockIn, clockOut, startBreak, endBreak } = useStaffContext();
   const { zonesPhysiques, preps, stockLive, supplierOrders, refreshSupplierOrders } = useAppContext();
 
   const [now, setNow] = useState(null);
@@ -498,6 +548,7 @@ export default function PostePage() {
   const [receivingOrder, setReceivingOrder] = useState(null);
   const [showCommandeClient, setShowCommandeClient] = useState(false);
   const [showClockSheet, setShowClockSheet] = useState(false);
+  const [showIncidentForm, setShowIncidentForm] = useState(false);
   const closeToastFiredRef = useRef(null); // date (YYYY-MM-DD) où le toast 15h a déjà été montré
 
   useEffect(() => {
@@ -660,15 +711,6 @@ export default function PostePage() {
         </div>
       )}
 
-      {canOrderPad && (
-        <a
-          href="/"
-          className="flex items-center justify-center gap-2 w-full h-11 rounded-2xl bg-white border border-[#e5d5c5] text-[#2c1a10] text-sm font-black cursor-pointer"
-        >
-          📋 OrderPad
-        </a>
-      )}
-
       {poste === "Bar" && (
         <>
           <LivraisonOrangeCard order={orderDuJour} onOpen={() => setReceivingOrder(orderDuJour)} />
@@ -734,6 +776,14 @@ export default function PostePage() {
         </>
       )}
 
+      <button
+        type="button"
+        onClick={() => setShowIncidentForm(true)}
+        className="w-full py-3 rounded-2xl border border-[#e5d5c5] bg-white text-sm font-bold text-[#9a7060] mt-4 cursor-pointer"
+      >
+        🚨 Signaler un incident
+      </button>
+
       {receivingOrder && (
         <ReceiveModal
           order={receivingOrder}
@@ -743,6 +793,14 @@ export default function PostePage() {
       )}
 
       {showCommandeClient && <CommandeClientModal onClose={() => setShowCommandeClient(false)} />}
+
+      {showIncidentForm && (
+        <DeclareIncidentModal
+          defaultZoneId={zoneId}
+          onClose={() => setShowIncidentForm(false)}
+          onDeclared={() => setToast({ text: "Incident déclaré ✅", type: "success" })}
+        />
+      )}
 
       {showClockSheet && (
         <ClockSheet

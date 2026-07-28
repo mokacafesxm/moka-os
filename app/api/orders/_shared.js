@@ -125,6 +125,7 @@ export function mapOrderProps(props, extractors) {
     prepStatus: getSelect(props, "Statut préparation"),
     acknowledged: getCheckbox(props, "Accusé réception"),
     acknowledgedBy: getText(props, "Accusé par"),
+    source: getSelect(props, "Source"),
     createdAt: getDate(props, "Date création"),
     readyAt: getDate(props, "Prête le"),
     pickedUpAt: getDate(props, "Récupérée le"),

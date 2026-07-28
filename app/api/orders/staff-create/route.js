@@ -34,6 +34,7 @@ export async function POST(request) {
       "Créneau": selectProp("Dès que possible"),
       "Statut paiement": selectProp("Payé"),
       "Statut préparation": selectProp("Nouvelle"),
+      "Source": selectProp("Staff Salle"),
       "Stripe Payment Intent": textProp("STAFF-SUR-PLACE"),
       "Date création": dateProp(new Date().toISOString()),
       "Commentaire": textProp(comment?.trim() || (staffName ? `Prise par ${staffName}` : "")),

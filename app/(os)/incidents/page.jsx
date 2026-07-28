@@ -4,9 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
+import DeclareIncidentModal from "../../components/shared/DeclareIncidentModal";
 
-const CATEGORIES = ["Client", "Équipement", "Stock", "RH", "Hygiène", "Sécurité", "Autre"];
-const CRITICITES = ["Critique", "Majeur", "Modéré", "Mineur"];
 const CRITICITE_COLOR = { Critique: "#b91c1c", Majeur: "#d97706", Modéré: "#9a7060", Mineur: "#9a7060" };
 
 const GROUPS = [
@@ -29,19 +28,178 @@ function formatDateHeure(iso) {
   }).format(new Date(iso));
 }
 
-const EMPTY_FORM = { titre: "", zoneId: "", categorie: "", criticite: "", description: "" };
+// Boutons d'action — même logique partagée par la card (liste) et le modal
+// détail : "Ouvert" → prendre en charge, "En cours" → résoudre, sinon rien
+// (Résolu/Fermé n'ont plus d'action).
+function IncidentActions({ incident, onTakeCharge, onOpenResolve, busy }) {
+  if (incident.statut === "Ouvert") {
+    return (
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onTakeCharge(incident); }}
+        disabled={busy}
+        className="w-full py-2.5 rounded-xl bg-[#2c1a10] text-white text-xs font-black cursor-pointer disabled:opacity-50"
+      >
+        ▶ Prendre en charge
+      </button>
+    );
+  }
+  if (incident.statut === "En cours") {
+    return (
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onOpenResolve(incident); }}
+        disabled={busy}
+        className="w-full py-2.5 rounded-xl bg-[#5a7828] text-white text-xs font-black cursor-pointer disabled:opacity-50"
+      >
+        ✅ Résoudre
+      </button>
+    );
+  }
+  return null;
+}
+
+function IncidentCard({ incident, zoneById, staffById, onOpenDetail, onTakeCharge, onOpenResolve, busy }) {
+  const hasAction = incident.statut === "Ouvert" || incident.statut === "En cours";
+  return (
+    <div
+      className="rounded-2xl border border-[#e5d5c5] bg-white p-3.5 cursor-pointer active:scale-[0.99] transition-transform"
+      onClick={() => onOpenDetail(incident)}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="font-black text-sm text-[#2c1a10]">{incident.titre}</div>
+        <span
+          className="text-[10px] font-black px-2 py-1 rounded-lg shrink-0"
+          style={{ color: CRITICITE_COLOR[incident.criticite] || "#9a7060", background: `${CRITICITE_COLOR[incident.criticite] || "#9a7060"}1a` }}
+        >
+          {incident.criticite || "—"}
+        </span>
+      </div>
+      <div className="text-[11px] text-[#9a7060] font-semibold mt-1">
+        {zoneById[incident.zoneId]?.nom || "Zone inconnue"} · {staffById[incident.declareParId]?.name || "—"} · {formatDateHeure(incident.dateHeure)}
+      </div>
+      {hasAction && (
+        <div className="mt-2.5">
+          <IncidentActions incident={incident} onTakeCharge={onTakeCharge} onOpenResolve={onOpenResolve} busy={busy} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IncidentDetailModal({ incident, zoneById, staffById, onClose, onTakeCharge, onOpenResolve, busy }) {
+  const hasAction = incident.statut === "Ouvert" || incident.statut === "En cours";
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <div
+        className="relative w-full max-w-sm max-h-[85vh] overflow-y-auto rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <h2 className="text-base font-black text-[#2c1a10]">{incident.titre}</h2>
+          <span
+            className="text-[10px] font-black px-2 py-1 rounded-lg shrink-0"
+            style={{ color: CRITICITE_COLOR[incident.criticite] || "#9a7060", background: `${CRITICITE_COLOR[incident.criticite] || "#9a7060"}1a` }}
+          >
+            {incident.criticite || "—"}
+          </span>
+        </div>
+
+        <div className="space-y-1.5 text-sm">
+          <div className="flex justify-between"><span className="text-[#9a7060]">Zone</span><span className="font-bold text-[#2c1a10]">{zoneById[incident.zoneId]?.nom || "—"}</span></div>
+          <div className="flex justify-between"><span className="text-[#9a7060]">Catégorie</span><span className="font-bold text-[#2c1a10]">{incident.categorie || "—"}</span></div>
+          <div className="flex justify-between"><span className="text-[#9a7060]">Criticité</span><span className="font-bold text-[#2c1a10]">{incident.criticite || "—"}</span></div>
+          <div className="flex justify-between"><span className="text-[#9a7060]">Déclaré par</span><span className="font-bold text-[#2c1a10]">{staffById[incident.declareParId]?.name || "—"}</span></div>
+          <div className="flex justify-between"><span className="text-[#9a7060]">Date / heure</span><span className="font-bold text-[#2c1a10]">{formatDateHeure(incident.dateHeure)}</span></div>
+        </div>
+
+        {incident.description && (
+          <div className="pt-2 border-t border-[#e5d5c5] mt-2">
+            <div className="text-[10px] font-bold text-[#9a7060] uppercase mb-1">Description</div>
+            <div className="text-xs text-[#2c1a10] whitespace-pre-wrap">{incident.description}</div>
+          </div>
+        )}
+
+        {incident.actionsPrises && (
+          <div className="pt-2 border-t border-[#e5d5c5] mt-2">
+            <div className="text-[10px] font-bold text-[#9a7060] uppercase mb-1">Actions prises</div>
+            <div className="text-xs text-[#2c1a10] whitespace-pre-wrap">{incident.actionsPrises}</div>
+          </div>
+        )}
+
+        {incident.statut === "Résolu" && incident.resolution && (
+          <div className="pt-2 border-t border-[#e5d5c5] mt-2">
+            <div className="text-[10px] font-bold text-[#5a7828] uppercase mb-1">Résolution</div>
+            <div className="text-xs text-[#2c1a10] whitespace-pre-wrap">{incident.resolution}</div>
+          </div>
+        )}
+
+        {hasAction && (
+          <div className="pt-1">
+            <IncidentActions incident={incident} onTakeCharge={onTakeCharge} onOpenResolve={onOpenResolve} busy={busy} />
+          </div>
+        )}
+
+        <button type="button" onClick={onClose} className="w-full py-3 rounded-2xl text-[#9a7060] font-bold text-sm cursor-pointer">
+          Fermer
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ResolveIncidentModal({ incident, onClose, onConfirm, saving }) {
+  const [resolution, setResolution] = useState("");
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <div
+        className="relative w-full max-w-sm rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-base font-black text-[#2c1a10]">✅ Résoudre — {incident.titre}</h2>
+        <div>
+          <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Résolution</label>
+          <textarea
+            value={resolution}
+            onChange={(e) => setResolution(e.target.value)}
+            rows={4}
+            autoFocus
+            className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] resize-none"
+            placeholder="Comment l'incident a été résolu…"
+          />
+        </div>
+        <div className="flex gap-3 pt-1" style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
+          <button type="button" onClick={onClose} className="flex-1 py-3 rounded-2xl text-[#9a7060] font-bold text-sm cursor-pointer">
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(resolution)}
+            disabled={saving}
+            className="flex-1 py-3 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-50 hover:bg-[#4e6a22] transition-colors"
+          >
+            {saving ? "…" : "Confirmer résolution"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function IncidentsPage() {
   const router = useRouter();
-  const { isAdmin, selectedStaff } = useStaffContext();
+  const { isAdmin } = useStaffContext();
   const { zonesPhysiques, staff } = useAppContext();
 
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
+  const [showDeclare, setShowDeclare] = useState(false);
+  const [detailIncident, setDetailIncident] = useState(null);
+  const [resolvingIncident, setResolvingIncident] = useState(null);
+  const [busyId, setBusyId] = useState(null);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -83,28 +241,44 @@ export default function IncidentsPage() {
 
   if (!isAdmin) return null;
 
-  const submitIncident = async () => {
-    if (!form.titre.trim()) {
-      setToast({ text: "Titre requis", type: "error" });
-      return;
-    }
-    setSaving(true);
+  const patchIncident = async (id, patch) => {
+    const res = await fetch("/api/incidents", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...patch }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
+  };
+
+  const handleTakeCharge = async (incident) => {
+    setBusyId(incident.id);
     try {
-      const res = await fetch("/api/incidents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, declareParId: selectedStaff?.id || null }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
-      setToast({ text: "Incident déclaré", type: "success" });
-      setShowModal(false);
-      setForm(EMPTY_FORM);
-      loadIncidents();
+      await patchIncident(incident.id, { statut: "En cours" });
+      setIncidents((list) => list.map((i) => (i.id === incident.id ? { ...i, statut: "En cours" } : i)));
+      setDetailIncident((d) => (d?.id === incident.id ? { ...d, statut: "En cours" } : d));
+      setToast({ text: "Pris en charge", type: "success" });
     } catch (err) {
       setToast({ text: "Erreur : " + err.message, type: "error" });
     } finally {
-      setSaving(false);
+      setBusyId(null);
+    }
+  };
+
+  const handleResolve = async (resolution) => {
+    const incident = resolvingIncident;
+    if (!incident) return;
+    setBusyId(incident.id);
+    try {
+      await patchIncident(incident.id, { statut: "Résolu", resolution });
+      setIncidents((list) => list.map((i) => (i.id === incident.id ? { ...i, statut: "Résolu", resolution } : i)));
+      setResolvingIncident(null);
+      setDetailIncident(null);
+      setToast({ text: "Incident résolu", type: "success" });
+    } catch (err) {
+      setToast({ text: "Erreur : " + err.message, type: "error" });
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -133,20 +307,16 @@ export default function IncidentsPage() {
               ) : (
                 <div className="space-y-2">
                   {grouped[group.key].map((inc) => (
-                    <div key={inc.id} className="rounded-2xl border border-[#e5d5c5] bg-white p-3.5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="font-black text-sm text-[#2c1a10]">{inc.titre}</div>
-                        <span
-                          className="text-[10px] font-black px-2 py-1 rounded-lg shrink-0"
-                          style={{ color: CRITICITE_COLOR[inc.criticite] || "#9a7060", background: `${CRITICITE_COLOR[inc.criticite] || "#9a7060"}1a` }}
-                        >
-                          {inc.criticite || "—"}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-[#9a7060] font-semibold mt-1">
-                        {zoneById[inc.zoneId]?.nom || "Zone inconnue"} · {staffById[inc.declareParId]?.name || "—"} · {formatDateHeure(inc.dateHeure)}
-                      </div>
-                    </div>
+                    <IncidentCard
+                      key={inc.id}
+                      incident={inc}
+                      zoneById={zoneById}
+                      staffById={staffById}
+                      onOpenDetail={setDetailIncident}
+                      onTakeCharge={handleTakeCharge}
+                      onOpenResolve={setResolvingIncident}
+                      busy={busyId === inc.id}
+                    />
                   ))}
                 </div>
               )}
@@ -158,104 +328,39 @@ export default function IncidentsPage() {
       <div className="sticky bottom-2 z-30 pt-2">
         <button
           type="button"
-          onClick={() => setShowModal(true)}
+          onClick={() => setShowDeclare(true)}
           className="w-full h-12 rounded-2xl bg-[#2c1a10] text-white text-sm font-black cursor-pointer shadow-lg"
         >
           🚨 Déclarer un incident
         </button>
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
-          <div className="absolute inset-0 bg-black/40" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
-          <div
-            className="relative w-full max-w-sm max-h-[85vh] overflow-y-auto rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-3"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-base font-black text-[#2c1a10]">🚨 Déclarer un incident</h2>
+      {showDeclare && (
+        <DeclareIncidentModal
+          onClose={() => setShowDeclare(false)}
+          onDeclared={() => { setToast({ text: "Incident déclaré", type: "success" }); loadIncidents(); }}
+        />
+      )}
 
-            <div>
-              <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Titre *</label>
-              <input
-                value={form.titre}
-                onChange={(e) => setForm((f) => ({ ...f, titre: e.target.value }))}
-                className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
-                placeholder="Ex : Fuite machine à café"
-              />
-            </div>
+      {detailIncident && (
+        <IncidentDetailModal
+          incident={detailIncident}
+          zoneById={zoneById}
+          staffById={staffById}
+          onClose={() => setDetailIncident(null)}
+          onTakeCharge={handleTakeCharge}
+          onOpenResolve={setResolvingIncident}
+          busy={busyId === detailIncident.id}
+        />
+      )}
 
-            <div>
-              <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Zone</label>
-              <select
-                value={form.zoneId}
-                onChange={(e) => setForm((f) => ({ ...f, zoneId: e.target.value }))}
-                className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]"
-              >
-                <option value="">Sélectionner…</option>
-                {zonesPhysiques.map((z) => (
-                  <option key={z.id} value={z.id}>{z.nom}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Catégorie</label>
-              <select
-                value={form.categorie}
-                onChange={(e) => setForm((f) => ({ ...f, categorie: e.target.value }))}
-                className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]"
-              >
-                <option value="">Sélectionner…</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Criticité</label>
-              <select
-                value={form.criticite}
-                onChange={(e) => setForm((f) => ({ ...f, criticite: e.target.value }))}
-                className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]"
-              >
-                <option value="">Sélectionner…</option>
-                {CRITICITES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Description</label>
-              <textarea
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                rows={3}
-                className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] resize-none"
-                placeholder="Détails de l'incident…"
-              />
-            </div>
-
-            <div className="flex gap-3 pt-1" style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="flex-1 py-3 rounded-2xl text-[#9a7060] font-bold text-sm cursor-pointer"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={submitIncident}
-                disabled={saving || !form.titre.trim()}
-                className="flex-1 py-3 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-50 hover:bg-[#4e6a22] transition-colors"
-              >
-                {saving ? "Envoi…" : "Envoyer"}
-              </button>
-            </div>
-          </div>
-        </div>
+      {resolvingIncident && (
+        <ResolveIncidentModal
+          incident={resolvingIncident}
+          onClose={() => setResolvingIncident(null)}
+          onConfirm={handleResolve}
+          saving={busyId === resolvingIncident.id}
+        />
       )}
 
       {toast && (

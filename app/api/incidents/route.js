@@ -1,6 +1,6 @@
 import {
   DB, corsHeaders,
-  queryDatabase, createPage,
+  queryDatabase, createPage, updatePage,
   getTitle, getText, getSelect, getDate, getRelationIds,
   titleProp, textProp, selectProp, relationProp, dateProp,
 } from "../_notion";
@@ -21,6 +21,9 @@ function normalizeIncident(page) {
     declareParId: getRelationIds(p, "Declare_Par")[0] || null,
     description: getText(p, "Description"),
     dateHeure: getDate(p, "Date_Heure") || page.created_time || null,
+    actionsPrises: getText(p, "Actions_Prises"),
+    resolution: getText(p, "Resolution"),
+    dateResolution: getDate(p, "Date_Resolution"),
   };
 }
 
@@ -33,6 +36,27 @@ export async function GET() {
   } catch (err) {
     console.error("[GET incidents]", err.message);
     return Response.json({ error: err.message }, { status: 500, headers: corsHeaders });
+  }
+}
+
+// Statut transitions ("Prendre en charge" → "En cours", "Résoudre" →
+// "Résolu" + note) — Date_Resolution is stamped server-side, never trusted
+// from the client, so it always reflects when the resolve actually happened.
+export async function PATCH(req) {
+  try {
+    const { id, statut, resolution } = await req.json();
+    if (!id) return Response.json({ success: false, error: "id requis" }, { status: 400, headers: corsHeaders });
+
+    const properties = {};
+    if (statut) properties.Statut = selectProp(statut);
+    if (resolution !== undefined) properties.Resolution = textProp(resolution);
+    if (statut === "Résolu") properties.Date_Resolution = dateProp(new Date().toISOString());
+
+    await updatePage(id, properties);
+    return Response.json({ success: true }, { headers: corsHeaders });
+  } catch (err) {
+    console.error("[PATCH incident] Exception:", err.message);
+    return Response.json({ success: false, error: err.message }, { status: 500, headers: corsHeaders });
   }
 }
 
