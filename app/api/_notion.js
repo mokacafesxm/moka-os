@@ -318,3 +318,4 @@ export const checkboxProp = (v) => ({ checkbox: Boolean(v) });
 export const dateProp   = (v) => (v ? { date: { start: v } } : { date: null });
 export const relationProp = (...ids) => ({ relation: ids.filter(Boolean).map((id) => ({ id })) });
 export const urlProp    = (v) => ({ url: v || null });
+export const multiSelectProp = (arr) => ({ multi_select: (Array.isArray(arr) ? arr : []).filter(Boolean).map((name) => ({ name: String(name) })) });

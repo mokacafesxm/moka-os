@@ -9,6 +9,28 @@ import { useAppContext } from "../../contexts/AppContext";
 const STATUS_LABEL = { present: "Présent", pause: "En pause", done: "Terminé", absent: "Absent" };
 const STATUS_COLOR = { present: "#5a7828", pause: "#d97706", done: "#9a7060", absent: "#e5d5c5" };
 
+const DASHBOARD_CACHE_KEY = "mokaDashboardCache";
+
+function SkeletonBlock({ className }) {
+  return <div className={`rounded-2xl bg-[#e9dcc9] animate-pulse ${className || ""}`} />;
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="min-h-dvh px-4 py-4 space-y-4" style={{ background: "#f7efe4" }}>
+      <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">Tableau de bord</div>
+      <h1 className="text-xl font-black text-[#2c1a10] -mt-3">Vue manager</h1>
+      <div className="grid grid-cols-2 gap-3">
+        {[0, 1, 2, 3].map((i) => <SkeletonBlock key={i} className="h-20" />)}
+      </div>
+      <SkeletonBlock className="h-16" />
+      <SkeletonBlock className="h-28" />
+      <SkeletonBlock className="h-36" />
+      <SkeletonBlock className="h-36" />
+    </div>
+  );
+}
+
 function formatHeures(decimal) {
   const h = Math.floor(decimal || 0);
   const m = Math.round(((decimal || 0) - h) * 60);
@@ -31,19 +53,47 @@ export default function ManagerHomePage() {
   const { zonesPhysiques } = useAppContext();
 
   const [dashboard, setDashboard] = useState(null);
+  const [dashboardRefreshing, setDashboardRefreshing] = useState(false);
   const [recettesMappees, setRecettesMappees] = useState(null);
 
   useEffect(() => {
     if (!isAdmin) router.replace("/home");
   }, [isAdmin, router]);
 
+  // Sprint 15 — affiche le dernier dashboard connu (localStorage) instantanément
+  // pendant que la version fraîche se charge en arrière-plan, plutôt que de
+  // montrer un skeleton à chaque visite. Le skeleton ne sert donc plus qu'au
+  // tout premier chargement (aucun cache disponible).
   useEffect(() => {
     if (!isAdmin) return;
     let ignore = false;
+    let hadCache = false;
+
+    try {
+      const cached = localStorage.getItem(DASHBOARD_CACHE_KEY);
+      if (cached) {
+        setDashboard(JSON.parse(cached));
+        hadCache = true;
+      }
+    } catch (error) {
+      console.error("[ManagerHomePage] dashboard cache read failed", error);
+    }
+
+    setDashboardRefreshing(hadCache);
     fetch("/api/dashboard")
       .then((r) => r.json())
-      .then((data) => { if (!ignore) setDashboard(data); })
-      .catch((error) => console.error("[ManagerHomePage] dashboard fetch failed", error));
+      .then((data) => {
+        if (ignore) return;
+        setDashboard(data);
+        try {
+          localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(data));
+        } catch (error) {
+          console.error("[ManagerHomePage] dashboard cache write failed", error);
+        }
+      })
+      .catch((error) => console.error("[ManagerHomePage] dashboard fetch failed", error))
+      .finally(() => { if (!ignore) setDashboardRefreshing(false); });
+
     return () => { ignore = true; };
   }, [isAdmin]);
 
@@ -65,6 +115,7 @@ export default function ManagerHomePage() {
   }, [isAdmin]);
 
   if (!isAdmin) return null;
+  if (dashboard === null) return <DashboardSkeleton />;
 
   const critiques = dashboard?.critiques || [];
   const prepasUrgentes = dashboard?.prepas_urgentes || [];
@@ -87,7 +138,12 @@ export default function ManagerHomePage() {
 
   return (
     <div className="min-h-dvh px-4 py-4 space-y-4" style={{ background: "#f7efe4" }}>
-      <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">Tableau de bord</div>
+      <div className="flex items-center gap-2">
+        <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">Tableau de bord</div>
+        {dashboardRefreshing && (
+          <span className="w-3 h-3 rounded-full border-2 border-[#9a7060] border-t-transparent animate-spin" />
+        )}
+      </div>
       <h1 className="text-xl font-black text-[#2c1a10] -mt-3">Vue manager</h1>
 
       <div className="grid grid-cols-2 gap-3">
