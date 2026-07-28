@@ -32,7 +32,12 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
     const zone = searchParams.get("zone");
-    const filter = zone ? { property: "Zone", relation: { contains: zone } } : null;
+    const moment = searchParams.get("moment");
+
+    const conditions = [];
+    if (zone) conditions.push({ property: "Zone", relation: { contains: zone } });
+    if (moment) conditions.push({ property: "Moment", select: { equals: moment } });
+    const filter = conditions.length === 0 ? null : conditions.length === 1 ? conditions[0] : { and: conditions };
 
     const pages = await queryDatabase(DB.TACHES, filter, [
       { property: "Nom", direction: "ascending" },

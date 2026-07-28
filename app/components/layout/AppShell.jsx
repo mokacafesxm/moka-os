@@ -30,8 +30,17 @@ function ShellChrome({ children }) {
       {showClockBar && <ClockBar />}
       {/* Tablette (>= md) : la nav passe de barre basse à sidebar gauche fixe
           (voir NavBottom/AdminNav) — le contenu perd son pb-24 mobile et
-          gagne une marge gauche égale à la largeur de la sidebar active. */}
-      <main className={`flex-1 pb-24 md:pb-4 ${isAdmin ? "md:pl-16" : "md:pl-20"}`}>{children}</main>
+          gagne une marge gauche égale à la largeur de la sidebar active.
+          Safe-area (notch/Dynamic Island) : ClockBar gère déjà son propre
+          paddingTop quand elle est affichée — /poste, qui la remplace par
+          son propre header, ne l'a pas ailleurs, donc `main` la fournit
+          uniquement dans ce cas (jamais les deux, sinon double padding). */}
+      <main
+        className={`flex-1 pb-24 md:pb-4 ${isAdmin ? "md:pl-16" : "md:pl-20"}`}
+        style={!showClockBar ? { paddingTop: "env(safe-area-inset-top)" } : undefined}
+      >
+        {children}
+      </main>
       {isAdmin ? <AdminNav /> : <NavBottom />}
     </div>
   );

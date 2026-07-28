@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
 import LivraisonsAujourdhuiCard from "../../components/shared/LivraisonsAujourdhuiCard";
-import CommandeClientModal from "../../components/shared/CommandeClientModal";
+import CommandeClientKDSModal from "../../components/shared/CommandeClientKDSModal";
 
 const STATUS_LABEL = { present: "Présent", pause: "En pause", done: "Terminé", absent: "Absent" };
 const STATUS_COLOR = { present: "#5a7828", pause: "#d97706", done: "#9a7060", absent: "#e5d5c5" };
@@ -360,7 +360,7 @@ export default function ManagerHomePage() {
       </SectionCard>
 
       {showMonthlyReport && <MonthlyReportModal onClose={() => setShowMonthlyReport(false)} />}
-      {showCommandeClient && <CommandeClientModal onClose={() => setShowCommandeClient(false)} />}
+      {showCommandeClient && <CommandeClientKDSModal onClose={() => setShowCommandeClient(false)} />}
     </div>
   );
 }

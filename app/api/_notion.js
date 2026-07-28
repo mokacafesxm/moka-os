@@ -27,6 +27,7 @@ export const DB = {
   CERTIFICATIONS:   "3a79512c-f66a-8119-abb7-ca253e2f6d22",
   EXECUTIONS_TACHES: "3a79512c-f66a-8157-8e56-cccc6d2ef624",
   SALES_HISTORY:    "3a79512c-f66a-81dc-a1fa-d8b37d509f64",
+  FICHES_TECHNIQUES: "3ab9512c-f66a-812a-9118-d95306122a9f",
 };
 
 export const corsHeaders = {

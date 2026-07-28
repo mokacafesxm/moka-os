@@ -137,7 +137,7 @@ export default function SplashScreen({ onDone }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-hidden" style={{ background: "#f7efe4" }}>
+    <div className="fixed inset-0 z-[100] overflow-hidden" style={{ background: "#f7efe4", paddingTop: "env(safe-area-inset-top)" }}>
       <div
         className="flex h-full transition-transform duration-300"
         style={{ width: "200%", transform: phase === "staff" ? "translateX(-50%)" : "translateX(0)" }}

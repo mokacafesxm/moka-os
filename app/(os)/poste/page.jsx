@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
-import ReceiveModal, { parseOrderProducts, getOrderSupplier } from "../../components/shared/ReceiveModal";
+import { parseOrderProducts, getOrderSupplier } from "../../components/shared/ReceiveModal";
 import { getPosteStatus, setPosteStatus } from "../../components/shared/posteStatus";
-import CommandeClientModal from "../../components/shared/CommandeClientModal";
+import CommandeClientKDSModal from "../../components/shared/CommandeClientKDSModal";
 import DeclareIncidentModal from "../../components/shared/DeclareIncidentModal";
+import LivraisonsAujourdhuiCard from "../../components/shared/LivraisonsAujourdhuiCard";
 
 const POSTES = [
   { key: "Bar", nom: "Bar", emoji: "☕" },
@@ -167,28 +169,10 @@ function ResumeTachesCard({ zoneTaches, executions }) {
   );
 }
 
-// Section 1 (Bar/Cuisine) — carte évidence, ouvre directement le receiveModal.
-function LivraisonOrangeCard({ order, onOpen }) {
-  if (!order) return null;
-  const produitsCount = parseOrderProducts(order).length || 1;
-  return (
-    <div
-      className="bg-[#d97706] rounded-2xl p-4 text-white mb-4 cursor-pointer active:scale-[0.98] transition-all"
-      onClick={onOpen}
-    >
-      <div className="text-xs font-black opacity-75 uppercase tracking-wide">Livraison attendue aujourd&apos;hui</div>
-      <div className="text-lg font-black mt-1">
-        🚚 {order.fournisseur} · {produitsCount} produit{produitsCount !== 1 ? "s" : ""}
-      </div>
-      <div className="text-sm opacity-80 mt-1">Appuyer pour confirmer les quantités reçues →</div>
-    </div>
-  );
-}
-
 // Section 2 (Bar/Cuisine/Salle) — statut ouvert/fermé, persisté en
 // localStorage (voir posteStatus.js), déclenché par le workflow correspondant.
-function PosteStatusCard({ poste, status }) {
-  const { ouverture, fermeture } = WORKFLOW_IDS_BY_POSTE[poste];
+function PosteStatusCard({ poste, status, onRequestFermeture }) {
+  const { ouverture } = WORKFLOW_IDS_BY_POSTE[poste];
   const isOpen = status?.status === "open";
 
   if (isOpen) {
@@ -197,9 +181,13 @@ function PosteStatusCard({ poste, status }) {
         <div className="font-black text-sm text-[#3f5a1c]">
           {poste} ouvert ✓{status?.at ? ` depuis ${formatHeureSXM(status.at)}` : ""}
         </div>
-        <Link href={`/workflows/${fermeture}`} className="inline-block mt-3 text-xs font-black text-[#b91c1c] cursor-pointer">
+        <button
+          type="button"
+          onClick={onRequestFermeture}
+          className="inline-block mt-3 text-xs font-black text-[#b91c1c] cursor-pointer"
+        >
           Fermer le {poste}
-        </Link>
+        </button>
       </div>
     );
   }
@@ -450,6 +438,86 @@ function RecettesSection({ title, recettes, emoji, emptyLabel }) {
   );
 }
 
+// Fiches techniques (Bar/Cuisine) — PDF (lien, plus fiable qu'un iframe
+// souvent bloqué par le X-Frame-Options du PDF hébergé) et/ou photo
+// zoomable au doigt (touch-action: pinch-zoom, pas de librairie JS).
+function FicheDetailModal({ fiche, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60" />
+      <div
+        className="relative w-full max-w-sm max-h-[85vh] overflow-y-auto rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fermer"
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center text-[#2c1a10] text-lg font-black cursor-pointer"
+        >
+          ×
+        </button>
+        <h2 className="text-base font-black text-[#2c1a10] pr-8">{fiche.nom}</h2>
+        <div className="text-xs text-[#9a7060] font-semibold -mt-2">{fiche.categorie}</div>
+
+        {fiche.photoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={fiche.photoUrl}
+            alt={fiche.nom}
+            className="w-full rounded-2xl"
+            style={{ touchAction: "pinch-zoom" }}
+          />
+        )}
+
+        {fiche.pdfUrl && (
+          <a
+            href={fiche.pdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full py-3 rounded-2xl bg-[#2c1a10] text-white font-black text-sm text-center cursor-pointer"
+          >
+            📄 Ouvrir le PDF
+          </a>
+        )}
+
+        {!fiche.photoUrl && !fiche.pdfUrl && (
+          <div className="text-sm text-[#9a7060] py-2">Aucun document disponible pour cette fiche</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FicheCard({ fiche, onOpen }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(fiche)}
+      className="shrink-0 w-32 rounded-2xl border border-[#e5d5c5] bg-[#faf5ef] p-3 snap-start text-left cursor-pointer active:scale-[0.97] transition-transform"
+    >
+      <div className="text-xl mb-1">📋</div>
+      <div className="font-black text-sm text-[#2c1a10] leading-tight">{fiche.nom}</div>
+      {fiche.categorie && <div className="text-[10px] text-[#9a7060] font-semibold mt-0.5">{fiche.categorie}</div>}
+    </button>
+  );
+}
+
+function FichesSection({ fiches }) {
+  const [opened, setOpened] = useState(null);
+  if (fiches.length === 0) return null;
+  return (
+    <SectionCard title="📋 Fiches techniques">
+      <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory">
+        {fiches.map((f) => (
+          <FicheCard key={f.id} fiche={f} onOpen={setOpened} />
+        ))}
+      </div>
+      {opened && <FicheDetailModal fiche={opened} onClose={() => setOpened(null)} />}
+    </SectionCard>
+  );
+}
+
 // Fêtes françaises (les principales) — clé "MM-DD" en heure SXM. Table
 // volontairement partielle ("les principales", pas un calendrier exhaustif
 // des saints) : un jour absent de la table masque juste la ligne 🎉.
@@ -487,6 +555,60 @@ function getFeteduJour() {
     timeZone: SXM_TZ, year: "numeric", month: "2-digit", day: "2-digit",
   }).format(new Date()).slice(5);
   return FETES_FR[monthDay] || null;
+}
+
+// Blocage Fin de service / fermeture poste — même donnée que /taches et
+// ResumeTachesCard (tâche "faite" = une exécution existe aujourd'hui pour
+// elle), restreinte aux tâches moment=Fermeture de la zone, urgentes
+// (Critique/Haute) et non complétées. "Ignorer" reste possible mais logge
+// un événement dans EXECUTIONS_TACHES (même pattern que WorkflowRunner :
+// une exécution sans tacheId, identifiée par Nom/Notes).
+function UrgentTasksBlockModal({ tasks, onClose, onIgnore, ignoring }) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50" />
+      <div
+        className="relative w-full max-w-sm rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-base font-black text-[#b91c1c]">⚠️ Impossible de terminer le service</h2>
+        <p className="text-sm font-bold text-[#2c1a10]">
+          {tasks.length} tâche{tasks.length !== 1 ? "s" : ""} urgente{tasks.length !== 1 ? "s" : ""} non complétée{tasks.length !== 1 ? "s" : ""} :
+        </p>
+        <ul className="space-y-1">
+          {tasks.map((t) => (
+            <li key={t.id} className="text-sm text-[#2c1a10]">• {t.nom}</li>
+          ))}
+        </ul>
+
+        <Link
+          href="/taches"
+          onClick={onClose}
+          className="block w-full py-3 rounded-2xl bg-[#2c1a10] text-white font-black text-sm text-center cursor-pointer"
+        >
+          Voir les tâches
+        </Link>
+
+        <div className="rounded-xl bg-red-50 border border-red-200 p-3">
+          <p className="text-xs text-red-700 font-bold mb-2">
+            ⚠️ Terminer maintenant laissera ces tâches urgentes en suspens — ce choix est enregistré.
+          </p>
+          <button
+            type="button"
+            onClick={onIgnore}
+            disabled={ignoring}
+            className="w-full py-2.5 rounded-xl bg-red-600 text-white font-black text-xs cursor-pointer disabled:opacity-50"
+          >
+            {ignoring ? "…" : "Ignorer et terminer quand même"}
+          </button>
+        </div>
+
+        <button type="button" onClick={onClose} className="w-full py-2 text-[#9a7060] font-bold text-sm cursor-pointer">
+          Annuler
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // Bouton pointage compact (haut droite Mon Poste) + bottom sheet — remplace
@@ -536,19 +658,23 @@ function ClockSheet({ status, clockSending, onClose, onClockIn, onStartBreak, on
 }
 
 export default function PostePage() {
-  const { poste, setSplashDone, canLivraisons, selectedStaffName, status, isClockedIn, clockSending, clockIn, clockOut, startBreak, endBreak } = useStaffContext();
+  const router = useRouter();
+  const { poste, setSplashDone, canLivraisons, selectedStaff, selectedStaffName, status, isClockedIn, clockSending, clockIn, clockOut, startBreak, endBreak } = useStaffContext();
   const { zonesPhysiques, preps, stockLive, supplierOrders, refreshSupplierOrders } = useAppContext();
 
   const [now, setNow] = useState(null);
   const [executions, setExecutions] = useState([]);
   const [recettes, setRecettes] = useState([]);
+  const [fiches, setFiches] = useState([]);
   const [zoneTaches, setZoneTaches] = useState([]);
   const [toast, setToast] = useState(null);
   const [posteStatus, setPosteStatusState] = useState(null);
-  const [receivingOrder, setReceivingOrder] = useState(null);
   const [showCommandeClient, setShowCommandeClient] = useState(false);
   const [showClockSheet, setShowClockSheet] = useState(false);
   const [showIncidentForm, setShowIncidentForm] = useState(false);
+  const [blockingTasks, setBlockingTasks] = useState(null);
+  const [pendingAction, setPendingAction] = useState(null); // { type: "clockout" } | { type: "fermeture", href }
+  const [ignoringBlock, setIgnoringBlock] = useState(false);
   const closeToastFiredRef = useRef(null); // date (YYYY-MM-DD) où le toast 15h a déjà été montré
 
   useEffect(() => {
@@ -598,6 +724,14 @@ export default function PostePage() {
       .catch((error) => console.error("[PostePage] recipes fetch failed", error));
   }, [poste, recettes.length]);
 
+  useEffect(() => {
+    if (poste !== "Bar" && poste !== "Cuisine") return;
+    fetch(`/api/fiches?zone=${poste}`)
+      .then((r) => r.json())
+      .then((data) => setFiches(Array.isArray(data) ? data : []))
+      .catch((error) => console.error("[PostePage] fiches fetch failed", error));
+  }, [poste]);
+
   const zoneId = useMemo(() => zonesPhysiques.find((z) => z.nom === poste)?.id || null, [zonesPhysiques, poste]);
 
   // Tâches filtrées côté serveur par zone (voir /api/taches?zone=), plutôt
@@ -629,11 +763,6 @@ export default function PostePage() {
     [recettes]
   );
 
-  const orderDuJour = useMemo(
-    () => (canLivraisons ? supplierOrders.find((o) => o.dateLivraisonPrevue?.slice(0, 10) === todaySXM && o.statut !== "Reçu") : null),
-    [supplierOrders, todaySXM, canLivraisons]
-  );
-
   const stockBasBar = useMemo(
     () => stockLive.filter((item) => (isBarProduct(item) || isFruitVegProduct(item)) && isStockLow(item) && !isPrepStock(item)),
     [stockLive]
@@ -647,6 +776,75 @@ export default function PostePage() {
   // au lieu de son propre picker local — la sélection poste+staff vit
   // maintenant au niveau AppShell, avant que cette page ne soit atteignable.
   const handleChangerPoste = () => setSplashDone(false);
+
+  // Tâches moment=Fermeture, urgentes (Critique/Haute) et sans exécution
+  // aujourd'hui — même logique "faite" que ResumeTachesCard/executions-taches,
+  // restreinte à la zone courante. Utilisé avant Fin de service ET avant de
+  // lancer le workflow de fermeture du poste.
+  const checkUrgentFermetureTasks = async () => {
+    if (!zoneId) return [];
+    try {
+      const res = await fetch(`/api/taches?zone=${zoneId}&moment=Fermeture`);
+      const taches = await res.json();
+      if (!Array.isArray(taches)) return [];
+      const doneIds = new Set(executions.map((e) => e.tacheId).filter(Boolean));
+      return taches.filter((t) => !doneIds.has(t.id) && (t.priorite === "Critique" || t.priorite === "Haute"));
+    } catch (error) {
+      console.error("[PostePage] urgent fermeture tasks check failed", error);
+      return [];
+    }
+  };
+
+  const handleClockOutRequest = async () => {
+    const blocking = await checkUrgentFermetureTasks();
+    if (blocking.length > 0) {
+      setBlockingTasks(blocking);
+      setPendingAction({ type: "clockout" });
+      return;
+    }
+    await clockOut();
+  };
+
+  const handleRequestFermeture = async (href) => {
+    const blocking = await checkUrgentFermetureTasks();
+    if (blocking.length > 0) {
+      setBlockingTasks(blocking);
+      setPendingAction({ type: "fermeture", href });
+      return;
+    }
+    router.push(href);
+  };
+
+  const closeBlockModal = () => {
+    setBlockingTasks(null);
+    setPendingAction(null);
+  };
+
+  // "Ignorer" reste possible mais logge un événement dans EXECUTIONS_TACHES
+  // (même pattern que WorkflowRunner : exécution sans tacheId, identifiée
+  // par Nom/Notes) — jamais silencieux.
+  const handleIgnoreBlock = async () => {
+    setIgnoringBlock(true);
+    try {
+      await fetch("/api/executions-taches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nom: `Fin de service ignorée — tâches urgentes en suspens (${poste})`,
+          staffId: selectedStaff?.id || null,
+          statut: "Ignoré",
+          notes: (blockingTasks || []).map((t) => t.nom).join(", "),
+        }),
+      });
+    } catch (error) {
+      console.error("[PostePage] log ignored urgent tasks failed", error);
+    }
+    const action = pendingAction;
+    setIgnoringBlock(false);
+    closeBlockModal();
+    if (action?.type === "clockout") await clockOut();
+    else if (action?.type === "fermeture" && action.href) router.push(action.href);
+  };
 
   const handleSessionToggle = () => {
     const next = posteStatus?.status === "open" ? "closed" : "open";
@@ -713,13 +911,13 @@ export default function PostePage() {
 
       {poste === "Bar" && (
         <>
-          <LivraisonOrangeCard order={orderDuJour} onOpen={() => setReceivingOrder(orderDuJour)} />
+          {canLivraisons && <LivraisonsAujourdhuiCard orders={supplierOrders} onReceived={refreshSupplierOrders} />}
           {/* Tablette (>= md) : 2 colonnes — gauche statut/stocks/tâches (60%),
               droite recettes/températures/livraisons (40%). Sur mobile,
               grid-cols-1 empile les deux colonnes dans le même ordre qu'avant. */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[3fr_2fr] md:gap-6">
             <div className="space-y-4">
-              <PosteStatusCard poste="Bar" status={posteStatus} />
+              <PosteStatusCard poste="Bar" status={posteStatus} onRequestFermeture={() => handleRequestFermeture(`/workflows/${WORKFLOW_IDS_BY_POSTE.Bar.fermeture}`)} />
               <StocksBasCard items={stockBasBar} />
               <PrepasAFaireCard preps={prepasBar} />
               <ResumeTachesCard zoneTaches={zoneTaches} executions={executions} />
@@ -731,6 +929,7 @@ export default function PostePage() {
                 emoji="☕"
                 emptyLabel="Aucune recette classée « Bar » pour l'instant"
               />
+              <FichesSection fiches={fiches} />
               <SectionCard title="Températures"><TempsList executions={executions} posteNom="Bar" /></SectionCard>
               {canLivraisons && <LivraisonsHistorySection orders={supplierOrders} />}
             </div>
@@ -740,10 +939,10 @@ export default function PostePage() {
 
       {poste === "Cuisine" && (
         <>
-          <LivraisonOrangeCard order={orderDuJour} onOpen={() => setReceivingOrder(orderDuJour)} />
+          {canLivraisons && <LivraisonsAujourdhuiCard orders={supplierOrders} onReceived={refreshSupplierOrders} />}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[3fr_2fr] md:gap-6">
             <div className="space-y-4">
-              <PosteStatusCard poste="Cuisine" status={posteStatus} />
+              <PosteStatusCard poste="Cuisine" status={posteStatus} onRequestFermeture={() => handleRequestFermeture(`/workflows/${WORKFLOW_IDS_BY_POSTE.Cuisine.fermeture}`)} />
               <StocksBasCard items={stockBasCuisine} />
               <PrepasAFaireCard preps={prepasCuisine} />
               <ResumeTachesCard zoneTaches={zoneTaches} executions={executions} />
@@ -755,6 +954,7 @@ export default function PostePage() {
                 emoji="👨‍🍳"
                 emptyLabel="Aucune recette classée « Cuisine » pour l'instant"
               />
+              <FichesSection fiches={fiches} />
               <SectionCard title="Températures"><TempsList executions={executions} posteNom="Cuisine" /></SectionCard>
               {canLivraisons && <LivraisonsHistorySection orders={supplierOrders} />}
             </div>
@@ -773,7 +973,7 @@ export default function PostePage() {
           </button>
           <ResumeTachesCard zoneTaches={zoneTaches} executions={executions} />
           <SectionCard title="Tâches mise en place"><TachesList taches={zoneTaches} /></SectionCard>
-          <PosteStatusCard poste="Salle" status={posteStatus} />
+          <PosteStatusCard poste="Salle" status={posteStatus} onRequestFermeture={() => handleRequestFermeture(`/workflows/${WORKFLOW_IDS_BY_POSTE.Salle.fermeture}`)} />
         </>
       )}
 
@@ -799,15 +999,7 @@ export default function PostePage() {
         🚨 Signaler un incident
       </button>
 
-      {receivingOrder && (
-        <ReceiveModal
-          order={receivingOrder}
-          onClose={() => setReceivingOrder(null)}
-          onReceived={() => { setReceivingOrder(null); refreshSupplierOrders(); }}
-        />
-      )}
-
-      {showCommandeClient && <CommandeClientModal onClose={() => setShowCommandeClient(false)} />}
+      {showCommandeClient && <CommandeClientKDSModal onClose={() => setShowCommandeClient(false)} />}
 
       {showIncidentForm && (
         <DeclareIncidentModal
@@ -825,7 +1017,16 @@ export default function PostePage() {
           onClockIn={clockIn}
           onStartBreak={startBreak}
           onEndBreak={endBreak}
-          onClockOut={clockOut}
+          onClockOut={handleClockOutRequest}
+        />
+      )}
+
+      {blockingTasks && (
+        <UrgentTasksBlockModal
+          tasks={blockingTasks}
+          onClose={closeBlockModal}
+          onIgnore={handleIgnoreBlock}
+          ignoring={ignoringBlock}
         />
       )}
     </div>
