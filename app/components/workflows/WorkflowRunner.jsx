@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
+import { setPosteStatus, WORKFLOW_STATUS_EFFECT } from "../shared/posteStatus";
 
 function isLoggable(step, value) {
   switch (step.type) {
@@ -129,6 +130,8 @@ export default function WorkflowRunner({ workflow }) {
     try {
       const loggable = steps.filter((s) => isLoggable(s, answers[s.key]));
       await Promise.all(loggable.map((s) => logStep(s, answers[s.key])));
+      const effect = WORKFLOW_STATUS_EFFECT[workflow.id];
+      if (effect) setPosteStatus(effect.poste, effect.status);
       setCompleted(true);
     } catch (err) {
       setError("Erreur d'enregistrement : " + err.message);

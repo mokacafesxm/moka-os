@@ -55,7 +55,6 @@ export default function SplashScreen({ onDone }) {
   // "Admin" dans Access, plutôt que d'exiger un staff déjà sélectionné.
   const adminEligibleStaff = staff.filter((member) => member.access?.includes("Admin"));
 
-  const posteInfo = POSTES.find((p) => p.key === selectedPoste);
   // Sprint 14 — Manager Général/Admin n'ont pas de poste opérationnel : ils
   // passent uniquement par "Mode Admin →" ci-dessous, jamais par cette grille.
   const staffFiltered = selectedPoste
@@ -164,8 +163,13 @@ export default function SplashScreen({ onDone }) {
 
         {/* ── PHASE 2 : Sélection du staff ─────────────── */}
         <div className="w-1/2 h-full flex flex-col px-6 py-10 overflow-y-auto">
-          <button type="button" onClick={handleBack} className="text-sm font-bold text-[#9a7060] cursor-pointer mb-6 self-start">
-            ← {posteInfo?.nom}
+          <button
+            type="button"
+            onClick={handleBack}
+            className="w-full rounded-2xl border border-[#e5d5c5] bg-white py-4 px-6 text-left font-black text-[#2c1a10] flex items-center gap-3 mb-6 cursor-pointer active:scale-[0.98] transition-all"
+          >
+            <span className="text-xl">←</span>
+            <span>Changer de poste</span>
           </button>
 
           <h1 className="text-2xl font-black text-[#2c1a10] mb-6 text-center">Qui es-tu ?</h1>

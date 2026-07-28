@@ -4,15 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 
+// Sprint 16 — l'onglet Accueil est retiré : le splash amène désormais
+// directement sur Mon Poste (voir SplashScreen.jsx), qui absorbe le rôle de
+// page d'atterrissage.
 export const NAV_ITEMS = [
-  { key: "home", label: "Accueil", icon: "🏠", href: "/home" },
   { key: "poste", label: "Mon Poste", icon: "🍽", href: "/poste" },
   { key: "taches", label: "Mes Tâches", icon: "✅", href: "/taches" },
   { key: "recherche", label: "Recherche", icon: "🔍", href: "/recherche" },
   { key: "profil", label: "Profil", icon: "👤", href: "/profil" },
 ];
 
-// Sprint 14 — Beyonce (currently the only staff with canOrderPad) gets a 6th
+// Sprint 14 — Beyonce (currently the only staff with canOrderPad) gets a 5th
 // tab straight to the old OrderPad (/). Inserted before Profil so the most
 // frequently used tabs stay clustered on the left.
 const ORDERPAD_ITEM = { key: "orderpad", label: "Order", icon: "📋", href: "/" };
@@ -21,7 +23,7 @@ export default function NavBottom() {
   const pathname = usePathname();
   const { canOrderPad } = useStaffContext();
   const items = canOrderPad
-    ? [...NAV_ITEMS.slice(0, 4), ORDERPAD_ITEM, NAV_ITEMS[4]]
+    ? [...NAV_ITEMS.slice(0, 3), ORDERPAD_ITEM, NAV_ITEMS[3]]
     : NAV_ITEMS;
 
   return (

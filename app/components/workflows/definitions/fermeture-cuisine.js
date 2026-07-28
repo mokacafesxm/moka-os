@@ -1,0 +1,50 @@
+export default {
+  id: "fermeture-cuisine",
+  nom: "Fermeture Cuisine",
+  zone: "Cuisine",
+  steps: [
+    {
+      key: "nettoyage-cuisine",
+      type: "checklist",
+      label: "Nettoyage",
+      items: [
+        "Plans de travail nettoyés",
+        "Ustensiles lavés et rangés",
+        "Poubelles vidées",
+        "Sol balayé et lavé",
+      ],
+    },
+    {
+      key: "produits-ranges-cuisine",
+      type: "checkbox",
+      label: "Produits rangés",
+      description: "Tous les produits périssables sont rangés au frigo/congélateur",
+    },
+    {
+      key: "temp-frigo-cuisine-fermeture",
+      type: "temperature",
+      label: "Température frigo cuisine (fermeture)",
+      unit: "°C",
+      min: 0,
+      max: 4,
+      incidentCategorie: "Hygiène",
+      incidentCriticite: "Majeur",
+    },
+    {
+      key: "temp-congelateur-fermeture",
+      type: "temperature",
+      label: "Température congélateur (fermeture)",
+      unit: "°C",
+      min: -20,
+      max: -15,
+      incidentCategorie: "Hygiène",
+      incidentCriticite: "Critique",
+    },
+    {
+      key: "notes-fermeture-cuisine",
+      type: "text",
+      label: "Notes de fermeture",
+      description: "Remarques éventuelles (facultatif)",
+    },
+  ],
+};
