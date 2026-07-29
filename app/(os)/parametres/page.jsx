@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
 import { simpleHash } from "../../contexts/StaffContext";
@@ -545,9 +545,15 @@ function SecuriteSection({ showToast }) {
 
 export default function ParametresPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isAdmin } = useStaffContext();
   const { suppliers, staff, referentiels, refreshAll } = useAppContext();
-  const [tab, setTab] = useState("suppliers");
+  // Permet un lien direct depuis une autre page (ex: /parametres?section=categories
+  // depuis Stock "+ Ajouter une catégorie") sans passer par le menu Fournisseurs par défaut.
+  const [tab, setTab] = useState(() => {
+    const section = searchParams.get("section");
+    return TABS.some((t) => t.key === section) ? section : "suppliers";
+  });
   const [toast, setToast] = useState(null);
 
   useEffect(() => {

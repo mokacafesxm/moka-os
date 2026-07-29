@@ -3,49 +3,291 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
+import { useAppContext } from "../../contexts/AppContext";
 
+const SXM_TZ = "America/Puerto_Rico";
 const POSTE_OPTIONS = ["Bar", "Bar Manager", "Cuisine", "Salle", "Plonge", "Manager Général"];
-const ACCESS_OPTIONS = ["OrderPad", "Commandes", "Livraisons", "Admin"];
+const JOURS = [
+  { key: "lundi", label: "Lun" },
+  { key: "mardi", label: "Mar" },
+  { key: "mercredi", label: "Mer" },
+  { key: "jeudi", label: "Jeu" },
+  { key: "vendredi", label: "Ven" },
+  { key: "samedi", label: "Sam" },
+  { key: "dimanche", label: "Dim" },
+];
 
 function initials(name) {
   return String(name || "?").trim().slice(0, 2).toUpperCase();
 }
 
-function formatHeures(decimal) {
-  const h = Math.floor(decimal || 0);
-  const m = Math.round(((decimal || 0) - h) * 60);
-  if (m === 0) return `${h}h`;
-  return `${h}h${String(m).padStart(2, "0")}`;
+function todaySXM() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: SXM_TZ }).format(new Date());
+}
+function addDays(dateStr, days) {
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+// Semaine = lundi de la semaine (YYYY-MM-DD), pas un numéro de semaine ISO —
+// plus simple à raisonner et à afficher, pas d'ambiguïté de norme.
+function mondayOf(dateStr) {
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  const dow = d.getUTCDay(); // 0 dim..6 sam
+  const diff = dow === 0 ? -6 : 1 - dow;
+  return addDays(dateStr, diff);
+}
+function formatShort(dateStr) {
+  return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", timeZone: SXM_TZ }).format(new Date(`${dateStr}T12:00:00Z`));
 }
 
-function EditMemberModal({ member, onClose, onSaved }) {
-  const [nom, setNom] = useState(member.name);
-  const [poste, setPoste] = useState(member.poste || "");
-  const [access, setAccess] = useState(member.access || []);
-  const [actif, setActif] = useState(member.actif);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
+function PosteChip({ value }) {
+  if (!value) return <span className="text-[#c8b4a8]">—</span>;
+  if (value === "Repos") return <span className="text-[10px] font-bold text-[#9a7060]">Repos</span>;
+  return (
+    <span className="text-[10px] font-black px-1.5 py-1 rounded-lg bg-[#f0f7e5] text-[#5a7828] whitespace-nowrap">
+      {value}
+    </span>
+  );
+}
 
-  const toggleAccess = (a) => {
-    setAccess((cur) => (cur.includes(a) ? cur.filter((x) => x !== a) : [...cur, a]));
-  };
+function CellPickerModal({ staffName, jourLabel, current, onPick, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <div
+        className="relative w-full sm:max-w-xs rounded-t-3xl sm:rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-base font-black text-[#2c1a10]">{staffName} — {jourLabel}</h2>
+        <div className="space-y-1.5">
+          {POSTE_OPTIONS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onPick(p)}
+              className={`w-full h-11 rounded-xl text-sm font-bold cursor-pointer text-left px-4 ${
+                current === p ? "bg-[#5a7828] text-white" : "bg-white border border-[#e5d5c5] text-[#2c1a10]"
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => onPick("Repos")}
+            className={`w-full h-11 rounded-xl text-sm font-bold cursor-pointer text-left px-4 ${
+              current === "Repos" ? "bg-[#9a7060] text-white" : "bg-white border border-[#e5d5c5] text-[#9a7060]"
+            }`}
+          >
+            Repos
+          </button>
+        </div>
+        <button type="button" onClick={onClose} className="w-full h-10 rounded-xl text-[#9a7060] font-bold text-xs cursor-pointer">
+          Annuler
+        </button>
+      </div>
+    </div>
+  );
+}
 
-  const submit = async () => {
-    if (!nom.trim()) {
-      setError("Nom requis");
-      return;
-    }
-    setSaving(true);
-    setError(null);
+function PlanningSection({ staff }) {
+  const [semaine, setSemaine] = useState(() => mondayOf(todaySXM()));
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [notConfigured, setNotConfigured] = useState(false);
+  const [pickerCell, setPickerCell] = useState(null); // { staffId, staffName, jour, jourLabel }
+  const [savingKey, setSavingKey] = useState(null);
+
+  useEffect(() => {
+    let ignore = false;
+    setLoading(true);
+    fetch(`/api/planning?semaine=${semaine}`)
+      .then(async (r) => {
+        if (r.status === 503) return { notConfigured: true, rows: [] };
+        const data = await r.json().catch(() => []);
+        return { notConfigured: false, rows: Array.isArray(data) ? data : [] };
+      })
+      .then(({ notConfigured: nc, rows: r }) => {
+        if (ignore) return;
+        setNotConfigured(nc);
+        setRows(r);
+      })
+      .catch(() => { if (!ignore) setNotConfigured(true); })
+      .finally(() => { if (!ignore) setLoading(false); });
+    return () => { ignore = true; };
+  }, [semaine]);
+
+  const rowsByStaff = useMemo(() => Object.fromEntries(rows.map((r) => [r.staffId, r])), [rows]);
+
+  const pick = async (valeur) => {
+    const { staffId, staffName, jour } = pickerCell;
+    const key = `${staffId}-${jour}`;
+    setSavingKey(key);
     try {
-      const res = await fetch("/api/staff", {
-        method: "PATCH",
+      const res = await fetch("/api/planning", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: member.id, nom, poste, access, actif }),
+        body: JSON.stringify({ staffId, staffName, semaine, jour, valeur }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
-      onSaved({ ...member, name: nom, poste, access, actif });
+      setRows((cur) => {
+        const idx = cur.findIndex((r) => r.staffId === staffId);
+        if (idx === -1) return [...cur, data.item];
+        const next = [...cur];
+        next[idx] = data.item;
+        return next;
+      });
+    } catch {
+      /* transient — la case garde son ancienne valeur affichée, le tap suivant réessaiera */
+    } finally {
+      setSavingKey(null);
+      setPickerCell(null);
+    }
+  };
+
+  if (notConfigured) {
+    return (
+      <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4 text-sm text-[#9a7060]">
+        Planning non configuré — base Notion pas encore créée (voir docs/ARCHITECTURE.md « Weekly Staff Planning »).
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <button
+          type="button"
+          onClick={() => setSemaine((s) => addDays(s, -7))}
+          className="w-9 h-9 rounded-xl bg-white border border-[#e5d5c5] text-[#9a7060] font-black cursor-pointer"
+        >
+          ←
+        </button>
+        <div className="text-sm font-black text-[#2c1a10]">
+          Semaine du {formatShort(semaine)}
+        </div>
+        <button
+          type="button"
+          onClick={() => setSemaine((s) => addDays(s, 7))}
+          className="w-9 h-9 rounded-xl bg-white border border-[#e5d5c5] text-[#9a7060] font-black cursor-pointer"
+        >
+          →
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="text-center text-sm text-[#9a7060] py-8">Chargement…</div>
+      ) : staff.length === 0 ? (
+        <div className="text-center text-sm text-[#9a7060] py-8">Aucun membre d&apos;équipe actif</div>
+      ) : (
+        <div className="overflow-x-auto -mx-4 px-4">
+          <table className="min-w-[640px] w-full border-separate" style={{ borderSpacing: "0 6px" }}>
+            <thead>
+              <tr>
+                <th className="text-left text-[10px] font-black text-[#9a7060] uppercase tracking-wide pb-1 pl-1">Staff</th>
+                {JOURS.map((j) => (
+                  <th key={j.key} className="text-center text-[10px] font-black text-[#9a7060] uppercase tracking-wide pb-1 w-20">
+                    {j.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {staff.map((s) => {
+                const row = rowsByStaff[s.id] || {};
+                return (
+                  <tr key={s.id} className="bg-white">
+                    <td className="rounded-l-2xl border-y border-l border-[#e5d5c5] px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0"
+                          style={{ width: 26, height: 26, background: "#2c1a10" }}
+                        >
+                          {initials(s.name)}
+                        </span>
+                        <span className="text-xs font-bold text-[#2c1a10] whitespace-nowrap">{s.name}</span>
+                      </div>
+                    </td>
+                    {JOURS.map((j, i) => {
+                      const value = row[j.key] || "";
+                      const key = `${s.id}-${j.key}`;
+                      return (
+                        <td
+                          key={j.key}
+                          className={`border-y border-[#e5d5c5] text-center py-2 cursor-pointer ${i === JOURS.length - 1 ? "rounded-r-2xl border-r" : ""}`}
+                          onClick={() => setPickerCell({ staffId: s.id, staffName: s.name, jour: j.key, jourLabel: j.label })}
+                        >
+                          {savingKey === key ? <span className="text-[10px] text-[#9a7060]">…</span> : <PosteChip value={value} />}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {pickerCell && (
+        <CellPickerModal
+          staffName={pickerCell.staffName}
+          jourLabel={pickerCell.jourLabel}
+          current={rowsByStaff[pickerCell.staffId]?.[pickerCell.jour] || ""}
+          onPick={pick}
+          onClose={() => setPickerCell(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function AssignTaskSection({ staff }) {
+  const [taches, setTaches] = useState([]);
+  const [staffId, setStaffId] = useState("");
+  const [tacheId, setTacheId] = useState("");
+  const [date, setDate] = useState(todaySXM());
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/taches").then((r) => r.json()).then((data) => setTaches(Array.isArray(data) ? data : [])).catch(() => {});
+  }, []);
+
+  const assign = async () => {
+    if (!staffId || !tacheId) { setError("Staff et tâche requis"); return; }
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const tache = taches.find((t) => t.id === tacheId);
+      // MOKA_TACHES est un gabarit partagé par zone (pas de champ Staff/Date) et
+      // MOKA_EXECUTIONS_TACHES est lu ailleurs comme "cette ligne = déjà fait"
+      // (taches/page.jsx) — une assignation en attente vit donc dans sa propre
+      // base, MOKA_Assignations_Taches (voir docs/ARCHITECTURE.md « Weekly
+      // Staff Planning »).
+      const res = await fetch("/api/task-assignments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          staffId,
+          staffName: staff.find((s) => s.id === staffId)?.name,
+          tacheId,
+          tacheNom: tache?.nom,
+          date,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        if (res.status === 503) throw new Error("Planning non configuré — base Notion pas encore créée");
+        throw new Error(data.error || `Erreur ${res.status}`);
+      }
+      setSuccess("Tâche assignée");
+      setTacheId("");
+      setTimeout(() => setSuccess(null), 2500);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -54,268 +296,64 @@ function EditMemberModal({ member, onClose, onSaved }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
-      <div
-        className="relative w-full max-w-sm max-h-[85vh] overflow-y-auto rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-3"
-        onClick={(e) => e.stopPropagation()}
+    <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4 space-y-2.5">
+      <select value={staffId} onChange={(e) => setStaffId(e.target.value)} className="w-full h-11 px-3.5 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]">
+        <option value="">Staff…</option>
+        {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+      </select>
+      <select value={tacheId} onChange={(e) => setTacheId(e.target.value)} className="w-full h-11 px-3.5 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]">
+        <option value="">Tâche…</option>
+        {taches.map((t) => <option key={t.id} value={t.id}>{t.nom}</option>)}
+      </select>
+      <input
+        type="date"
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
+        className="w-full h-11 px-3.5 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
+      />
+      {error && <div className="text-xs font-bold text-red-600">{error}</div>}
+      {success && <div className="text-xs font-bold text-[#5a7828]">{success}</div>}
+      <button
+        type="button"
+        onClick={assign}
+        disabled={saving}
+        className="w-full h-11 rounded-xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-50"
       >
-        <h2 className="text-base font-black text-[#2c1a10]">Modifier {member.name}</h2>
-
-        <div>
-          <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Nom</label>
-          <input
-            value={nom}
-            onChange={(e) => setNom(e.target.value)}
-            className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
-          />
-        </div>
-
-        <div>
-          <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Poste</label>
-          <select
-            value={poste}
-            onChange={(e) => setPoste(e.target.value)}
-            className="w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm text-[#2c1a10] outline-none focus:border-[#5a7828]"
-          >
-            <option value="">Sélectionner…</option>
-            {POSTE_OPTIONS.map((p) => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-1.5">Accès</label>
-          <div className="flex flex-wrap gap-2">
-            {ACCESS_OPTIONS.map((a) => (
-              <button
-                key={a}
-                type="button"
-                onClick={() => toggleAccess(a)}
-                className={`px-3 py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
-                  access.includes(a) ? "bg-[#5a7828] text-white" : "bg-white border border-[#e5d5c5] text-[#9a7060]"
-                }`}
-              >
-                {a}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <label className="flex items-center gap-2.5 cursor-pointer py-1">
-          <input type="checkbox" checked={actif} onChange={(e) => setActif(e.target.checked)} className="w-4 h-4" />
-          <span className="text-sm font-bold text-[#2c1a10]">Actif</span>
-        </label>
-
-        {error && <div className="text-xs font-bold text-red-600">{error}</div>}
-
-        <div className="flex gap-3 pt-1" style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-3 rounded-2xl text-[#9a7060] font-bold text-sm cursor-pointer"
-          >
-            Annuler
-          </button>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={saving || !nom.trim()}
-            className="flex-1 py-3 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-50 hover:bg-[#4e6a22] transition-colors"
-          >
-            {saving ? "Enregistrement…" : "Enregistrer"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// UX audit (28 jul 2026) — chaque carte staff avait le même poids visuel,
-// qu'elle soit en service ou non ; la vraie question d'un manager ("qui est
-// là maintenant ?") demandait de tout scanner. Extrait en composant pour
-// afficher "En service" comme groupe Niveau 2 en haut, le reste en Niveau 3.
-function MemberCard({ member, enService, heures, onEdit }) {
-  return (
-    <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
-      <div className="flex items-start gap-3">
-        <span
-          className="rounded-full flex items-center justify-center text-base font-black text-white shrink-0"
-          style={{ width: 48, height: 48, background: "#2c1a10" }}
-        >
-          {initials(member.name)}
-        </span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-black text-sm text-[#2c1a10]">{member.name}</span>
-            {enService && (
-              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-[#f0f7e5] text-[#5a7828]">
-                En service
-              </span>
-            )}
-            <span
-              className="text-[9px] font-black px-1.5 py-0.5 rounded-full"
-              style={{
-                color: member.actif ? "#5a7828" : "#9a7060",
-                background: member.actif ? "#f0f7e5" : "#f0e8dc",
-              }}
-            >
-              {member.actif ? "Actif" : "Inactif"}
-            </span>
-          </div>
-          <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
-            {member.poste || "Poste non défini"}
-          </div>
-          <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
-            {heures > 0 ? `${formatHeures(heures)} ce mois-ci` : "Aucune heure ce mois-ci"}
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="shrink-0 h-9 px-3.5 rounded-xl bg-[#f0e8dc] text-[#2c1a10] text-xs font-black cursor-pointer hover:bg-[#e5d5c5] transition-colors"
-        >
-          Modifier
-        </button>
-      </div>
+        {saving ? "…" : "Assigner"}
+      </button>
     </div>
   );
 }
 
 export default function EquipePage() {
   const router = useRouter();
-  const { isAdmin, clockStatuses } = useStaffContext();
-
-  const [staff, setStaff] = useState([]);
-  const [heuresParStaff, setHeuresParStaff] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [editingMember, setEditingMember] = useState(null);
-  const [toast, setToast] = useState(null);
+  const { isAdmin } = useStaffContext();
+  const { staff } = useAppContext();
 
   useEffect(() => {
     if (!isAdmin) router.replace("/home");
   }, [isAdmin, router]);
 
-  useEffect(() => {
-    if (!isAdmin) return;
-    let ignore = false;
-    setLoading(true);
-    Promise.all([
-      fetch("/api/staff?includeInactive=true").then((r) => r.json()),
-      fetch("/api/reports?period=month").then((r) => r.json()),
-    ])
-      .then(([staffData, reportsData]) => {
-        if (ignore) return;
-        setStaff(Array.isArray(staffData) ? staffData : []);
-        const heures = {};
-        (reportsData?.staff?.heures || []).forEach((h) => { heures[h.nom] = h.heures; });
-        setHeuresParStaff(heures);
-      })
-      .catch((err) => { if (!ignore) setError(err.message); })
-      .finally(() => { if (!ignore) setLoading(false); });
-    return () => { ignore = true; };
-  }, [isAdmin]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3000);
-    return () => clearTimeout(timer);
-  }, [toast]);
-
-  const sortedStaff = useMemo(
-    () => [...staff].sort((a, b) => (b.actif ? 1 : 0) - (a.actif ? 1 : 0) || a.name.localeCompare(b.name, "fr")),
-    [staff]
-  );
-  const enServiceStaff = useMemo(
-    () => sortedStaff.filter((m) => ["present", "pause"].includes(clockStatuses[m.name])),
-    [sortedStaff, clockStatuses]
-  );
-  const otherStaff = useMemo(
-    () => sortedStaff.filter((m) => !["present", "pause"].includes(clockStatuses[m.name])),
-    [sortedStaff, clockStatuses]
-  );
+  const activeStaff = useMemo(() => staff.filter((s) => s.actif !== false), [staff]);
 
   if (!isAdmin) return null;
 
-  const handleSaved = (updated) => {
-    setStaff((cur) => cur.map((m) => (m.id === updated.id ? { ...m, ...updated } : m)));
-    setEditingMember(null);
-    setToast({ text: `${updated.name} mis à jour`, type: "success" });
-  };
-
   return (
-    <div className="min-h-dvh px-4 py-4 space-y-4" style={{ background: "#f7efe4" }}>
+    <div className="min-h-dvh px-4 py-4 space-y-5" style={{ background: "#f7efe4" }}>
       <div>
-        <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">Ressources humaines</div>
+        <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">Opérationnel</div>
         <h1 className="text-xl font-black text-[#2c1a10] -mt-0.5">Équipe</h1>
       </div>
 
-      {loading && <div className="text-center text-sm text-[#9a7060] py-10">Chargement…</div>}
+      <div>
+        <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-2">Planning hebdomadaire</div>
+        <PlanningSection staff={activeStaff} />
+      </div>
 
-      {!loading && error && (
-        <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-bold text-red-500">{error}</div>
-      )}
-
-      {!loading && !error && (
-        <div className="space-y-5">
-          {sortedStaff.length === 0 && (
-            <div className="text-center text-sm text-[#9a7060] py-10">Aucun membre d&apos;équipe</div>
-          )}
-
-          {enServiceStaff.length > 0 && (
-            <div>
-              <div className="text-[10px] font-black text-[#5a7828] uppercase tracking-[0.3em] mb-2">
-                En service ({enServiceStaff.length})
-              </div>
-              <div className="space-y-3">
-                {enServiceStaff.map((member) => (
-                  <MemberCard
-                    key={member.id}
-                    member={member}
-                    enService
-                    heures={heuresParStaff[member.name] || 0}
-                    onEdit={() => setEditingMember(member)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {otherStaff.length > 0 && (
-            <div>
-              <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-2">
-                Reste de l&apos;équipe ({otherStaff.length})
-              </div>
-              <div className="space-y-3">
-                {otherStaff.map((member) => (
-                  <MemberCard
-                    key={member.id}
-                    member={member}
-                    enService={false}
-                    heures={heuresParStaff[member.name] || 0}
-                    onEdit={() => setEditingMember(member)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {editingMember && (
-        <EditMemberModal member={editingMember} onClose={() => setEditingMember(null)} onSaved={handleSaved} />
-      )}
-
-      {toast && (
-        <div
-          className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-2xl text-sm font-bold text-white shadow-lg"
-          style={{ background: toast.type === "error" ? "#b91c1c" : "#5a7828" }}
-        >
-          {toast.text}
-        </div>
-      )}
+      <div>
+        <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-2">Assigner une tâche personnelle</div>
+        <AssignTaskSection staff={activeStaff} />
+      </div>
     </div>
   );
 }

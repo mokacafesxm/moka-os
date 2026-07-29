@@ -135,6 +135,28 @@ function EquipementsTab({ zone, equipements, onCreated }) {
   const [form, setForm] = useState(EMPTY_EQUIPEMENT_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const remove = async (id) => {
+    setDeletingId(id);
+    setError(null);
+    try {
+      const res = await fetch("/api/equipements", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
+      setConfirmDeleteId(null);
+      onCreated();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const zoneEquipements = useMemo(() => {
     const list = equipements.filter((e) => e.zoneId === zone.id);
@@ -166,17 +188,29 @@ function EquipementsTab({ zone, equipements, onCreated }) {
 
   return (
     <div className="space-y-3">
+      {error && !showForm && <div className="text-xs font-bold text-red-600">{error}</div>}
       {zoneEquipements.length === 0 ? (
         <div className="text-sm text-[#9a7060] py-2">Aucun équipement pour cette zone</div>
       ) : (
         <div className="space-y-2">
           {zoneEquipements.map((e) => {
             const overdue = isMaintenanceOverdue(e.prochaineMaintenance);
+            const confirming = confirmDeleteId === e.id;
             return (
               <div key={e.id} className="rounded-xl border border-[#e5d5c5] bg-white p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="font-bold text-sm text-[#2c1a10]">{e.nom}</div>
-                  <EquipementStatusBadge statut={e.statut} />
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <EquipementStatusBadge statut={e.statut} />
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(e.id)}
+                      aria-label="Supprimer l'équipement"
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-[#9a7060] hover:bg-red-50 hover:text-red-700 cursor-pointer transition-colors"
+                    >
+                      🗑
+                    </button>
+                  </div>
                 </div>
                 <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
                   {e.marque || "—"}
@@ -186,6 +220,26 @@ function EquipementsTab({ zone, equipements, onCreated }) {
                     </span>
                   )}
                 </div>
+                {confirming && (
+                  <div className="mt-2 flex items-center gap-2 rounded-lg bg-red-50 border border-red-100 p-2">
+                    <span className="text-[11px] font-bold text-red-700 flex-1">Supprimer définitivement ?</span>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(null)}
+                      className="h-8 px-2.5 rounded-lg text-[#9a7060] text-xs font-bold cursor-pointer"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => remove(e.id)}
+                      disabled={deletingId === e.id}
+                      className="h-8 px-2.5 rounded-lg bg-red-700 text-white text-xs font-black cursor-pointer disabled:opacity-50"
+                    >
+                      {deletingId === e.id ? "…" : "Supprimer"}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}

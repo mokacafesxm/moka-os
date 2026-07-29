@@ -1562,3 +1562,46 @@ produits en attente, puis la résolution des 10 lignes en attente.
   reste manuel (`--period-start`/`--period-end`, jamais déduit).
 
 Ne pas commencer une PR sans validation explicite de la précédente.
+
+## Weekly Staff Planning (lib/planning) — **CONFIG_MISSING, base à créer**
+
+`/equipe` (Section A — planning hebdomadaire) et `app/api/planning/route.js`
+sont codés et fonctionnels, mais la base **MOKA_Planning** n'existe pas
+encore côté Notion — aucune page parente n'a été désignée pour la créer, et
+créer une nouvelle base au premier niveau du workspace live sans
+confirmation n'est pas une action à prendre sans y être invité (même
+raisonnement que Recipe Catalogue avant sa création — voir plus haut).
+`lib/planning/config.js` résout `NOTION_PLANNING_DB_ID` et lève
+`CONFIG_MISSING` tant que la variable n'est pas définie ; l'API renvoie
+503 et l'UI affiche "Planning non configuré — base Notion pas encore créée",
+identique au comportement déjà établi pour Recipe Catalogue.
+
+**Schéma requis pour MOKA_Planning** (à créer manuellement dans Notion,
+puis renseigner `NOTION_PLANNING_DB_ID` dans `.env.local`) :
+
+| Propriété | Type | Rôle |
+|---|---|---|
+| `Titre` | title | Libellé lisible, ex. "Quincy — 2026-07-27" |
+| `Staff` | relation → MOKA_Staff | Membre concerné |
+| `Semaine` | rich_text | Lundi de la semaine, `YYYY-MM-DD` |
+| `Lundi` … `Dimanche` | select | Poste du jour (mêmes options que `Staff.Poste`) ou "Repos" |
+
+**Schéma requis pour MOKA_Assignations_Taches** (Section B — assigner une
+tâche personnelle à un staff pour une date ; à créer de la même façon,
+`NOTION_TASK_ASSIGNMENTS_DB_ID`) :
+
+| Propriété | Type | Rôle |
+|---|---|---|
+| `Titre` | title | Libellé lisible, ex. "Nettoyer banquette — Quincy (2026-07-27)" |
+| `Staff` | relation → MOKA_Staff | Staff assigné |
+| `Tache` | relation → MOKA_TACHES | Tâche gabarit choisie |
+| `Nom_Tache` | rich_text | Copie du nom (évite un aller-retour Notion pour l'afficher) |
+| `Date` | date | Jour de l'assignation |
+
+Cette base est volontairement **séparée** de MOKA_EXECUTIONS_TACHES plutôt
+que d'y écrire une ligne `Statut: "À faire"` : EXECUTIONS_TACHES est lue
+ailleurs (`taches/page.jsx`, `doneTacheIds`) comme "la présence d'une ligne
+= tâche déjà faite", sans jamais regarder son statut — y planter une ligne
+en attente aurait fait disparaître la tâche de la liste "à faire" du staff
+concerné le jour même. `/profil` ("Mes tâches assignées") lit
+MOKA_Assignations_Taches pour le staff sélectionné, jamais EXECUTIONS_TACHES.

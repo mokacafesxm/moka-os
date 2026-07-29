@@ -15,9 +15,20 @@ export default function ProfilPage() {
   const [heures, setHeures] = useState(null);
   const [staffHasPin, setStaffHasPin] = useState(false);
   const [showPinSetup, setShowPinSetup] = useState(false);
+  const [mesTaches, setMesTaches] = useState([]);
 
   useEffect(() => {
     setStaffHasPin(hasStaffPin(selectedStaff?.id));
+  }, [selectedStaff?.id]);
+
+  useEffect(() => {
+    if (!selectedStaff?.id) return;
+    let ignore = false;
+    fetch(`/api/task-assignments?staffId=${selectedStaff.id}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => { if (!ignore) setMesTaches(Array.isArray(data) ? data : []); })
+      .catch((error) => console.error("[ProfilPage] task-assignments fetch failed", error));
+    return () => { ignore = true; };
   }, [selectedStaff?.id]);
 
   useEffect(() => {
@@ -62,6 +73,22 @@ export default function ProfilPage() {
           {heures === null ? "…" : `${heures}h`}
         </div>
       </div>
+
+      {mesTaches.length > 0 && (
+        <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
+          <div className="text-xs font-black text-[#9a7060] uppercase tracking-wide mb-3">Mes tâches assignées</div>
+          <div className="space-y-2">
+            {mesTaches.map((t) => (
+              <div key={t.id} className="flex items-center justify-between gap-2 rounded-xl border border-[#e5d5c5] p-2.5">
+                <span className="text-sm font-bold text-[#2c1a10]">{t.nom}</span>
+                {t.date && (
+                  <span className="text-[11px] text-[#9a7060] font-semibold shrink-0">{t.date.slice(0, 10)}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
         <div className="text-xs font-black text-[#9a7060] uppercase tracking-wide mb-3">🔐 Sécurité</div>

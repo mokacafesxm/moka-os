@@ -37,7 +37,7 @@ function OrderPickerModal({ orders, onPick, onClose }) {
         className="relative w-full max-w-sm max-h-[85vh] overflow-y-auto rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-3"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-base font-black text-[#2c1a10]">📦 Réception H&R</h2>
+        <h2 className="text-base font-black text-[#2c1a10]">📦 Livraison reçue</h2>
         <p className="text-xs text-[#9a7060]">Sélectionne la commande reçue à réceptionner.</p>
 
         {orders.length === 0 ? (
@@ -101,7 +101,7 @@ export default function LivraisonsAujourdhuiCard({ orders, onReceived }) {
             onClick={() => setShowPicker(true)}
             className="w-full h-11 rounded-2xl border border-[#e5d5c5] bg-white text-sm font-black text-[#2c1a10] cursor-pointer active:scale-[0.98] transition-all"
           >
-            Réception H&R
+            Livraison reçue
           </button>
         </div>
 

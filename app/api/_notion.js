@@ -259,6 +259,14 @@ export function getSelect(props, ...keys) {
   return "";
 }
 
+export function getUrl(props, ...keys) {
+  for (const k of keys) {
+    const p = props?.[k];
+    if (p?.type === "url" && p.url) return p.url;
+  }
+  return "";
+}
+
 export function getNumber(props, ...keys) {
   for (const k of keys) {
     const p = props?.[k];
