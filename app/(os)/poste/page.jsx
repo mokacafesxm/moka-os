@@ -711,7 +711,7 @@ function ClockSheet({ status, clockSending, onClose, onClockIn, onStartBreak, on
 
 export default function PostePage() {
   const router = useRouter();
-  const { poste, setSplashDone, canLivraisons, selectedStaff, selectedStaffName, status, isClockedIn, clockSending, clockIn, clockOut, startBreak, endBreak } = useStaffContext();
+  const { poste, setSplashDone, canLivraisons, isAdmin, selectedStaff, selectedStaffName, status, isClockedIn, clockSending, clockIn, clockOut, startBreak, endBreak } = useStaffContext();
   const { zonesPhysiques, preps, stockLive, supplierOrders, refreshSupplierOrders } = useAppContext();
 
   const [now, setNow] = useState(null);
@@ -932,7 +932,7 @@ export default function PostePage() {
   const posteInfo = POSTES.find((p) => p.key === poste);
   const staffName = selectedStaffName || "👋";
   const isOnBreak = status === "pause";
-  const clockLabel = isClockedIn ? (isOnBreak ? "Reprendre" : "Pause / Fin") : "Arriver";
+  const clockLabel = !isClockedIn ? "Arriver" : isOnBreak ? "Reprendre" : "Pause";
   const feteDuJour = getFeteduJour();
 
   return (
@@ -950,14 +950,16 @@ export default function PostePage() {
             <div className="text-xs text-[#a97862] mt-0.5">🎉 Bonne fête aux {feteDuJour} !</div>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => setShowClockSheet(true)}
-          className="rounded-xl bg-[#2c1a10] text-white px-4 py-2 text-sm font-black flex items-center gap-2 cursor-pointer shrink-0 active:scale-[0.98] transition-transform"
-        >
-          <span className={`w-2 h-2 rounded-full ${isClockedIn ? "bg-green-400" : "bg-[#9a7060]"}`} />
-          {clockLabel}
-        </button>
+        {!isAdmin && (
+          <button
+            type="button"
+            onClick={() => setShowClockSheet(true)}
+            className="rounded-full bg-[#e8336d] text-white px-4 py-2 text-sm font-black flex items-center gap-2 cursor-pointer shrink-0 active:scale-[0.98] transition-transform"
+          >
+            <span className={`w-2 h-2 rounded-full ${isClockedIn ? "bg-green-400" : "bg-white/60"}`} />
+            {clockLabel}
+          </button>
+        )}
       </div>
 
       <div className="flex items-center justify-between">

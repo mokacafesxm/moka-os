@@ -49,6 +49,7 @@ export default function ClockBar() {
     endBreak,
     unlockAdmin,
     lockAdmin,
+    setSplashDone,
   } = useStaffContext();
 
   const [showPicker, setShowPicker] = useState(false);
@@ -134,8 +135,17 @@ export default function ClockBar() {
         </button>
 
         {isAdmin ? (
-          <div className="shrink-0 h-11 px-3 rounded-full bg-[#2c1a10] text-white text-xs font-black flex items-center gap-1.5 whitespace-nowrap">
-            👑 Session Admin
+          <div className="shrink-0 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSplashDone(false)}
+              className="text-[10px] font-bold text-[#9a7060] underline cursor-pointer whitespace-nowrap"
+            >
+              ← Changer de session
+            </button>
+            <div className="h-11 px-3 rounded-full bg-[#2c1a10] text-white text-xs font-black flex items-center gap-1.5 whitespace-nowrap">
+              👑 Session Admin
+            </div>
           </div>
         ) : (
           <button

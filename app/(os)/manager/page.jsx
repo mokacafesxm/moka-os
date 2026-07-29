@@ -353,7 +353,12 @@ export default function ManagerHomePage() {
 
   const critiques = dashboard?.critiques || [];
   const prepasUrgentes = dashboard?.prepas_urgentes || [];
-  const staffToday = dashboard?.staff_today || [];
+  // UX audit — les managers (Guillaume/Valérie) ne pointent pas de session
+  // opérationnelle : les compter comme "staff en service" fausse la lecture
+  // du manager qui veut savoir qui est réellement sur le terrain.
+  const staffToday = (dashboard?.staff_today || []).filter(
+    (s) => s.poste !== "Manager Général" && s.nom !== "Guillaume" && s.nom !== "Valérie"
+  );
   const incidentsOuverts = dashboard?.incidents_ouverts ?? 0;
   const enService = staffToday.filter((s) => s.statut === "present" || s.statut === "pause").length;
   const financier = dashboard?.financier || {};

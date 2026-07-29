@@ -160,13 +160,16 @@ async function getStaffToday(todaySXM) {
 
   const now = Date.now();
   return staffPages
-    .map((page) => getTitle(page.properties, "Prénom", "prenom", "Nom", "nom", "Name", "name", "Staff"))
-    .filter(Boolean)
-    .map((nom) => {
+    .map((page) => ({
+      nom: getTitle(page.properties, "Prénom", "prenom", "Nom", "nom", "Name", "name", "Staff"),
+      poste: getSelect(page.properties, "Poste") || "",
+    }))
+    .filter((s) => s.nom)
+    .map(({ nom, poste }) => {
       const entry = byStaff[nom];
-      if (!entry) return { nom, statut: "absent", heures: 0 };
+      if (!entry) return { nom, poste, statut: "absent", heures: 0 };
       const openMs = entry.sessionStart ? now - entry.sessionStart : 0;
-      return { nom, statut: entry.statut, heures: Math.round(((entry.workedMs + openMs) / 3_600_000) * 100) / 100 };
+      return { nom, poste, statut: entry.statut, heures: Math.round(((entry.workedMs + openMs) / 3_600_000) * 100) / 100 };
     });
 }
 
