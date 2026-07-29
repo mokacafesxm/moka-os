@@ -9,8 +9,9 @@ export default function PinSetupModal({ staffId, onClose, onSaved }) {
   const [firstPin, setFirstPin] = useState("");
   const [digits, setDigits] = useState(["", "", "", ""]);
   const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
 
-  const handleDigitsChange = (next) => {
+  const handleDigitsChange = async (next) => {
     setDigits(next);
     const pin = next.join("");
     if (pin.length !== 4) return;
@@ -32,7 +33,17 @@ export default function PinSetupModal({ staffId, onClose, onSaved }) {
       return;
     }
 
-    setStaffPin(staffId, pin);
+    setSaving(true);
+    setError(null);
+    const ok = await setStaffPin(staffId, pin);
+    setSaving(false);
+    if (!ok) {
+      setError("Échec de l'enregistrement — réessaie");
+      setStage("first");
+      setFirstPin("");
+      setDigits(["", "", "", ""]);
+      return;
+    }
     onSaved?.();
     onClose();
   };
@@ -49,8 +60,9 @@ export default function PinSetupModal({ staffId, onClose, onSaved }) {
           {stage === "first" ? "Choisis un code à 4 chiffres" : "Confirme ton code"}
         </h2>
 
-        <PinDigits key={stage} digits={digits} onChange={handleDigitsChange} autoFocusFirst />
+        <PinDigits key={stage} digits={digits} onChange={handleDigitsChange} autoFocusFirst disabled={saving} />
 
+        {saving && <div className="text-xs text-[#9a7060] font-bold text-center mt-3">Enregistrement…</div>}
         {error && <div className="text-xs text-red-600 font-bold text-center mt-3">{error}</div>}
 
         <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
@@ -26,13 +26,6 @@ const WORKFLOW_IDS_BY_POSTE = {
 };
 
 const SXM_TZ = "America/Puerto_Rico";
-const CLOSE_HOUR = 15;
-
-function getSXMParts(date) {
-  const hour = Number(new Intl.DateTimeFormat("en-US", { timeZone: SXM_TZ, hour: "numeric", hour12: false }).format(date));
-  const minute = Number(new Intl.DateTimeFormat("en-US", { timeZone: SXM_TZ, minute: "numeric" }).format(date));
-  return { hour, minute };
-}
 
 function formatHeureSXM(isoDate) {
   if (!isoDate) return "";
@@ -139,22 +132,6 @@ function PosteHeroBlocker({ criticalStockCount, urgentTasksCount, hasLivraisonTo
   return <div className="text-sm font-bold text-[#5a7828] py-1">✓ Rien d&apos;urgent pour l&apos;instant</div>;
 }
 
-function ClosingBanner({ hour, minute }) {
-  if (hour < 14 || hour >= 16) return null;
-  const minutesToClose = CLOSE_HOUR * 60 - (hour * 60 + minute);
-  const timeLabel = `${String(hour).padStart(2, "0")}h${String(minute).padStart(2, "0")}`;
-  return (
-    <div
-      className="rounded-2xl p-3.5 text-sm font-bold flex items-center justify-between gap-2"
-      style={{ background: "#fef3c7", color: "#854f0b", border: "1px solid #fcd34d" }}
-    >
-      <span>
-        ⏰ {timeLabel} — {minutesToClose > 0 ? `Fermeture dans ${minutesToClose} min` : `Fermeture dépassée de ${-minutesToClose} min`}
-      </span>
-    </div>
-  );
-}
-
 function TempsList({ executions, posteNom }) {
   // Ne pas filtrer sur "valeurTemperature != null" : getNumber() (_notion.js,
   // partagé par toute l'app) retourne 0 par défaut quand la propriété Notion
@@ -222,39 +199,38 @@ function ResumeTachesCard({ zoneTaches, executions }) {
   );
 }
 
-// Section 2 (Bar/Cuisine/Salle) — statut ouvert/fermé, persisté en
-// localStorage (voir posteStatus.js), déclenché par le workflow correspondant.
+// Card pleine largeur en haut de Mon Poste (juste sous le header) — statut
+// ouvert/fermé, persisté en localStorage (voir posteStatus.js), déclenché
+// par le workflow correspondant. Repositionnée ici (ex-section 2, au milieu
+// de la page) pour rester la première chose vue en arrivant sur le poste.
 function PosteStatusCard({ poste, status, onRequestFermeture }) {
   const { ouverture } = WORKFLOW_IDS_BY_POSTE[poste];
   const isOpen = status?.status === "open";
 
   if (isOpen) {
     return (
-      <div className="rounded-2xl p-4 mb-4" style={{ background: "#f0f7e5", border: "1px solid #cde3ab" }}>
-        <div className="font-black text-sm text-[#3f5a1c]">
-          {poste} ouvert ✓{status?.at ? ` depuis ${formatHeureSXM(status.at)}` : ""}
-        </div>
-        <button
-          type="button"
-          onClick={onRequestFermeture}
-          className="inline-block mt-3 text-xs font-black text-[#b91c1c] cursor-pointer"
-        >
-          Fermer le {poste}
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={onRequestFermeture}
+        className="w-full rounded-2xl p-4 flex items-center justify-between gap-2 cursor-pointer active:scale-[0.99] transition-transform"
+        style={{ background: "#5a7828" }}
+      >
+        <span className="font-black text-sm text-white">
+          ✅ {poste} ouvert{status?.at ? ` depuis ${formatHeureSXM(status.at)}` : ""}
+        </span>
+        <span className="font-black text-sm text-white shrink-0">Fermer →</span>
+      </button>
     );
   }
 
   return (
-    <div className="rounded-2xl p-4 mb-4" style={{ background: "#fdecea", border: "1px solid #f3b9b0" }}>
-      <div className="font-black text-sm text-[#8a1c14]">{poste} fermé</div>
-      <Link
-        href={`/workflows/${ouverture}`}
-        className="flex items-center justify-center mt-3 w-full h-11 rounded-xl bg-[#5a7828] text-white text-sm font-black cursor-pointer"
-      >
-        ▶ Ouvrir le {poste}
-      </Link>
-    </div>
+    <Link
+      href={`/workflows/${ouverture}`}
+      className="w-full rounded-2xl p-4 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] transition-transform"
+      style={{ background: "#2c1a10" }}
+    >
+      <span className="font-black text-sm text-white">🔓 Ouvrir le {poste}</span>
+    </Link>
   );
 }
 
@@ -681,7 +657,6 @@ export default function PostePage() {
   const [blockingTasks, setBlockingTasks] = useState(null);
   const [pendingAction, setPendingAction] = useState(null); // { type: "clockout" } | { type: "fermeture", href }
   const [ignoringBlock, setIgnoringBlock] = useState(false);
-  const closeToastFiredRef = useRef(null); // date (YYYY-MM-DD) où le toast 15h a déjà été montré
 
   useEffect(() => {
     setNow(new Date());
@@ -689,7 +664,6 @@ export default function PostePage() {
     return () => clearInterval(interval);
   }, []);
 
-  const { hour, minute } = now ? getSXMParts(now) : { hour: 12, minute: 0 };
   const todaySXM = now ? new Intl.DateTimeFormat("en-CA", { timeZone: SXM_TZ }).format(now) : null;
 
   // Statut ouvert/fermé du poste — lu depuis localStorage au montage (jamais
@@ -700,13 +674,6 @@ export default function PostePage() {
     if (!poste) return;
     setPosteStatusState(getPosteStatus(poste));
   }, [poste]);
-
-  useEffect(() => {
-    if (hour !== 15 || minute !== 0) return;
-    if (closeToastFiredRef.current === todaySXM) return;
-    closeToastFiredRef.current = todaySXM;
-    setToast({ text: "⏰ 15h — Pensez à fermer le poste", type: "warning" });
-  }, [hour, minute, todaySXM]);
 
   useEffect(() => {
     if (!toast) return;
@@ -933,7 +900,13 @@ export default function PostePage() {
         </button>
       </div>
 
-      <ClosingBanner hour={hour} minute={minute} />
+      {(poste === "Bar" || poste === "Cuisine" || poste === "Salle") && (
+        <PosteStatusCard
+          poste={poste}
+          status={posteStatus}
+          onRequestFermeture={() => handleRequestFermeture(`/workflows/${WORKFLOW_IDS_BY_POSTE[poste].fermeture}`)}
+        />
+      )}
 
       {toast && (
         <div className="rounded-2xl p-3 text-sm font-bold text-white text-center" style={{ background: "#d97706" }}>
@@ -954,7 +927,6 @@ export default function PostePage() {
               colonnes dans le même ordre qu'avant. */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[3fr_2fr] md:gap-6">
             <div className="space-y-4">
-              <PosteStatusCard poste="Bar" status={posteStatus} onRequestFermeture={() => handleRequestFermeture(`/workflows/${WORKFLOW_IDS_BY_POSTE.Bar.fermeture}`)} />
               <StocksBasCard items={stockBasBar} />
               <PrepasAFaireCard preps={prepasBar} />
               <ResumeTachesCard zoneTaches={zoneTaches} executions={executions} />
@@ -986,7 +958,6 @@ export default function PostePage() {
           {canLivraisons && <LivraisonsAujourdhuiCard orders={supplierOrders} onReceived={refreshSupplierOrders} />}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[3fr_2fr] md:gap-6">
             <div className="space-y-4">
-              <PosteStatusCard poste="Cuisine" status={posteStatus} onRequestFermeture={() => handleRequestFermeture(`/workflows/${WORKFLOW_IDS_BY_POSTE.Cuisine.fermeture}`)} />
               <StocksBasCard items={stockBasCuisine} />
               <PrepasAFaireCard preps={prepasCuisine} />
               <ResumeTachesCard zoneTaches={zoneTaches} executions={executions} />
@@ -1019,7 +990,6 @@ export default function PostePage() {
           </button>
           <ResumeTachesCard zoneTaches={zoneTaches} executions={executions} />
           <SectionCard title="Tâches mise en place"><TachesList taches={zoneTaches} /></SectionCard>
-          <PosteStatusCard poste="Salle" status={posteStatus} onRequestFermeture={() => handleRequestFermeture(`/workflows/${WORKFLOW_IDS_BY_POSTE.Salle.fermeture}`)} />
         </>
       )}
 

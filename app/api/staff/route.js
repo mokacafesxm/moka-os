@@ -71,6 +71,11 @@ export async function PATCH(req) {
     if ("poste" in data) properties.Poste = selectProp(data.poste);
     if ("access" in data) properties.Access = multiSelectProp(data.access);
     if ("actif" in data) properties.Actif = checkboxProp(data.actif);
+    // PIN de session staff (Sprint 18 — migré depuis localStorage pour
+    // fonctionner sur tout appareil). Écrit uniquement, jamais lu ici — voir
+    // /api/staff/verify-pin, qui compare côté serveur sans jamais renvoyer
+    // le hash au client (normalizeStaff, ci-dessus, ne l'expose pas non plus).
+    if ("pinHash" in data) properties.PIN_Hash = textProp(data.pinHash);
 
     await updatePage(id, properties);
     return Response.json({ success: true }, { headers: corsHeaders });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 
@@ -102,6 +102,71 @@ function AddFicheModal({ onClose, onSaved }) {
   );
 }
 
+// Zoom pincé main — le viewport global a userScalable=false (app.layout.js,
+// pour éviter un zoom accidentel du reste de l'UI), donc le pinch-zoom natif
+// du navigateur ne se déclenche jamais ici : on calcule nous-mêmes la
+// distance entre les deux doigts et on applique un transform scale().
+// Double-tap réinitialise. Un seul doigt (pan/tap pour fermer) reste géré
+// normalement par le onClick du conteneur.
+function ZoomablePhoto({ src, alt, onClose }) {
+  const [scale, setScale] = useState(1);
+  const [origin, setOrigin] = useState({ x: 50, y: 50 });
+  const pinchRef = useRef({ active: false, startDist: 0, startScale: 1 });
+
+  const dist = (touches) => {
+    const [a, b] = touches;
+    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  };
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length !== 2) return;
+    pinchRef.current = { active: true, startDist: dist(e.touches), startScale: scale };
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+    const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+    setOrigin({ x: (midX / rect.width) * 100, y: (midY / rect.height) * 100 });
+  };
+
+  const handleTouchMove = (e) => {
+    if (!pinchRef.current.active || e.touches.length !== 2) return;
+    e.preventDefault();
+    const ratio = dist(e.touches) / pinchRef.current.startDist;
+    setScale(Math.min(4, Math.max(1, pinchRef.current.startScale * ratio)));
+  };
+
+  const handleTouchEnd = (e) => {
+    if (e.touches.length < 2) pinchRef.current.active = false;
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] bg-black flex items-center justify-center overflow-hidden"
+      onClick={() => { if (scale === 1) onClose(); }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onDoubleClick={() => setScale((s) => (s > 1 ? 1 : 2))}
+        style={{ transform: `scale(${scale})`, transformOrigin: `${origin.x}% ${origin.y}%` }}
+        className="max-w-full max-h-full object-contain select-none touch-none"
+      />
+      {scale > 1 && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setScale(1); }}
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-white/90 text-[#2c1a10] text-xs font-black cursor-pointer"
+        >
+          Réinitialiser
+        </button>
+      )}
+    </div>
+  );
+}
+
 function FicheDetailModal({ fiche, soldProducts, lines, ingredientsById, onClose }) {
   const [zoomed, setZoomed] = useState(false);
 
@@ -115,12 +180,7 @@ function FicheDetailModal({ fiche, soldProducts, lines, ingredientsById, onClose
   );
 
   if (zoomed && fiche.photoUrl) {
-    return (
-      <div className="fixed inset-0 z-[60] bg-black flex items-center justify-center" onClick={() => setZoomed(false)}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={fiche.photoUrl} alt={fiche.nom} className="max-w-full max-h-full object-contain" />
-      </div>
-    );
+    return <ZoomablePhoto src={fiche.photoUrl} alt={fiche.nom} onClose={() => setZoomed(false)} />;
   }
 
   return (
@@ -144,9 +204,19 @@ function FicheDetailModal({ fiche, soldProducts, lines, ingredientsById, onClose
         />
       ) : fiche.pdfUrl ? (
         <div className="space-y-2">
+          {/* L'aperçu iframe est laissé tel quel même si le serveur qui héberge
+              le PDF bloque l'affichage en iframe (X-Frame-Options) — un
+              navigateur ne peut pas détecter fiablement ce blocage en JS pour
+              cacher l'iframe conditionnellement, donc le bouton ci-dessous
+              reste TOUJOURS visible : c'est le vrai fallback. */}
           <iframe src={fiche.pdfUrl} title={fiche.nom} className="w-full h-64 rounded-xl border border-[#e5d5c5] bg-white" />
-          <a href={fiche.pdfUrl} target="_blank" rel="noreferrer" className="block text-center text-xs font-bold text-[#5a7828] underline">
-            Ouvrir le PDF ↗
+          <a
+            href={fiche.pdfUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="block text-center h-11 leading-[44px] rounded-xl bg-[#2c1a10] text-white text-sm font-black"
+          >
+            📄 Ouvrir la fiche PDF
           </a>
         </div>
       ) : (

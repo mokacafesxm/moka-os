@@ -85,11 +85,11 @@ export default function SplashScreen({ onDone }) {
     }
   };
 
-  // Profil → Sécurité lets a staff member set a local session PIN (per
-  // device, localStorage only — see staffPin.js) : re-picking their avatar
-  // here gates on that PIN before actually signing them in.
-  const handlePickStaff = (member) => {
-    if (hasStaffPin(member.id)) {
+  // Profil → Sécurité lets a staff member set a session PIN (Notion-backed,
+  // works across devices — see staffPin.js) : re-picking their avatar here
+  // gates on that PIN before actually signing them in.
+  const handlePickStaff = async (member) => {
+    if (await hasStaffPin(member.id)) {
       setPinGateMember(member);
       return;
     }

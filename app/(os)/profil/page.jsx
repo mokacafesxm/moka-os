@@ -5,8 +5,28 @@ import { useStaffContext } from "../../contexts/StaffContext";
 import { hasStaffPin } from "../../components/shared/staffPin";
 import PinSetupModal from "../../components/shared/PinSetupModal";
 
-function initials(name) {
-  return String(name || "?").trim().slice(0, 2).toUpperCase();
+const CERT_STATUT_COLOR = { "Validé": "#5a7828", "En cours": "#d97706", "Expiré": "#9a7060" };
+
+const JOURS = [
+  { key: "lundi", label: "Lun" },
+  { key: "mardi", label: "Mar" },
+  { key: "mercredi", label: "Mer" },
+  { key: "jeudi", label: "Jeu" },
+  { key: "vendredi", label: "Ven" },
+  { key: "samedi", label: "Sam" },
+  { key: "dimanche", label: "Dim" },
+];
+
+function todaySXM() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Puerto_Rico" }).format(new Date());
+}
+// Semaine = lundi de la semaine (YYYY-MM-DD) — même convention que /equipe.
+function mondayOf(dateStr) {
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  const dow = d.getUTCDay();
+  const diff = dow === 0 ? -6 : 1 - dow;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().slice(0, 10);
 }
 
 export default function ProfilPage() {
@@ -16,9 +36,15 @@ export default function ProfilPage() {
   const [staffHasPin, setStaffHasPin] = useState(false);
   const [showPinSetup, setShowPinSetup] = useState(false);
   const [mesTaches, setMesTaches] = useState([]);
+  const [monPlanning, setMonPlanning] = useState(null);
+  const [planningConfigured, setPlanningConfigured] = useState(true);
+  const [certifications, setCertifications] = useState([]);
 
   useEffect(() => {
-    setStaffHasPin(hasStaffPin(selectedStaff?.id));
+    if (!selectedStaff?.id) { setStaffHasPin(false); return; }
+    let ignore = false;
+    hasStaffPin(selectedStaff.id).then((has) => { if (!ignore) setStaffHasPin(has); });
+    return () => { ignore = true; };
   }, [selectedStaff?.id]);
 
   useEffect(() => {
@@ -28,6 +54,30 @@ export default function ProfilPage() {
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => { if (!ignore) setMesTaches(Array.isArray(data) ? data : []); })
       .catch((error) => console.error("[ProfilPage] task-assignments fetch failed", error));
+    return () => { ignore = true; };
+  }, [selectedStaff?.id]);
+
+  useEffect(() => {
+    if (!selectedStaff?.id) return;
+    let ignore = false;
+    const semaine = mondayOf(todaySXM());
+    fetch(`/api/planning?semaine=${semaine}&staffId=${selectedStaff.id}`)
+      .then((r) => {
+        if (r.status === 503) { if (!ignore) setPlanningConfigured(false); return []; }
+        return r.ok ? r.json() : [];
+      })
+      .then((data) => { if (!ignore) setMonPlanning((Array.isArray(data) && data[0]) || null); })
+      .catch((error) => console.error("[ProfilPage] planning fetch failed", error));
+    return () => { ignore = true; };
+  }, [selectedStaff?.id]);
+
+  useEffect(() => {
+    if (!selectedStaff?.id) return;
+    let ignore = false;
+    fetch(`/api/certifications?staffId=${selectedStaff.id}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => { if (!ignore) setCertifications(Array.isArray(data) ? data.filter((c) => c.statut === "Validé") : []); })
+      .catch((error) => console.error("[ProfilPage] certifications fetch failed", error));
     return () => { ignore = true; };
   }, [selectedStaff?.id]);
 
@@ -51,20 +101,7 @@ export default function ProfilPage() {
     <div className="min-h-dvh px-4 py-4 space-y-4" style={{ background: "#f7efe4" }}>
       <div>
         <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">Profil</div>
-        <h1 className="text-xl font-black text-[#2c1a10] -mt-0.5">Mon compte</h1>
-      </div>
-
-      <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4 flex items-center gap-4">
-        <span
-          className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-black text-white shrink-0"
-          style={{ background: "#2c1a10" }}
-        >
-          {initials(selectedStaffName)}
-        </span>
-        <div>
-          <div className="text-lg font-black text-[#2c1a10]">{selectedStaffName || "—"}</div>
-          <div className="text-xs text-[#9a7060] font-semibold">{selectedStaff?.role || "Rôle non renseigné"}</div>
-        </div>
+        <h1 className="text-xl font-black text-[#2c1a10] -mt-0.5">{selectedStaffName || "Mon compte"}</h1>
       </div>
 
       <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
@@ -73,6 +110,51 @@ export default function ProfilPage() {
           {heures === null ? "…" : `${heures}h`}
         </div>
       </div>
+
+      {certifications.length > 0 && (
+        <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
+          <div className="text-xs font-black text-[#9a7060] uppercase tracking-wide mb-3">🎓 Certifications obtenues</div>
+          <div className="space-y-2">
+            {certifications.map((c) => (
+              <div key={c.id} className="flex items-center justify-between gap-2 rounded-xl border border-[#e5d5c5] p-2.5">
+                <span className="text-sm font-bold text-[#2c1a10]">{c.competence || c.nom}</span>
+                <span
+                  className="text-[10px] font-black px-2 py-1 rounded-lg shrink-0"
+                  style={{ color: CERT_STATUT_COLOR[c.statut], background: `${CERT_STATUT_COLOR[c.statut]}1a` }}
+                >
+                  {c.statut}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {planningConfigured && (
+        <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
+          <div className="text-xs font-black text-[#9a7060] uppercase tracking-wide mb-3">📅 Mon planning cette semaine</div>
+          <div className="grid grid-cols-7 gap-1.5">
+            {JOURS.map((j) => {
+              const valeur = monPlanning?.[j.key] || "";
+              const repos = valeur === "Repos" || valeur === "Congé";
+              return (
+                <div key={j.key} className="text-center">
+                  <div className="text-[9px] font-bold text-[#9a7060] uppercase mb-1">{j.label}</div>
+                  <div
+                    className="rounded-lg py-2 text-[9px] font-black leading-tight"
+                    style={{
+                      background: valeur ? (repos ? "#f0e8dc" : "#f0f7e5") : "#f7efe4",
+                      color: valeur ? (repos ? "#9a7060" : "#5a7828") : "#c8b4a8",
+                    }}
+                  >
+                    {valeur || "—"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {mesTaches.length > 0 && (
         <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">

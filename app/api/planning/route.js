@@ -28,9 +28,13 @@ export async function GET(req) {
     const dbId = getPlanningDbId();
     const { searchParams } = new URL(req.url);
     const semaine = searchParams.get("semaine");
+    const staffId = searchParams.get("staffId");
     if (!semaine) return Response.json({ error: "semaine requise" }, { status: 400, headers: corsHeaders });
 
-    const pages = await queryDatabase(dbId, { property: "Semaine", date: { equals: semaine } });
+    const semaineFilter = { property: "Semaine", date: { equals: semaine } };
+    const filter = staffId ? { and: [semaineFilter, { property: "Staff", relation: { contains: staffId } }] } : semaineFilter;
+
+    const pages = await queryDatabase(dbId, filter);
     return Response.json(pages.map(normalizeRow), { headers: corsHeaders });
   } catch (err) {
     const status = err.code === "CONFIG_MISSING" ? 503 : 500;

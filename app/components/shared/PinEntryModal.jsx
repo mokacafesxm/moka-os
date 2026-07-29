@@ -15,13 +15,17 @@ export default function PinEntryModal({ staffId, staffName, onClose, onVerified 
   const [attempts, setAttempts] = useState(0);
   const [error, setError] = useState(null);
   const [locked, setLocked] = useState(false);
+  const [checking, setChecking] = useState(false);
 
-  const handleDigitsChange = (next) => {
+  const handleDigitsChange = async (next) => {
     setDigits(next);
     const pin = next.join("");
     if (pin.length !== 4) return;
 
-    if (verifyStaffPin(staffId, pin)) {
+    setChecking(true);
+    const valid = await verifyStaffPin(staffId, pin);
+    setChecking(false);
+    if (valid) {
       onVerified();
       return;
     }
@@ -47,7 +51,7 @@ export default function PinEntryModal({ staffId, staffName, onClose, onVerified 
         <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-1">🔐 PIN de session</div>
         <h2 className="text-lg font-black text-[#2c1a10] mb-4">{staffName}</h2>
 
-        <PinDigits key={attempts} digits={digits} onChange={handleDigitsChange} autoFocusFirst disabled={locked} />
+        <PinDigits key={attempts} digits={digits} onChange={handleDigitsChange} autoFocusFirst disabled={locked || checking} />
 
         {error && (
           <div className={`text-xs font-bold text-center mt-3 ${locked ? "text-[#9a7060]" : "text-red-600"}`}>
