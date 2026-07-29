@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
@@ -169,7 +170,7 @@ export default function SplashScreen({ onDone }) {
           {staffFiltered.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center gap-3">
               <div className="text-sm text-[#9a7060]">Aucun staff assigné à ce poste</div>
-              <a href="/" className="text-xs font-black text-[#5a7828] underline">Voir les Paramètres</a>
+              <Link href="/parametres" className="text-xs font-black text-[#5a7828] underline">Voir les Paramètres</Link>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

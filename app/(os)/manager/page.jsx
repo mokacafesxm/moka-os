@@ -268,7 +268,7 @@ function SectionCard({ title, children }) {
 
 const KDS_STATUS_COLOR = { "Nouvelle": "#c0562f", "En préparation": "#b8860b", "Prête": "#5a7828", "Récupérée": "#6b4a3d" };
 const KDS_NEXT_ACTION = { "Nouvelle": "Commencer", "En préparation": "Prête", "Prête": "Récupérée" };
-const KDS_POLL_MS = 5000;
+const KDS_POLL_MS = 30000;
 
 // UX audit — "🛎 Commande client" ouvrait un modal plein écran avec le
 // board complet ; ce résumé inline sur le dashboard couvre le besoin
@@ -357,7 +357,7 @@ function KdsCard() {
 export default function ManagerHomePage() {
   const router = useRouter();
   const { isAdmin } = useStaffContext();
-  const { zonesPhysiques, supplierOrders, refreshSupplierOrders } = useAppContext();
+  const { supplierOrders, refreshSupplierOrders } = useAppContext();
 
   const [dashboard, setDashboard] = useState(null);
   const [dashboardRefreshing, setDashboardRefreshing] = useState(false);
@@ -488,14 +488,11 @@ export default function ManagerHomePage() {
 
       <LivraisonsAujourdhuiCard orders={supplierOrders} onReceived={refreshSupplierOrders} />
 
-      <div className="grid grid-cols-2 gap-3">
-        {kpis.map((k) => (
-          <div key={k.label} className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
-            <div className="text-2xl font-black" style={{ color: k.color }}>{k.value}</div>
-            <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mt-1">{k.label}</div>
-          </div>
-        ))}
-      </div>
+      {/* Ordre imposé (relecture dashboard) : KDS → Fiches Recettes → KPIs →
+          Alertes → Gestion quotidienne. "Zone du restaurant" et "Commande
+          client" retirées de cette page (zones restent consultables sur
+          /restaurant, commande client sur /commandes via le KDS). */}
+      <KdsCard />
 
       <Link
         href="/recettes"
@@ -512,6 +509,15 @@ export default function ManagerHomePage() {
         </div>
         <span className="text-lg text-[#9a7060]">→</span>
       </Link>
+
+      <div className="grid grid-cols-2 gap-3">
+        {kpis.map((k) => (
+          <div key={k.label} className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
+            <div className="text-2xl font-black" style={{ color: k.color }}>{k.value}</div>
+            <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mt-1">{k.label}</div>
+          </div>
+        ))}
+      </div>
 
       <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
         <div className="flex items-center justify-between mb-3">
@@ -541,6 +547,8 @@ export default function ManagerHomePage() {
         )}
       </div>
 
+      <GestionQuotidienneSection router={router} todaySXM={todaySXM} lastDaily={lastDaily} lastWeekly={lastWeekly} lastBank={lastBank} />
+
       {/* UX audit (28 jul 2026) — 8 tuiles toujours visibles obligeaient à
           tout lire pour trouver le seul chiffre qui compte. Repliées derrière
           "Voir les finances" (Skill 11) ; le CA du jour reste en aperçu. */}
@@ -566,33 +574,12 @@ export default function ManagerHomePage() {
         </div>
       </details>
 
-      <GestionQuotidienneSection router={router} todaySXM={todaySXM} lastDaily={lastDaily} lastWeekly={lastWeekly} lastBank={lastBank} />
-
       <FinanceButton
         emoji="📋"
         title="Rapport mensuel"
         subtitle="CA, achats et commandes du mois"
         onClick={() => setShowMonthlyReport(true)}
       />
-
-      <KdsCard />
-
-      <SectionCard title="🗺 Zones du restaurant">
-        <div className="grid grid-cols-2 gap-3">
-          {zonesPhysiques.map((zone) => (
-            <div key={zone.id} className="rounded-2xl border border-[#e5d5c5] bg-[#faf5ef] p-3.5">
-              <div className="text-xl mb-1">{zone.emoji || "📍"}</div>
-              <div className="font-black text-sm text-[#2c1a10]">{zone.nom}</div>
-              {zone.responsablePoste && (
-                <div className="text-[10px] text-[#9a7060] font-semibold mt-0.5">{zone.responsablePoste}</div>
-              )}
-            </div>
-          ))}
-          {zonesPhysiques.length === 0 && (
-            <div className="col-span-2 text-center text-sm text-[#9a7060] py-4">Aucune zone configurée</div>
-          )}
-        </div>
-      </SectionCard>
 
       <SectionCard title="Activité staff du jour">
         {staffToday.length === 0 ? (
