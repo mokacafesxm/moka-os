@@ -25,6 +25,25 @@ function initials(name) {
 
 const inputClass = "w-full rounded-xl border border-[#e5d5c5] bg-[#faf5ef] px-3.5 py-2.5 text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]";
 
+// UX audit (28 jul 2026) — "En panne" et une maintenance dépassée rendaient
+// en texte gris identique à un équipement sain. Même correction que Stock :
+// le statut existant pilote enfin une couleur.
+function isMaintenanceOverdue(dateStr) {
+  if (!dateStr) return false;
+  return dateStr.slice(0, 10) < new Date().toISOString().slice(0, 10);
+}
+
+function EquipementStatusBadge({ statut }) {
+  const isPanne = statut === "En panne";
+  const isMaintenance = statut === "En maintenance";
+  const style = isPanne
+    ? "bg-red-50 text-red-700"
+    : isMaintenance
+    ? "bg-orange-50 text-orange-700"
+    : "bg-[#f0e8dc] text-[#9a7060]";
+  return <span className={`text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ${style}`}>{statut}</span>;
+}
+
 function TachesTab({ zone, taches, onCreated }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_TACHE_FORM);
@@ -117,7 +136,11 @@ function EquipementsTab({ zone, equipements, onCreated }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const zoneEquipements = useMemo(() => equipements.filter((e) => e.zoneId === zone.id), [equipements, zone.id]);
+  const zoneEquipements = useMemo(() => {
+    const list = equipements.filter((e) => e.zoneId === zone.id);
+    const urgency = (e) => (e.statut === "En panne" ? 0 : isMaintenanceOverdue(e.prochaineMaintenance) ? 1 : e.statut === "En maintenance" ? 2 : 3);
+    return [...list].sort((a, b) => urgency(a) - urgency(b));
+  }, [equipements, zone.id]);
 
   const submit = async () => {
     if (!form.nom.trim()) { setError("Nom requis"); return; }
@@ -147,15 +170,25 @@ function EquipementsTab({ zone, equipements, onCreated }) {
         <div className="text-sm text-[#9a7060] py-2">Aucun équipement pour cette zone</div>
       ) : (
         <div className="space-y-2">
-          {zoneEquipements.map((e) => (
-            <div key={e.id} className="rounded-xl border border-[#e5d5c5] bg-white p-3">
-              <div className="font-bold text-sm text-[#2c1a10]">{e.nom}</div>
-              <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
-                {[e.marque, e.statut].filter(Boolean).join(" · ") || "—"}
-                {e.prochaineMaintenance && ` · Entretien ${e.prochaineMaintenance.slice(0, 10)}`}
+          {zoneEquipements.map((e) => {
+            const overdue = isMaintenanceOverdue(e.prochaineMaintenance);
+            return (
+              <div key={e.id} className="rounded-xl border border-[#e5d5c5] bg-white p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-bold text-sm text-[#2c1a10]">{e.nom}</div>
+                  <EquipementStatusBadge statut={e.statut} />
+                </div>
+                <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
+                  {e.marque || "—"}
+                  {e.prochaineMaintenance && (
+                    <span className={overdue ? "text-red-700 font-black" : ""}>
+                      {" · "}{overdue ? "⚠ Entretien dépassé " : "Entretien "}{e.prochaineMaintenance.slice(0, 10)}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -371,8 +404,8 @@ export default function RestaurantPage() {
                 <span className="text-[#9a7060] shrink-0">→</span>
               </div>
               <div className="flex gap-4 mt-3 text-xs font-bold text-[#9a7060]">
-                <span>{zoneTaches} tâche{zoneTaches !== 1 ? "s" : ""}</span>
-                <span>{zoneEquipements} équipement{zoneEquipements !== 1 ? "s" : ""}</span>
+                <span>{`${zoneTaches} tâche${zoneTaches !== 1 ? "s" : ""}`}</span>
+                <span>{`${zoneEquipements} équipement${zoneEquipements !== 1 ? "s" : ""}`}</span>
                 {zone.responsablePoste && <span>Responsable : {zone.responsablePoste}</span>}
               </div>
             </button>

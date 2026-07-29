@@ -107,17 +107,7 @@ function GestionActionRow({ groupLabel, emoji, title, lastDate, todaySXM, thresh
 // "dernier import" depuis MOKA_Sales_History/MOKA_Banque (voir
 // /api/imports/summary et /api/imports/bank) ; l'Inventaire n'a pas
 // d'historique suivi par design.
-function GestionQuotidienneSection({ router, todaySXM }) {
-  const [lastDaily, setLastDaily] = useState(null);
-  const [lastWeekly, setLastWeekly] = useState(null);
-  const [lastBank, setLastBank] = useState(null);
-
-  useEffect(() => {
-    fetch("/api/imports/summary?type=daily").then((r) => r.json()).then((d) => setLastDaily(d.lastDate || null)).catch(() => {});
-    fetch("/api/imports/summary?type=weekly").then((r) => r.json()).then((d) => setLastWeekly(d.lastDate || null)).catch(() => {});
-    fetch("/api/imports/bank").then((r) => r.json()).then((d) => setLastBank(d.lastDate || null)).catch(() => {});
-  }, []);
-
+function GestionQuotidienneSection({ router, todaySXM, lastDaily, lastWeekly, lastBank }) {
   return (
     <SectionCard title="📋 Gestion quotidienne">
       <div className="space-y-4">
@@ -171,6 +161,27 @@ function KpiStat({ label, value, format }) {
     <div className="rounded-2xl border border-[#e5d5c5] bg-white p-3.5 min-w-0">
       <div className="text-lg font-black text-[#2c1a10] truncate">{display}</div>
       <div className="text-[9px] font-bold text-[#9a7060] uppercase tracking-wide mt-1">{label}</div>
+    </div>
+  );
+}
+
+// UX audit (28 jul 2026) — le Dashboard empilait 12 tuiles KPI côte à côte,
+// obligeant le manager à faire la moyenne de 12 chiffres pour trouver celui
+// qui compte. Ce hero est le seul Niveau 1 de la page : un total, jamais
+// un détail. Vide, il se replie sur une ligne (Skill 6) au lieu de garder
+// une grosse carte creuse — le reste du dashboard redevient le focus.
+function TodayActionsHero({ total }) {
+  if (total === 0) {
+    return (
+      <div className="text-sm font-bold text-[#5a7828] py-1">✓ Rien à faire aujourd&apos;hui</div>
+    );
+  }
+  return (
+    <div className="rounded-3xl p-6" style={{ background: "#2c1a10" }}>
+      <div className="text-6xl font-black text-white leading-none">{total}</div>
+      <div className="text-sm font-black text-white/80 uppercase tracking-wide mt-2">
+        {`action${total !== 1 ? "s" : ""} à faire aujourd'hui`}
+      </div>
     </div>
   );
 }
@@ -266,6 +277,9 @@ export default function ManagerHomePage() {
   const [recettesMappees, setRecettesMappees] = useState(null);
   const [showMonthlyReport, setShowMonthlyReport] = useState(false);
   const [showCommandeClient, setShowCommandeClient] = useState(false);
+  const [lastDaily, setLastDaily] = useState(null);
+  const [lastWeekly, setLastWeekly] = useState(null);
+  const [lastBank, setLastBank] = useState(null);
 
   useEffect(() => {
     if (!isAdmin) router.replace("/home");
@@ -325,6 +339,15 @@ export default function ManagerHomePage() {
     return () => { ignore = true; };
   }, [isAdmin]);
 
+  // Levé hors de GestionQuotidienneSection : le hero "actions du jour" et
+  // la section elle-même ont besoin des mêmes 3 dates, une seule fois.
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetch("/api/imports/summary?type=daily").then((r) => r.json()).then((d) => setLastDaily(d.lastDate || null)).catch(() => {});
+    fetch("/api/imports/summary?type=weekly").then((r) => r.json()).then((d) => setLastWeekly(d.lastDate || null)).catch(() => {});
+    fetch("/api/imports/bank").then((r) => r.json()).then((d) => setLastBank(d.lastDate || null)).catch(() => {});
+  }, [isAdmin]);
+
   if (!isAdmin) return null;
   if (dashboard === null) return <DashboardSkeleton />;
 
@@ -335,6 +358,17 @@ export default function ManagerHomePage() {
   const enService = staffToday.filter((s) => s.statut === "present" || s.statut === "pause").length;
   const financier = dashboard?.financier || {};
   const todaySXM = dashboard?.date || null;
+
+  const isImportOverdue = (lastDate, thresholdDays) => {
+    const days = daysSince(lastDate, todaySXM);
+    return days === null || days > thresholdDays;
+  };
+  const overdueImports = [
+    isImportOverdue(lastDaily, 1),
+    isImportOverdue(lastWeekly, 7),
+    isImportOverdue(lastBank, 35),
+  ].filter(Boolean).length;
+  const heroTotal = critiques.length + prepasUrgentes.length + incidentsOuverts + overdueImports;
 
   const kpis = [
     { label: "Critiques", value: critiques.length, color: critiques.length > 0 ? "#b91c1c" : "#2c1a10" },
@@ -358,6 +392,8 @@ export default function ManagerHomePage() {
         )}
       </div>
       <h1 className="text-xl font-black text-[#2c1a10] -mt-3">Vue manager</h1>
+
+      <TodayActionsHero total={heroTotal} />
 
       <LivraisonsAujourdhuiCard orders={supplierOrders} onReceived={refreshSupplierOrders} />
 
@@ -422,9 +458,21 @@ export default function ManagerHomePage() {
         )}
       </div>
 
-      <SectionCard title="💰 Indicateurs financiers">
-        <div className="grid grid-cols-2 gap-3">
-          <KpiStat label="CA du jour" value={financier.ca_jour} />
+      {/* UX audit (28 jul 2026) — 8 tuiles toujours visibles obligeaient à
+          tout lire pour trouver le seul chiffre qui compte. Repliées derrière
+          "Voir les finances" (Skill 11) ; le CA du jour reste en aperçu. */}
+      <details className="rounded-2xl border border-[#e5d5c5] bg-white overflow-hidden [&::-webkit-details-marker]:hidden">
+        <summary className="p-4 cursor-pointer flex items-center justify-between gap-2 list-none">
+          <div>
+            <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">💰 Finances</div>
+            <div className="text-lg font-black text-[#2c1a10] mt-1">
+              {financier.ca_jour !== null && financier.ca_jour !== undefined ? formatEuros(financier.ca_jour) : "—"}
+              <span className="text-xs text-[#9a7060] font-bold ml-1.5">CA du jour</span>
+            </div>
+          </div>
+          <span className="text-xs font-bold text-[#9a7060] shrink-0">Voir tout ▾</span>
+        </summary>
+        <div className="px-4 pb-4 pt-1 grid grid-cols-2 gap-3">
           <KpiStat label="CA de la semaine" value={financier.ca_semaine} />
           <KpiStat label="CA du mois" value={financier.ca_mois} />
           <KpiStat label="Trésorerie" value={financier.tresorerie} />
@@ -433,9 +481,9 @@ export default function ManagerHomePage() {
           <KpiStat label="Produit star (semaine)" value={financier.produit_star_semaine} format="text" />
           <KpiStat label="Valeur stock théorique" value={financier.valeur_stock} />
         </div>
-      </SectionCard>
+      </details>
 
-      <GestionQuotidienneSection router={router} todaySXM={todaySXM} />
+      <GestionQuotidienneSection router={router} todaySXM={todaySXM} lastDaily={lastDaily} lastWeekly={lastWeekly} lastBank={lastBank} />
 
       <FinanceButton
         emoji="📋"

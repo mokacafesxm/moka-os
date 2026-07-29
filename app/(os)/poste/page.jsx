@@ -86,6 +86,58 @@ function SectionCard({ title, children }) {
   );
 }
 
+// UX audit (28 jul 2026) — Recettes/Fiches/Températures/Historique sont de
+// la référence, pas le travail du jour : Bar/Cuisine empilaient 11 cartes
+// de même poids, obligeant 3-4 écrans de scroll pour les atteindre pendant
+// un rush. Regroupées derrière une seule disclosure (Skill 11, comme
+// "Livraisons ▼ Voir l'historique").
+function PlusTardSection({ children }) {
+  return (
+    <details className="rounded-2xl border border-[#e5d5c5] bg-white overflow-hidden [&::-webkit-details-marker]:hidden">
+      <summary className="p-4 cursor-pointer flex items-center justify-between gap-2 list-none">
+        <span className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">Plus tard</span>
+        <span className="text-xs font-bold text-[#9a7060]">Recettes · Fiches · Températures · Historique ▾</span>
+      </summary>
+      <div className="px-4 pb-4 pt-1 space-y-4">{children}</div>
+    </details>
+  );
+}
+
+// Niveau 1 de Mon Poste — le seul bloc dont la taille dépasse tout le
+// reste. Priorité : rupture critique > tâche urgente > livraison du jour >
+// rien (repli sur une ligne, jamais une carte creuse — Skill 6).
+function PosteHeroBlocker({ criticalStockCount, urgentTasksCount, hasLivraisonToday }) {
+  if (criticalStockCount > 0) {
+    return (
+      <div className="rounded-3xl p-5 text-white" style={{ background: "#b91c1c" }}>
+        <div className="text-4xl font-black leading-none">{criticalStockCount}</div>
+        <div className="text-sm font-black uppercase tracking-wide mt-2 opacity-90">
+          {`ingrédient${criticalStockCount !== 1 ? "s" : ""} en rupture critique`}
+        </div>
+      </div>
+    );
+  }
+  if (urgentTasksCount > 0) {
+    return (
+      <div className="rounded-3xl p-5 text-white" style={{ background: "#d97706" }}>
+        <div className="text-4xl font-black leading-none">{urgentTasksCount}</div>
+        <div className="text-sm font-black uppercase tracking-wide mt-2 opacity-90">
+          {`tâche${urgentTasksCount !== 1 ? "s" : ""} urgente${urgentTasksCount !== 1 ? "s" : ""} à faire`}
+        </div>
+      </div>
+    );
+  }
+  if (hasLivraisonToday) {
+    return (
+      <div className="rounded-3xl p-5 text-white" style={{ background: "#2c1a10" }}>
+        <div className="text-lg font-black">🚚 Livraison prévue aujourd&apos;hui</div>
+        <div className="text-xs font-bold opacity-80 mt-1">Voir la card ci-dessous pour réceptionner</div>
+      </div>
+    );
+  }
+  return <div className="text-sm font-bold text-[#5a7828] py-1">✓ Rien d&apos;urgent pour l&apos;instant</div>;
+}
+
 function ClosingBanner({ hour, minute }) {
   if (hour < 14 || hour >= 16) return null;
   const minutesToClose = CLOSE_HOUR * 60 - (hour * 60 + minute);
@@ -353,7 +405,7 @@ function LivraisonsHistorySection({ orders }) {
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <div className="text-sm font-bold text-[#2c1a10]">{o.fournisseur}</div>
-                    <div className="text-[11px] text-[#9a7060]">{o.date?.slice(0, 10)} · {nbProduits} produit{nbProduits !== 1 ? "s" : ""}</div>
+                    <div className="text-[11px] text-[#9a7060]">{`${o.date?.slice(0, 10) || ""} · ${nbProduits} produit${nbProduits !== 1 ? "s" : ""}`}</div>
                   </div>
                   <span className="text-[9px] font-black px-2 py-1 rounded-lg bg-[#f0f7e5] text-[#5a7828] shrink-0">✅ Reçu</span>
                 </div>
@@ -573,7 +625,7 @@ function UrgentTasksBlockModal({ tasks, onClose, onIgnore, ignoring }) {
       >
         <h2 className="text-base font-black text-[#b91c1c]">⚠️ Impossible de terminer le service</h2>
         <p className="text-sm font-bold text-[#2c1a10]">
-          {tasks.length} tâche{tasks.length !== 1 ? "s" : ""} urgente{tasks.length !== 1 ? "s" : ""} non complétée{tasks.length !== 1 ? "s" : ""} :
+          {`${tasks.length} tâche${tasks.length !== 1 ? "s" : ""} urgente${tasks.length !== 1 ? "s" : ""} non complétée${tasks.length !== 1 ? "s" : ""} :`}
         </p>
         <ul className="space-y-1">
           {tasks.map((t) => (
@@ -772,6 +824,20 @@ export default function PostePage() {
     [stockLive]
   );
 
+  // UX audit (28 jul 2026) — mêmes ingrédients que StocksBasCard/
+  // ResumeTachesCard/LivraisonsAujourdhuiCard, réduits à ce qu'il faut pour
+  // décider quel bloc Niveau 1 afficher (voir PosteHeroBlocker).
+  const criticalStockCountBar = useMemo(() => stockBasBar.filter((i) => String(i.statut || "").includes("Critique")).length, [stockBasBar]);
+  const criticalStockCountCuisine = useMemo(() => stockBasCuisine.filter((i) => String(i.statut || "").includes("Critique")).length, [stockBasCuisine]);
+  const urgentTasksCount = useMemo(() => {
+    const doneIds = new Set(executions.map((e) => e.tacheId).filter(Boolean));
+    return zoneTaches.filter((t) => !doneIds.has(t.id) && (t.priorite === "Critique" || t.priorite === "Haute")).length;
+  }, [zoneTaches, executions]);
+  const hasLivraisonToday = useMemo(
+    () => canLivraisons && supplierOrders.some((o) => o.dateLivraisonPrevue?.slice(0, 10) === todaySXM && o.statut !== "Reçu"),
+    [canLivraisons, supplierOrders, todaySXM]
+  );
+
   // "Changer de poste" ramène le SplashScreen (poste-first, voir Sprint 12)
   // au lieu de son propre picker local — la sélection poste+staff vit
   // maintenant au niveau AppShell, avant que cette page ne soit atteignable.
@@ -911,10 +977,15 @@ export default function PostePage() {
 
       {poste === "Bar" && (
         <>
+          <PosteHeroBlocker
+            criticalStockCount={criticalStockCountBar}
+            urgentTasksCount={urgentTasksCount}
+            hasLivraisonToday={hasLivraisonToday}
+          />
           {canLivraisons && <LivraisonsAujourdhuiCard orders={supplierOrders} onReceived={refreshSupplierOrders} />}
           {/* Tablette (>= md) : 2 colonnes — gauche statut/stocks/tâches (60%),
-              droite recettes/températures/livraisons (40%). Sur mobile,
-              grid-cols-1 empile les deux colonnes dans le même ordre qu'avant. */}
+              droite le reste (40%). Sur mobile, grid-cols-1 empile les deux
+              colonnes dans le même ordre qu'avant. */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[3fr_2fr] md:gap-6">
             <div className="space-y-4">
               <PosteStatusCard poste="Bar" status={posteStatus} onRequestFermeture={() => handleRequestFermeture(`/workflows/${WORKFLOW_IDS_BY_POSTE.Bar.fermeture}`)} />
@@ -923,15 +994,17 @@ export default function PostePage() {
               <ResumeTachesCard zoneTaches={zoneTaches} executions={executions} />
             </div>
             <div className="space-y-4">
-              <RecettesSection
-                title="Recettes Bar"
-                recettes={recettesBar}
-                emoji="☕"
-                emptyLabel="Aucune recette classée « Bar » pour l'instant"
-              />
-              <FichesSection fiches={fiches} />
-              <SectionCard title="Températures"><TempsList executions={executions} posteNom="Bar" /></SectionCard>
-              {canLivraisons && <LivraisonsHistorySection orders={supplierOrders} />}
+              <PlusTardSection>
+                <RecettesSection
+                  title="Recettes Bar"
+                  recettes={recettesBar}
+                  emoji="☕"
+                  emptyLabel="Aucune recette classée « Bar » pour l'instant"
+                />
+                <FichesSection fiches={fiches} />
+                <SectionCard title="Températures"><TempsList executions={executions} posteNom="Bar" /></SectionCard>
+                {canLivraisons && <LivraisonsHistorySection orders={supplierOrders} />}
+              </PlusTardSection>
             </div>
           </div>
         </>
@@ -939,6 +1012,11 @@ export default function PostePage() {
 
       {poste === "Cuisine" && (
         <>
+          <PosteHeroBlocker
+            criticalStockCount={criticalStockCountCuisine}
+            urgentTasksCount={urgentTasksCount}
+            hasLivraisonToday={hasLivraisonToday}
+          />
           {canLivraisons && <LivraisonsAujourdhuiCard orders={supplierOrders} onReceived={refreshSupplierOrders} />}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[3fr_2fr] md:gap-6">
             <div className="space-y-4">
@@ -948,15 +1026,17 @@ export default function PostePage() {
               <ResumeTachesCard zoneTaches={zoneTaches} executions={executions} />
             </div>
             <div className="space-y-4">
-              <RecettesSection
-                title="Recettes"
-                recettes={recettesCuisine}
-                emoji="👨‍🍳"
-                emptyLabel="Aucune recette classée « Cuisine » pour l'instant"
-              />
-              <FichesSection fiches={fiches} />
-              <SectionCard title="Températures"><TempsList executions={executions} posteNom="Cuisine" /></SectionCard>
-              {canLivraisons && <LivraisonsHistorySection orders={supplierOrders} />}
+              <PlusTardSection>
+                <RecettesSection
+                  title="Recettes"
+                  recettes={recettesCuisine}
+                  emoji="👨‍🍳"
+                  emptyLabel="Aucune recette classée « Cuisine » pour l'instant"
+                />
+                <FichesSection fiches={fiches} />
+                <SectionCard title="Températures"><TempsList executions={executions} posteNom="Cuisine" /></SectionCard>
+                {canLivraisons && <LivraisonsHistorySection orders={supplierOrders} />}
+              </PlusTardSection>
             </div>
           </div>
         </>

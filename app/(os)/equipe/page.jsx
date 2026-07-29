@@ -132,6 +132,57 @@ function EditMemberModal({ member, onClose, onSaved }) {
   );
 }
 
+// UX audit (28 jul 2026) — chaque carte staff avait le même poids visuel,
+// qu'elle soit en service ou non ; la vraie question d'un manager ("qui est
+// là maintenant ?") demandait de tout scanner. Extrait en composant pour
+// afficher "En service" comme groupe Niveau 2 en haut, le reste en Niveau 3.
+function MemberCard({ member, enService, heures, onEdit }) {
+  return (
+    <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
+      <div className="flex items-start gap-3">
+        <span
+          className="rounded-full flex items-center justify-center text-base font-black text-white shrink-0"
+          style={{ width: 48, height: 48, background: "#2c1a10" }}
+        >
+          {initials(member.name)}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-black text-sm text-[#2c1a10]">{member.name}</span>
+            {enService && (
+              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-[#f0f7e5] text-[#5a7828]">
+                En service
+              </span>
+            )}
+            <span
+              className="text-[9px] font-black px-1.5 py-0.5 rounded-full"
+              style={{
+                color: member.actif ? "#5a7828" : "#9a7060",
+                background: member.actif ? "#f0f7e5" : "#f0e8dc",
+              }}
+            >
+              {member.actif ? "Actif" : "Inactif"}
+            </span>
+          </div>
+          <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
+            {member.poste || "Poste non défini"}
+          </div>
+          <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
+            {heures > 0 ? `${formatHeures(heures)} ce mois-ci` : "Aucune heure ce mois-ci"}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="shrink-0 h-9 px-3.5 rounded-xl bg-[#f0e8dc] text-[#2c1a10] text-xs font-black cursor-pointer hover:bg-[#e5d5c5] transition-colors"
+        >
+          Modifier
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function EquipePage() {
   const router = useRouter();
   const { isAdmin, clockStatuses } = useStaffContext();
@@ -177,6 +228,14 @@ export default function EquipePage() {
     () => [...staff].sort((a, b) => (b.actif ? 1 : 0) - (a.actif ? 1 : 0) || a.name.localeCompare(b.name, "fr")),
     [staff]
   );
+  const enServiceStaff = useMemo(
+    () => sortedStaff.filter((m) => ["present", "pause"].includes(clockStatuses[m.name])),
+    [sortedStaff, clockStatuses]
+  );
+  const otherStaff = useMemo(
+    () => sortedStaff.filter((m) => !["present", "pause"].includes(clockStatuses[m.name])),
+    [sortedStaff, clockStatuses]
+  );
 
   if (!isAdmin) return null;
 
@@ -200,57 +259,47 @@ export default function EquipePage() {
       )}
 
       {!loading && !error && (
-        <div className="space-y-3">
-          {sortedStaff.map((member) => {
-            const enService = ["present", "pause"].includes(clockStatuses[member.name]);
-            const heures = heuresParStaff[member.name] || 0;
-            return (
-              <div key={member.id} className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
-                <div className="flex items-start gap-3">
-                  <span
-                    className="rounded-full flex items-center justify-center text-base font-black text-white shrink-0"
-                    style={{ width: 48, height: 48, background: "#2c1a10" }}
-                  >
-                    {initials(member.name)}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-black text-sm text-[#2c1a10]">{member.name}</span>
-                      {enService && (
-                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-[#f0f7e5] text-[#5a7828]">
-                          En service
-                        </span>
-                      )}
-                      <span
-                        className="text-[9px] font-black px-1.5 py-0.5 rounded-full"
-                        style={{
-                          color: member.actif ? "#5a7828" : "#9a7060",
-                          background: member.actif ? "#f0f7e5" : "#f0e8dc",
-                        }}
-                      >
-                        {member.actif ? "Actif" : "Inactif"}
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
-                      {member.poste || "Poste non défini"}
-                    </div>
-                    <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
-                      {heures > 0 ? `${formatHeures(heures)} ce mois-ci` : "Aucune heure ce mois-ci"}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setEditingMember(member)}
-                    className="shrink-0 h-9 px-3.5 rounded-xl bg-[#f0e8dc] text-[#2c1a10] text-xs font-black cursor-pointer hover:bg-[#e5d5c5] transition-colors"
-                  >
-                    Modifier
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+        <div className="space-y-5">
           {sortedStaff.length === 0 && (
             <div className="text-center text-sm text-[#9a7060] py-10">Aucun membre d&apos;équipe</div>
+          )}
+
+          {enServiceStaff.length > 0 && (
+            <div>
+              <div className="text-[10px] font-black text-[#5a7828] uppercase tracking-[0.3em] mb-2">
+                En service ({enServiceStaff.length})
+              </div>
+              <div className="space-y-3">
+                {enServiceStaff.map((member) => (
+                  <MemberCard
+                    key={member.id}
+                    member={member}
+                    enService
+                    heures={heuresParStaff[member.name] || 0}
+                    onEdit={() => setEditingMember(member)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {otherStaff.length > 0 && (
+            <div>
+              <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-2">
+                Reste de l&apos;équipe ({otherStaff.length})
+              </div>
+              <div className="space-y-3">
+                {otherStaff.map((member) => (
+                  <MemberCard
+                    key={member.id}
+                    member={member}
+                    enService={false}
+                    heures={heuresParStaff[member.name] || 0}
+                    onEdit={() => setEditingMember(member)}
+                  />
+                ))}
+              </div>
+            </div>
           )}
         </div>
       )}

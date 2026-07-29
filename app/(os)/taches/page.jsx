@@ -64,30 +64,49 @@ function WorkflowStepModal({ tache, onClose, onSubmit, submitting }) {
   );
 }
 
-function TaskGroup({ title, color, items, onSelect }) {
+// UX audit (28 jul 2026) — "Faites" n'avait pas de repli : une journée
+// productive repoussait "À faire" plus bas que nécessaire. Au-delà de 3
+// tâches faites, on replie derrière un <details> — Skill 11, disclosure
+// progressive — au lieu d'étendre la liste indéfiniment.
+function TaskGroup({ title, color, items, onSelect, collapsible }) {
   if (items.length === 0) return null;
+  const list = (
+    <div className="space-y-2">
+      {items.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          onClick={() => onSelect?.(t)}
+          disabled={!onSelect}
+          className="w-full text-left rounded-2xl border border-[#e5d5c5] bg-white p-3.5 flex items-center justify-between gap-2 cursor-pointer disabled:cursor-default"
+        >
+          <div>
+            <div className="font-black text-sm text-[#2c1a10]">{t.nom}</div>
+            <div className="text-[10px] text-[#9a7060] font-semibold mt-1">{t.frequence} · {t.moment}</div>
+          </div>
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+        </button>
+      ))}
+    </div>
+  );
+
+  if (collapsible && items.length > 3) {
+    return (
+      <details className="mb-4">
+        <summary className="text-[10px] font-black uppercase tracking-[0.3em] mb-2 cursor-pointer" style={{ color }}>
+          {title} ({items.length}) — voir ▾
+        </summary>
+        <div className="mt-2">{list}</div>
+      </details>
+    );
+  }
+
   return (
     <div className="mb-4">
       <div className="text-[10px] font-black uppercase tracking-[0.3em] mb-2" style={{ color }}>
         {title} ({items.length})
       </div>
-      <div className="space-y-2">
-        {items.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => onSelect?.(t)}
-            disabled={!onSelect}
-            className="w-full text-left rounded-2xl border border-[#e5d5c5] bg-white p-3.5 flex items-center justify-between gap-2 cursor-pointer disabled:cursor-default"
-          >
-            <div>
-              <div className="font-black text-sm text-[#2c1a10]">{t.nom}</div>
-              <div className="text-[10px] text-[#9a7060] font-semibold mt-1">{t.frequence} · {t.moment}</div>
-            </div>
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-          </button>
-        ))}
-      </div>
+      {list}
     </div>
   );
 }
@@ -180,7 +199,7 @@ export default function TachesPage() {
         <>
           <TaskGroup title="Urgentes" color="#b91c1c" items={urgentes} onSelect={setSelectedTache} />
           <TaskGroup title="À faire" color="#d97706" items={aFaire} onSelect={setSelectedTache} />
-          <TaskGroup title="Faites" color="#5a7828" items={faites} />
+          <TaskGroup title="Faites" color="#5a7828" items={faites} collapsible />
         </>
       )}
 

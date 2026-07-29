@@ -15,6 +15,40 @@ function groupBy(list, key) {
   return groups;
 }
 
+// UX audit (28 jul 2026) — Stock était le seul écran dont tout le rôle est
+// de montrer un statut, sans jamais colorer ce statut. Le champ existe déjà
+// (i.statut) ; on l'utilise enfin pour trier et colorer au lieu de le
+// laisser en texte gris uniforme.
+function isCritiqueStatut(s) {
+  return String(s || "").toLowerCase().includes("critique");
+}
+function isAlerteStatut(s) {
+  return String(s || "").toLowerCase().includes("stock bas") || String(s || "").toLowerCase().includes("alerte");
+}
+function statutRank(s) {
+  if (isCritiqueStatut(s)) return 0;
+  if (isAlerteStatut(s)) return 1;
+  return 2;
+}
+function sortByUrgency(items) {
+  return [...items].sort((a, b) => statutRank(a.statut) - statutRank(b.statut));
+}
+
+function StatusBadge({ statut }) {
+  const critique = isCritiqueStatut(statut);
+  const alerte = isAlerteStatut(statut);
+  const style = critique
+    ? "bg-red-50 text-red-700"
+    : alerte
+    ? "bg-orange-50 text-orange-700"
+    : "bg-[#f0e8dc] text-[#9a7060]";
+  return (
+    <span className={`text-[10px] font-black px-2 py-1 rounded-full shrink-0 whitespace-nowrap ${style}`}>
+      {statut}
+    </span>
+  );
+}
+
 function SearchBar({ value, onChange, placeholder }) {
   return (
     <input
@@ -33,7 +67,11 @@ function StockLiveTab({ stockLive }) {
     () => stockLive.filter((i) => i.name.toLowerCase().includes(search.toLowerCase())),
     [stockLive, search]
   );
-  const grouped = useMemo(() => groupBy(filtered, "zone"), [filtered]);
+  const grouped = useMemo(() => {
+    const g = groupBy(filtered, "zone");
+    Object.keys(g).forEach((k) => { g[k] = sortByUrgency(g[k]); });
+    return g;
+  }, [filtered]);
 
   return (
     <div>
@@ -48,7 +86,7 @@ function StockLiveTab({ stockLive }) {
                   <div className="font-black text-sm text-[#2c1a10]">{i.name}</div>
                   <div className="text-[11px] text-[#9a7060]">{i.quantiteStock} {i.uniteStock}</div>
                 </div>
-                <span className="text-[10px] font-bold text-[#9a7060] shrink-0">{i.statut}</span>
+                <StatusBadge statut={i.statut} />
               </div>
             ))}
           </div>
@@ -95,19 +133,20 @@ function InventaireTab({ stockLive }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("Tous");
 
-  const isCritique = (s) => String(s || "").toLowerCase().includes("critique");
-  const isAlerte = (s) => String(s || "").toLowerCase().includes("stock bas") || String(s || "").toLowerCase().includes("alerte");
-
   const filtered = useMemo(() => stockLive.filter((i) => {
     if (!i.name.toLowerCase().includes(search.toLowerCase())) return false;
-    if (statusFilter === "Critiques") return isCritique(i.statut);
-    if (statusFilter === "Stock bas") return isAlerte(i.statut);
+    if (statusFilter === "Critiques") return isCritiqueStatut(i.statut);
+    if (statusFilter === "Stock bas") return isAlerteStatut(i.statut);
     return true;
   }), [stockLive, search, statusFilter]);
 
-  const grouped = useMemo(() => groupBy(filtered, "category"), [filtered]);
-  const critCount = stockLive.filter((i) => isCritique(i.statut)).length;
-  const alertCount = stockLive.filter((i) => isAlerte(i.statut)).length;
+  const grouped = useMemo(() => {
+    const g = groupBy(filtered, "category");
+    Object.keys(g).forEach((k) => { g[k] = sortByUrgency(g[k]); });
+    return g;
+  }, [filtered]);
+  const critCount = stockLive.filter((i) => isCritiqueStatut(i.statut)).length;
+  const alertCount = stockLive.filter((i) => isAlerteStatut(i.statut)).length;
 
   return (
     <div>
@@ -156,7 +195,7 @@ function InventaireTab({ stockLive }) {
                   <div className="font-black text-sm text-[#2c1a10]">{i.name}</div>
                   <div className="text-[11px] text-[#9a7060]">{i.quantiteStock} {i.uniteStock}</div>
                 </div>
-                <span className="text-[10px] font-bold text-[#9a7060] shrink-0">{i.statut}</span>
+                <StatusBadge statut={i.statut} />
               </div>
             ))}
           </div>

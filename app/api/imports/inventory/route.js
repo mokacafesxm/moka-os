@@ -111,6 +111,11 @@ export async function POST(request) {
       };
     });
 
+    // UX audit (28 jul 2026) — trié par sévérité plutôt que par ordre du
+    // fichier uploadé : le pire écart doit apparaître en premier, pas être
+    // noyé au milieu d'une longue liste de lignes saines.
+    ecarts.sort((a, b) => b.perte - a.perte);
+
     const totalPertes = ecarts.reduce((sum, e) => sum + e.perte, 0);
     const nbAlertes = ecarts.filter((e) => e.alerte).length;
 

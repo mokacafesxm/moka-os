@@ -23,6 +23,7 @@ export default function RecettesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!isAdmin) router.replace("/home");
@@ -69,6 +70,12 @@ export default function RecettesPage() {
     () => lines.filter((l) => l.soldProductId === selectedId && l.active),
     [lines, selectedId]
   );
+  // UX audit (28 jul 2026) — liste potentiellement longue sans recherche,
+  // contrairement à Stock/Catalogue qui en ont déjà une. Même pattern ici.
+  const filteredProducts = useMemo(
+    () => soldProducts.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())),
+    [soldProducts, search]
+  );
 
   if (!isAdmin) return null;
 
@@ -103,10 +110,22 @@ export default function RecettesPage() {
 
       {!loading && !error && !selectedProduct && (
         <div className="space-y-2">
+          {soldProducts.length > 0 && (
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher une recette…"
+              className="w-full h-11 px-4 rounded-2xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] mb-1"
+            />
+          )}
           {soldProducts.length === 0 && (
             <div className="text-center text-sm text-[#9a7060] py-10">Aucun produit vendu créé pour l'instant</div>
           )}
-          {soldProducts.map((product) => {
+          {soldProducts.length > 0 && filteredProducts.length === 0 && (
+            <div className="text-center text-sm text-[#9a7060] py-10">Aucun résultat</div>
+          )}
+          {filteredProducts.map((product) => {
             const status = computeStatus(product, lines);
             return (
               <button
