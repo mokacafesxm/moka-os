@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
 import LivraisonsAujourdhuiCard from "../../components/shared/LivraisonsAujourdhuiCard";
-import CommandeClientKDSModal from "../../components/shared/CommandeClientKDSModal";
 
 const STATUS_LABEL = { present: "Présent", pause: "En pause", done: "Terminé", absent: "Absent" };
 const STATUS_COLOR = { present: "#5a7828", pause: "#d97706", done: "#9a7060", absent: "#e5d5c5" };
@@ -267,6 +266,94 @@ function SectionCard({ title, children }) {
   );
 }
 
+const KDS_STATUS_COLOR = { "Nouvelle": "#c0562f", "En préparation": "#b8860b", "Prête": "#5a7828", "Récupérée": "#6b4a3d" };
+const KDS_NEXT_ACTION = { "Nouvelle": "Commencer", "En préparation": "Prête", "Prête": "Récupérée" };
+const KDS_POLL_MS = 5000;
+
+// UX audit — "🛎 Commande client" ouvrait un modal plein écran avec le
+// board complet ; ce résumé inline sur le dashboard couvre le besoin
+// principal du manager ("où en sont les commandes en cours ?") sans
+// quitter la page. Le modal (ClientOrdersKDS) reste disponible sur /commandes.
+function KdsCard() {
+  const [orders, setOrders] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [busyId, setBusyId] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    async function tick() {
+      try {
+        const res = await fetch(`/api/orders/board?t=${Date.now()}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active) { setOrders(data.orders || []); setLoaded(true); }
+      } catch {
+        /* transient — next tick retries */
+      }
+    }
+    tick();
+    const id = setInterval(tick, KDS_POLL_MS);
+    return () => { active = false; clearInterval(id); };
+  }, []);
+
+  const advance = async (order) => {
+    setBusyId(order.id);
+    try {
+      const res = await fetch("/api/orders/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: order.id }),
+      });
+      const data = await res.json();
+      if (res.ok) setOrders((list) => list.map((o) => (o.id === order.id ? { ...o, prepStatus: data.status } : o)));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const enCours = orders.filter((o) => o.prepStatus !== "Récupérée");
+
+  return (
+    <SectionCard title="🖥 KDS — Commandes en cours">
+      {!loaded ? (
+        <div className="text-sm text-[#9a7060] py-2">Chargement…</div>
+      ) : enCours.length === 0 ? (
+        <div className="text-sm text-[#9a7060] py-2">Aucune commande en cours ✓</div>
+      ) : (
+        <div className="space-y-2">
+          {enCours.map((o) => (
+            <div key={o.id} className="flex items-center justify-between gap-2 rounded-xl border border-[#e5d5c5] p-2.5">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-sm text-[#2c1a10]">{o.code}</span>
+                  <span
+                    className="text-[9px] font-black px-1.5 py-0.5 rounded-full text-white shrink-0"
+                    style={{ background: KDS_STATUS_COLOR[o.prepStatus] || "#9a7060" }}
+                  >
+                    {o.prepStatus}
+                  </span>
+                </div>
+                <div className="text-xs text-[#9a7060] font-semibold truncate">{o.client}</div>
+              </div>
+              {KDS_NEXT_ACTION[o.prepStatus] && (
+                <button
+                  type="button"
+                  onClick={() => advance(o)}
+                  disabled={busyId === o.id}
+                  className="shrink-0 h-9 px-3 rounded-xl text-white text-xs font-black cursor-pointer disabled:opacity-50"
+                  style={{ background: KDS_STATUS_COLOR[o.prepStatus] }}
+                >
+                  {KDS_NEXT_ACTION[o.prepStatus]}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
 export default function ManagerHomePage() {
   const router = useRouter();
   const { isAdmin } = useStaffContext();
@@ -276,7 +363,6 @@ export default function ManagerHomePage() {
   const [dashboardRefreshing, setDashboardRefreshing] = useState(false);
   const [recettesMappees, setRecettesMappees] = useState(null);
   const [showMonthlyReport, setShowMonthlyReport] = useState(false);
-  const [showCommandeClient, setShowCommandeClient] = useState(false);
   const [lastDaily, setLastDaily] = useState(null);
   const [lastWeekly, setLastWeekly] = useState(null);
   const [lastBank, setLastBank] = useState(null);
@@ -411,14 +497,6 @@ export default function ManagerHomePage() {
         ))}
       </div>
 
-      <button
-        type="button"
-        onClick={() => setShowCommandeClient(true)}
-        className="bg-[#2c1a10] text-white rounded-2xl py-4 w-full font-black cursor-pointer active:scale-[0.98] transition-all"
-      >
-        🛎 Commande client
-      </button>
-
       <Link
         href="/recettes"
         className="flex items-center justify-between rounded-2xl border border-[#e5d5c5] bg-white p-4 cursor-pointer"
@@ -497,7 +575,9 @@ export default function ManagerHomePage() {
         onClick={() => setShowMonthlyReport(true)}
       />
 
-      <SectionCard title="Zones du restaurant">
+      <KdsCard />
+
+      <SectionCard title="🗺 Zones du restaurant">
         <div className="grid grid-cols-2 gap-3">
           {zonesPhysiques.map((zone) => (
             <div key={zone.id} className="rounded-2xl border border-[#e5d5c5] bg-[#faf5ef] p-3.5">
@@ -535,7 +615,6 @@ export default function ManagerHomePage() {
       </SectionCard>
 
       {showMonthlyReport && <MonthlyReportModal onClose={() => setShowMonthlyReport(false)} />}
-      {showCommandeClient && <CommandeClientKDSModal onClose={() => setShowCommandeClient(false)} />}
     </div>
   );
 }
