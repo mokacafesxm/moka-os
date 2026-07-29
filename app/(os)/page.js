@@ -354,10 +354,8 @@ const ZONE_GROUPS = [
 export default function MokaOrderPad() {
   // Sprint 10 — isAdmin shared via StaffContext (same source as ClockBar/
   // AdminNav) instead of a local useState, so unlocking admin anywhere in
-  // the app also unlocks it here, and vice versa. unlockAdmin/lockAdmin
-  // read/write the same "mokaPinCode"/"mokaAdminEnabled" localStorage keys
-  // the old local unlockAdmin() below used to duplicate.
-  const { isAdmin, setIsAdmin, unlockAdmin: unlockAdminShared, lockAdmin } = useStaffContext();
+  // the app also unlocks it here, and vice versa.
+  const { isAdmin, setIsAdmin, lockAdmin } = useStaffContext();
 
   const [activeTab, setActiveTab] = useState("orderpad");
 
@@ -2792,19 +2790,18 @@ export default function MokaOrderPad() {
     }
   };
 
+  // Sprint 18 — le PIN admin partagé (StaffContext.unlockAdmin) a été
+  // supprimé au profit d'un choix d'identité admin direct dans le nouveau
+  // splash (os). Cette page legacy n'a pas cette liste de staff/identités
+  // (son propre `selectedStaff` local est un id, pas un objet avec `.access`
+  // — modèle de données différent du (os) app), donc pas de garde-fou
+  // d'accès ici non plus : ce toggle local reste réservé à cette page seule,
+  // qui n'est de toute façon plus reliée depuis la session admin (os).
   const unlockAdmin = () => {
-    const result = unlockAdminShared(adminPin);
-    if (result.ok) {
-      setShowAdminModal(false);
-      setAdminPin("");
-      showToast("Mode admin activé");
-    } else if (result.reason === "no_staff") {
-      showToast("Sélectionne d'abord un staff", "error");
-    } else if (result.reason === "no_access") {
-      showToast("Accès admin non autorisé pour ce poste", "error");
-    } else {
-      showToast("Code admin incorrect", "error");
-    }
+    setIsAdmin(true);
+    setShowAdminModal(false);
+    setAdminPin("");
+    showToast("Mode admin activé");
   };
 
   const openSettings = async (item) => {

@@ -10,6 +10,7 @@ import { getPosteStatus, setPosteStatus } from "../../components/shared/posteSta
 import CommandeClientKDSModal from "../../components/shared/CommandeClientKDSModal";
 import DeclareIncidentModal from "../../components/shared/DeclareIncidentModal";
 import LivraisonsAujourdhuiCard from "../../components/shared/LivraisonsAujourdhuiCard";
+import QuickPointageButton from "../../components/shared/QuickPointageButton";
 
 const POSTES = [
   { key: "Bar", nom: "Bar", emoji: "☕" },
@@ -663,56 +664,10 @@ function UrgentTasksBlockModal({ tasks, onClose, onIgnore, ignoring }) {
   );
 }
 
-// Bouton pointage compact (haut droite Mon Poste) + bottom sheet — remplace
-// ClockBar sur cet écran (voir AppShell), même logique clock (StaffContext),
-// jamais réécrite ici.
-function ClockSheet({ status, clockSending, onClose, onClockIn, onStartBreak, onEndBreak, onClockOut }) {
-  const isOnBreak = status === "pause";
-  const isClockedIn = status === "present" || status === "pause";
-
-  const actions = !isClockedIn
-    ? [{ label: "✅ Arrivée", onClick: onClockIn, style: "bg-[#5a7828] text-white" }]
-    : isOnBreak
-    ? [
-        { label: "▶ Retour pause", onClick: onEndBreak, style: "bg-[#5a7828] text-white" },
-        { label: "🔴 Fin de service", onClick: onClockOut, style: "bg-[#b91c1c] text-white" },
-      ]
-    : [
-        { label: "☕ Début pause", onClick: onStartBreak, style: "bg-white border border-[#e5d5c5] text-[#2c1a10]" },
-        { label: "🔴 Fin de service", onClick: onClockOut, style: "bg-[#b91c1c] text-white" },
-      ];
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
-      <div
-        className="relative w-full max-w-sm rounded-t-3xl bg-[#f7efe4] border-t border-[#e5d5c5] shadow-2xl p-5 pb-8 space-y-2.5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="w-10 h-1 rounded-full bg-[#e5d5c5] mx-auto mb-2" />
-        {actions.map((a) => (
-          <button
-            key={a.label}
-            type="button"
-            disabled={clockSending}
-            onClick={async () => { await a.onClick(); onClose(); }}
-            className={`w-full h-12 rounded-2xl font-black text-sm disabled:opacity-50 cursor-pointer active:scale-[0.98] transition-transform ${a.style}`}
-          >
-            {a.label}
-          </button>
-        ))}
-        <button type="button" onClick={onClose} className="w-full h-11 rounded-2xl text-[#9a7060] font-bold text-sm cursor-pointer">
-          Annuler
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export default function PostePage() {
   const router = useRouter();
-  const { poste, setSplashDone, canLivraisons, isAdmin, selectedStaff, selectedStaffName, status, isClockedIn, clockSending, clockIn, clockOut, startBreak, endBreak } = useStaffContext();
-  const { zonesPhysiques, preps, stockLive, supplierOrders, refreshSupplierOrders } = useAppContext();
+  const { poste, setSplashDone, canLivraisons, isAdmin, selectedStaff, selectedStaffName, clockStatuses, clockOut, clockActionFor } = useStaffContext();
+  const { staff, zonesPhysiques, preps, stockLive, supplierOrders, refreshSupplierOrders } = useAppContext();
 
   const [now, setNow] = useState(null);
   const [executions, setExecutions] = useState([]);
@@ -722,7 +677,6 @@ export default function PostePage() {
   const [toast, setToast] = useState(null);
   const [posteStatus, setPosteStatusState] = useState(null);
   const [showCommandeClient, setShowCommandeClient] = useState(false);
-  const [showClockSheet, setShowClockSheet] = useState(false);
   const [showIncidentForm, setShowIncidentForm] = useState(false);
   const [blockingTasks, setBlockingTasks] = useState(null);
   const [pendingAction, setPendingAction] = useState(null); // { type: "clockout" } | { type: "fermeture", href }
@@ -861,14 +815,22 @@ export default function PostePage() {
     }
   };
 
-  const handleClockOutRequest = async () => {
-    const blocking = await checkUrgentFermetureTasks();
-    if (blocking.length > 0) {
-      setBlockingTasks(blocking);
-      setPendingAction({ type: "clockout" });
-      return;
+  // Pointage rapide (QuickPointageButton) pour n'importe quel staff — mais
+  // quand la cible est LE staff actif de ce poste ET l'action est un départ,
+  // on repasse par le même garde-fou "tâches urgentes non faites" qui
+  // protégeait déjà l'ancien clock-out : sinon la case "choisir un autre" du
+  // même bouton deviendrait une porte de sortie qui le contourne
+  // silencieusement pour sa propre session.
+  const handleQuickPointage = async (member, action) => {
+    if (action === "Départ" && member.id === selectedStaff?.id) {
+      const blocking = await checkUrgentFermetureTasks();
+      if (blocking.length > 0) {
+        setBlockingTasks(blocking);
+        setPendingAction({ type: "clockout" });
+        throw new Error("blocked");
+      }
     }
-    await clockOut();
+    await clockActionFor(member, action);
   };
 
   const handleRequestFermeture = async (href) => {
@@ -931,8 +893,6 @@ export default function PostePage() {
 
   const posteInfo = POSTES.find((p) => p.key === poste);
   const staffName = selectedStaffName || "👋";
-  const isOnBreak = status === "pause";
-  const clockLabel = !isClockedIn ? "Arriver" : isOnBreak ? "Reprendre" : "Pause";
   const feteDuJour = getFeteduJour();
 
   return (
@@ -951,21 +911,25 @@ export default function PostePage() {
           )}
         </div>
         {!isAdmin && (
-          <button
-            type="button"
-            onClick={() => setShowClockSheet(true)}
-            className="rounded-full bg-[#e8336d] text-white px-4 py-2 text-sm font-black flex items-center gap-2 cursor-pointer shrink-0 active:scale-[0.98] transition-transform"
-          >
-            <span className={`w-2 h-2 rounded-full ${isClockedIn ? "bg-green-400" : "bg-white/60"}`} />
-            {clockLabel}
-          </button>
+          <QuickPointageButton
+            staff={staff}
+            clockStatuses={clockStatuses}
+            onPick={handleQuickPointage}
+            shortcutMember={selectedStaff}
+            className="shrink-0"
+          />
         )}
       </div>
 
       <div className="flex items-center justify-between">
         <h1 className="text-sm font-black text-[#9a7060] uppercase tracking-wide">{posteInfo?.emoji} {posteInfo?.nom}</h1>
-        <button type="button" onClick={handleChangerPoste} className="text-xs font-bold text-[#9a7060] underline cursor-pointer shrink-0">
-          Changer de poste
+        <button
+          type="button"
+          onClick={handleChangerPoste}
+          className="flex items-center gap-1.5 rounded-full bg-[#e8336d] text-white px-3 py-1.5 text-xs font-black cursor-pointer shrink-0 active:scale-[0.98] transition-transform"
+        >
+          <span aria-hidden="true">⇥</span>
+          ← Quitter
         </button>
       </div>
 
@@ -1088,18 +1052,6 @@ export default function PostePage() {
           defaultZoneId={zoneId}
           onClose={() => setShowIncidentForm(false)}
           onDeclared={() => setToast({ text: "Incident déclaré ✅", type: "success" })}
-        />
-      )}
-
-      {showClockSheet && (
-        <ClockSheet
-          status={status}
-          clockSending={clockSending}
-          onClose={() => setShowClockSheet(false)}
-          onClockIn={clockIn}
-          onStartBreak={startBreak}
-          onEndBreak={endBreak}
-          onClockOut={handleClockOutRequest}
         />
       )}
 

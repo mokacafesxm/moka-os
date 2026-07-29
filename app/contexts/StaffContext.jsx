@@ -239,6 +239,17 @@ export function StaffProvider({ children }) {
     await sendClockAction("Arrivée", staffName);
   }, [sendClockAction]);
 
+  // Pointage rapide pour N'IMPORTE QUEL staff, sans toucher à selectedStaff —
+  // permet à un collègue de pointer (splash, Mon Poste) sans changer la
+  // session active de l'appareil. `action` est explicite (pas déduit ici) :
+  // un staff "present" a le choix entre Début pause / Fin de service, donc la
+  // décision revient à l'UI (voir QuickPointageButton), pas à ce helper.
+  const clockActionFor = useCallback(async (member, action) => {
+    const staffName = member?.name || member?.prenom || member?.nom || "";
+    if (!staffName || !action) return;
+    await sendClockAction(action, staffName);
+  }, [sendClockAction]);
+
   // Sprint 13 — Access (multi_select on Staff) gates which features the
   // *currently selected* staff can reach, independent of the PIN itself.
   const hasAccess = useCallback(
@@ -249,46 +260,18 @@ export function StaffProvider({ children }) {
   const canCommandes = hasAccess("Commandes");
   const canLivraisons = hasAccess("Livraisons");
 
-  // Même clés localStorage que le PIN admin de page.js (mokaAdminEnabled /
-  // mokaPinCode) — une seule source de vérité pour le code, même si le
-  // booléen "déverrouillé" reste par arbre de composants (page.js et cette
-  // app (os) ne partagent pas de state React) et se réinitialise au reload,
-  // comme le fait déjà page.js.
-  //
-  // Sprint 13 — the PIN alone is no longer sufficient: isAdmin only ever
-  // gets set if the currently selected staff also has "Admin" in Access.
-  // Returns a reason string instead of a plain boolean so callers can show
-  // the right message (wrong PIN vs. no staff picked vs. PIN correct but
-  // this identity isn't authorized) — `ok` alone stays boolean-truthy-safe
-  // for any caller that only checks success/failure.
-  const checkPin = useCallback((pin) => {
-    if (typeof window === "undefined") return false;
-    const adminEnabled = localStorage.getItem("mokaAdminEnabled") !== "false";
-    if (!adminEnabled) return false;
-    const savedPin = localStorage.getItem("mokaPinCode") || "3578";
-    return pin === savedPin || simpleHash(pin) === savedPin;
-  }, []);
-
-  const unlockAdmin = useCallback((pin) => {
-    if (!checkPin(pin)) return { ok: false, reason: "wrong_pin" };
-    if (!selectedStaff) return { ok: false, reason: "no_staff" };
-    if (!selectedStaff.access?.includes("Admin")) return { ok: false, reason: "no_access" };
-    setIsAdmin(true);
-    return { ok: true };
-  }, [checkPin, selectedStaff]);
-
-  // Sprint 14 — Guillaume/Thibaut n'ont plus de poste opérationnel (voir
-  // SplashScreen), donc jamais de selectedStaff au moment où ils tapent
-  // "Mode Admin →" depuis le splash. Cette variante prend l'identité admin
-  // en paramètre (choisie dans un petit picker) au lieu de dépendre d'un
-  // selectedStaff déjà posé par le flux Mon Poste.
-  const unlockAdminAs = useCallback((pin, member) => {
-    if (!checkPin(pin)) return { ok: false, reason: "wrong_pin" };
+  // Sprint 18 — le PIN admin (code à 4 chiffres partagé) est supprimé : la
+  // seule identification qui compte désormais est le choix d'une identité
+  // admin nommée (Guillaume/Valérie/Thibaut…), filtrée sur Access contenant
+  // "Admin" — même garde qu'avant, juste sans code à saisir devant. Reason
+  // "no_access" gardée (pas "wrong_pin", qui n'a plus de sens) pour les
+  // appelants qui affichent encore un message d'erreur.
+  const unlockAdminAs = useCallback((member) => {
     if (!member?.access?.includes("Admin")) return { ok: false, reason: "no_access" };
     setStaff(member);
     setIsAdmin(true);
     return { ok: true };
-  }, [checkPin, setStaff]);
+  }, [setStaff]);
 
   const lockAdmin = useCallback(() => setIsAdmin(false), []);
 
@@ -316,7 +299,6 @@ export function StaffProvider({ children }) {
         setMyZone,
         setPoste,
         setIsAdmin,
-        unlockAdmin,
         unlockAdminAs,
         lockAdmin,
         clockIn,
@@ -324,6 +306,7 @@ export function StaffProvider({ children }) {
         startBreak,
         endBreak,
         clockInAs,
+        clockActionFor,
       }}
     >
       {children}

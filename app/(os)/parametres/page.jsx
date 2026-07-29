@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
-import { simpleHash } from "../../contexts/StaffContext";
 
 const TABS = [
   { key: "suppliers", label: "Fournisseurs" },
@@ -13,7 +12,6 @@ const TABS = [
   { key: "sousCategories", label: "Sous-catégories" },
   { key: "unites", label: "Unités" },
   { key: "zones", label: "Zones stockage" },
-  { key: "securite", label: "Sécurité" },
 ];
 
 const inputClass = "w-full rounded-xl border border-[#e5d5c5] bg-white px-4 py-3 text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]";
@@ -492,55 +490,6 @@ function ReferentielSection({ type, items, categories, refresh, showToast }) {
   );
 }
 
-// ── G. Sécurité ─────────────────────────────────────────────────────────────
-
-function SecuriteSection({ showToast }) {
-  const [newPin, setNewPin] = useState("");
-  const [confirmPin, setConfirmPin] = useState("");
-
-  const savePin = () => {
-    if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
-      showToast("Le code doit faire 4 chiffres", "error");
-      return;
-    }
-    if (newPin !== confirmPin) {
-      showToast("Les codes ne correspondent pas", "error");
-      return;
-    }
-    localStorage.setItem("mokaPinCode", simpleHash(newPin));
-    showToast("Code admin mis à jour ✅");
-    setNewPin("");
-    setConfirmPin("");
-  };
-
-  return (
-    <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4 space-y-3">
-      <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">Modifier le PIN admin</div>
-      <input
-        type="password"
-        inputMode="numeric"
-        maxLength={4}
-        value={newPin}
-        onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ""))}
-        placeholder="Nouveau code (4 chiffres)"
-        className={`${inputClass} text-center tracking-[0.5em]`}
-      />
-      <input
-        type="password"
-        inputMode="numeric"
-        maxLength={4}
-        value={confirmPin}
-        onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ""))}
-        placeholder="Confirmer le code"
-        className={`${inputClass} text-center tracking-[0.5em]`}
-      />
-      <button type="button" onClick={savePin} className="w-full h-11 rounded-xl bg-[#5a7828] text-white text-sm font-black cursor-pointer">
-        Enregistrer le nouveau code
-      </button>
-    </div>
-  );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export default function ParametresPage() {
@@ -585,7 +534,6 @@ export default function ParametresPage() {
       {tab === "sousCategories" && <ReferentielSection type="sousCategories" items={referentiels.sousCategories} categories={referentiels.categories} refresh={refreshAll} showToast={showToast} />}
       {tab === "unites" && <ReferentielSection type="unites" items={referentiels.unites} categories={referentiels.categories} refresh={refreshAll} showToast={showToast} />}
       {tab === "zones" && <ReferentielSection type="zones" items={referentiels.zones} categories={referentiels.categories} refresh={refreshAll} showToast={showToast} />}
-      {tab === "securite" && <SecuriteSection showToast={showToast} />}
 
       <Toast toast={toast} />
     </div>

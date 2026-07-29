@@ -15,15 +15,6 @@ function getStaffName(member) {
   return member?.name || member?.prenom || member?.nom || "Staff";
 }
 
-// Sprint 13 — unlockAdmin(pin) now returns { ok, reason } instead of a plain
-// boolean, since a correct PIN can still fail the Access check for the
-// currently selected identity.
-const PIN_ERROR_MESSAGES = {
-  wrong_pin: "Code incorrect",
-  no_staff: "Sélectionne d'abord un staff",
-  no_access: "Accès admin non autorisé pour ce poste",
-};
-
 const glassStyle = {
   background: "rgba(247, 239, 228, 0.45)",
   backdropFilter: "blur(32px) saturate(180%)",
@@ -52,33 +43,25 @@ export default function ClockBar() {
     clockOut,
     startBreak,
     endBreak,
-    unlockAdmin,
+    unlockAdminAs,
     lockAdmin,
   } = useStaffContext();
 
   const [showPicker, setShowPicker] = useState(false);
-  const [showPinModal, setShowPinModal] = useState(false);
-  const [pin, setPin] = useState("");
-  const [pinError, setPinError] = useState(false);
+  const [showAdminPicker, setShowAdminPicker] = useState(false);
+  const adminEligibleStaff = staff.filter((member) => member.access?.includes("Admin"));
 
   const handleAdminToggle = () => {
     if (isAdmin) {
       lockAdmin();
       return;
     }
-    setPin("");
-    setPinError(false);
-    setShowPinModal(true);
+    setShowAdminPicker(true);
   };
 
-  const submitPin = () => {
-    const result = unlockAdmin(pin);
-    if (result.ok) {
-      setShowPinModal(false);
-      setPin("");
-    } else {
-      setPinError(PIN_ERROR_MESSAGES[result.reason] || "Code incorrect");
-    }
+  const pickAdmin = (member) => {
+    const result = unlockAdminAs(member);
+    if (result.ok) setShowAdminPicker(false);
   };
 
   const handleToggle = () => {
@@ -185,49 +168,40 @@ export default function ClockBar() {
         </div>
       )}
 
-      {showPinModal && (
+      {showAdminPicker && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          onClick={() => setShowPinModal(false)}
+          onClick={() => setShowAdminPicker(false)}
         >
           <div className="absolute inset-0 bg-black/40" />
           <div
             className="relative w-full max-w-xs rounded-3xl bg-[#f7efe4] border border-[#e5d5c5] shadow-xl p-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-1">
-              Mode Admin
+            <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-1">Mode Admin</div>
+            <h2 className="text-lg font-black text-[#2c1a10] mb-4">Qui es-tu ?</h2>
+            <div className="space-y-2 mb-3">
+              {adminEligibleStaff.map((member) => (
+                <button
+                  key={member.id}
+                  type="button"
+                  onClick={() => pickAdmin(member)}
+                  className="w-full rounded-2xl bg-white border border-[#e5d5c5] py-3 px-4 text-left font-black text-sm text-[#2c1a10] cursor-pointer active:scale-[0.98] transition-all hover:bg-[#f0e4d4]"
+                >
+                  {getStaffName(member)}
+                </button>
+              ))}
+              {adminEligibleStaff.length === 0 && (
+                <div className="text-sm text-[#9a7060] text-center py-4">Aucune identité admin disponible</div>
+              )}
             </div>
-            <h2 className="text-lg font-black text-[#2c1a10] mb-4">Code à 4 chiffres</h2>
-            <input
-              type="password"
-              inputMode="numeric"
-              autoFocus
-              value={pin}
-              onChange={(e) => { setPin(e.target.value); setPinError(false); }}
-              onKeyDown={(e) => e.key === "Enter" && submitPin()}
-              className={`w-full rounded-xl border bg-white px-3 py-2.5 text-center text-lg tracking-[0.5em] font-black text-[#2c1a10] outline-none mb-1 ${
-                pinError ? "border-red-500" : "border-[#e5d5c5] focus:border-[#5a7828]"
-              }`}
-              placeholder="••••"
-            />
-            {pinError && <div className="text-xs text-red-600 font-bold mb-3">{pinError}</div>}
-            <div className="flex gap-2.5 mt-3">
-              <button
-                type="button"
-                onClick={() => setShowPinModal(false)}
-                className="flex-1 h-11 rounded-2xl border border-[#e5d5c5] bg-white font-black text-sm text-[#9a7060] cursor-pointer"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={submitPin}
-                className="flex-1 h-11 rounded-2xl bg-[#5a7828] text-white font-black text-sm cursor-pointer"
-              >
-                Déverrouiller
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowAdminPicker(false)}
+              className="w-full h-11 rounded-2xl border border-[#e5d5c5] bg-white font-black text-sm text-[#9a7060] cursor-pointer"
+            >
+              Annuler
+            </button>
           </div>
         </div>
       )}

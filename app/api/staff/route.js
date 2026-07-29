@@ -38,19 +38,17 @@ export async function GET(request) {
     const includeInactive = searchParams.get("includeInactive") === "true";
     const cacheKey = includeInactive ? "staff:all" : "staff";
 
-    // Guillaume (owner) never appears in any staff picker/roster — splash,
-    // Équipe, assignations — he only ever reaches admin via "Mode Admin →" +
-    // PIN (see SplashScreen's unlockAdminAs), never as a selectable staff
-    // member. Applied unconditionally (including ?includeInactive=true) so
-    // there's a single filter point rather than patching every consumer.
+    // Sprint 18 — Guillaume était exclu ici pour forcer son accès admin à
+    // passer par le PIN admin de la SplashScreen, désormais supprimé (le
+    // "Mode Admin →" liste directement les staff avec Access="Admin", donc
+    // Guillaume doit apparaître dans cette liste comme n'importe quel autre
+    // admin — Valérie, Thibaut).
     const staff = await withNotionCache(cacheKey, 60000, async () => {
       const pages = await queryDatabase(
         DB.STAFF,
         includeInactive ? null : { property: "Actif", checkbox: { equals: true } }
       );
-      return pages
-        .map(normalizeStaff)
-        .filter((s) => !String(s.name || "").toLowerCase().includes("guillaume") && s.poste !== "Propriétaire");
+      return pages.map(normalizeStaff);
     });
 
     return Response.json(staff, { headers: corsHeaders });
