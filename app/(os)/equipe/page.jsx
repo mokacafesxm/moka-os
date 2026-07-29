@@ -6,7 +6,10 @@ import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
 
 const SXM_TZ = "America/Puerto_Rico";
-const POSTE_OPTIONS = ["Bar", "Bar Manager", "Cuisine", "Salle", "Plonge", "Manager Général"];
+// Options du select "poste du jour" — doit rester identique aux options
+// Notion créées sur MOKA_Planning (Lundi..Dimanche), Repos/Congé traités à
+// part ci-dessous (mis en avant, pas juste 2 entrées de plus dans la liste).
+const JOUR_OPTIONS = ["Bar", "Cuisine", "Salle", "Plonge"];
 const JOURS = [
   { key: "lundi", label: "Lun" },
   { key: "mardi", label: "Mar" },
@@ -43,7 +46,7 @@ function formatShort(dateStr) {
 
 function PosteChip({ value }) {
   if (!value) return <span className="text-[#c8b4a8]">—</span>;
-  if (value === "Repos") return <span className="text-[10px] font-bold text-[#9a7060]">Repos</span>;
+  if (value === "Repos" || value === "Congé") return <span className="text-[10px] font-bold text-[#9a7060]">{value}</span>;
   return (
     <span className="text-[10px] font-black px-1.5 py-1 rounded-lg bg-[#f0f7e5] text-[#5a7828] whitespace-nowrap">
       {value}
@@ -61,7 +64,7 @@ function CellPickerModal({ staffName, jourLabel, current, onPick, onClose }) {
       >
         <h2 className="text-base font-black text-[#2c1a10]">{staffName} — {jourLabel}</h2>
         <div className="space-y-1.5">
-          {POSTE_OPTIONS.map((p) => (
+          {JOUR_OPTIONS.map((p) => (
             <button
               key={p}
               type="button"
@@ -73,15 +76,18 @@ function CellPickerModal({ staffName, jourLabel, current, onPick, onClose }) {
               {p}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => onPick("Repos")}
-            className={`w-full h-11 rounded-xl text-sm font-bold cursor-pointer text-left px-4 ${
-              current === "Repos" ? "bg-[#9a7060] text-white" : "bg-white border border-[#e5d5c5] text-[#9a7060]"
-            }`}
-          >
-            Repos
-          </button>
+          {["Repos", "Congé"].map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onPick(p)}
+              className={`w-full h-11 rounded-xl text-sm font-bold cursor-pointer text-left px-4 ${
+                current === p ? "bg-[#9a7060] text-white" : "bg-white border border-[#e5d5c5] text-[#9a7060]"
+              }`}
+            >
+              {p}
+            </button>
+          ))}
         </div>
         <button type="button" onClick={onClose} className="w-full h-10 rounded-xl text-[#9a7060] font-bold text-xs cursor-pointer">
           Annuler
@@ -245,10 +251,12 @@ function PlanningSection({ staff }) {
 }
 
 function AssignTaskSection({ staff }) {
+  const { selectedStaff } = useStaffContext();
   const [taches, setTaches] = useState([]);
   const [staffId, setStaffId] = useState("");
   const [tacheId, setTacheId] = useState("");
   const [date, setDate] = useState(todaySXM());
+  const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -278,6 +286,8 @@ function AssignTaskSection({ staff }) {
           tacheId,
           tacheNom: tache?.nom,
           date,
+          note,
+          assignePar: selectedStaff?.id,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -287,6 +297,7 @@ function AssignTaskSection({ staff }) {
       }
       setSuccess("Tâche assignée");
       setTacheId("");
+      setNote("");
       setTimeout(() => setSuccess(null), 2500);
     } catch (err) {
       setError(err.message);
@@ -309,6 +320,12 @@ function AssignTaskSection({ staff }) {
         type="date"
         value={date}
         onChange={(e) => setDate(e.target.value)}
+        className="w-full h-11 px-3.5 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
+      />
+      <input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Note (optionnel)"
         className="w-full h-11 px-3.5 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
       />
       {error && <div className="text-xs font-bold text-red-600">{error}</div>}

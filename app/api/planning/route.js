@@ -1,7 +1,7 @@
 import {
-  corsHeaders, queryDatabase, createPage, updatePage,
-  getText, getSelect, getRelationIds,
-  titleProp, textProp, selectProp, relationProp,
+  corsHeaders, queryDatabase, createPage, updatePage, getPage,
+  getDate, getSelect, getRelationIds,
+  titleProp, dateProp, selectProp, relationProp,
 } from "../_notion";
 import { getPlanningDbId } from "../../../lib/planning/config";
 
@@ -17,7 +17,7 @@ function normalizeRow(page) {
   const row = {
     id: page.id,
     staffId: getRelationIds(p, "Staff")[0] || null,
-    semaine: getText(p, "Semaine"),
+    semaine: (getDate(p, "Semaine") || "").slice(0, 10),
   };
   for (const jour of JOURS) row[jour] = getSelect(p, JOUR_PROP[jour]) || "";
   return row;
@@ -30,7 +30,7 @@ export async function GET(req) {
     const semaine = searchParams.get("semaine");
     if (!semaine) return Response.json({ error: "semaine requise" }, { status: 400, headers: corsHeaders });
 
-    const pages = await queryDatabase(dbId, { property: "Semaine", rich_text: { equals: semaine } });
+    const pages = await queryDatabase(dbId, { property: "Semaine", date: { equals: semaine } });
     return Response.json(pages.map(normalizeRow), { headers: corsHeaders });
   } catch (err) {
     const status = err.code === "CONFIG_MISSING" ? 503 : 500;
@@ -53,7 +53,7 @@ export async function POST(req) {
 
     const existing = await queryDatabase(dbId, {
       and: [
-        { property: "Semaine", rich_text: { equals: semaine } },
+        { property: "Semaine", date: { equals: semaine } },
         { property: "Staff", relation: { contains: staffId } },
       ],
     });
@@ -61,13 +61,17 @@ export async function POST(req) {
     let page;
     if (existing[0]) {
       await updatePage(existing[0].id, { [JOUR_PROP[jour]]: selectProp(valeur) });
-      page = existing[0];
-      page.properties[JOUR_PROP[jour]] = { select: valeur ? { name: valeur } : null };
+      // Re-fetch plutôt que muter existing[0] en mémoire : un objet propriété
+      // select construit à la main sans son `type: "select"` fait échouer
+      // getSelect() silencieusement (retourne "") — piégé en test live avant
+      // ce fix, la case venait de s'écrire correctement côté Notion mais la
+      // réponse de l'API renvoyait quand même l'ancienne valeur vide.
+      page = await getPage(existing[0].id);
     } else {
       page = await createPage(dbId, {
-        Titre: titleProp(`${staffName || "Staff"} — ${semaine}`),
+        Name: titleProp(`${staffName || "Staff"} — ${semaine}`),
         Staff: relationProp(staffId),
-        Semaine: textProp(semaine),
+        Semaine: dateProp(semaine),
         [JOUR_PROP[jour]]: selectProp(valeur),
       });
     }

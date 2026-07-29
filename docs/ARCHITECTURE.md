@@ -1563,40 +1563,40 @@ produits en attente, puis la résolution des 10 lignes en attente.
 
 Ne pas commencer une PR sans validation explicite de la précédente.
 
-## Weekly Staff Planning (lib/planning) — **CONFIG_MISSING, base à créer**
+## Weekly Staff Planning (lib/planning) — **LIVE**
 
-`/equipe` (Section A — planning hebdomadaire) et `app/api/planning/route.js`
-sont codés et fonctionnels, mais la base **MOKA_Planning** n'existe pas
-encore côté Notion — aucune page parente n'a été désignée pour la créer, et
-créer une nouvelle base au premier niveau du workspace live sans
-confirmation n'est pas une action à prendre sans y être invité (même
-raisonnement que Recipe Catalogue avant sa création — voir plus haut).
-`lib/planning/config.js` résout `NOTION_PLANNING_DB_ID` et lève
-`CONFIG_MISSING` tant que la variable n'est pas définie ; l'API renvoie
-503 et l'UI affiche "Planning non configuré — base Notion pas encore créée",
-identique au comportement déjà établi pour Recipe Catalogue.
+`/equipe` (Section A — planning hebdomadaire, Section B — assignation de
+tâche personnelle) est câblé sur deux bases Notion créées le 2026-07-29 via
+l'API sous la page parente **"MÖKA OS v2 — Bases"**
+(`3a69512c-f66a-81f4-9cac-c64dda1084dd`), même emplacement que les autres
+bases physiques Sprint 3 (Zones/Équipements/Tâches). `lib/planning/config.js`
+résout `NOTION_PLANNING_DB_ID` / `NOTION_ASSIGNATIONS_DB_ID` (renseignées
+dans `.env.local`, et sur Vercel en Preview — même scope que
+`NOTION_SOLD_PRODUCTS_DB_ID`/`NOTION_RECIPE_LINES_DB_ID`, voir note
+Production ci-dessous) et lève `CONFIG_MISSING` si l'une des deux venait à
+manquer, identique au comportement déjà établi pour Recipe Catalogue.
 
-**Schéma requis pour MOKA_Planning** (à créer manuellement dans Notion,
-puis renseigner `NOTION_PLANNING_DB_ID` dans `.env.local`) :
+**Schéma live — MOKA_Planning** (`3ac9512c-f66a-8183-9317-e3ec610f443b`) :
 
 | Propriété | Type | Rôle |
 |---|---|---|
-| `Titre` | title | Libellé lisible, ex. "Quincy — 2026-07-27" |
+| `Name` | title | Libellé lisible, ex. "Quincy — 2026-07-27" |
 | `Staff` | relation → MOKA_Staff | Membre concerné |
-| `Semaine` | rich_text | Lundi de la semaine, `YYYY-MM-DD` |
-| `Lundi` … `Dimanche` | select | Poste du jour (mêmes options que `Staff.Poste`) ou "Repos" |
+| `Semaine` | date | Lundi de la semaine |
+| `Lundi` … `Dimanche` | select | Bar / Cuisine / Salle / Plonge / Repos / Congé |
+| `Notes` | rich_text | Libre, pas encore exposée dans l'UI (éditable depuis Notion directement) |
 
-**Schéma requis pour MOKA_Assignations_Taches** (Section B — assigner une
-tâche personnelle à un staff pour une date ; à créer de la même façon,
-`NOTION_TASK_ASSIGNMENTS_DB_ID`) :
+**Schéma live — MOKA_Assignations_Taches** (`3ac9512c-f66a-81fc-a4a9-c945ba47b762`) :
 
 | Propriété | Type | Rôle |
 |---|---|---|
-| `Titre` | title | Libellé lisible, ex. "Nettoyer banquette — Quincy (2026-07-27)" |
-| `Staff` | relation → MOKA_Staff | Staff assigné |
+| `Name` | title | "Tâche — Staff (date)", construit à la création |
 | `Tache` | relation → MOKA_TACHES | Tâche gabarit choisie |
-| `Nom_Tache` | rich_text | Copie du nom (évite un aller-retour Notion pour l'afficher) |
+| `Staff` | relation → MOKA_Staff | Staff assigné |
 | `Date` | date | Jour de l'assignation |
+| `Statut` | select | À faire / En cours / Fait — toujours "À faire" à la création, jamais modifié en dehors du staff (aucune UI de complétion pour l'instant) |
+| `Note` | rich_text | Optionnelle, saisie à l'assignation |
+| `Assigné_Par` | relation → MOKA_Staff | Identité admin qui a créé l'assignation (`selectedStaff` au moment du clic) |
 
 Cette base est volontairement **séparée** de MOKA_EXECUTIONS_TACHES plutôt
 que d'y écrire une ligne `Statut: "À faire"` : EXECUTIONS_TACHES est lue
@@ -1605,3 +1605,12 @@ ailleurs (`taches/page.jsx`, `doneTacheIds`) comme "la présence d'une ligne
 en attente aurait fait disparaître la tâche de la liste "à faire" du staff
 concerné le jour même. `/profil` ("Mes tâches assignées") lit
 MOKA_Assignations_Taches pour le staff sélectionné, jamais EXECUTIONS_TACHES.
+
+**Note Production** : au moment de la création de ces deux bases, `vercel env
+ls` a révélé que `NOTION_API_KEY`, `NOTION_SOLD_PRODUCTS_DB_ID` et
+`NOTION_RECIPE_LINES_DB_ID` ne sont configurées que sur l'environnement
+**Preview** de Vercel, pas Production — un état préexistant, pas introduit
+ici. `NOTION_PLANNING_DB_ID`/`NOTION_ASSIGNATIONS_DB_ID` ont été ajoutées au
+même scope (Preview) par cohérence. À vérifier si les fonctionnalités
+Recettes/Planning sont censées fonctionner sur le vrai domaine de
+production.

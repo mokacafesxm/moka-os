@@ -1,7 +1,7 @@
 import {
   corsHeaders, queryDatabase, createPage,
-  getTitle, getText, getDate, getRelationIds,
-  titleProp, textProp, dateProp, relationProp,
+  getTitle, getText, getDate, getSelect, getRelationIds,
+  titleProp, textProp, dateProp, selectProp, relationProp,
 } from "../_notion";
 import { getTaskAssignmentsDbId } from "../../../lib/planning/config";
 
@@ -15,8 +15,13 @@ function normalizeAssignment(page) {
     id: page.id,
     staffId: getRelationIds(p, "Staff")[0] || null,
     tacheId: getRelationIds(p, "Tache")[0] || null,
-    nom: getText(p, "Nom_Tache") || getTitle(p, "Titre"),
+    assignePar: getRelationIds(p, "Assigné_Par")[0] || null,
+    // Le titre embarque déjà "tâche — staff (date)" à la création (voir POST) —
+    // pas besoin d'un aller-retour Notion supplémentaire pour résoudre Tache.
+    nom: getTitle(p, "Name"),
     date: getDate(p, "Date"),
+    statut: getSelect(p, "Statut") || "À faire",
+    note: getText(p, "Note"),
   };
 }
 
@@ -38,16 +43,18 @@ export async function GET(req) {
 export async function POST(req) {
   try {
     const dbId = getTaskAssignmentsDbId();
-    const { staffId, staffName, tacheId, tacheNom, date } = await req.json();
+    const { staffId, staffName, tacheId, tacheNom, date, assignePar, note } = await req.json();
     if (!staffId || !tacheId || !date) {
       return Response.json({ success: false, error: "staffId, tacheId et date requis" }, { status: 400, headers: corsHeaders });
     }
     const page = await createPage(dbId, {
-      Titre: titleProp(`${tacheNom || "Tâche"} — ${staffName || "Staff"} (${date})`),
+      Name: titleProp(`${tacheNom || "Tâche"} — ${staffName || "Staff"} (${date})`),
       Staff: relationProp(staffId),
       Tache: relationProp(tacheId),
-      Nom_Tache: textProp(tacheNom),
       Date: dateProp(date),
+      Statut: selectProp("À faire"),
+      Note: textProp(note),
+      Assigné_Par: relationProp(assignePar),
     });
     return Response.json({ success: true, id: page.id, item: normalizeAssignment(page) }, { headers: corsHeaders });
   } catch (err) {
