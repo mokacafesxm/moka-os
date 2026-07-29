@@ -22,11 +22,20 @@ const ADMIN_ITEMS = [
 
 export default function AdminNav() {
   const pathname = usePathname();
-  const { canCommandes } = useStaffContext();
+  const { canCommandes, setSplashDone, lockAdmin } = useStaffContext();
 
   // Sprint 13 — Commandes stays hidden unless the currently signed-in
   // identity has "Commandes" in Access (Thibaut/Guillaume only for now).
   const items = ADMIN_ITEMS.filter((item) => item.key !== "commandes" || canCommandes);
+
+  // lockAdmin() ici, pas juste setSplashDone(false) : isAdmin vit dans
+  // StaffProvider (jamais démonté par le retour au splash) — sans ça, un
+  // staff choisi ensuite sur l'écran "Qui es-tu ?" hériterait à tort du
+  // layout admin (AdminNav/sidebar) au lieu du sien.
+  const changerSession = () => {
+    lockAdmin();
+    setSplashDone(false);
+  };
 
   return (
     <>
@@ -35,6 +44,15 @@ export default function AdminNav() {
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 px-3 pb-2"
         style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
       >
+        <div className="flex justify-end pr-1 pb-1">
+          <button
+            type="button"
+            onClick={changerSession}
+            className="text-[10px] font-bold text-[#9a7060] underline cursor-pointer"
+          >
+            ← Changer de session
+          </button>
+        </div>
         <div
           className="flex items-stretch justify-between rounded-3xl px-2 py-1.5 mx-auto max-w-lg overflow-x-auto"
           style={{
@@ -86,6 +104,16 @@ export default function AdminNav() {
             </Link>
           );
         })}
+
+        <button
+          type="button"
+          onClick={changerSession}
+          className="mt-auto w-14 shrink-0 pb-2 text-center cursor-pointer"
+        >
+          <span className="text-[8px] font-bold text-[#9a7060] underline leading-tight">
+            ← Changer
+          </span>
+        </button>
       </div>
     </>
   );

@@ -19,7 +19,11 @@ function ShellChrome({ children }) {
   const pathname = usePathname();
   // /poste renders its own greeting header + compact clock button (see
   // PostePage), replacing the isolated-name ClockBar pill for that screen.
-  const showClockBar = pathname !== "/poste";
+  // En session admin, ClockBar (avatar staff + statut pointage + toggle
+  // admin) n'a plus de sens : ni le staff sélectionné ni son pointage ne
+  // sont pertinents pour un manager qui consulte le dashboard — voir
+  // "Changer de session" désormais dans AdminNav (ClockBar.jsx).
+  const showClockBar = pathname !== "/poste" && !isAdmin;
 
   if (!splashDone) {
     return <SplashScreen onDone={() => setSplashDone(true)} />;

@@ -32,6 +32,11 @@ const glassStyle = {
   boxShadow: "0 8px 32px rgba(44,26,16,0.15), inset 0 1px 0 rgba(255,255,255,0.7)",
 };
 
+// N'est jamais monté en session admin (voir AppShell.jsx showClockBar) : le
+// staff sélectionné/son pointage n'ont plus de sens une fois isAdmin true,
+// donc pas de branche isAdmin ici — juste le pointage staff normal + le
+// bouton pour entrer en mode admin. "Changer de session" en admin vit
+// désormais dans AdminNav.
 export default function ClockBar() {
   const { staff } = useAppContext();
   const {
@@ -49,7 +54,6 @@ export default function ClockBar() {
     endBreak,
     unlockAdmin,
     lockAdmin,
-    setSplashDone,
   } = useStaffContext();
 
   const [showPicker, setShowPicker] = useState(false);
@@ -134,30 +138,15 @@ export default function ClockBar() {
           {isAdmin ? "🛡️" : "🔒"}
         </button>
 
-        {isAdmin ? (
-          <div className="shrink-0 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSplashDone(false)}
-              className="text-[10px] font-bold text-[#9a7060] underline cursor-pointer whitespace-nowrap"
-            >
-              ← Changer de session
-            </button>
-            <div className="h-11 px-3 rounded-full bg-[#2c1a10] text-white text-xs font-black flex items-center gap-1.5 whitespace-nowrap">
-              👑 Session Admin
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={handleToggle}
-            disabled={clockSending}
-            aria-label={isClockedIn ? "Pointer le départ" : "Pointer l'arrivée"}
-            className="w-11 h-11 shrink-0 rounded-full bg-white/80 border border-[#e5d5c5] flex items-center justify-center text-lg disabled:opacity-50 cursor-pointer active:scale-95 transition-transform"
-          >
-            ↔️
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={handleToggle}
+          disabled={clockSending}
+          aria-label={isClockedIn ? "Pointer le départ" : "Pointer l'arrivée"}
+          className="w-11 h-11 shrink-0 rounded-full bg-white/80 border border-[#e5d5c5] flex items-center justify-center text-lg disabled:opacity-50 cursor-pointer active:scale-95 transition-transform"
+        >
+          ↔️
+        </button>
       </div>
 
       {showPicker && (
