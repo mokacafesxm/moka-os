@@ -36,7 +36,7 @@ function initials(name) {
 export default function SplashScreen({ onDone }) {
   const router = useRouter();
   const { staff } = useAppContext();
-  const { clockStatuses, clockInAs, setStaff, unlockAdminAs, setPoste, selectedStaff, clockActionFor } = useStaffContext();
+  const { clockStatuses, clockInAs, setStaff, unlockAdminAs, setPoste, selectedStaff, clockActionFor, hoursWorked } = useStaffContext();
 
   const [phase, setPhase] = useState("poste"); // "poste" | "staff"
   const [selectedPoste, setSelectedPoste] = useState(null);
@@ -103,6 +103,11 @@ export default function SplashScreen({ onDone }) {
     if (result.ok) {
       setShowAdminModal(false);
       onDone();
+      // Sans ce push, l'admin reste sur la route déjà montée sous le splash
+      // (ex: /equipe, si "Changer de session" a été tapé depuis là) au lieu
+      // d'atterrir sur le dashboard — contrairement à proceedWithStaff
+      // (sessions staff) qui pousse déjà vers /poste juste au-dessus.
+      router.push("/manager");
     }
   };
 
@@ -120,6 +125,7 @@ export default function SplashScreen({ onDone }) {
               clockStatuses={clockStatuses}
               onPick={clockActionFor}
               shortcutMember={selectedStaff}
+              hoursWorked={hoursWorked}
             />
           </div>
 

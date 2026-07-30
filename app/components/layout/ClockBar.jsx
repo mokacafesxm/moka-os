@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
 
@@ -29,6 +30,7 @@ const glassStyle = {
 // bouton pour entrer en mode admin. "Changer de session" en admin vit
 // désormais dans AdminNav.
 export default function ClockBar() {
+  const router = useRouter();
   const { staff } = useAppContext();
   const {
     selectedStaff,
@@ -61,7 +63,10 @@ export default function ClockBar() {
 
   const pickAdmin = (member) => {
     const result = unlockAdminAs(member);
-    if (result.ok) setShowAdminPicker(false);
+    if (result.ok) {
+      setShowAdminPicker(false);
+      router.push("/manager");
+    }
   };
 
   const handleToggle = () => {

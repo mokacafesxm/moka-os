@@ -7,7 +7,21 @@ function getName(member) {
   return member?.name || member?.prenom || member?.nom || "Staff";
 }
 
-const STATUS_LABEL = { present: "En service", pause: "En pause", done: "Terminé", absent: "Pointer" };
+function formatHeures(decimal) {
+  const h = Math.floor(decimal);
+  const m = Math.round((decimal - h) * 60);
+  if (m === 0) return `${h}h`;
+  return `${h}h${String(m).padStart(2, "0")}`;
+}
+
+// Liste "Qui pointe ?" — 2 états seulement (le choix Pause/Fin de service se
+// fait dans le sheet d'actions juste après, pas ici).
+const STATUS_LABEL = {
+  present: "● En service",
+  pause: "● En service",
+  done: "○ Non pointé",
+  absent: "○ Non pointé",
+};
 
 // Actions disponibles par statut — même logique que ClockSheet (Mon Poste) :
 // absent/done n'ont qu'un choix (Arrivée), present/pause ont un vrai choix
@@ -31,7 +45,7 @@ const ACTIONS_FOR_STATUS = {
 // StaffContext.clockActionFor). `shortcutMember`, s'il est fourni, affiche un
 // raccourci direct pour ce staff-là (déjà en session) à côté du bouton
 // "choisir un autre" plutôt que d'obliger à rouvrir la liste complète.
-export default function QuickPointageButton({ staff, clockStatuses, onPick, shortcutMember, className }) {
+export default function QuickPointageButton({ staff, clockStatuses, onPick, shortcutMember, hoursWorked, className }) {
   const [open, setOpen] = useState(false);
   const [actionsFor, setActionsFor] = useState(null); // membre en attente d'un choix d'action
   const [busy, setBusy] = useState(false);
@@ -64,7 +78,10 @@ export default function QuickPointageButton({ staff, clockStatuses, onPick, shor
 
   const shortcutName = shortcutMember ? getName(shortcutMember) : null;
   const shortcutStatus = shortcutName ? (clockStatuses[shortcutName] || "absent") : "absent";
-  const shortcutActions = ACTIONS_FOR_STATUS[shortcutStatus];
+  const shortcutLabel =
+    shortcutStatus === "present" ? `⏱ En service${hoursWorked ? ` · ${formatHeures(hoursWorked)}` : ""}` :
+    shortcutStatus === "pause" ? "⏱ Pause en cours" :
+    "⏱ Pointage";
 
   return (
     <>
@@ -76,7 +93,7 @@ export default function QuickPointageButton({ staff, clockStatuses, onPick, shor
             disabled={busy}
             className="rounded-full bg-[#e8336d] text-white font-black text-sm px-4 py-2.5 cursor-pointer disabled:opacity-50 whitespace-nowrap active:scale-[0.98] transition-transform"
           >
-            {busy ? "…" : `🕐 ${shortcutName}${shortcutActions.length === 1 ? ` — ${shortcutActions[0].action}` : ""}`}
+            {busy ? "…" : shortcutLabel}
           </button>
           <button
             type="button"
@@ -92,7 +109,7 @@ export default function QuickPointageButton({ staff, clockStatuses, onPick, shor
           onClick={() => setOpen(true)}
           className={`rounded-full bg-[#e8336d] text-white font-black text-sm px-4 py-2.5 cursor-pointer whitespace-nowrap active:scale-[0.98] transition-transform ${className || ""}`}
         >
-          🕐 Pointage
+          ⏱ Pointage
         </button>
       )}
 

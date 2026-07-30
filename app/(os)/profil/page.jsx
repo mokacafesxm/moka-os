@@ -200,8 +200,9 @@ export default function ProfilPage() {
       <button
         type="button"
         onClick={handleChangerPoste}
-        className="w-full h-12 rounded-2xl bg-[#2c1a10] text-white text-sm font-black cursor-pointer"
+        className="w-full py-4 rounded-2xl bg-[#e8336d] text-white font-black text-sm flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] transition-transform"
       >
+        <span aria-hidden="true">←</span>
         Changer de poste
       </button>
 
