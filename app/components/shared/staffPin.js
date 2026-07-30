@@ -30,6 +30,16 @@ export async function setStaffPin(staffId, pin) {
   return res.ok;
 }
 
+export async function removeStaffPin(staffId) {
+  if (!staffId) return false;
+  const res = await fetch("/api/staff", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: staffId, pinHash: "" }),
+  });
+  return res.ok;
+}
+
 export async function verifyStaffPin(staffId, pin) {
   if (!staffId) return false;
   try {

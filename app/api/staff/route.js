@@ -24,6 +24,11 @@ function normalizeStaff(page) {
     access: getMultiSelect(p, "Access"),
     telephone: getText(p, "Téléphone", "telephone", "Phone"),
     email: getText(p, "Email", "email"),
+    // Statut seulement — jamais le hash lui-même (voir /api/staff/verify-pin,
+    // seule route autorisée à le comparer côté serveur). L'exposer ici
+    // permettrait à n'importe quel appareil chargeant le roster de le
+    // récupérer et de le bruteforcer côté client.
+    hasPin: Boolean(getText(p, "PIN_Hash")),
     actif: getCheckbox(p, "Actif", "actif", "Active"),
   };
 }

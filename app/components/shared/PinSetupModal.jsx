@@ -1,35 +1,56 @@
 "use client";
 
 import { useState } from "react";
-import { setStaffPin } from "./staffPin";
-import PinDigits from "./PinDigits";
+import { setStaffPin, verifyStaffPin } from "./staffPin";
+import PinKeypad from "./PinKeypad";
 
-export default function PinSetupModal({ staffId, onClose, onSaved }) {
-  const [stage, setStage] = useState("first"); // "first" | "confirm"
+const STAGE_TITLE = {
+  verify: "Entre ton code actuel",
+  first: "Choisis un code à 4 chiffres",
+  confirm: "Confirme ton code",
+};
+
+// Création ET modification du PIN partagent ce modal. hasExistingPin fait
+// commencer par une vérification de l'ancien code (spec "modifier mon
+// PIN") — la première création (pas de PIN existant) saute directement à
+// "first".
+export default function PinSetupModal({ staffId, hasExistingPin, onClose, onSaved }) {
+  const [stage, setStage] = useState(hasExistingPin ? "verify" : "first");
   const [firstPin, setFirstPin] = useState("");
-  const [digits, setDigits] = useState(["", "", "", ""]);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
 
-  const handleDigitsChange = async (next) => {
-    setDigits(next);
-    const pin = next.join("");
-    if (pin.length !== 4) return;
+  const restart = (message) => {
+    setStage(hasExistingPin ? "verify" : "first");
+    setFirstPin("");
+    setError(message || null);
+    setResetKey((k) => k + 1);
+  };
+
+  const handleComplete = async (pin) => {
+    if (stage === "verify") {
+      setSaving(true);
+      const valid = await verifyStaffPin(staffId, pin);
+      setSaving(false);
+      if (!valid) { restart("PIN incorrect — réessaie"); return; }
+      setStage("first");
+      setError(null);
+      setResetKey((k) => k + 1);
+      return;
+    }
 
     if (stage === "first") {
       setFirstPin(pin);
       setStage("confirm");
-      setDigits(["", "", "", ""]);
       setError(null);
+      setResetKey((k) => k + 1);
       return;
     }
 
     // stage === "confirm"
     if (pin !== firstPin) {
-      setError("Les codes ne correspondent pas — recommence");
-      setStage("first");
-      setFirstPin("");
-      setDigits(["", "", "", ""]);
+      restart("Les codes ne correspondent pas — recommence");
       return;
     }
 
@@ -38,10 +59,7 @@ export default function PinSetupModal({ staffId, onClose, onSaved }) {
     const ok = await setStaffPin(staffId, pin);
     setSaving(false);
     if (!ok) {
-      setError("Échec de l'enregistrement — réessaie");
-      setStage("first");
-      setFirstPin("");
-      setDigits(["", "", "", ""]);
+      restart("Échec de l'enregistrement — réessaie");
       return;
     }
     onSaved?.();
@@ -56,11 +74,9 @@ export default function PinSetupModal({ staffId, onClose, onSaved }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-1">🔐 PIN de session</div>
-        <h2 className="text-lg font-black text-[#2c1a10] mb-4">
-          {stage === "first" ? "Choisis un code à 4 chiffres" : "Confirme ton code"}
-        </h2>
+        <h2 className="text-lg font-black text-[#2c1a10] mb-4">{STAGE_TITLE[stage]}</h2>
 
-        <PinDigits key={stage} digits={digits} onChange={handleDigitsChange} autoFocusFirst disabled={saving} />
+        <PinKeypad key={resetKey} onComplete={handleComplete} disabled={saving} />
 
         {saving && <div className="text-xs text-[#9a7060] font-bold text-center mt-3">Enregistrement…</div>}
         {error && <div className="text-xs text-red-600 font-bold text-center mt-3">{error}</div>}

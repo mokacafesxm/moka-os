@@ -21,6 +21,9 @@ const ORDERPAD_ITEM = { key: "orderpad", label: "Order", icon: "📋", href: "/"
 // KDS n'a de sens que pour Salle (commandes clients) — Bar/Cuisine/Plonge ne
 // le voient jamais. Même règle "avant Profil" que ORDERPAD_ITEM ci-dessus.
 const KDS_ITEM = { key: "kds", label: "KDS", icon: "🖥", href: "/kds" };
+// Fiches techniques : uniquement pertinent pour les postes qui préparent
+// (Bar/Cuisine) — Salle/Plonge n'en ont pas l'usage.
+const FICHES_ITEM = { key: "fiches", label: "Fiches", icon: "📋", href: "/fiches" };
 
 export default function NavBottom() {
   const pathname = usePathname();
@@ -28,6 +31,7 @@ export default function NavBottom() {
   const items = [
     ...NAV_ITEMS.slice(0, 3),
     ...(poste === "Salle" ? [KDS_ITEM] : []),
+    ...(poste === "Bar" || poste === "Cuisine" ? [FICHES_ITEM] : []),
     ...(canOrderPad ? [ORDERPAD_ITEM] : []),
     NAV_ITEMS[3],
   ];

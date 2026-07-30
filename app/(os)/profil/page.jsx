@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { hasStaffPin } from "../../components/shared/staffPin";
 import PinSetupModal from "../../components/shared/PinSetupModal";
+import PinDeleteModal from "../../components/shared/PinDeleteModal";
 
 const CERT_STATUT_COLOR = { "Validé": "#5a7828", "En cours": "#d97706", "Expiré": "#9a7060" };
 
@@ -25,6 +26,7 @@ export default function ProfilPage() {
   const [heures, setHeures] = useState(null);
   const [staffHasPin, setStaffHasPin] = useState(false);
   const [showPinSetup, setShowPinSetup] = useState(false);
+  const [showPinDelete, setShowPinDelete] = useState(false);
   const [mesTaches, setMesTaches] = useState([]);
   const [monPlanning, setMonPlanning] = useState(null);
   const [planningConfigured, setPlanningConfigured] = useState(true);
@@ -173,7 +175,7 @@ export default function ProfilPage() {
       )}
 
       <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
-        <div className="text-xs font-black text-[#9a7060] uppercase tracking-wide mb-3">🔐 Sécurité</div>
+        <div className="text-xs font-black text-[#9a7060] uppercase tracking-wide mb-3">🔐 Mon PIN de session</div>
 
         {!staffHasPin ? (
           <button
@@ -181,18 +183,27 @@ export default function ProfilPage() {
             onClick={() => setShowPinSetup(true)}
             className="w-full py-3 rounded-xl bg-[#2c1a10] text-white font-black text-sm cursor-pointer"
           >
-            Créer mon PIN de session
+            Créer mon PIN
           </button>
         ) : (
           <div className="space-y-2">
-            <div className="text-sm text-[#5a7828] font-bold">✅ PIN activé</div>
-            <button
-              type="button"
-              onClick={() => setShowPinSetup(true)}
-              className="text-xs text-[#9a7060] underline cursor-pointer"
-            >
-              Modifier mon PIN
-            </button>
+            <div className="text-sm text-[#5a7828] font-bold">PIN activé ✅</div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPinSetup(true)}
+                className="flex-1 py-2.5 rounded-xl bg-[#f0e8dc] text-[#2c1a10] font-black text-xs cursor-pointer"
+              >
+                ✏️ Modifier mon PIN
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPinDelete(true)}
+                className="flex-1 py-2.5 rounded-xl bg-[#fee2e2] text-red-700 font-black text-xs cursor-pointer"
+              >
+                🗑 Supprimer le PIN
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -209,8 +220,17 @@ export default function ProfilPage() {
       {showPinSetup && (
         <PinSetupModal
           staffId={selectedStaff?.id}
+          hasExistingPin={staffHasPin}
           onClose={() => setShowPinSetup(false)}
           onSaved={() => setStaffHasPin(true)}
+        />
+      )}
+
+      {showPinDelete && (
+        <PinDeleteModal
+          staffId={selectedStaff?.id}
+          onClose={() => setShowPinDelete(false)}
+          onDeleted={() => setStaffHasPin(false)}
         />
       )}
     </div>

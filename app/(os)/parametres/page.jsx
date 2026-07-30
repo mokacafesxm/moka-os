@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
+import { removeStaffPin } from "../../components/shared/staffPin";
 
 const TABS = [
   { key: "suppliers", label: "Fournisseurs" },
@@ -199,6 +200,7 @@ function StaffSection({ staff, refresh, showToast }) {
   const [form, setForm] = useState(EMPTY_STAFF);
   const [saving, setSaving] = useState(false);
   const [pendingDeactivate, setPendingDeactivate] = useState(null);
+  const [pendingPinReset, setPendingPinReset] = useState(null);
 
   const openCreate = () => { setEditing(null); setForm(EMPTY_STAFF); setShowModal(true); };
   const openEdit = (s) => {
@@ -253,6 +255,22 @@ function StaffSection({ staff, refresh, showToast }) {
     }
   };
 
+  // En cas de staff bloqué (PIN oublié) — repasse hasPin à false, il peut
+  // en recréer un depuis /profil au prochain passage.
+  const resetPin = async (s) => {
+    if (pendingPinReset !== s.id) {
+      setPendingPinReset(s.id);
+      showToast("Cliquez à nouveau pour confirmer");
+      setTimeout(() => setPendingPinReset((cur) => (cur === s.id ? null : cur)), 3000);
+      return;
+    }
+    setPendingPinReset(null);
+    const ok = await removeStaffPin(s.id);
+    if (!ok) { showToast("Erreur lors de la réinitialisation", "error"); return; }
+    showToast("PIN réinitialisé");
+    await refresh();
+  };
+
   return (
     <div className="space-y-3">
       {staff.map((s) => (
@@ -272,6 +290,23 @@ function StaffSection({ staff, refresh, showToast }) {
             </div>
             <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
               {[s.poste, (s.access || []).join(", ")].filter(Boolean).join(" · ") || "—"}
+            </div>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span
+                className="text-[9px] font-black px-1.5 py-0.5 rounded-full"
+                style={{ color: s.hasPin ? "#5a7828" : "#9a7060", background: s.hasPin ? "#f0f7e5" : "#f0e8dc" }}
+              >
+                {s.hasPin ? "🔐 PIN actif" : "○ Sans PIN"}
+              </span>
+              {s.hasPin && (
+                <button
+                  type="button"
+                  onClick={() => resetPin(s)}
+                  className={`text-[10px] font-black underline cursor-pointer ${pendingPinReset === s.id ? "text-red-600" : "text-[#9a7060]"}`}
+                >
+                  {pendingPinReset === s.id ? "Confirmer ?" : "Réinitialiser PIN"}
+                </button>
+              )}
             </div>
           </div>
           <div className="flex gap-1.5 shrink-0">

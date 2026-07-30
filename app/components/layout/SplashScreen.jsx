@@ -40,13 +40,15 @@ export default function SplashScreen({ onDone }) {
 
   const [phase, setPhase] = useState("poste"); // "poste" | "staff"
   const [selectedPoste, setSelectedPoste] = useState(null);
-  const [pinGateMember, setPinGateMember] = useState(null); // staff picked but awaiting session PIN
+  const [pinGate, setPinGate] = useState(null); // { member, kind: "staff" | "admin" } — picked but awaiting PIN
   const [showAdminModal, setShowAdminModal] = useState(false);
 
   // Sprint 14 — Guillaume/Thibaut n'ont pas de poste opérationnel (exclus de
   // la grille phase 2 ci-dessous) donc jamais de selectedStaff à ce stade :
   // "Mode Admin →" choisit directement l'identité admin parmi les staff ayant
-  // "Admin" dans Access (Sprint 18 — plus de code PIN devant ce choix).
+  // "Admin" dans Access. Chaque admin a désormais son propre PIN personnel
+  // (même mécanisme Notion que le PIN staff, voir handlePickAdmin ci-dessous)
+  // — plus de code partagé unique comme avant Sprint 18.
   const adminEligibleStaff = staff.filter((member) => member.access?.includes("Admin"));
 
   // Sprint 14 — Manager Général/Admin n'ont pas de poste opérationnel : ils
@@ -81,7 +83,7 @@ export default function SplashScreen({ onDone }) {
   // gates on that PIN before actually signing them in.
   const handlePickStaff = async (member) => {
     if (await hasStaffPin(member.id)) {
-      setPinGateMember(member);
+      setPinGate({ member, kind: "staff" });
       return;
     }
     proceedWithStaff(member);
@@ -100,6 +102,18 @@ export default function SplashScreen({ onDone }) {
       // (sessions staff) qui pousse déjà vers /poste juste au-dessus.
       router.push("/manager");
     }
+  };
+
+  // Même garde PIN que handlePickStaff, appliquée aux admins : chaque admin
+  // ayant défini un PIN (Profil → Sécurité, même mécanisme) doit le saisir
+  // avant que "Mode Admin" ouvre sa session — un admin sans PIN garde l'accès
+  // direct d'avant.
+  const handlePickAdmin = async (member) => {
+    if (await hasStaffPin(member.id)) {
+      setPinGate({ member, kind: "admin" });
+      return;
+    }
+    submitIdentity(member);
   };
 
   return (
@@ -219,7 +233,7 @@ export default function SplashScreen({ onDone }) {
                 <button
                   key={member.id}
                   type="button"
-                  onClick={() => submitIdentity(member)}
+                  onClick={() => handlePickAdmin(member)}
                   className="w-full rounded-2xl bg-white border border-[#e5d5c5] py-3 px-4 text-left font-black text-sm text-[#2c1a10] cursor-pointer active:scale-[0.98] transition-all hover:bg-[#f0e4d4]"
                 >
                   {getStaffName(member)}
@@ -240,15 +254,16 @@ export default function SplashScreen({ onDone }) {
         </div>
       )}
 
-      {pinGateMember && (
+      {pinGate && (
         <PinEntryModal
-          staffId={pinGateMember.id}
-          staffName={getStaffName(pinGateMember)}
-          onClose={() => setPinGateMember(null)}
+          staffId={pinGate.member.id}
+          staffName={getStaffName(pinGate.member)}
+          onClose={() => setPinGate(null)}
           onVerified={() => {
-            const member = pinGateMember;
-            setPinGateMember(null);
-            proceedWithStaff(member);
+            const { member, kind } = pinGate;
+            setPinGate(null);
+            if (kind === "admin") submitIdentity(member);
+            else proceedWithStaff(member);
           }}
         />
       )}
