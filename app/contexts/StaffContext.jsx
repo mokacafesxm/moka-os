@@ -188,10 +188,11 @@ export function StaffProvider({ children }) {
     else localStorage.removeItem(POSTE_KEY);
   }, []);
 
-  // staffNameOverride lets clockInAs fire the webhook with the just-picked
-  // member's name immediately, instead of racing the async setStaff/
-  // selectedStaffName state update (React state isn't readable synchronously
-  // right after the setState call that would otherwise populate it).
+  // staffNameOverride lets clockActionFor fire the webhook for a staff
+  // member who isn't (or isn't yet) the active session, instead of racing
+  // the async setStaff/selectedStaffName state update (React state isn't
+  // readable synchronously right after the setState call that would
+  // otherwise populate it).
   const sendClockAction = useCallback(async (action, staffNameOverride) => {
     const name = staffNameOverride || selectedStaffName;
     if (!name) return;
@@ -229,18 +230,6 @@ export function StaffProvider({ children }) {
   const startBreak = useCallback(() => sendClockAction("Départ pause"), [sendClockAction]);
   const endBreak = useCallback(() => sendClockAction("Retour pause"), [sendClockAction]);
 
-  // Sprint 11 — atomic "pick this staff card and clock them in" for the
-  // poste-first flow: sets the session AND fires Arrivée in one call, using
-  // the member directly rather than the (not-yet-updated) selectedStaffName.
-  const clockInAs = useCallback(async (member) => {
-    const staffName = member?.name || member?.prenom || member?.nom || "";
-    if (!staffName) return;
-    setSelectedStaffState(member);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(SESSION_KEY, JSON.stringify(member));
-    }
-    await sendClockAction("Arrivée", staffName);
-  }, [sendClockAction]);
 
   // Pointage rapide pour N'IMPORTE QUEL staff, sans toucher à selectedStaff —
   // permet à un collègue de pointer (splash, Mon Poste) sans changer la
@@ -309,7 +298,6 @@ export function StaffProvider({ children }) {
         clockOut,
         startBreak,
         endBreak,
-        clockInAs,
         clockActionFor,
       }}
     >

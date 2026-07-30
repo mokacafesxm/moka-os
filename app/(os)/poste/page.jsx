@@ -7,7 +7,6 @@ import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
 import { parseOrderProducts, getOrderSupplier } from "../../components/shared/ReceiveModal";
 import { getPosteStatus, setPosteStatus } from "../../components/shared/posteStatus";
-import CommandeClientKDSModal from "../../components/shared/CommandeClientKDSModal";
 import DeclareIncidentModal from "../../components/shared/DeclareIncidentModal";
 import LivraisonsAujourdhuiCard from "../../components/shared/LivraisonsAujourdhuiCard";
 import QuickPointageButton from "../../components/shared/QuickPointageButton";
@@ -652,7 +651,6 @@ export default function PostePage() {
   const [zoneTaches, setZoneTaches] = useState([]);
   const [toast, setToast] = useState(null);
   const [posteStatus, setPosteStatusState] = useState(null);
-  const [showCommandeClient, setShowCommandeClient] = useState(false);
   const [showIncidentForm, setShowIncidentForm] = useState(false);
   const [blockingTasks, setBlockingTasks] = useState(null);
   const [pendingAction, setPendingAction] = useState(null); // { type: "clockout" } | { type: "fermeture", href }
@@ -983,13 +981,6 @@ export default function PostePage() {
 
       {poste === "Salle" && (
         <>
-          <button
-            type="button"
-            onClick={() => setShowCommandeClient(true)}
-            className="bg-[#2c1a10] text-white rounded-2xl py-4 w-full font-black cursor-pointer active:scale-[0.98] transition-all"
-          >
-            🛎 Nouvelle commande client →
-          </button>
           <ResumeTachesCard zoneTaches={zoneTaches} executions={executions} />
           <SectionCard title="Tâches mise en place"><TachesList taches={zoneTaches} /></SectionCard>
         </>
@@ -1016,8 +1007,6 @@ export default function PostePage() {
       >
         🚨 Signaler un incident
       </button>
-
-      {showCommandeClient && <CommandeClientKDSModal onClose={() => setShowCommandeClient(false)} />}
 
       {showIncidentForm && (
         <DeclareIncidentModal

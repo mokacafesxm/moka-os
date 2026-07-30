@@ -121,15 +121,11 @@ export default function ProfilPage() {
 
       {planningConfigured && (
         <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
-          <div className="text-xs font-black text-[#9a7060] uppercase tracking-wide mb-1">📅 Mon planning habituel</div>
-          {(monPlanning?.horaireDebut || monPlanning?.horaireFin) && (
-            <div className="text-[11px] font-bold text-[#9a7060] mb-3">
-              {monPlanning.horaireDebut || "—"} → {monPlanning.horaireFin || "—"}
-            </div>
-          )}
-          <div className="space-y-1.5 mt-2">
+          <div className="text-xs font-black text-[#9a7060] uppercase tracking-wide mb-3">📅 Mon planning habituel</div>
+          <div className="space-y-1.5">
             {JOURS.map((j) => {
-              const poste = monPlanning?.jours?.[j.key] || "";
+              const day = monPlanning?.jours?.[j.key] || {};
+              const poste = day.poste || "";
               const repos = REPOS_POSTES.includes(poste);
               return (
                 <div
@@ -146,6 +142,9 @@ export default function ProfilPage() {
                       style={{ color: repos ? "#9a7060" : "#5a7828" }}
                     >
                       {POSTE_EMOJI[poste] || ""} {poste}
+                      {!repos && (day.debut || day.fin) && (
+                        <span className="font-bold opacity-70"> {day.debut || "—"}→{day.fin || "—"}</span>
+                      )}
                     </span>
                   ) : (
                     <span className="text-xs font-bold text-[#c8b4a8] flex-1">—</span>

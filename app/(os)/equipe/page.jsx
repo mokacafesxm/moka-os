@@ -53,26 +53,121 @@ function Toast({ text }) {
   );
 }
 
-function PosteChip({ poste, exception }) {
+// "08:00" -> "08", "08:30" -> "08:30" — n'écourte que sur l'heure ronde, où
+// l'ambiguïté est nulle ; garde les minutes sinon.
+function shortHour(hhmm) {
+  if (!hhmm) return "";
+  return hhmm.endsWith(":00") ? hhmm.slice(0, 2) : hhmm;
+}
+
+function PosteChip({ poste, debut, fin, exception }) {
   if (!poste) return <span className="text-[#c8b4a8]">—</span>;
-  if (REPOS_POSTES.includes(poste)) {
+  const repos = REPOS_POSTES.includes(poste);
+  const horaires = !repos && (debut || fin) ? `${shortHour(debut) || "—"}-${shortHour(fin) || "—"}` : null;
+  if (repos) {
     return <span className={`text-[10px] font-bold ${exception ? "text-[#b45309]" : "text-[#9a7060]"}`}>{poste}</span>;
   }
   return (
     <span
-      className={`inline-block text-[10px] font-black px-1.5 py-1 rounded-lg whitespace-nowrap ${
+      className={`inline-flex flex-col items-center gap-0.5 text-[10px] font-black px-1.5 py-1 rounded-lg whitespace-nowrap ${
         exception ? "bg-[#fef3c7] text-[#b45309]" : "bg-[#f0f7e5] text-[#5a7828]"
       }`}
     >
-      {poste}
+      <span>{poste}</span>
+      {horaires && <span className="text-[9px] font-bold opacity-80">{horaires}</span>}
     </span>
   );
 }
 
-// Sélection de poste "un seul tap" — pas de bouton Enregistrer séparé, le
-// choix sauvegarde immédiatement (voir onPick côté appelant). En mode
-// exception, une option "revenir au planning type" permet d'annuler la
-// dérogation pour cette date précise.
+// Case du planning type — poste + horaires du jour en un seul geste de
+// confirmation (bouton ✓), puisque les horaires varient d'un jour à
+// l'autre (contrairement au mode exception, une simple dérogation
+// ponctuelle où un tap direct sur le poste suffit).
+function CellEditModal({ staffName, jourLabel, current, onSave, onClose, saving }) {
+  const [poste, setPoste] = useState(current?.poste || "");
+  const [debut, setDebut] = useState(current?.debut || "");
+  const [fin, setFin] = useState(current?.fin || "");
+  const isRepos = REPOS_POSTES.includes(poste);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <div
+        className="relative w-full sm:max-w-xs rounded-t-3xl sm:rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-base font-black text-[#2c1a10]">{staffName} — {jourLabel}</h2>
+
+        <div className="grid grid-cols-2 gap-1.5">
+          {JOUR_OPTIONS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPoste(p)}
+              className={`h-11 rounded-xl text-sm font-bold cursor-pointer ${
+                poste === p ? "bg-[#5a7828] text-white" : "bg-white border border-[#e5d5c5] text-[#2c1a10]"
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+          {REPOS_POSTES.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setPoste(p)}
+              className={`h-11 rounded-xl text-sm font-bold cursor-pointer ${
+                poste === p ? "bg-[#9a7060] text-white" : "bg-white border border-[#e5d5c5] text-[#9a7060]"
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+
+        {!isRepos && (
+          <div className="flex items-center gap-2">
+            <label className="flex-1 space-y-1">
+              <span className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Début</span>
+              <input
+                type="time"
+                value={debut}
+                onChange={(e) => setDebut(e.target.value)}
+                className="w-full h-11 px-3 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
+              />
+            </label>
+            <label className="flex-1 space-y-1">
+              <span className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Fin</span>
+              <input
+                type="time"
+                value={fin}
+                onChange={(e) => setFin(e.target.value)}
+                className="w-full h-11 px-3 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
+              />
+            </label>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => onSave({ poste, debut: isRepos ? "" : debut, fin: isRepos ? "" : fin })}
+          disabled={!poste || saving}
+          className="w-full h-12 rounded-xl bg-[#5a7828] text-white font-black text-lg cursor-pointer disabled:opacity-50"
+        >
+          {saving ? "…" : "✓"}
+        </button>
+        <button type="button" onClick={onClose} className="w-full h-10 rounded-xl text-[#9a7060] font-bold text-xs cursor-pointer">
+          Annuler
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Mode exception — dérogation ponctuelle pour une date précise (pas
+// d'horaires propres, juste un poste) : un seul tap suffit, pas de bouton
+// de confirmation séparé. Une option "revenir au planning type" permet
+// d'annuler la dérogation pour cette date.
 function PostePickerSheet({ staffName, jourLabel, isException, onPick, onClearException, onClose, saving }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
@@ -127,60 +222,11 @@ function PostePickerSheet({ staffName, jourLabel, isException, onPick, onClearEx
   );
 }
 
-function HoraireEditModal({ staffName, horaireDebut, horaireFin, onSave, onClose, saving }) {
-  const [debut, setDebut] = useState(horaireDebut || "");
-  const [fin, setFin] = useState(horaireFin || "");
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
-      <div
-        className="relative w-full sm:max-w-xs rounded-t-3xl sm:rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-3"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-base font-black text-[#2c1a10]">{staffName} — Horaires habituels</h2>
-        <div className="flex items-center gap-2">
-          <label className="flex-1 space-y-1">
-            <span className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Début</span>
-            <input
-              type="time"
-              value={debut}
-              onChange={(e) => setDebut(e.target.value)}
-              className="w-full h-11 px-3 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
-            />
-          </label>
-          <label className="flex-1 space-y-1">
-            <span className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Fin</span>
-            <input
-              type="time"
-              value={fin}
-              onChange={(e) => setFin(e.target.value)}
-              className="w-full h-11 px-3 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
-            />
-          </label>
-        </div>
-        <button
-          type="button"
-          onClick={() => onSave({ horaireDebut: debut, horaireFin: fin })}
-          disabled={saving}
-          className="w-full h-11 rounded-xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-50"
-        >
-          {saving ? "…" : "Enregistrer"}
-        </button>
-        <button type="button" onClick={onClose} className="w-full h-10 rounded-xl text-[#9a7060] font-bold text-xs cursor-pointer">
-          Annuler
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function PlanningSection({ staff }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notConfigured, setNotConfigured] = useState(false);
   const [pickerCell, setPickerCell] = useState(null); // { staffId, staffName, jour, jourLabel, dateISO? }
-  const [horaireStaff, setHoraireStaff] = useState(null); // { staffId, staffName, horaireDebut, horaireFin }
   const [savingKey, setSavingKey] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -250,7 +296,7 @@ function PlanningSection({ staff }) {
     });
   };
 
-  const pickTemplate = async (poste) => {
+  const pickTemplate = async ({ poste, debut, fin }) => {
     const { staffId, staffName, jour } = pickerCell;
     const key = `${staffId}-${jour}`;
     setSavingKey(key);
@@ -258,7 +304,7 @@ function PlanningSection({ staff }) {
       const res = await fetch("/api/equipe/planning", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ staffId, staffName, jour, poste }),
+        body: JSON.stringify({ staffId, staffName, jour, poste, debut, fin }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
@@ -270,7 +316,7 @@ function PlanningSection({ staff }) {
         return next;
       });
       setPickerCell(null);
-      flashToast("Planning mis à jour");
+      flashToast("Mis à jour ✓");
     } catch {
       /* transient — la case garde son ancienne valeur affichée, le tap suivant réessaiera */
     } finally {
@@ -313,33 +359,6 @@ function PlanningSection({ staff }) {
       setExceptions((cur) => cur.filter((e) => e.id !== existing.id));
       setPickerCell(null);
       flashToast("Retour au planning type");
-    } catch {
-      /* transient */
-    } finally {
-      setSavingKey(null);
-    }
-  };
-
-  const saveHoraires = async ({ horaireDebut, horaireFin }) => {
-    const { staffId, staffName } = horaireStaff;
-    setSavingKey(`horaires-${staffId}`);
-    try {
-      const res = await fetch("/api/equipe/planning", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ staffId, staffName, horaireDebut, horaireFin }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
-      setRows((cur) => {
-        const idx = cur.findIndex((r) => r.staffId === staffId);
-        if (idx === -1) return [...cur, data.item];
-        const next = [...cur];
-        next[idx] = data.item;
-        return next;
-      });
-      setHoraireStaff(null);
-      flashToast("Horaires mis à jour");
     } catch {
       /* transient */
     } finally {
@@ -415,38 +434,32 @@ function PlanningSection({ staff }) {
                 return (
                   <tr key={s.id} className="bg-white">
                     <td className="rounded-l-2xl border-y border-l border-[#e5d5c5] px-3 py-2">
-                      <button
-                        type="button"
-                        onClick={() => setHoraireStaff({ staffId: s.id, staffName: s.name, horaireDebut: row.horaireDebut, horaireFin: row.horaireFin })}
-                        className="flex items-center gap-2 cursor-pointer"
-                      >
+                      <div className="flex items-center gap-2">
                         <span
                           className="rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0"
                           style={{ width: 26, height: 26, background: "#2c1a10" }}
                         >
                           {initials(s.name)}
                         </span>
-                        <span className="text-left">
-                          <span className="block text-xs font-bold text-[#2c1a10] whitespace-nowrap">{s.name}</span>
-                          {(row.horaireDebut || row.horaireFin) && (
-                            <span className="block text-[9px] font-bold text-[#9a7060] whitespace-nowrap">
-                              {row.horaireDebut || "—"}→{row.horaireFin || "—"}
-                            </span>
-                          )}
-                        </span>
-                      </button>
+                        <span className="text-xs font-bold text-[#2c1a10] whitespace-nowrap">{s.name}</span>
+                      </div>
                     </td>
                     {JOURS.map((j, i) => {
                       const key = `${s.id}-${j.key}`;
                       const exception = exceptionMode ? exceptionsByKey[`${s.id}-${dateForJour(j.key)}`] : null;
-                      const poste = exceptionMode ? (exception?.posteOverride || row.jours?.[j.key] || "") : (row.jours?.[j.key] || "");
+                      const templateDay = row.jours?.[j.key] || {};
+                      const poste = exceptionMode ? (exception?.posteOverride || templateDay.poste || "") : (templateDay.poste || "");
                       return (
                         <td
                           key={j.key}
                           className={`border-y border-[#e5d5c5] text-center py-2 cursor-pointer ${i === JOURS.length - 1 ? "rounded-r-2xl border-r" : ""} ${exception ? "bg-[#fffbeb]" : ""}`}
                           onClick={() => openCell(s, j)}
                         >
-                          {savingKey === key ? <span className="text-[10px] text-[#9a7060]">…</span> : <PosteChip poste={poste} exception={Boolean(exception)} />}
+                          {savingKey === key ? (
+                            <span className="text-[10px] text-[#9a7060]">…</span>
+                          ) : (
+                            <PosteChip poste={poste} debut={templateDay.debut} fin={templateDay.fin} exception={Boolean(exception)} />
+                          )}
                         </td>
                       );
                     })}
@@ -458,28 +471,26 @@ function PlanningSection({ staff }) {
         </div>
       )}
 
-      {pickerCell && (
+      {pickerCell && (exceptionMode ? (
         <PostePickerSheet
           staffName={pickerCell.staffName}
-          jourLabel={exceptionMode ? `${pickerCell.jourLabel} ${formatShort(pickerCell.dateISO)}` : pickerCell.jourLabel}
-          isException={exceptionMode && Boolean(exceptionsByKey[`${pickerCell.staffId}-${pickerCell.dateISO}`])}
-          onPick={exceptionMode ? pickException : pickTemplate}
+          jourLabel={`${pickerCell.jourLabel} ${formatShort(pickerCell.dateISO)}`}
+          isException={Boolean(exceptionsByKey[`${pickerCell.staffId}-${pickerCell.dateISO}`])}
+          onPick={pickException}
           onClearException={clearException}
           onClose={() => setPickerCell(null)}
           saving={savingKey === `${pickerCell.staffId}-${pickerCell.jour}`}
         />
-      )}
-
-      {horaireStaff && (
-        <HoraireEditModal
-          staffName={horaireStaff.staffName}
-          horaireDebut={horaireStaff.horaireDebut}
-          horaireFin={horaireStaff.horaireFin}
-          onSave={saveHoraires}
-          onClose={() => setHoraireStaff(null)}
-          saving={savingKey === `horaires-${horaireStaff.staffId}`}
+      ) : (
+        <CellEditModal
+          staffName={pickerCell.staffName}
+          jourLabel={pickerCell.jourLabel}
+          current={rowsByStaff[pickerCell.staffId]?.jours?.[pickerCell.jour] || null}
+          onSave={pickTemplate}
+          onClose={() => setPickerCell(null)}
+          saving={savingKey === `${pickerCell.staffId}-${pickerCell.jour}`}
         />
-      )}
+      ))}
 
       <Toast text={toast} />
     </div>

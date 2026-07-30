@@ -5,12 +5,12 @@ import {
 } from "../../_notion";
 import { getPlanningDbId } from "../../../../lib/planning/config";
 
-// Sprint "planning type" — remplace le modèle par semaine (une ligne
-// staff+semaine, horaires en JSON) par UN planning habituel par staff : une
-// seule ligne, 7 colonnes select (une par jour) + une plage horaire unique.
-// Les semaines qui dérogent au planning type (congé ponctuel, changement)
-// vivent ailleurs, dans MOKA_Assignations_Taches (type "planning_exception"),
-// jamais ici — voir /api/task-assignments.
+// Sprint "planning type" — un planning habituel par staff (une seule ligne),
+// avec un poste ET des horaires propres à CHAQUE jour (pas une plage unique
+// partagée sur toute la semaine — un staff peut ouvrir un jour et fermer un
+// autre). Les semaines qui dérogent au planning type (congé ponctuel,
+// changement) vivent ailleurs, dans MOKA_Assignations_Taches (type
+// "planning_exception"), jamais ici — voir /api/task-assignments.
 const JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
 const JOUR_PROP = {
   lundi: "Lundi", mardi: "Mardi", mercredi: "Mercredi", jeudi: "Jeudi",
@@ -24,13 +24,18 @@ export async function OPTIONS() {
 function normalizeRow(page) {
   const p = page.properties;
   const jours = {};
-  for (const j of JOURS) jours[j] = getSelect(p, JOUR_PROP[j]) || "";
+  for (const j of JOURS) {
+    const prop = JOUR_PROP[j];
+    jours[j] = {
+      poste: getSelect(p, prop) || "",
+      debut: getText(p, `${prop}_Debut`),
+      fin: getText(p, `${prop}_Fin`),
+    };
+  }
   return {
     id: page.id,
     staffId: getRelationIds(p, "Staff")[0] || null,
     jours,
-    horaireDebut: getText(p, "Horaire_Debut"),
-    horaireFin: getText(p, "Horaire_Fin"),
   };
 }
 
@@ -54,24 +59,24 @@ export async function GET(req) {
   }
 }
 
-// PATCH { staffId, staffName, jour?, poste?, horaireDebut?, horaireFin? } —
-// upsert instantané d'un seul champ du planning type d'un staff (case tapée
-// dans le tableau /equipe). Crée la ligne si le staff n'en a encore aucune.
+// PATCH { staffId, staffName, jour, poste, debut?, fin? } — upsert
+// instantané du poste + horaires d'UN jour du planning type d'un staff
+// (case tapée dans le tableau /equipe). Crée la ligne si le staff n'en a
+// encore aucune. Les autres jours déjà saisis ne sont jamais touchés.
 export async function PATCH(req) {
   try {
     const dbId = getPlanningDbId();
-    const { staffId, staffName, jour, poste, horaireDebut, horaireFin } = await req.json();
-    if (!staffId) {
-      return Response.json({ success: false, error: "staffId requis" }, { status: 400, headers: corsHeaders });
-    }
-    if (jour && !JOURS.includes(jour)) {
-      return Response.json({ success: false, error: "jour invalide" }, { status: 400, headers: corsHeaders });
+    const { staffId, staffName, jour, poste, debut, fin } = await req.json();
+    if (!staffId || !jour || !JOURS.includes(jour)) {
+      return Response.json({ success: false, error: "staffId et jour (valide) requis" }, { status: 400, headers: corsHeaders });
     }
 
-    const properties = {};
-    if (jour) properties[JOUR_PROP[jour]] = selectProp(poste);
-    if (horaireDebut !== undefined) properties.Horaire_Debut = textProp(horaireDebut);
-    if (horaireFin !== undefined) properties.Horaire_Fin = textProp(horaireFin);
+    const prop = JOUR_PROP[jour];
+    const properties = {
+      [prop]: selectProp(poste),
+      [`${prop}_Debut`]: textProp(debut),
+      [`${prop}_Fin`]: textProp(fin),
+    };
 
     const existing = await queryDatabase(dbId, { property: "Staff", relation: { contains: staffId } }, null, 1);
 

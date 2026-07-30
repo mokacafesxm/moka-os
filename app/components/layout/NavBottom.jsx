@@ -18,13 +18,19 @@ export const NAV_ITEMS = [
 // tab straight to the old OrderPad (/). Inserted before Profil so the most
 // frequently used tabs stay clustered on the left.
 const ORDERPAD_ITEM = { key: "orderpad", label: "Order", icon: "📋", href: "/" };
+// KDS n'a de sens que pour Salle (commandes clients) — Bar/Cuisine/Plonge ne
+// le voient jamais. Même règle "avant Profil" que ORDERPAD_ITEM ci-dessus.
+const KDS_ITEM = { key: "kds", label: "KDS", icon: "🖥", href: "/kds" };
 
 export default function NavBottom() {
   const pathname = usePathname();
-  const { canOrderPad } = useStaffContext();
-  const items = canOrderPad
-    ? [...NAV_ITEMS.slice(0, 3), ORDERPAD_ITEM, NAV_ITEMS[3]]
-    : NAV_ITEMS;
+  const { canOrderPad, poste } = useStaffContext();
+  const items = [
+    ...NAV_ITEMS.slice(0, 3),
+    ...(poste === "Salle" ? [KDS_ITEM] : []),
+    ...(canOrderPad ? [ORDERPAD_ITEM] : []),
+    NAV_ITEMS[3],
+  ];
 
   return (
     <>

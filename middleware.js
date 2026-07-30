@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { verifyBasicAuth, parseBasicAuthHeader, isImportsPath, REALM } from "./lib/auth/imports-basic-auth.js";
 
 // Public custom domain must expose ONLY /commander and what it depends on —
 // everything else (the OrderPad, KDS, admin pages/APIs) stays reachable
@@ -35,48 +34,8 @@ function isAllowedPath(pathname) {
   return ALLOWED_PATHS.some((allowed) => pathname === allowed || pathname.startsWith(`${allowed}/`));
 }
 
-// Loud, once-per-instance signal that production is misconfigured — this
-// file can't hard-fail server startup, but a missing/disabled auth config
-// in production should never be silent. Every /imports request still
-// fails closed (401) regardless of this log (see middleware() below).
-if (
-  process.env.NODE_ENV === "production" &&
-  process.env.IMPORTS_AUTH_DISABLED !== "true" &&
-  (!process.env.IMPORTS_AUTH_USERNAME || !process.env.IMPORTS_AUTH_PASSWORD)
-) {
-  console.error(
-    "[imports-basic-auth] IMPORTS_AUTH_USERNAME/IMPORTS_AUTH_PASSWORD are not configured in production — " +
-      "/imports and /api/imports/* will refuse every request (fail-closed) until they are set."
-  );
-}
-
 export async function middleware(request) {
   const pathname = request.nextUrl.pathname;
-
-  // Applies regardless of host — the importer staff tool is never public
-  // and never depends on the mokacafe.co allowlist logic below.
-  if (isImportsPath(pathname)) {
-    const authorizationHeader = request.headers.get("authorization");
-    const authResult = await verifyBasicAuth(authorizationHeader);
-    if (!authResult.ok) {
-      return new NextResponse("Authentication required.", {
-        status: 401,
-        headers: { "WWW-Authenticate": `Basic realm="${REALM}"` },
-      });
-    }
-
-    // Forwards the submitted username to the route handler for the Import
-    // Runs audit trail's `initiated_by` field (PR4 addendum) — re-parsed
-    // here rather than re-verified, since verifyBasicAuth already
-    // authenticated this request. Not a real per-staff identity (the
-    // credential is shared) — see docs/ARCHITECTURE.md "PR4 addendum —
-    // audit trail" for why this is honestly labeled "best-effort".
-    const requestHeaders = new Headers(request.headers);
-    const submitted = parseBasicAuthHeader(authorizationHeader);
-    requestHeaders.set("x-imports-user", submitted?.username ?? "");
-    return NextResponse.next({ request: { headers: requestHeaders } });
-  }
-
   const hostname = (request.headers.get("host") || "").split(":")[0];
 
   // Internal domain (moka-os.vercel.app) and anything else (previews,

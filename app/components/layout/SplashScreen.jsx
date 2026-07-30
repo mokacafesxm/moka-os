@@ -36,7 +36,7 @@ function initials(name) {
 export default function SplashScreen({ onDone }) {
   const router = useRouter();
   const { staff } = useAppContext();
-  const { clockStatuses, clockStatusTimes, clockInAs, setStaff, unlockAdminAs, setPoste, selectedStaff, clockActionFor, hoursWorked } = useStaffContext();
+  const { clockStatuses, clockStatusTimes, setStaff, unlockAdminAs, setPoste, selectedStaff, clockActionFor, hoursWorked } = useStaffContext();
 
   const [phase, setPhase] = useState("poste"); // "poste" | "staff"
   const [selectedPoste, setSelectedPoste] = useState(null);
@@ -66,23 +66,14 @@ export default function SplashScreen({ onDone }) {
 
   const handleBack = () => setPhase("poste");
 
-  const proceedWithStaff = async (member) => {
-    const staffName = getStaffName(member);
-    const alreadyClockedIn = ["present", "pause"].includes(clockStatuses[staffName]);
+  // Sélectionner un staff au splash n'a plus jamais pour effet de bord de le
+  // pointer : le pointage est une action volontaire via le bouton rose
+  // "⏱ Pointage" (Mon Poste), jamais implicite à l'ouverture de session.
+  const proceedWithStaff = (member) => {
     setPoste(selectedPoste);
-    try {
-      if (alreadyClockedIn) {
-        // "Reprendre la session" — pick them up as the active session
-        // without re-firing Arrivée, since they never clocked out.
-        setStaff(member);
-      } else {
-        await clockInAs(member);
-      }
-      onDone();
-      router.push("/poste");
-    } catch (error) {
-      console.error("[SplashScreen] clockInAs failed", error);
-    }
+    setStaff(member);
+    onDone();
+    router.push("/poste");
   };
 
   // Profil → Sécurité lets a staff member set a session PIN (Notion-backed,
