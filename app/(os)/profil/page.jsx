@@ -16,9 +16,16 @@ const JOURS = [
   { key: "samedi", label: "Sam" },
   { key: "dimanche", label: "Dim" },
 ];
+const POSTE_EMOJI = { Bar: "☕", Cuisine: "🍳", Salle: "🍽️", Plonge: "🚿", Repos: "🛋️", Congé: "🌴" };
+const REPOS_POSTES = ["Repos", "Congé"];
 
 function todaySXM() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Puerto_Rico" }).format(new Date());
+}
+function addDays(dateStr, days) {
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 // Semaine = lundi de la semaine (YYYY-MM-DD) — même convention que /equipe.
 function mondayOf(dateStr) {
@@ -27,6 +34,11 @@ function mondayOf(dateStr) {
   const diff = dow === 0 ? -6 : 1 - dow;
   d.setUTCDate(d.getUTCDate() + diff);
   return d.toISOString().slice(0, 10);
+}
+function formatDayDate(dateStr) {
+  return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short", timeZone: "America/Puerto_Rico" })
+    .format(new Date(`${dateStr}T12:00:00Z`))
+    .replace(".", "");
 }
 
 export default function ProfilPage() {
@@ -37,6 +49,7 @@ export default function ProfilPage() {
   const [showPinSetup, setShowPinSetup] = useState(false);
   const [mesTaches, setMesTaches] = useState([]);
   const [monPlanning, setMonPlanning] = useState(null);
+  const [planningSemaine] = useState(() => mondayOf(todaySXM()));
   const [planningConfigured, setPlanningConfigured] = useState(true);
   const [certifications, setCertifications] = useState([]);
 
@@ -60,8 +73,7 @@ export default function ProfilPage() {
   useEffect(() => {
     if (!selectedStaff?.id) return;
     let ignore = false;
-    const semaine = mondayOf(todaySXM());
-    fetch(`/api/planning?semaine=${semaine}&staffId=${selectedStaff.id}`)
+    fetch(`/api/equipe/planning?semaine=${planningSemaine}&staffId=${selectedStaff.id}`)
       .then((r) => {
         if (r.status === 503) { if (!ignore) setPlanningConfigured(false); return []; }
         return r.ok ? r.json() : [];
@@ -69,7 +81,7 @@ export default function ProfilPage() {
       .then((data) => { if (!ignore) setMonPlanning((Array.isArray(data) && data[0]) || null); })
       .catch((error) => console.error("[ProfilPage] planning fetch failed", error));
     return () => { ignore = true; };
-  }, [selectedStaff?.id]);
+  }, [selectedStaff?.id, planningSemaine]);
 
   useEffect(() => {
     if (!selectedStaff?.id) return;
@@ -133,22 +145,34 @@ export default function ProfilPage() {
       {planningConfigured && (
         <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
           <div className="text-xs font-black text-[#9a7060] uppercase tracking-wide mb-3">📅 Mon planning cette semaine</div>
-          <div className="grid grid-cols-7 gap-1.5">
-            {JOURS.map((j) => {
-              const valeur = monPlanning?.[j.key] || "";
-              const repos = valeur === "Repos" || valeur === "Congé";
+          <div className="space-y-1.5">
+            {JOURS.map((j, i) => {
+              const entry = monPlanning?.horaires?.[j.key] || null;
+              const poste = entry?.poste || "";
+              const repos = REPOS_POSTES.includes(poste);
+              const dateLabel = formatDayDate(addDays(planningSemaine, i));
               return (
-                <div key={j.key} className="text-center">
-                  <div className="text-[9px] font-bold text-[#9a7060] uppercase mb-1">{j.label}</div>
-                  <div
-                    className="rounded-lg py-2 text-[9px] font-black leading-tight"
-                    style={{
-                      background: valeur ? (repos ? "#f0e8dc" : "#f0f7e5") : "#f7efe4",
-                      color: valeur ? (repos ? "#9a7060" : "#5a7828") : "#c8b4a8",
-                    }}
-                  >
-                    {valeur || "—"}
-                  </div>
+                <div
+                  key={j.key}
+                  className="flex items-center justify-between gap-2 rounded-xl px-3 py-2"
+                  style={{ background: poste ? (repos ? "#f0e8dc" : "#f0f7e5") : "#f7efe4" }}
+                >
+                  <span className="text-xs font-bold text-[#2c1a10] w-20 shrink-0">
+                    {j.label} {dateLabel}
+                  </span>
+                  {poste ? (
+                    <span
+                      className="text-xs font-black flex-1"
+                      style={{ color: repos ? "#9a7060" : "#5a7828" }}
+                    >
+                      {POSTE_EMOJI[poste] || ""} {poste}
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold text-[#c8b4a8] flex-1">—</span>
+                  )}
+                  <span className="text-[10px] font-bold text-[#9a7060] shrink-0">
+                    {!repos && (entry?.debut || entry?.fin) ? `${entry.debut || "—"} → ${entry.fin || "—"}` : "—"}
+                  </span>
                 </div>
               );
             })}

@@ -44,51 +44,99 @@ function formatShort(dateStr) {
   return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", timeZone: SXM_TZ }).format(new Date(`${dateStr}T12:00:00Z`));
 }
 
+const REPOS_POSTES = ["Repos", "Congé"];
+
 function PosteChip({ value }) {
-  if (!value) return <span className="text-[#c8b4a8]">—</span>;
-  if (value === "Repos" || value === "Congé") return <span className="text-[10px] font-bold text-[#9a7060]">{value}</span>;
+  const poste = value?.poste;
+  if (!poste) return <span className="text-[#c8b4a8]">—</span>;
+  if (REPOS_POSTES.includes(poste)) return <span className="text-[10px] font-bold text-[#9a7060]">{poste}</span>;
   return (
-    <span className="text-[10px] font-black px-1.5 py-1 rounded-lg bg-[#f0f7e5] text-[#5a7828] whitespace-nowrap">
-      {value}
+    <span className="inline-flex flex-col items-center gap-0.5">
+      <span className="text-[10px] font-black px-1.5 py-1 rounded-lg bg-[#f0f7e5] text-[#5a7828] whitespace-nowrap">
+        {poste}
+      </span>
+      {(value.debut || value.fin) && (
+        <span className="text-[9px] font-bold text-[#9a7060] whitespace-nowrap">
+          {value.debut || "—"}→{value.fin || "—"}
+        </span>
+      )}
     </span>
   );
 }
 
-function CellPickerModal({ staffName, jourLabel, current, onPick, onClose }) {
+function CellEditModal({ staffName, jourLabel, current, onSave, onClose, saving }) {
+  const [poste, setPoste] = useState(current?.poste || "");
+  const [debut, setDebut] = useState(current?.debut || "");
+  const [fin, setFin] = useState(current?.fin || "");
+  const isRepos = REPOS_POSTES.includes(poste);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div
-        className="relative w-full sm:max-w-xs rounded-t-3xl sm:rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-2"
+        className="relative w-full sm:max-w-xs rounded-t-3xl sm:rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-3"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-base font-black text-[#2c1a10]">{staffName} — {jourLabel}</h2>
-        <div className="space-y-1.5">
+
+        <div className="grid grid-cols-3 gap-1.5">
           {JOUR_OPTIONS.map((p) => (
             <button
               key={p}
               type="button"
-              onClick={() => onPick(p)}
-              className={`w-full h-11 rounded-xl text-sm font-bold cursor-pointer text-left px-4 ${
-                current === p ? "bg-[#5a7828] text-white" : "bg-white border border-[#e5d5c5] text-[#2c1a10]"
+              onClick={() => setPoste(p)}
+              className={`h-10 rounded-xl text-xs font-bold cursor-pointer ${
+                poste === p ? "bg-[#5a7828] text-white" : "bg-white border border-[#e5d5c5] text-[#2c1a10]"
               }`}
             >
               {p}
             </button>
           ))}
-          {["Repos", "Congé"].map((p) => (
+          {REPOS_POSTES.map((p) => (
             <button
               key={p}
               type="button"
-              onClick={() => onPick(p)}
-              className={`w-full h-11 rounded-xl text-sm font-bold cursor-pointer text-left px-4 ${
-                current === p ? "bg-[#9a7060] text-white" : "bg-white border border-[#e5d5c5] text-[#9a7060]"
+              onClick={() => setPoste(p)}
+              className={`h-10 rounded-xl text-xs font-bold cursor-pointer ${
+                poste === p ? "bg-[#9a7060] text-white" : "bg-white border border-[#e5d5c5] text-[#9a7060]"
               }`}
             >
               {p}
             </button>
           ))}
         </div>
+
+        {!isRepos && (
+          <div className="flex items-center gap-2">
+            <label className="flex-1 space-y-1">
+              <span className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Début</span>
+              <input
+                type="time"
+                value={debut}
+                onChange={(e) => setDebut(e.target.value)}
+                className="w-full h-11 px-3 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
+              />
+            </label>
+            <label className="flex-1 space-y-1">
+              <span className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Fin</span>
+              <input
+                type="time"
+                value={fin}
+                onChange={(e) => setFin(e.target.value)}
+                className="w-full h-11 px-3 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
+              />
+            </label>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => onSave({ poste, debut: isRepos ? "" : debut, fin: isRepos ? "" : fin })}
+          disabled={!poste || saving}
+          className="w-full h-11 rounded-xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-50"
+        >
+          {saving ? "…" : "Enregistrer"}
+        </button>
         <button type="button" onClick={onClose} className="w-full h-10 rounded-xl text-[#9a7060] font-bold text-xs cursor-pointer">
           Annuler
         </button>
@@ -108,7 +156,7 @@ function PlanningSection({ staff }) {
   useEffect(() => {
     let ignore = false;
     setLoading(true);
-    fetch(`/api/planning?semaine=${semaine}`)
+    fetch(`/api/equipe/planning?semaine=${semaine}`)
       .then(async (r) => {
         if (r.status === 503) return { notConfigured: true, rows: [] };
         const data = await r.json().catch(() => []);
@@ -126,15 +174,15 @@ function PlanningSection({ staff }) {
 
   const rowsByStaff = useMemo(() => Object.fromEntries(rows.map((r) => [r.staffId, r])), [rows]);
 
-  const pick = async (valeur) => {
+  const save = async ({ poste, debut, fin }) => {
     const { staffId, staffName, jour } = pickerCell;
     const key = `${staffId}-${jour}`;
     setSavingKey(key);
     try {
-      const res = await fetch("/api/planning", {
+      const res = await fetch("/api/equipe/planning", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ staffId, staffName, semaine, jour, valeur }),
+        body: JSON.stringify({ staffId, staffName, semaine, jour, poste, debut, fin }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
@@ -145,11 +193,11 @@ function PlanningSection({ staff }) {
         next[idx] = data.item;
         return next;
       });
+      setPickerCell(null);
     } catch {
       /* transient — la case garde son ancienne valeur affichée, le tap suivant réessaiera */
     } finally {
       setSavingKey(null);
-      setPickerCell(null);
     }
   };
 
@@ -217,7 +265,7 @@ function PlanningSection({ staff }) {
                       </div>
                     </td>
                     {JOURS.map((j, i) => {
-                      const value = row[j.key] || "";
+                      const value = row.horaires?.[j.key] || null;
                       const key = `${s.id}-${j.key}`;
                       return (
                         <td
@@ -238,12 +286,13 @@ function PlanningSection({ staff }) {
       )}
 
       {pickerCell && (
-        <CellPickerModal
+        <CellEditModal
           staffName={pickerCell.staffName}
           jourLabel={pickerCell.jourLabel}
-          current={rowsByStaff[pickerCell.staffId]?.[pickerCell.jour] || ""}
-          onPick={pick}
+          current={rowsByStaff[pickerCell.staffId]?.horaires?.[pickerCell.jour] || null}
+          onSave={save}
           onClose={() => setPickerCell(null)}
+          saving={savingKey === `${pickerCell.staffId}-${pickerCell.jour}`}
         />
       )}
     </div>
