@@ -36,6 +36,7 @@ export async function GET(req) {
     return Response.json(pages.map(normalizeAssignment), { headers: corsHeaders });
   } catch (err) {
     const status = err.code === "CONFIG_MISSING" ? 503 : 500;
+    console.error(`[GET task-assignments] ${err.code || "ERROR"}: ${err.message}`);
     return Response.json({ error: err.message }, { status, headers: corsHeaders });
   }
 }
@@ -59,6 +60,7 @@ export async function POST(req) {
     return Response.json({ success: true, id: page.id, item: normalizeAssignment(page) }, { headers: corsHeaders });
   } catch (err) {
     const status = err.code === "CONFIG_MISSING" ? 503 : 500;
+    console.error(`[POST task-assignments] ${err.code || "ERROR"}: ${err.message}`);
     return Response.json({ success: false, error: err.message }, { status, headers: corsHeaders });
   }
 }
