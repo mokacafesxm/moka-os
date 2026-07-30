@@ -8,13 +8,81 @@ import ReceiveModal from "../../components/shared/ReceiveModal";
 
 const STATUTS = ["À commander", "Envoyé", "Livraison prévue", "Reçu"];
 
-function buildMessage(fournisseurNom, items) {
+// Format exact tel qu'envoyé sur WhatsApp — voir PreviewModal, qui affiche
+// ce même texte avant envoi.
+function buildMessage(fournisseurNom, items, staffName) {
   const dateStr = new Date().toLocaleDateString("fr-FR", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric",
+    day: "numeric", month: "long", year: "numeric",
     timeZone: "America/Puerto_Rico",
   });
-  const lines = items.map((p) => `- ${p.name} — ${p.qty} ${p.unit}`).join("\n");
-  return `Bonjour ${fournisseurNom} 👋\n\nCommande du ${dateStr} :\n\n${lines}\n\nMerci 🙏\n— Équipe MÖKA`;
+  const lines = items.map((p) => `• ${p.name} × ${p.qty} ${p.unit}`).join("\n");
+  return `Bonjour ${fournisseurNom},\nCommande MÖKA CAFÉ — ${dateStr}\nPar : ${staffName || "MÖKA CAFÉ"}\n\n${lines}\n\nMerci de confirmer.\nMÖKA CAFÉ SXM 🌴`;
+}
+
+function waLink(supplier, message) {
+  if (!supplier?.whatsapp) return null;
+  return `https://wa.me/${String(supplier.whatsapp).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
+}
+
+// Preview avant envoi — même texte, mêmes 3 actions, que la commande soit
+// composée seule ou dans le carousel multi-fournisseur ci-dessous.
+function PreviewModal({ supplier, items, staffName, onClose, onSent, onEdit }) {
+  const [sending, setSending] = useState(false);
+  const message = buildMessage(supplier.name, items, staffName);
+  const href = waLink(supplier, message);
+
+  const handleSend = async (openWhatsApp) => {
+    setSending(true);
+    if (openWhatsApp && href) window.open(href, "_blank");
+    await onSent();
+    setSending(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <div
+        className="relative w-full sm:max-w-sm max-h-[85vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">👁 Prévisualisation</div>
+        <h2 className="text-base font-black text-[#2c1a10]">{supplier.name}</h2>
+        <div className="rounded-2xl bg-white border border-[#e5d5c5] p-4 text-sm text-[#2c1a10] whitespace-pre-wrap leading-relaxed">
+          {message}
+        </div>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => handleSend(true)}
+            disabled={sending || !href}
+            className="w-full h-12 rounded-2xl bg-[#25D366] text-white text-sm font-black cursor-pointer disabled:opacity-50"
+          >
+            {sending ? "…" : "💬 Envoyer WhatsApp"}
+          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onEdit}
+              className="flex-1 h-11 rounded-xl bg-[#f0e8dc] text-[#2c1a10] text-xs font-black cursor-pointer"
+            >
+              ✏️ Modifier
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSend(false)}
+              disabled={sending}
+              className="flex-1 h-11 rounded-xl bg-[#5a7828] text-white text-xs font-black cursor-pointer disabled:opacity-50"
+            >
+              ✅ Marquer envoyé
+            </button>
+          </div>
+        </div>
+        <button type="button" onClick={onClose} className="w-full h-10 text-[#9a7060] font-bold text-xs cursor-pointer">
+          Fermer
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function todaySXM() {
@@ -46,104 +114,110 @@ function Tabs({ tab, setTab }) {
 }
 
 function ComposerTab({ suppliers, products, onSent }) {
-  const [supplierId, setSupplierId] = useState("");
-  const [cart, setCart] = useState({});
-  const [sending, setSending] = useState(false);
-  const [sentOrder, setSentOrder] = useState(null); // { id, fournisseurNom } once posted, for the "livraison demain" prompt
-  const [confirmingDelivery, setConfirmingDelivery] = useState(false);
-  const [deliveryConfirmed, setDeliveryConfirmed] = useState(false);
+  const { selectedStaffName } = useStaffContext();
+  const [stage, setStage] = useState("select"); // "select" | "carousel" | "done"
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [carts, setCarts] = useState({}); // supplierId -> { productId: qty }
+  const [sentIds, setSentIds] = useState([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [showPreview, setShowPreview] = useState(false);
+  const [sendingAll, setSendingAll] = useState(false);
 
-  const supplier = suppliers.find((s) => s.id === supplierId);
-  const supplierProducts = useMemo(
-    () => (supplier ? products.filter((p) => p.fournisseurDefaut === supplier.name) : []),
-    [products, supplier]
-  );
+  const activeSuppliers = suppliers.filter((s) => selectedIds.includes(s.id));
+  const activeSupplier = activeSuppliers[activeIndex] || null;
 
-  const cartItems = supplierProducts
-    .filter((p) => (cart[p.id] || 0) > 0)
-    .map((p) => ({ id: p.id, name: p.name, qty: cart[p.id], unit: p.uniteCommande || p.unit || "" }));
+  const productsFor = (supplierName) => products.filter((p) => p.fournisseurDefaut === supplierName);
+  const cartItemsFor = (supplierId, supplierName) => {
+    const cart = carts[supplierId] || {};
+    return productsFor(supplierName)
+      .filter((p) => (cart[p.id] || 0) > 0)
+      .map((p) => ({ id: p.id, name: p.name, qty: cart[p.id], unit: p.uniteCommande || p.unit || "" }));
+  };
 
-  const setQty = (id, qty) => setCart((c) => ({ ...c, [id]: Math.max(0, qty) }));
+  const setQty = (supplierId, productId, qty) =>
+    setCarts((c) => ({ ...c, [supplierId]: { ...c[supplierId], [productId]: Math.max(0, qty) } }));
+
+  const toggleSupplier = (id) =>
+    setSelectedIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
 
   const reset = () => {
-    setSupplierId("");
-    setCart({});
-    setSentOrder(null);
-    setDeliveryConfirmed(false);
+    setStage("select");
+    setSelectedIds([]);
+    setCarts({});
+    setSentIds([]);
+    setActiveIndex(0);
   };
 
-  const send = async () => {
-    if (!supplier || cartItems.length === 0) return;
-    setSending(true);
-    const message = buildMessage(supplier.name, cartItems);
+  // POST vers /api/supplier-orders — commun à l'envoi individuel (preview)
+  // et à "Envoyer tous". N'ouvre jamais WhatsApp elle-même : ça reste
+  // synchrone dans le handler de clic appelant, pour ne pas se faire
+  // bloquer comme popup (voir sendAll ci-dessous).
+  const submitOrder = async (supplier, items) => {
+    const message = buildMessage(supplier.name, items, selectedStaffName);
+    const res = await fetch("/api/supplier-orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        produit: `Order composée — ${supplier.name}`,
+        quantite: items.length,
+        fournisseurId: supplier.id,
+        fournisseur: supplier.name,
+        statut: "Envoyé",
+        source: "Commandes",
+        message,
+        produits: items.map((p) => ({ name: p.name, qty: p.qty, unit: p.unit, produitId: p.id })),
+      }),
+    });
+    return res.json();
+  };
+
+  const handlePreviewSent = async () => {
+    if (!activeSupplier) return;
     try {
-      const res = await fetch("/api/supplier-orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          produit: `Order composée — ${supplier.name}`,
-          quantite: cartItems.length,
-          fournisseurId: supplier.id,
-          fournisseur: supplier.name,
-          statut: "Envoyé",
-          source: "Commandes",
-          message,
-          produits: cartItems.map((p) => ({ name: p.name, qty: p.qty, unit: p.unit, produitId: p.id })),
-        }),
-      });
-      const data = await res.json();
-      if (supplier.whatsapp) {
-        window.open(`https://wa.me/${String(supplier.whatsapp).replace(/\D/g, "")}?text=${encodeURIComponent(message)}`, "_blank");
-      }
-      setSentOrder({ id: data.id, fournisseurNom: supplier.name });
+      await submitOrder(activeSupplier, cartItemsFor(activeSupplier.id, activeSupplier.name));
+      setSentIds((cur) => [...cur, activeSupplier.id]);
       onSent();
+      setShowPreview(false);
+      if (activeIndex < activeSuppliers.length - 1) setActiveIndex((i) => i + 1);
+      else setStage("done");
     } catch (err) {
       console.error("[Commandes] send failed", err);
-    } finally {
-      setSending(false);
     }
   };
 
-  const confirmLivraisonDemain = async () => {
-    if (!sentOrder?.id) return;
-    setConfirmingDelivery(true);
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-    try {
-      await fetch("/api/supplier-orders", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: sentOrder.id, dateLivraisonPrevue: tomorrow }),
-      });
-      setDeliveryConfirmed(true);
-    } catch (err) {
-      console.error("[Commandes] confirmLivraisonDemain failed", err);
-    } finally {
-      setConfirmingDelivery(false);
-    }
+  const sendAll = () => {
+    const pending = activeSuppliers.filter(
+      (s) => !sentIds.includes(s.id) && cartItemsFor(s.id, s.name).length > 0
+    );
+    if (pending.length === 0) return;
+    setSendingAll(true);
+    // Ouvre tous les liens WhatsApp d'abord, synchrone dans ce handler — un
+    // window.open() déclenché après un await/setTimeout se fait bloquer par
+    // le navigateur comme popup non sollicité.
+    pending.forEach((s) => {
+      const items = cartItemsFor(s.id, s.name);
+      const href = waLink(s, buildMessage(s.name, items, selectedStaffName));
+      if (href) window.open(href, "_blank");
+    });
+    Promise.all(pending.map((s) => submitOrder(s, cartItemsFor(s.id, s.name))))
+      .then(() => {
+        setSentIds((cur) => [...cur, ...pending.map((s) => s.id)]);
+        onSent();
+        setStage("done");
+      })
+      .catch((err) => console.error("[Commandes] sendAll failed", err))
+      .finally(() => setSendingAll(false));
   };
 
-  if (sentOrder) {
+  if (stage === "done") {
     return (
       <div className="rounded-2xl border border-[#e5d5c5] bg-white p-5 text-center space-y-4">
         <div className="text-3xl">✅</div>
-        <div className="font-black text-[#2c1a10]">Commande envoyée à {sentOrder.fournisseurNom}</div>
-        {!deliveryConfirmed ? (
-          <div className="rounded-2xl bg-[#fef3c7] border border-[#fcd34d] p-3 space-y-2">
-            <div className="text-xs font-bold text-[#854f0b]">
-              📦 Livraison prévue demain {new Date(Date.now() + 86400000).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}
-            </div>
-            <button
-              type="button"
-              onClick={confirmLivraisonDemain}
-              disabled={confirmingDelivery}
-              className="w-full h-10 rounded-xl bg-[#854f0b] text-white text-xs font-black cursor-pointer disabled:opacity-50"
-            >
-              {confirmingDelivery ? "…" : "Confirmer livraison prévue"}
-            </button>
-          </div>
-        ) : (
-          <div className="text-xs font-bold text-[#5a7828]">🚚 Livraison demain confirmée</div>
-        )}
+        <div className="font-black text-[#2c1a10]">
+          {activeSuppliers.length > 1
+            ? `${activeSuppliers.length} commandes envoyées`
+            : `Commande envoyée à ${activeSuppliers[0]?.name || ""}`}
+        </div>
         <button type="button" onClick={reset} className="text-xs font-bold text-[#9a7060] underline cursor-pointer">
           Nouvelle commande
         </button>
@@ -151,71 +225,152 @@ function ComposerTab({ suppliers, products, onSent }) {
     );
   }
 
+  if (stage === "select") {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
+          <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide mb-3">Fournisseur(s)</div>
+          <div className="space-y-1.5">
+            {suppliers.map((s) => (
+              <label
+                key={s.id}
+                className="flex items-center gap-3 rounded-xl border border-[#e5d5c5] px-3.5 py-3 cursor-pointer"
+                style={{ background: selectedIds.includes(s.id) ? "#f0f7e5" : "white" }}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(s.id)}
+                  onChange={() => toggleSupplier(s.id)}
+                  className="w-4 h-4 accent-[#5a7828]"
+                />
+                <span className="text-sm font-bold text-[#2c1a10]">{s.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {selectedIds.length > 0 && (
+          <button
+            type="button"
+            onClick={() => { setActiveIndex(0); setStage("carousel"); }}
+            className="w-full h-12 rounded-2xl bg-[#2c1a10] text-white text-sm font-black cursor-pointer"
+          >
+            Continuer ({selectedIds.length}) →
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // stage === "carousel"
+  const cartItems = activeSupplier ? cartItemsFor(activeSupplier.id, activeSupplier.name) : [];
+  const supplierProducts = activeSupplier ? productsFor(activeSupplier.name) : [];
+  const isLast = activeIndex === activeSuppliers.length - 1;
+  const nextSupplier = !isLast ? activeSuppliers[activeIndex + 1] : null;
+  const anyCartHasItems = activeSuppliers.some((s) => cartItemsFor(s.id, s.name).length > 0);
+
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
-        <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide mb-2">Fournisseur</div>
-        <select
-          value={supplierId}
-          onChange={(e) => { setSupplierId(e.target.value); setCart({}); }}
-          className="w-full h-11 px-3 rounded-xl border border-[#e5d5c5] bg-[#faf5ef] text-sm font-bold text-[#2c1a10] outline-none"
-        >
-          <option value="">Sélectionner…</option>
-          {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+      <div className="flex items-center justify-between">
+        <button type="button" onClick={reset} className="text-xs font-bold text-[#9a7060] underline cursor-pointer">
+          ← Fournisseurs
+        </button>
+        {activeSuppliers.length > 1 && (
+          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#2c1a10] text-white">
+            Fournisseur {activeIndex + 1}/{activeSuppliers.length}
+          </span>
+        )}
       </div>
 
-      {supplier && (
-        <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
-          <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide mb-3">Produits</div>
-          {supplierProducts.length === 0 ? (
-            <div className="text-sm text-[#9a7060] py-2">Aucun produit rattaché à ce fournisseur</div>
-          ) : (
-            <div className="space-y-2">
-              {supplierProducts.map((p) => (
+      <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="font-black text-[#2c1a10]">{activeSupplier?.name}</div>
+          {sentIds.includes(activeSupplier?.id) && (
+            <span className="text-[9px] font-black px-2 py-1 rounded-lg bg-[#f0f7e5] text-[#5a7828]">✅ Envoyé</span>
+          )}
+        </div>
+        {supplierProducts.length === 0 ? (
+          <div className="text-sm text-[#9a7060] py-2">Aucun produit rattaché à ce fournisseur</div>
+        ) : (
+          <div className="space-y-2">
+            {supplierProducts.map((p) => {
+              const qty = carts[activeSupplier.id]?.[p.id] || 0;
+              return (
                 <div key={p.id} className="flex items-center justify-between gap-2">
                   <div>
                     <div className="text-sm font-bold text-[#2c1a10]">{p.name}</div>
                     <div className="text-[10px] text-[#9a7060]">{p.uniteCommande || p.unit}</div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button type="button" onClick={() => setQty(p.id, (cart[p.id] || 0) - 1)} className="w-8 h-8 rounded-lg bg-[#f0e8dc] text-[#2c1a10] font-black cursor-pointer">−</button>
-                    <span className="w-8 text-center font-black text-sm text-[#2c1a10]">{cart[p.id] || 0}</span>
-                    <button type="button" onClick={() => setQty(p.id, (cart[p.id] || 0) + 1)} className="w-8 h-8 rounded-lg bg-[#f0e8dc] text-[#2c1a10] font-black cursor-pointer">+</button>
+                    <button type="button" onClick={() => setQty(activeSupplier.id, p.id, qty - 1)} className="w-8 h-8 rounded-lg bg-[#f0e8dc] text-[#2c1a10] font-black cursor-pointer">−</button>
+                    <span className="w-8 text-center font-black text-sm text-[#2c1a10]">{qty}</span>
+                    <button type="button" onClick={() => setQty(activeSupplier.id, p.id, qty + 1)} className="w-8 h-8 rounded-lg bg-[#f0e8dc] text-[#2c1a10] font-black cursor-pointer">+</button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {cartItems.length > 0 && (
         <button
           type="button"
-          onClick={send}
-          disabled={sending}
-          className="w-full h-12 rounded-2xl bg-[#25D366] text-white text-sm font-black cursor-pointer disabled:opacity-50"
+          onClick={() => setShowPreview(true)}
+          className="w-full h-12 rounded-2xl bg-[#f0e8dc] text-[#2c1a10] text-sm font-black cursor-pointer"
         >
-          {sending ? "Envoi…" : `💬 Envoyer sur WhatsApp (${cartItems.length})`}
+          👁 Prévisualiser
         </button>
       )}
-    </div>
-  );
-}
 
-function StatutBadge({ statut }) {
-  const style = {
-    "À commander": { bg: "#f0e8dc", color: "#9a7060" },
-    "Envoyé": { bg: "#dbeafe", color: "#1e40af" },
-    "Livraison prévue": { bg: "#fef3c7", color: "#854f0b" },
-    "Reçu": { bg: "#f0f7e5", color: "#5a7828" },
-    "Annulé": { bg: "#fee2e2", color: "#b91c1c" },
-  }[statut] || { bg: "#f0e8dc", color: "#9a7060" };
-  return (
-    <span className="text-[9px] font-black px-2 py-1 rounded-lg shrink-0" style={{ background: style.bg, color: style.color }}>
-      {statut}
-    </span>
+      <div className="flex items-center gap-2">
+        {activeIndex > 0 && (
+          <button
+            type="button"
+            onClick={() => setActiveIndex((i) => i - 1)}
+            className="h-11 px-4 rounded-xl border border-[#e5d5c5] bg-white text-xs font-black text-[#9a7060] cursor-pointer"
+          >
+            ← Précédent
+          </button>
+        )}
+        {!isLast && (
+          <div className="flex-1">
+            <button
+              type="button"
+              onClick={() => setActiveIndex((i) => i + 1)}
+              className="w-full h-11 rounded-xl bg-white border border-[#e5d5c5] text-xs font-black text-[#2c1a10] cursor-pointer"
+            >
+              Suivant →
+            </button>
+            {nextSupplier && (
+              <div className="text-[10px] text-[#9a7060] text-center mt-1">{nextSupplier.name}</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {activeSuppliers.length > 1 && anyCartHasItems && (
+        <button
+          type="button"
+          onClick={sendAll}
+          disabled={sendingAll}
+          className="w-full h-12 rounded-2xl bg-[#25D366] text-white text-sm font-black cursor-pointer disabled:opacity-50"
+        >
+          {sendingAll ? "Envoi…" : "💬 Envoyer tous"}
+        </button>
+      )}
+
+      {showPreview && activeSupplier && (
+        <PreviewModal
+          supplier={activeSupplier}
+          items={cartItems}
+          staffName={selectedStaffName}
+          onClose={() => setShowPreview(false)}
+          onEdit={() => setShowPreview(false)}
+          onSent={handlePreviewSent}
+        />
+      )}
+    </div>
   );
 }
 
@@ -224,69 +379,87 @@ function displayStatut(order) {
   return order.statut;
 }
 
-const actionBtnClass = "flex-1 h-9 rounded-xl text-[11px] font-black cursor-pointer flex items-center justify-center gap-1";
+// Les commandes groupées (Composer) stockent leurs lignes dans le texte du
+// message envoyé, pas en données structurées côté GET (voir /api/supplier-
+// orders) — on les extrait ici pour l'aperçu "3 produits" de la card.
+function parseProduitNames(message) {
+  if (!message) return [];
+  return message
+    .split("\n")
+    .filter((l) => /^[•-]/.test(l.trim()))
+    .map((l) => l.replace(/^[•-]\s*/, "").split(/[×—]/)[0].trim())
+    .filter(Boolean);
+}
 
-// Statut-driven footer actions — "À commander" (WhatsApp/copier/marquer envoyé),
-// "Envoyé" (re-envoyer/marquer reçu), "Reçu" (voir message), "Annulé" (rien).
-function OrderActions({ order, suppliers, onMarkSent, onOpenReceive, onViewMessage, showToast }) {
+const HISTORIQUE_STATUT_BAND = {
+  "Reçu": "bg-[#5a7828]",
+  "Envoyé": "bg-blue-400",
+  "Livraison prévue": "bg-blue-400",
+  "À commander": "bg-orange-400",
+};
+const HISTORIQUE_STATUT_BADGE = {
+  "Reçu": "bg-green-100 text-green-700",
+  "Envoyé": "bg-blue-100 text-blue-700",
+  "Livraison prévue": "bg-blue-100 text-blue-700",
+  "À commander": "bg-orange-100 text-orange-700",
+};
+
+function HistoriqueCard({ order, suppliers, onSelect, onMarkSent, onOpenReceive, showToast }) {
   const statut = displayStatut(order);
-  if (statut === "Annulé") return null;
+  const produits = parseProduitNames(order.message);
+  const nbProduits = order.quantite || produits.length || 1;
+  const produitsLabel = produits.length > 0 ? produits : [order.produit];
 
   const supplier = suppliers.find((s) => s.name === order.fournisseur);
-  const wa = supplier?.whatsapp;
-  const message = order.message || `${order.fournisseur} — ${order.produit}`;
-  const waHref = wa ? `https://wa.me/${String(wa).replace(/\D/g, "")}?text=${encodeURIComponent(message)}` : null;
+  const waHref = waLink(supplier, order.message || `${order.fournisseur} — ${order.produit}`);
 
-  const copyMessage = (e) => {
-    e.stopPropagation();
-    navigator.clipboard?.writeText(message).then(() => showToast("Message copié ✅"));
-  };
-
-  if (statut === "À commander") {
-    return (
-      <div className="flex gap-2 px-3.5 pb-3.5" onClick={(e) => e.stopPropagation()}>
-        {waHref && (
-          <a href={waHref} target="_blank" rel="noreferrer" className={`${actionBtnClass} bg-[#25D366] text-white`}>
-            💬 WhatsApp
-          </a>
+  return (
+    <div className="bg-white rounded-2xl border border-[#e5d5c5] shadow-sm overflow-hidden mb-3">
+      <div className={`h-1.5 ${HISTORIQUE_STATUT_BAND[statut] || "bg-gray-300"}`} />
+      <button type="button" onClick={() => onSelect(order)} className="w-full text-left cursor-pointer">
+        <div className="p-4 pb-0">
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div>
+              <div className="font-black text-[#2c1a10]">{order.fournisseur}</div>
+              <div className="text-xs text-[#9a7060] mt-0.5">
+                {order.date?.slice(0, 10)} · {nbProduits} produit{nbProduits > 1 ? "s" : ""}
+              </div>
+            </div>
+            <span className={`text-xs font-black px-3 py-1 rounded-full shrink-0 ${HISTORIQUE_STATUT_BADGE[statut] || "bg-gray-100 text-gray-500"}`}>
+              {statut}
+            </span>
+          </div>
+          <div className="text-xs text-[#9a7060] truncate mb-3">
+            {produitsLabel.slice(0, 3).join(" · ")}{produitsLabel.length > 3 ? ` +${produitsLabel.length - 3}` : ""}
+          </div>
+        </div>
+      </button>
+      <div className="flex gap-2 px-4 pb-4" onClick={(e) => e.stopPropagation()}>
+        {statut === "À commander" && (
+          <>
+            {waHref && (
+              <a href={waHref} target="_blank" rel="noreferrer" className="flex-1 py-2 rounded-xl bg-green-500 text-white text-xs font-black text-center">
+                💬 WhatsApp
+              </a>
+            )}
+            <button type="button" onClick={() => onMarkSent(order)} className="flex-1 py-2 rounded-xl bg-[#f0e8dc] text-[#2c1a10] text-xs font-black cursor-pointer">
+              ✅ Marquer envoyé
+            </button>
+          </>
         )}
-        <button type="button" onClick={copyMessage} className={`${actionBtnClass} bg-[#f0e8dc] text-[#2c1a10]`}>
-          📋 Copier
-        </button>
-        <button type="button" onClick={() => onMarkSent(order)} className={`${actionBtnClass} bg-[#5a7828] text-white`}>
-          ✅ Envoyé
-        </button>
-      </div>
-    );
-  }
-
-  if (statut === "Envoyé" || statut === "Livraison prévue") {
-    return (
-      <div className="flex gap-2 px-3.5 pb-3.5" onClick={(e) => e.stopPropagation()}>
-        {waHref && (
-          <a href={waHref} target="_blank" rel="noreferrer" className={`${actionBtnClass} bg-[#25D366] text-white`}>
-            💬 Re-envoyer
-          </a>
+        {(statut === "Envoyé" || statut === "Livraison prévue") && (
+          <button type="button" onClick={() => onOpenReceive(order)} className="flex-1 py-2 rounded-xl bg-[#2c1a10] text-white text-xs font-black cursor-pointer">
+            📦 Marquer reçu
+          </button>
         )}
-        <button type="button" onClick={() => onOpenReceive(order)} className={`${actionBtnClass} bg-[#5a7828] text-white`}>
-          ✅ Marquer reçu
+        <button type="button" onClick={() => onSelect(order)} className="py-2 px-3 rounded-xl border border-[#e5d5c5] text-xs text-[#9a7060] cursor-pointer">
+          Détail →
         </button>
       </div>
-    );
-  }
-
-  if (statut === "Reçu" && order.message) {
-    return (
-      <div className="px-3.5 pb-3.5" onClick={(e) => e.stopPropagation()}>
-        <button type="button" onClick={() => onViewMessage(order)} className="text-[11px] font-bold text-[#9a7060] underline cursor-pointer">
-          📋 Voir le message
-        </button>
-      </div>
-    );
-  }
-
-  return null;
+    </div>
+  );
 }
+
 
 function HistoriqueTab({ orders, suppliers, onRefresh }) {
   const [filter, setFilter] = useState("Tous");
@@ -360,37 +533,18 @@ function HistoriqueTab({ orders, suppliers, onRefresh }) {
       {filtered.length === 0 ? (
         <div className="text-center text-sm text-[#9a7060] py-10">Aucune commande</div>
       ) : (
-        <div className="space-y-2">
-          {filtered.map((o) => {
-            const statut = displayStatut(o);
-            const isAnnule = statut === "Annulé";
-            return (
-              <div
-                key={o.id}
-                className={`rounded-2xl border border-[#e5d5c5] bg-white overflow-hidden ${isAnnule ? "opacity-50" : ""}`}
-              >
-                <button
-                  type="button"
-                  onClick={() => setDetail(o)}
-                  className="w-full flex items-center justify-between p-3.5 text-left cursor-pointer"
-                >
-                  <div className="min-w-0">
-                    <div className="font-black text-sm text-[#2c1a10] truncate">{o.fournisseur}</div>
-                    <div className="text-[11px] text-[#9a7060]">{o.date?.slice(0, 10)}</div>
-                  </div>
-                  <StatutBadge statut={statut} />
-                </button>
-                <OrderActions
-                  order={o}
-                  suppliers={suppliers}
-                  onMarkSent={markOrderSent}
-                  onOpenReceive={setReceivingOrder}
-                  onViewMessage={setDetail}
-                  showToast={showToast}
-                />
-              </div>
-            );
-          })}
+        <div>
+          {filtered.map((o) => (
+            <HistoriqueCard
+              key={o.id}
+              order={o}
+              suppliers={suppliers}
+              onSelect={setDetail}
+              onMarkSent={markOrderSent}
+              onOpenReceive={setReceivingOrder}
+              showToast={showToast}
+            />
+          ))}
         </div>
       )}
 
