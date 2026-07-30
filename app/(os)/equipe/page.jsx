@@ -7,9 +7,9 @@ import { useAppContext } from "../../contexts/AppContext";
 
 const SXM_TZ = "America/Puerto_Rico";
 // Options du select "poste du jour" — doit rester identique aux options
-// Notion créées sur MOKA_Planning (Lundi..Dimanche), Repos/Congé traités à
-// part ci-dessous (mis en avant, pas juste 2 entrées de plus dans la liste).
+// Notion créées sur MOKA_Planning (Lundi..Dimanche).
 const JOUR_OPTIONS = ["Bar", "Cuisine", "Salle", "Plonge"];
+const REPOS_POSTES = ["Repos", "Congé"];
 const JOURS = [
   { key: "lundi", label: "Lun" },
   { key: "mardi", label: "Mar" },
@@ -44,32 +44,36 @@ function formatShort(dateStr) {
   return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", timeZone: SXM_TZ }).format(new Date(`${dateStr}T12:00:00Z`));
 }
 
-const REPOS_POSTES = ["Repos", "Congé"];
-
-function PosteChip({ value }) {
-  const poste = value?.poste;
-  if (!poste) return <span className="text-[#c8b4a8]">—</span>;
-  if (REPOS_POSTES.includes(poste)) return <span className="text-[10px] font-bold text-[#9a7060]">{poste}</span>;
+function Toast({ text }) {
+  if (!text) return null;
   return (
-    <span className="inline-flex flex-col items-center gap-0.5">
-      <span className="text-[10px] font-black px-1.5 py-1 rounded-lg bg-[#f0f7e5] text-[#5a7828] whitespace-nowrap">
-        {poste}
-      </span>
-      {(value.debut || value.fin) && (
-        <span className="text-[9px] font-bold text-[#9a7060] whitespace-nowrap">
-          {value.debut || "—"}→{value.fin || "—"}
-        </span>
-      )}
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[130] px-4 py-2.5 rounded-2xl bg-[#2c1a10] text-white text-sm font-bold shadow-lg whitespace-nowrap">
+      {text}
+    </div>
+  );
+}
+
+function PosteChip({ poste, exception }) {
+  if (!poste) return <span className="text-[#c8b4a8]">—</span>;
+  if (REPOS_POSTES.includes(poste)) {
+    return <span className={`text-[10px] font-bold ${exception ? "text-[#b45309]" : "text-[#9a7060]"}`}>{poste}</span>;
+  }
+  return (
+    <span
+      className={`inline-block text-[10px] font-black px-1.5 py-1 rounded-lg whitespace-nowrap ${
+        exception ? "bg-[#fef3c7] text-[#b45309]" : "bg-[#f0f7e5] text-[#5a7828]"
+      }`}
+    >
+      {poste}
     </span>
   );
 }
 
-function CellEditModal({ staffName, jourLabel, current, onSave, onClose, saving }) {
-  const [poste, setPoste] = useState(current?.poste || "");
-  const [debut, setDebut] = useState(current?.debut || "");
-  const [fin, setFin] = useState(current?.fin || "");
-  const isRepos = REPOS_POSTES.includes(poste);
-
+// Sélection de poste "un seul tap" — pas de bouton Enregistrer séparé, le
+// choix sauvegarde immédiatement (voir onPick côté appelant). En mode
+// exception, une option "revenir au planning type" permet d'annuler la
+// dérogation pour cette date précise.
+function PostePickerSheet({ staffName, jourLabel, isException, onPick, onClearException, onClose, saving }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
@@ -79,15 +83,14 @@ function CellEditModal({ staffName, jourLabel, current, onSave, onClose, saving 
       >
         <h2 className="text-base font-black text-[#2c1a10]">{staffName} — {jourLabel}</h2>
 
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-2 gap-1.5">
           {JOUR_OPTIONS.map((p) => (
             <button
               key={p}
               type="button"
-              onClick={() => setPoste(p)}
-              className={`h-10 rounded-xl text-xs font-bold cursor-pointer ${
-                poste === p ? "bg-[#5a7828] text-white" : "bg-white border border-[#e5d5c5] text-[#2c1a10]"
-              }`}
+              disabled={saving}
+              onClick={() => onPick(p)}
+              className="h-11 rounded-xl text-sm font-bold bg-white border border-[#e5d5c5] text-[#2c1a10] cursor-pointer disabled:opacity-50 active:scale-[0.98] transition-transform"
             >
               {p}
             </button>
@@ -96,43 +99,70 @@ function CellEditModal({ staffName, jourLabel, current, onSave, onClose, saving 
             <button
               key={p}
               type="button"
-              onClick={() => setPoste(p)}
-              className={`h-10 rounded-xl text-xs font-bold cursor-pointer ${
-                poste === p ? "bg-[#9a7060] text-white" : "bg-white border border-[#e5d5c5] text-[#9a7060]"
-              }`}
+              disabled={saving}
+              onClick={() => onPick(p)}
+              className="h-11 rounded-xl text-sm font-bold bg-white border border-[#e5d5c5] text-[#9a7060] cursor-pointer disabled:opacity-50 active:scale-[0.98] transition-transform"
             >
               {p}
             </button>
           ))}
         </div>
 
-        {!isRepos && (
-          <div className="flex items-center gap-2">
-            <label className="flex-1 space-y-1">
-              <span className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Début</span>
-              <input
-                type="time"
-                value={debut}
-                onChange={(e) => setDebut(e.target.value)}
-                className="w-full h-11 px-3 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
-              />
-            </label>
-            <label className="flex-1 space-y-1">
-              <span className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Fin</span>
-              <input
-                type="time"
-                value={fin}
-                onChange={(e) => setFin(e.target.value)}
-                className="w-full h-11 px-3 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
-              />
-            </label>
-          </div>
+        {isException && (
+          <button
+            type="button"
+            disabled={saving}
+            onClick={onClearException}
+            className="w-full h-11 rounded-xl bg-white border border-[#e5d5c5] text-[#9a7060] font-bold text-xs cursor-pointer disabled:opacity-50"
+          >
+            ↩ Revenir au planning type
+          </button>
         )}
 
+        <button type="button" onClick={onClose} className="w-full h-10 rounded-xl text-[#9a7060] font-bold text-xs cursor-pointer">
+          Annuler
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function HoraireEditModal({ staffName, horaireDebut, horaireFin, onSave, onClose, saving }) {
+  const [debut, setDebut] = useState(horaireDebut || "");
+  const [fin, setFin] = useState(horaireFin || "");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <div
+        className="relative w-full sm:max-w-xs rounded-t-3xl sm:rounded-3xl bg-[#f5ede0] p-5 shadow-2xl space-y-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-base font-black text-[#2c1a10]">{staffName} — Horaires habituels</h2>
+        <div className="flex items-center gap-2">
+          <label className="flex-1 space-y-1">
+            <span className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Début</span>
+            <input
+              type="time"
+              value={debut}
+              onChange={(e) => setDebut(e.target.value)}
+              className="w-full h-11 px-3 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
+            />
+          </label>
+          <label className="flex-1 space-y-1">
+            <span className="text-[10px] font-black text-[#9a7060] uppercase tracking-wide">Fin</span>
+            <input
+              type="time"
+              value={fin}
+              onChange={(e) => setFin(e.target.value)}
+              className="w-full h-11 px-3 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
+            />
+          </label>
+        </div>
         <button
           type="button"
-          onClick={() => onSave({ poste, debut: isRepos ? "" : debut, fin: isRepos ? "" : fin })}
-          disabled={!poste || saving}
+          onClick={() => onSave({ horaireDebut: debut, horaireFin: fin })}
+          disabled={saving}
           className="w-full h-11 rounded-xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-50"
         >
           {saving ? "…" : "Enregistrer"}
@@ -146,17 +176,31 @@ function CellEditModal({ staffName, jourLabel, current, onSave, onClose, saving 
 }
 
 function PlanningSection({ staff }) {
-  const [semaine, setSemaine] = useState(() => mondayOf(todaySXM()));
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notConfigured, setNotConfigured] = useState(false);
-  const [pickerCell, setPickerCell] = useState(null); // { staffId, staffName, jour, jourLabel }
+  const [pickerCell, setPickerCell] = useState(null); // { staffId, staffName, jour, jourLabel, dateISO? }
+  const [horaireStaff, setHoraireStaff] = useState(null); // { staffId, staffName, horaireDebut, horaireFin }
   const [savingKey, setSavingKey] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  // Mode exception — dérogations ponctuelles au planning type pour UNE
+  // semaine précise, stockées à part (MOKA_Assignations_Taches), jamais
+  // écrites dans le planning type lui-même.
+  const [exceptionMode, setExceptionMode] = useState(false);
+  const [weekStart, setWeekStart] = useState(() => mondayOf(todaySXM()));
+  const [exceptions, setExceptions] = useState([]);
+  const [exceptionsLoading, setExceptionsLoading] = useState(false);
+
+  const flashToast = (text) => {
+    setToast(text);
+    setTimeout(() => setToast(null), 2000);
+  };
 
   useEffect(() => {
     let ignore = false;
     setLoading(true);
-    fetch(`/api/equipe/planning?semaine=${semaine}`)
+    fetch("/api/equipe/planning")
       .then(async (r) => {
         if (r.status === 503) return { notConfigured: true, rows: [] };
         const data = await r.json().catch(() => []);
@@ -170,19 +214,51 @@ function PlanningSection({ staff }) {
       .catch(() => { if (!ignore) setNotConfigured(true); })
       .finally(() => { if (!ignore) setLoading(false); });
     return () => { ignore = true; };
-  }, [semaine]);
+  }, []);
+
+  useEffect(() => {
+    if (!exceptionMode) return;
+    let ignore = false;
+    setExceptionsLoading(true);
+    const from = weekStart;
+    const to = addDays(weekStart, 6);
+    fetch(`/api/task-assignments?from=${from}&to=${to}`)
+      .then((r) => r.json())
+      .then((data) => { if (!ignore) setExceptions(Array.isArray(data) ? data : []); })
+      .catch(() => { if (!ignore) setExceptions([]); })
+      .finally(() => { if (!ignore) setExceptionsLoading(false); });
+    return () => { ignore = true; };
+  }, [exceptionMode, weekStart]);
 
   const rowsByStaff = useMemo(() => Object.fromEntries(rows.map((r) => [r.staffId, r])), [rows]);
+  const dayIndex = useMemo(() => Object.fromEntries(JOURS.map((j, i) => [j.key, i])), []);
+  // exceptionsByKey["staffId-YYYY-MM-DD"] -> exception row
+  const exceptionsByKey = useMemo(
+    () => Object.fromEntries(exceptions.map((e) => [`${e.staffId}-${e.date}`, e])),
+    [exceptions]
+  );
 
-  const save = async ({ poste, debut, fin }) => {
+  const dateForJour = (jourKey) => addDays(weekStart, dayIndex[jourKey]);
+
+  const openCell = (s, j) => {
+    setPickerCell({
+      staffId: s.id,
+      staffName: s.name,
+      jour: j.key,
+      jourLabel: j.label,
+      dateISO: exceptionMode ? dateForJour(j.key) : null,
+    });
+  };
+
+  const pickTemplate = async (poste) => {
     const { staffId, staffName, jour } = pickerCell;
     const key = `${staffId}-${jour}`;
     setSavingKey(key);
     try {
       const res = await fetch("/api/equipe/planning", {
-        method: "POST",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ staffId, staffName, semaine, jour, poste, debut, fin }),
+        body: JSON.stringify({ staffId, staffName, jour, poste }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
@@ -194,8 +270,78 @@ function PlanningSection({ staff }) {
         return next;
       });
       setPickerCell(null);
+      flashToast("Planning mis à jour");
     } catch {
       /* transient — la case garde son ancienne valeur affichée, le tap suivant réessaiera */
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const pickException = async (poste) => {
+    const { staffId, staffName, jour, dateISO } = pickerCell;
+    const key = `${staffId}-${jour}`;
+    setSavingKey(key);
+    try {
+      const existing = exceptionsByKey[`${staffId}-${dateISO}`];
+      if (existing) await fetch(`/api/task-assignments?id=${existing.id}`, { method: "DELETE" });
+      const res = await fetch("/api/task-assignments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staffId, staffName, date: dateISO, posteOverride: poste, type: "planning_exception" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
+      setExceptions((cur) => [...cur.filter((e) => e.id !== existing?.id), data.item]);
+      setPickerCell(null);
+      flashToast("Exception enregistrée");
+    } catch {
+      /* transient */
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const clearException = async () => {
+    const { staffId, jour, dateISO } = pickerCell;
+    const key = `${staffId}-${jour}`;
+    const existing = exceptionsByKey[`${staffId}-${dateISO}`];
+    if (!existing) { setPickerCell(null); return; }
+    setSavingKey(key);
+    try {
+      await fetch(`/api/task-assignments?id=${existing.id}`, { method: "DELETE" });
+      setExceptions((cur) => cur.filter((e) => e.id !== existing.id));
+      setPickerCell(null);
+      flashToast("Retour au planning type");
+    } catch {
+      /* transient */
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const saveHoraires = async ({ horaireDebut, horaireFin }) => {
+    const { staffId, staffName } = horaireStaff;
+    setSavingKey(`horaires-${staffId}`);
+    try {
+      const res = await fetch("/api/equipe/planning", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staffId, staffName, horaireDebut, horaireFin }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
+      setRows((cur) => {
+        const idx = cur.findIndex((r) => r.staffId === staffId);
+        if (idx === -1) return [...cur, data.item];
+        const next = [...cur];
+        next[idx] = data.item;
+        return next;
+      });
+      setHoraireStaff(null);
+      flashToast("Horaires mis à jour");
+    } catch {
+      /* transient */
     } finally {
       setSavingKey(null);
     }
@@ -211,27 +357,42 @@ function PlanningSection({ staff }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 gap-2">
+        {exceptionMode ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setWeekStart((s) => addDays(s, -7))}
+              className="w-9 h-9 rounded-xl bg-white border border-[#e5d5c5] text-[#9a7060] font-black cursor-pointer shrink-0"
+            >
+              ←
+            </button>
+            <div className="text-sm font-black text-[#b45309] text-center">
+              Exceptions — semaine du {formatShort(weekStart)}
+            </div>
+            <button
+              type="button"
+              onClick={() => setWeekStart((s) => addDays(s, 7))}
+              className="w-9 h-9 rounded-xl bg-white border border-[#e5d5c5] text-[#9a7060] font-black cursor-pointer shrink-0"
+            >
+              →
+            </button>
+          </>
+        ) : (
+          <div className="text-sm font-black text-[#2c1a10]">Planning type</div>
+        )}
         <button
           type="button"
-          onClick={() => setSemaine((s) => addDays(s, -7))}
-          className="w-9 h-9 rounded-xl bg-white border border-[#e5d5c5] text-[#9a7060] font-black cursor-pointer"
+          onClick={() => setExceptionMode((v) => !v)}
+          className={`rounded-full px-3 py-1.5 text-xs font-black cursor-pointer shrink-0 whitespace-nowrap ${
+            exceptionMode ? "bg-[#2c1a10] text-white" : "bg-[#fef3c7] text-[#b45309]"
+          }`}
         >
-          ←
-        </button>
-        <div className="text-sm font-black text-[#2c1a10]">
-          Semaine du {formatShort(semaine)}
-        </div>
-        <button
-          type="button"
-          onClick={() => setSemaine((s) => addDays(s, 7))}
-          className="w-9 h-9 rounded-xl bg-white border border-[#e5d5c5] text-[#9a7060] font-black cursor-pointer"
-        >
-          →
+          {exceptionMode ? "✕ Quitter" : "✏️ Modifier cette semaine"}
         </button>
       </div>
 
-      {loading ? (
+      {loading || (exceptionMode && exceptionsLoading) ? (
         <div className="text-center text-sm text-[#9a7060] py-8">Chargement…</div>
       ) : staff.length === 0 ? (
         <div className="text-center text-sm text-[#9a7060] py-8">Aucun membre d&apos;équipe actif</div>
@@ -254,26 +415,38 @@ function PlanningSection({ staff }) {
                 return (
                   <tr key={s.id} className="bg-white">
                     <td className="rounded-l-2xl border-y border-l border-[#e5d5c5] px-3 py-2">
-                      <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setHoraireStaff({ staffId: s.id, staffName: s.name, horaireDebut: row.horaireDebut, horaireFin: row.horaireFin })}
+                        className="flex items-center gap-2 cursor-pointer"
+                      >
                         <span
                           className="rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0"
                           style={{ width: 26, height: 26, background: "#2c1a10" }}
                         >
                           {initials(s.name)}
                         </span>
-                        <span className="text-xs font-bold text-[#2c1a10] whitespace-nowrap">{s.name}</span>
-                      </div>
+                        <span className="text-left">
+                          <span className="block text-xs font-bold text-[#2c1a10] whitespace-nowrap">{s.name}</span>
+                          {(row.horaireDebut || row.horaireFin) && (
+                            <span className="block text-[9px] font-bold text-[#9a7060] whitespace-nowrap">
+                              {row.horaireDebut || "—"}→{row.horaireFin || "—"}
+                            </span>
+                          )}
+                        </span>
+                      </button>
                     </td>
                     {JOURS.map((j, i) => {
-                      const value = row.horaires?.[j.key] || null;
                       const key = `${s.id}-${j.key}`;
+                      const exception = exceptionMode ? exceptionsByKey[`${s.id}-${dateForJour(j.key)}`] : null;
+                      const poste = exceptionMode ? (exception?.posteOverride || row.jours?.[j.key] || "") : (row.jours?.[j.key] || "");
                       return (
                         <td
                           key={j.key}
-                          className={`border-y border-[#e5d5c5] text-center py-2 cursor-pointer ${i === JOURS.length - 1 ? "rounded-r-2xl border-r" : ""}`}
-                          onClick={() => setPickerCell({ staffId: s.id, staffName: s.name, jour: j.key, jourLabel: j.label })}
+                          className={`border-y border-[#e5d5c5] text-center py-2 cursor-pointer ${i === JOURS.length - 1 ? "rounded-r-2xl border-r" : ""} ${exception ? "bg-[#fffbeb]" : ""}`}
+                          onClick={() => openCell(s, j)}
                         >
-                          {savingKey === key ? <span className="text-[10px] text-[#9a7060]">…</span> : <PosteChip value={value} />}
+                          {savingKey === key ? <span className="text-[10px] text-[#9a7060]">…</span> : <PosteChip poste={poste} exception={Boolean(exception)} />}
                         </td>
                       );
                     })}
@@ -286,15 +459,29 @@ function PlanningSection({ staff }) {
       )}
 
       {pickerCell && (
-        <CellEditModal
+        <PostePickerSheet
           staffName={pickerCell.staffName}
-          jourLabel={pickerCell.jourLabel}
-          current={rowsByStaff[pickerCell.staffId]?.horaires?.[pickerCell.jour] || null}
-          onSave={save}
+          jourLabel={exceptionMode ? `${pickerCell.jourLabel} ${formatShort(pickerCell.dateISO)}` : pickerCell.jourLabel}
+          isException={exceptionMode && Boolean(exceptionsByKey[`${pickerCell.staffId}-${pickerCell.dateISO}`])}
+          onPick={exceptionMode ? pickException : pickTemplate}
+          onClearException={clearException}
           onClose={() => setPickerCell(null)}
           saving={savingKey === `${pickerCell.staffId}-${pickerCell.jour}`}
         />
       )}
+
+      {horaireStaff && (
+        <HoraireEditModal
+          staffName={horaireStaff.staffName}
+          horaireDebut={horaireStaff.horaireDebut}
+          horaireFin={horaireStaff.horaireFin}
+          onSave={saveHoraires}
+          onClose={() => setHoraireStaff(null)}
+          saving={savingKey === `horaires-${horaireStaff.staffId}`}
+        />
+      )}
+
+      <Toast text={toast} />
     </div>
   );
 }
@@ -412,7 +599,7 @@ export default function EquipePage() {
       </div>
 
       <div>
-        <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-2">Planning hebdomadaire</div>
+        <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-2">Planning type</div>
         <PlanningSection staff={activeStaff} />
       </div>
 
