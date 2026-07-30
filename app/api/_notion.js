@@ -31,6 +31,12 @@ export const DB = {
   BANQUE: "3ab9512c-f66a-8133-8e7a-f8c8454a53ec",
   // /recettes dashboard (créée 2026-07-29, même page parente "MÖKA OS v2 — Bases")
   RECETTES_FAMILLES: "3ad9512c-f66a-81fc-9598-e8b23b960432",
+  // Recettes batch/prépas (créée 2026-07-30, même page parente) — un prépa
+  // (ex: Guacamole) -> ses ingrédients bruts en grammes, distinct des
+  // recettes menu (sold_product -> ingredient, voir MOKA_Recipe_Lines) car
+  // les prépas de MOKA_Actions_Preparations n'ont pas de catalogue stable
+  // (titre libre par tâche) — on mappe donc par nom, pas par relation.
+  RECETTES_BATCH: "3ad9512c-f66a-8140-a577-d3018927d7ab",
 };
 
 export const corsHeaders = {

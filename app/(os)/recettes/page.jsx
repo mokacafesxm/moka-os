@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
+import { isCloudinaryConfigured, uploadToCloudinary } from "../../../lib/cloudinary";
+
+const UNITE_OPTIONS = ["g", "kg", "mL", "L", "pièce", "portion"];
 
 const STATUS_LABEL = { mapped: "Mappée", unmapped: "Non mappée", not_required: "Non requise" };
 const STATUS_COLOR = { mapped: "#5a7828", unmapped: "#b91c1c", not_required: "#9a7060" };
@@ -115,6 +118,24 @@ function RecetteFormModal({ mode, initial, familles, onClose, onSaved }) {
   const [form, setForm] = useState(initial || { ...EMPTY_RECETTE_FORM, famille: familles[0]?.nom || "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const cloudinaryReady = isCloudinaryConfigured();
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const url = await uploadToCloudinary(file);
+      setForm((f) => ({ ...f, photoUrl: url }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
 
   const submit = async () => {
     if (!form.nom.trim()) { setError("Nom requis"); return; }
@@ -149,10 +170,16 @@ function RecetteFormModal({ mode, initial, familles, onClose, onSaved }) {
         <option value="">Famille…</option>
         {familles.map((f) => <option key={f.id} value={f.nom}>{f.emoji ? `${f.emoji} ` : ""}{f.nom}</option>)}
       </select>
+      {cloudinaryReady && (
+        <label className="flex items-center justify-center h-11 rounded-xl border border-dashed border-[#c8b4a8] text-[#9a7060] text-sm font-bold cursor-pointer">
+          <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={uploading} />
+          {uploading ? "Envoi…" : "📷 Uploader une photo"}
+        </label>
+      )}
       <input
         value={form.photoUrl}
         onChange={(e) => setForm((f) => ({ ...f, photoUrl: e.target.value }))}
-        placeholder="https://..."
+        placeholder={cloudinaryReady ? "…ou colle une URL directement" : "https://..."}
         className={inputClass}
       />
       <input
@@ -328,12 +355,12 @@ function RecetteCard({ recette, onSelect }) {
       className="rounded-2xl border border-[#e5d5c5] bg-white overflow-hidden text-left cursor-pointer active:scale-[0.98] transition-transform"
     >
       {recette.photoUrl ? (
-        <div className="w-full aspect-[4/3] bg-[#f0e8dc]">
+        <div className="w-full aspect-[3/4] bg-[#f0e8dc]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={recette.photoUrl} alt="" className="w-full h-full object-cover" />
         </div>
       ) : (
-        <div className="w-full aspect-[4/3] bg-[#f0e8dc] flex items-center justify-center text-3xl">
+        <div className="w-full aspect-[3/4] bg-[#f0e8dc] flex items-center justify-center text-3xl">
           {recette.pdfUrl ? "📄" : "🖼"}
         </div>
       )}
@@ -350,19 +377,389 @@ function RecetteCard({ recette, onSelect }) {
   );
 }
 
+// ── Tab "Recettes mappées" — sous-section A (menu) et B (batch/prépas) ────
+
+function ligneName(kind, id, ingredients, batchRecettes) {
+  if (kind === "batch") return batchRecettes.find((b) => b.id === id)?.nom || "?";
+  return ingredients.find((i) => i.id === id)?.ingredient || ingredients.find((i) => i.id === id)?.name || "?";
+}
+
+// Select groupé "--- Ingrédients ---" / "--- Prépas/Batch ---" — un
+// ingrédient de recette (menu ou batch) peut être soit un ingrédient brut
+// (MOKA_Ingredients_Master), soit — seulement pour les recettes menu — une
+// autre recette batch déjà définie (ex: Smashed Avocado utilise la Base
+// Guacamole comme "ingrédient"). Les recettes batch elles-mêmes ne peuvent
+// référencer que des ingrédients bruts (voir `allowBatch`).
+function LigneAdder({ ingredients, batchRecettes, allowBatch, onAdd }) {
+  const [kind, setKind] = useState("");
+  const [qty, setQty] = useState("");
+  const [unit, setUnit] = useState("g");
+
+  const add = () => {
+    if (!kind || !qty) return;
+    const [k, id] = kind.split(":");
+    onAdd({ kind: k, id, name: ligneName(k, id, ingredients, batchRecettes), qty: Number(qty), unit });
+    setKind("");
+    setQty("");
+  };
+
+  return (
+    <div className="flex flex-wrap gap-1.5 items-center">
+      <select value={kind} onChange={(e) => setKind(e.target.value)} className="flex-1 min-w-[140px] h-10 px-2.5 rounded-lg border border-[#e5d5c5] bg-white text-xs font-semibold text-[#2c1a10] outline-none">
+        <option value="">Ingrédient…</option>
+        <optgroup label="--- Ingrédients ---">
+          {ingredients.map((i) => <option key={`ing-${i.id}`} value={`ingredient:${i.id}`}>{i.ingredient || i.name}</option>)}
+        </optgroup>
+        {allowBatch && batchRecettes.length > 0 && (
+          <optgroup label="--- Prépas/Batch ---">
+            {batchRecettes.map((b) => <option key={`batch-${b.id}`} value={`batch:${b.id}`}>{b.nom}</option>)}
+          </optgroup>
+        )}
+      </select>
+      <input type="number" min="0" step="0.1" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Qté" className="w-16 h-10 px-2 rounded-lg border border-[#e5d5c5] bg-white text-xs font-semibold text-[#2c1a10] outline-none" />
+      <select value={unit} onChange={(e) => setUnit(e.target.value)} className="w-20 h-10 px-1.5 rounded-lg border border-[#e5d5c5] bg-white text-xs font-semibold text-[#2c1a10] outline-none">
+        {UNITE_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
+      </select>
+      <button type="button" onClick={add} className="h-10 px-3 rounded-lg bg-[#5a7828] text-white text-xs font-black cursor-pointer">+</button>
+    </div>
+  );
+}
+
+function LigneList({ lignes, onRemove }) {
+  if (lignes.length === 0) return <div className="text-sm text-[#9a7060] py-1">Aucun ingrédient pour l&apos;instant</div>;
+  return (
+    <div className="space-y-1.5">
+      {lignes.map((l, i) => (
+        <div key={i} className="flex items-center justify-between gap-2 rounded-lg bg-[#faf5ef] px-2.5 py-2">
+          <span className="text-sm font-bold text-[#2c1a10]">
+            {l.kind === "batch" && "🍲 "}{l.name}
+          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-[#9a7060] font-semibold">{l.qty} {l.unit}</span>
+            <button type="button" onClick={() => onRemove(i)} className="w-6 h-6 rounded-md bg-[#fee2e2] text-red-700 text-xs font-black cursor-pointer">×</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MenuMappingModal({ product, mappedEntry, ingredients, batchRecettes, onClose, onSaved }) {
+  const [lignes, setLignes] = useState(mappedEntry?.lignes || []);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/recettes/mapped", {
+        method: mappedEntry ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          mappedEntry
+            ? { id: mappedEntry.id, lignes }
+            : { type: "menu", nom: product.name, soldProductId: product.id, lignes }
+        ),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalShell title={product.name} onClose={onClose}>
+      <div className="rounded-2xl border border-[#e5d5c5] bg-white p-3.5 space-y-3">
+        <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Composition</div>
+        <LigneList lignes={lignes} onRemove={(i) => setLignes((cur) => cur.filter((_, idx) => idx !== i))} />
+        <LigneAdder ingredients={ingredients} batchRecettes={batchRecettes} allowBatch onAdd={(l) => setLignes((cur) => [...cur, l])} />
+      </div>
+      {error && <div className="text-xs font-bold text-red-600">{error}</div>}
+      <button type="button" onClick={save} disabled={saving} className="w-full h-11 rounded-xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-50">
+        {saving ? "…" : "Enregistrer"}
+      </button>
+    </ModalShell>
+  );
+}
+
+const EMPTY_BATCH_FORM = { nom: "", quantiteProduite: "", uniteProduite: "kg", lignes: [] };
+
+function BatchFormModal({ initial, ingredients, onClose, onSaved }) {
+  const [form, setForm] = useState(initial || EMPTY_BATCH_FORM);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const save = async () => {
+    if (!form.nom.trim()) { setError("Nom requis"); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/recettes/mapped", {
+        method: initial ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          initial
+            ? { id: initial.id, nom: form.nom, lignes: form.lignes, quantiteProduite: form.quantiteProduite, uniteProduite: form.uniteProduite }
+            : { type: "batch", ...form }
+        ),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalShell title={initial ? `Modifier ${initial.nom}` : "Nouvelle recette batch"} onClose={onClose}>
+      <input value={form.nom} onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))} placeholder="Nom de la prépa (ex: Guacamole)" className={inputClass} autoFocus />
+      <div className="flex gap-2">
+        <input type="number" min="0" step="0.1" value={form.quantiteProduite} onChange={(e) => setForm((f) => ({ ...f, quantiteProduite: e.target.value }))} placeholder="Qté produite / lot" className={inputClass} />
+        <select value={form.uniteProduite} onChange={(e) => setForm((f) => ({ ...f, uniteProduite: e.target.value }))} className={inputClass}>
+          {UNITE_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
+        </select>
+      </div>
+      <div className="rounded-2xl border border-[#e5d5c5] bg-white p-3.5 space-y-3">
+        <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Ingrédients bruts</div>
+        <LigneList lignes={form.lignes} onRemove={(i) => setForm((f) => ({ ...f, lignes: f.lignes.filter((_, idx) => idx !== i) }))} />
+        <LigneAdder ingredients={ingredients} batchRecettes={[]} allowBatch={false} onAdd={(l) => setForm((f) => ({ ...f, lignes: [...f.lignes, l] }))} />
+      </div>
+      {error && <div className="text-xs font-bold text-red-600">{error}</div>}
+      <button type="button" onClick={save} disabled={saving} className="w-full h-11 rounded-xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-50">
+        {saving ? "…" : "Enregistrer"}
+      </button>
+    </ModalShell>
+  );
+}
+
+function BatchCard({ batch, onSelect, onDelete }) {
+  return (
+    <div className="rounded-2xl border border-[#e5d5c5] bg-white p-3.5 flex items-center justify-between gap-2">
+      <button type="button" onClick={onSelect} className="flex-1 text-left cursor-pointer min-w-0">
+        <div className="font-black text-sm text-[#2c1a10] truncate">🍲 {batch.nom}</div>
+        <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
+          {batch.quantiteProduite ? `${batch.quantiteProduite} ${batch.uniteProduite || ""} / lot · ` : ""}
+          {batch.lignes.length} ingrédient{batch.lignes.length > 1 ? "s" : ""}
+        </div>
+      </button>
+      <button type="button" onClick={onDelete} className="w-8 h-8 shrink-0 rounded-lg bg-[#fee2e2] text-red-700 cursor-pointer">🗑</button>
+    </div>
+  );
+}
+
+function FichesTab({ recettesList, familles, ingredients, loading, onOpenNewCollection, onOpenNewRecette, onSelectRecette }) {
+  const [album, setAlbum] = useState(null); // null = grille des familles, sinon nom de famille
+
+  const countByFamille = useMemo(() => {
+    const map = {};
+    for (const r of recettesList) map[r.famille] = (map[r.famille] || 0) + 1;
+    return map;
+  }, [recettesList]);
+
+  const albumRecettes = useMemo(
+    () => (album ? recettesList.filter((r) => r.famille === album) : []),
+    [recettesList, album]
+  );
+
+  if (loading) return <div className="text-center text-sm text-[#9a7060] py-10">Chargement…</div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onOpenNewCollection} className="px-4 py-2 rounded-xl border border-[#e5d5c5] bg-white text-sm font-black text-[#2c1a10] cursor-pointer">
+          + Collection
+        </button>
+        <button type="button" onClick={onOpenNewRecette} className="px-4 py-2 rounded-xl bg-[#2c1a10] text-white text-sm font-black cursor-pointer">
+          + Recette
+        </button>
+      </div>
+
+      {!album ? (
+        familles.length === 0 ? (
+          <div className="text-center text-sm text-[#9a7060] py-10">Aucune collection pour l&apos;instant</div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {familles.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setAlbum(f.nom)}
+                className="rounded-2xl border border-[#e5d5c5] bg-white p-5 text-center cursor-pointer active:scale-[0.98] transition-transform"
+              >
+                <div className="text-4xl mb-2">{f.emoji || "📁"}</div>
+                <div className="font-black text-sm text-[#2c1a10]">{f.nom}</div>
+                <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
+                  {countByFamille[f.nom] || 0} fiche{(countByFamille[f.nom] || 0) > 1 ? "s" : ""}
+                </div>
+              </button>
+            ))}
+          </div>
+        )
+      ) : (
+        <div className="space-y-3">
+          <button type="button" onClick={() => setAlbum(null)} className="text-xs font-bold text-[#9a7060] underline cursor-pointer">
+            ← Collections
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">{familles.find((f) => f.nom === album)?.emoji}</span>
+            <h2 className="text-lg font-black text-[#2c1a10]">{album}</h2>
+          </div>
+          {albumRecettes.length === 0 ? (
+            <div className="text-center text-sm text-[#9a7060] py-10">Aucune fiche dans cette collection</div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {albumRecettes.map((recette) => (
+                <RecetteCard key={recette.id} recette={recette} onSelect={() => onSelectRecette(recette)} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MappedTab({ soldProducts, lines, mappedMenu, ingredients, batchRecettes, loading, onRefresh }) {
+  const [subTab, setSubTab] = useState("menu"); // "menu" | "batch"
+  const [menuModal, setMenuModal] = useState(null); // { product, mappedEntry }
+  const [batchModal, setBatchModal] = useState(null); // {} = create, entry = edit
+  const [pendingDeleteBatch, setPendingDeleteBatch] = useState(null);
+
+  const mappedByProduct = useMemo(
+    () => Object.fromEntries(mappedMenu.map((m) => [m.soldProductId, m])),
+    [mappedMenu]
+  );
+
+  const deleteBatch = async (batch) => {
+    if (pendingDeleteBatch !== batch.id) { setPendingDeleteBatch(batch.id); return; }
+    setPendingDeleteBatch(null);
+    await fetch(`/api/recettes/mapped?id=${batch.id}`, { method: "DELETE" });
+    onRefresh();
+  };
+
+  if (loading) return <div className="text-center text-sm text-[#9a7060] py-10">Chargement…</div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-1.5 bg-white/60 rounded-2xl p-1.5 border border-[#e5d5c5]">
+        {[{ key: "menu", label: "🍽 Recettes menu" }, { key: "batch", label: "🍲 Recettes batch" }].map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setSubTab(t.key)}
+            className={`flex-1 h-10 rounded-xl text-xs font-black cursor-pointer transition-colors ${
+              subTab === t.key ? "bg-[#2c1a10] text-white" : "text-[#6b4a3d]"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {subTab === "menu" ? (
+        <div className="space-y-2">
+          {soldProducts.length === 0 && (
+            <div className="text-center text-sm text-[#9a7060] py-6">Aucun produit vendu créé pour l&apos;instant</div>
+          )}
+          {soldProducts.map((product) => {
+            const mappedEntry = mappedByProduct[product.id];
+            const legacyStatus = computeStatus(product, lines);
+            const nbLignes = mappedEntry?.lignes?.length || 0;
+            return (
+              <button
+                key={product.id}
+                type="button"
+                onClick={() => setMenuModal({ product, mappedEntry })}
+                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-white border border-[#e5d5c5] text-left cursor-pointer"
+              >
+                <div>
+                  <div className="font-black text-sm text-[#2c1a10]">{product.name}</div>
+                  <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
+                    {product.productKey}{product.category ? ` · ${product.category}` : ""}
+                  </div>
+                </div>
+                <span
+                  className="text-[10px] font-black px-2 py-1 rounded-lg shrink-0"
+                  style={nbLignes > 0 ? { color: "#5a7828", background: "#5a78281a" } : { color: STATUS_COLOR[legacyStatus], background: `${STATUS_COLOR[legacyStatus]}1a` }}
+                >
+                  {nbLignes > 0 ? `${nbLignes} ingrédient${nbLignes > 1 ? "s" : ""}` : STATUS_LABEL[legacyStatus]}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <button type="button" onClick={() => setBatchModal({})} className="w-full h-11 rounded-xl border border-dashed border-[#c8b4a8] text-[#9a7060] text-sm font-black cursor-pointer">
+            + Nouvelle recette batch
+          </button>
+          {batchRecettes.length === 0 ? (
+            <div className="text-center text-sm text-[#9a7060] py-10">Aucune recette batch pour l&apos;instant</div>
+          ) : (
+            <div className="space-y-2">
+              {batchRecettes.map((b) => (
+                <BatchCard
+                  key={b.id}
+                  batch={b}
+                  onSelect={() => setBatchModal(b)}
+                  onDelete={() => deleteBatch(b)}
+                />
+              ))}
+            </div>
+          )}
+          {pendingDeleteBatch && (
+            <div className="text-center text-xs font-bold text-red-600">Tapez 🗑 à nouveau pour confirmer la suppression</div>
+          )}
+        </div>
+      )}
+
+      {menuModal && (
+        <MenuMappingModal
+          product={menuModal.product}
+          mappedEntry={menuModal.mappedEntry}
+          ingredients={ingredients}
+          batchRecettes={batchRecettes}
+          onClose={() => setMenuModal(null)}
+          onSaved={onRefresh}
+        />
+      )}
+      {batchModal && (
+        <BatchFormModal
+          initial={batchModal.id ? batchModal : null}
+          ingredients={ingredients}
+          onClose={() => setBatchModal(null)}
+          onSaved={onRefresh}
+        />
+      )}
+    </div>
+  );
+}
+
 export default function RecettesPage() {
   const router = useRouter();
   const { isAdmin } = useStaffContext();
 
+  const [tab, setTab] = useState("fiches"); // "fiches" | "mapped"
   const [soldProducts, setSoldProducts] = useState([]);
   const [lines, setLines] = useState([]);
+  const [ingredients, setIngredients] = useState([]);
   const [ingredientsById, setIngredientsById] = useState({});
   const [recettesList, setRecettesList] = useState([]);
   const [familles, setFamilles] = useState([]);
+  const [mappedMenu, setMappedMenu] = useState([]);
+  const [batchRecettes, setBatchRecettes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedId, setSelectedId] = useState(null);
-  const [familyFilter, setFamilyFilter] = useState("Toutes");
   const [showNewCollection, setShowNewCollection] = useState(false);
   const [showNewRecette, setShowNewRecette] = useState(false);
   const [recetteDetail, setRecetteDetail] = useState(null);
@@ -380,17 +777,22 @@ export default function RecettesPage() {
       fetch("/api/products").then((r) => r.json()),
       fetch("/api/recettes").then((r) => r.json()),
       fetch("/api/recettes/familles").then((r) => r.json()),
+      fetch("/api/recettes/mapped?type=menu").then((r) => r.json()).catch(() => []),
+      fetch("/api/recettes/mapped?type=batch").then((r) => r.json()).catch(() => []),
     ])
-      .then(([soldProductsRes, linesRes, productsData, recettesData, famillesData]) => {
+      .then(([soldProductsRes, linesRes, productsData, recettesData, famillesData, mappedMenuData, mappedBatchData]) => {
         if (!soldProductsRes.ok) throw new Error(soldProductsRes.data?.error || "Erreur chargement produits");
         if (!linesRes.ok) throw new Error(linesRes.data?.error || "Erreur chargement lignes de recette");
         setSoldProducts(Array.isArray(soldProductsRes.data) ? soldProductsRes.data : []);
         setLines(Array.isArray(linesRes.data) ? linesRes.data : []);
         setRecettesList(Array.isArray(recettesData) ? recettesData : []);
         setFamilles(Array.isArray(famillesData) ? famillesData : []);
-        const ingredients = Array.isArray(productsData) ? productsData : [];
+        setMappedMenu(Array.isArray(mappedMenuData) ? mappedMenuData : []);
+        setBatchRecettes(Array.isArray(mappedBatchData) ? mappedBatchData : []);
+        const list = Array.isArray(productsData) ? productsData : [];
+        setIngredients(list);
         const map = {};
-        for (const ing of ingredients) map[ing.id] = ing.ingredient || ing.name;
+        for (const ing of list) map[ing.id] = ing.ingredient || ing.name;
         setIngredientsById(map);
       })
       .catch((err) => {
@@ -408,145 +810,54 @@ export default function RecettesPage() {
     loadAll();
   }, [isAdmin]);
 
-  const selectedProduct = useMemo(
-    () => soldProducts.find((p) => p.id === selectedId) || null,
-    [soldProducts, selectedId]
-  );
-  const selectedLines = useMemo(
-    () => lines.filter((l) => l.soldProductId === selectedId && l.active),
-    [lines, selectedId]
-  );
-  const filteredProducts = useMemo(
-    () => soldProducts,
-    [soldProducts]
-  );
-  const filteredRecettes = useMemo(
-    () => recettesList.filter((r) => familyFilter === "Toutes" || r.famille === familyFilter),
-    [recettesList, familyFilter]
-  );
-
   if (!isAdmin) return null;
 
   return (
     <div className="min-h-dvh" style={{ background: "#f7efe4" }}>
-      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+      <div className="px-4 pt-4 pb-2">
         <h1 className="text-2xl font-black text-[#2c1a10]">Recettes</h1>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setShowNewCollection(true)}
-            className="px-4 py-2 rounded-xl border border-[#e5d5c5] bg-white text-sm font-black text-[#2c1a10] cursor-pointer"
-          >
-            + Collection
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowNewRecette(true)}
-            className="px-4 py-2 rounded-xl bg-[#2c1a10] text-white text-sm font-black cursor-pointer"
-          >
-            + Recette
-          </button>
+      </div>
+
+      <div className="px-4 mb-3">
+        <div className="flex gap-1.5 bg-white/60 rounded-2xl p-1.5 border border-[#e5d5c5]">
+          {[{ key: "fiches", label: "📋 Fiches techniques" }, { key: "mapped", label: "🍳 Recettes mappées" }].map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              className={`flex-1 h-10 rounded-xl text-xs font-black cursor-pointer transition-colors ${
+                tab === t.key ? "bg-[#2c1a10] text-white" : "text-[#6b4a3d]"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="px-4 space-y-4 pb-4">
-        {loading && <div className="text-center text-sm text-[#9a7060] py-10">Chargement…</div>}
-
-        {!loading && error && (
-          <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-bold text-red-500">
-            {error}
-          </div>
-        )}
-
-        {!loading && !error && (
-          <>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {["Toutes", ...familles.map((f) => f.nom)].map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => setFamilyFilter(f)}
-                  className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer whitespace-nowrap ${
-                    familyFilter === f ? "bg-[#2c1a10] text-white" : "bg-white border border-[#e5d5c5] text-[#6b4a3d]"
-                  }`}
-                >
-                  {f === "Toutes" ? f : `${familles.find((x) => x.nom === f)?.emoji || ""} ${f}`}
-                </button>
-              ))}
-            </div>
-
-            {filteredRecettes.length === 0 ? (
-              <div className="text-center text-sm text-[#9a7060] py-10">Aucune recette pour cette famille</div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {filteredRecettes.map((recette) => (
-                  <RecetteCard key={recette.id} recette={recette} onSelect={() => setRecetteDetail(recette)} />
-                ))}
-              </div>
-            )}
-
-            <details className="rounded-2xl border border-[#e5d5c5] bg-white overflow-hidden [&::-webkit-details-marker]:hidden">
-              <summary className="p-4 cursor-pointer flex items-center justify-between gap-2 list-none">
-                <span className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">Toutes les recettes</span>
-                <span className="text-xs font-bold text-[#9a7060]">Mapping ingrédients ▾</span>
-              </summary>
-              <div className="px-4 pb-4 pt-1 space-y-2">
-                {soldProducts.length === 0 && (
-                  <div className="text-center text-sm text-[#9a7060] py-6">Aucun produit vendu créé pour l&apos;instant</div>
-                )}
-                {filteredProducts.map((product) => {
-                  const status = computeStatus(product, lines);
-                  return (
-                    <button
-                      key={product.id}
-                      type="button"
-                      onClick={() => setSelectedId(product.id)}
-                      className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[#faf5ef] border border-[#e5d5c5] text-left cursor-pointer"
-                    >
-                      <div>
-                        <div className="font-black text-sm text-[#2c1a10]">{product.name}</div>
-                        <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
-                          {product.productKey}{product.category ? ` · ${product.category}` : ""}
-                          {!product.active && " · archivé"}
-                        </div>
-                      </div>
-                      <span
-                        className="text-[10px] font-black px-2 py-1 rounded-lg shrink-0"
-                        style={{ color: STATUS_COLOR[status], background: `${STATUS_COLOR[status]}1a` }}
-                      >
-                        {STATUS_LABEL[status]}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </details>
-          </>
-        )}
-
-        {!loading && !error && selectedProduct && (
-          <ModalShell title={selectedProduct.name} onClose={() => setSelectedId(null)}>
-            <div className="text-xs text-[#9a7060] font-semibold">
-              {selectedProduct.productKey} · {selectedProduct.category || "Sans catégorie"} · {selectedProduct.active ? "Actif" : "Archivé"}
-            </div>
-            <div className="rounded-2xl border border-[#e5d5c5] bg-white p-3.5">
-              <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-2">Composition</div>
-              {selectedLines.length === 0 ? (
-                <div className="text-sm text-[#9a7060] py-2">Aucune ligne — recette non mappée</div>
-              ) : (
-                <div className="space-y-2">
-                  {selectedLines.map((line) => (
-                    <div key={line.id} className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-[#2c1a10]">
-                        {ingredientsById[line.ingredientId] || line.ingredientId}
-                      </span>
-                      <span className="text-xs text-[#9a7060] font-semibold">{line.quantity} {line.unit}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </ModalShell>
+      <div className="px-4 pb-4">
+        {error ? (
+          <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-bold text-red-500">{error}</div>
+        ) : tab === "fiches" ? (
+          <FichesTab
+            recettesList={recettesList}
+            familles={familles}
+            ingredients={ingredients}
+            loading={loading}
+            onOpenNewCollection={() => setShowNewCollection(true)}
+            onOpenNewRecette={() => setShowNewRecette(true)}
+            onSelectRecette={setRecetteDetail}
+          />
+        ) : (
+          <MappedTab
+            soldProducts={soldProducts}
+            lines={lines}
+            mappedMenu={mappedMenu}
+            ingredients={ingredients}
+            batchRecettes={batchRecettes}
+            loading={loading}
+            onRefresh={loadAll}
+          />
         )}
       </div>
 
