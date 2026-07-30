@@ -18,6 +18,7 @@ export async function GET() {
     }, [{ property: "Date et heure", direction: "ascending" }], 500);
 
     const statusMap = {};
+    const timesMap = {}; // horodatage de l'action qui a produit le statut courant
 
     pages
       .map((p) => ({
@@ -27,14 +28,19 @@ export async function GET() {
       }))
       .filter((p) => p.staff && p.date)
       .sort((a, b) => new Date(a.date) - new Date(b.date))
-      .forEach(({ staff, action }) => {
+      .forEach(({ staff, action, date }) => {
         const a = action.toLowerCase();
-        if (a === "arrivée") statusMap[staff] = "present";
-        else if (a === "départ pause") statusMap[staff] = "pause";
-        else if (a === "retour pause") statusMap[staff] = "present";
-        else if (a === "départ") statusMap[staff] = "done";
+        if (a === "arrivée") { statusMap[staff] = "present"; timesMap[staff] = date; }
+        else if (a === "départ pause") { statusMap[staff] = "pause"; timesMap[staff] = date; }
+        else if (a === "retour pause") { statusMap[staff] = "present"; timesMap[staff] = date; }
+        else if (a === "départ") { statusMap[staff] = "done"; timesMap[staff] = date; }
       });
 
+      // "__times" est une clé technique ajoutée à la fin, jamais un nom de
+      // staff réel — les consommateurs existants (StaffContext, page.js
+      // legacy) indexent ce map uniquement par nom de staff et n'itèrent
+      // jamais toutes ses clés, donc l'ajout reste rétrocompatible.
+      statusMap.__times = timesMap;
       return statusMap;
     });
 

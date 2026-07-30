@@ -36,7 +36,7 @@ function initials(name) {
 export default function SplashScreen({ onDone }) {
   const router = useRouter();
   const { staff } = useAppContext();
-  const { clockStatuses, clockInAs, setStaff, unlockAdminAs, setPoste, selectedStaff, clockActionFor, hoursWorked } = useStaffContext();
+  const { clockStatuses, clockStatusTimes, clockInAs, setStaff, unlockAdminAs, setPoste, selectedStaff, clockActionFor, hoursWorked } = useStaffContext();
 
   const [phase, setPhase] = useState("poste"); // "poste" | "staff"
   const [selectedPoste, setSelectedPoste] = useState(null);
@@ -123,6 +123,7 @@ export default function SplashScreen({ onDone }) {
             <QuickPointageButton
               staff={staff}
               clockStatuses={clockStatuses}
+              clockStatusTimes={clockStatusTimes}
               onPick={clockActionFor}
               shortcutMember={selectedStaff}
               hoursWorked={hoursWorked}

@@ -642,7 +642,7 @@ function UrgentTasksBlockModal({ tasks, onClose, onIgnore, ignoring }) {
 
 export default function PostePage() {
   const router = useRouter();
-  const { poste, setSplashDone, canLivraisons, isAdmin, selectedStaff, selectedStaffName, clockStatuses, clockOut, clockActionFor, hoursWorked } = useStaffContext();
+  const { poste, setSplashDone, canLivraisons, isAdmin, selectedStaff, selectedStaffName, clockStatuses, clockStatusTimes, clockOut, clockActionFor, hoursWorked } = useStaffContext();
   const { staff, zonesPhysiques, preps, stockLive, supplierOrders, refreshSupplierOrders } = useAppContext();
 
   const [now, setNow] = useState(null);
@@ -881,6 +881,7 @@ export default function PostePage() {
           <QuickPointageButton
             staff={staff}
             clockStatuses={clockStatuses}
+            clockStatusTimes={clockStatusTimes}
             onPick={handleQuickPointage}
             shortcutMember={selectedStaff}
             hoursWorked={hoursWorked}

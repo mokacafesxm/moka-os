@@ -93,6 +93,7 @@ export function StaffProvider({ children }) {
   const [selectedStaff, setSelectedStaffState] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [clockStatuses, setClockStatuses] = useState({});
+  const [clockStatusTimes, setClockStatusTimes] = useState({}); // staffName -> ISO date du dernier pointage (voir /api/clock-status "__times")
   const [clockSending, setClockSending] = useState(false);
   const [myTasks, setMyTasks] = useState([]); // dérivé côté page /taches (Sprint 4) depuis AppContext.taches
   const [myZone, setMyZoneState] = useState(null);
@@ -143,8 +144,9 @@ export function StaffProvider({ children }) {
     try {
       const res = await fetch(`${CLOCK_STATUS_URL}?t=${Date.now()}`);
       if (!res.ok) return;
-      const statuses = await res.json();
+      const { __times, ...statuses } = await res.json();
       setClockStatuses(statuses);
+      setClockStatusTimes(__times || {});
     } catch (error) {
       console.error("[StaffContext] refreshClockStatuses failed", error);
     }
@@ -213,6 +215,7 @@ export function StaffProvider({ children }) {
         saveClockStatusesCache(next);
         return next;
       });
+      setClockStatusTimes((prev) => ({ ...prev, [name]: new Date().toISOString() }));
     } catch (error) {
       console.error("[StaffContext] clock action failed", error);
       throw error;
@@ -284,6 +287,7 @@ export function StaffProvider({ children }) {
         status,
         isClockedIn,
         clockStatuses,
+        clockStatusTimes,
         clockSending,
         hoursWorked,
         myTasks,

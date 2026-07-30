@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
 
@@ -63,10 +64,22 @@ const PRIORITY_DOT = {
 };
 
 export default function HomePage() {
-  const { selectedStaff, selectedStaffName, setStaff, canLivraisons, poste } = useStaffContext();
+  const router = useRouter();
+  const { selectedStaff, selectedStaffName, setStaff, canLivraisons, poste, splashDone } = useStaffContext();
   const { staff, stockLive, preps } = useAppContext();
 
   const showStockAlerts = POSTES_WITH_STOCK_ALERTS.includes(poste);
+
+  // Sprint 16 a retiré l'onglet Accueil : /home ne doit plus jamais
+  // s'afficher une fois qu'un staff a choisi son poste au splash — que /home
+  // soit atteinte via un vieux bookmark, l'écran d'accueil PWA en cache, ou
+  // un des `router.replace("/home")` de garde admin ailleurs dans l'app.
+  // On rebondit immédiatement vers /poste, qui a repris son rôle de landing.
+  useEffect(() => {
+    if (splashDone && poste) {
+      router.replace("/poste");
+    }
+  }, [splashDone, poste, router]);
 
   const [dashboard, setDashboard] = useState(null);
   // Démarre à null (identique au rendu SSR) — new Date() dans l'initializer
@@ -88,6 +101,10 @@ export default function HomePage() {
       .catch((error) => console.error("[HomePage] dashboard fetch failed", error));
     return () => { ignore = true; };
   }, []);
+
+  if (splashDone && poste) {
+    return null;
+  }
 
   if (!selectedStaff) {
     return <StaffPicker staff={staff} onPick={setStaff} />;
