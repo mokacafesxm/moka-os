@@ -29,6 +29,8 @@ export const DB = {
   SALES_HISTORY:    "3a79512c-f66a-81dc-a1fa-d8b37d509f64",
   FICHES_TECHNIQUES: "3ab9512c-f66a-812a-9118-d95306122a9f",
   BANQUE: "3ab9512c-f66a-8133-8e7a-f8c8454a53ec",
+  // /recettes dashboard (créée 2026-07-29, même page parente "MÖKA OS v2 — Bases")
+  RECETTES_FAMILLES: "3ad9512c-f66a-81fc-9598-e8b23b960432",
 };
 
 export const corsHeaders = {

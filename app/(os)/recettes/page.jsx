@@ -6,7 +6,12 @@ import { useStaffContext } from "../../contexts/StaffContext";
 
 const STATUS_LABEL = { mapped: "Mappée", unmapped: "Non mappée", not_required: "Non requise" };
 const STATUS_COLOR = { mapped: "#5a7828", unmapped: "#b91c1c", not_required: "#9a7060" };
-const FAMILLES = ["Toutes", "Bar", "Cuisine", "Desserts", "Basics"];
+const ZONE_OPTIONS = ["Bar", "Cuisine", "Desserts", "Basics", "Toutes"];
+const FAMILLE_COLOR = { Bar: "#5a7828", Cuisine: "#d97706", Desserts: "#b91c1c", Basics: "#9a7060", Toutes: "#2c1a10" };
+
+function familleColor(nom) {
+  return FAMILLE_COLOR[nom] || "#6b4a3d";
+}
 
 function computeStatus(product, lines) {
   if (product.requiresRecipe === false) return "not_required";
@@ -38,76 +43,12 @@ function ModalShell({ title, onClose, children }) {
   );
 }
 
-const EMPTY_FICHE_FORM = { nom: "", famille: "Bar", photoUrl: "", pdfUrl: "" };
-
-function AddFicheModal({ onClose, onSaved }) {
-  const [form, setForm] = useState(EMPTY_FICHE_FORM);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-
-  const submit = async () => {
-    if (!form.nom.trim()) { setError("Nom requis"); return; }
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/fiches", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
-      onSaved();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <ModalShell title="Nouvelle fiche" onClose={onClose}>
-      <input
-        value={form.nom}
-        onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))}
-        placeholder="Nom commercial"
-        className={inputClass}
-        autoFocus
-      />
-      <select value={form.famille} onChange={(e) => setForm((f) => ({ ...f, famille: e.target.value }))} className={inputClass}>
-        {FAMILLES.filter((f) => f !== "Toutes").map((f) => <option key={f} value={f}>{f}</option>)}
-      </select>
-      <input
-        value={form.photoUrl}
-        onChange={(e) => setForm((f) => ({ ...f, photoUrl: e.target.value }))}
-        placeholder="URL de la photo (optionnel)"
-        className={inputClass}
-      />
-      <input
-        value={form.pdfUrl}
-        onChange={(e) => setForm((f) => ({ ...f, pdfUrl: e.target.value }))}
-        placeholder="URL du PDF (optionnel)"
-        className={inputClass}
-      />
-      {error && <div className="text-xs font-bold text-red-600">{error}</div>}
-      <div className="flex gap-2 pt-1">
-        <button type="button" onClick={onClose} className="flex-1 h-11 rounded-xl text-[#9a7060] font-bold text-sm cursor-pointer">
-          Annuler
-        </button>
-        <button type="button" onClick={submit} disabled={saving} className="flex-1 h-11 rounded-xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-50">
-          {saving ? "…" : "Créer"}
-        </button>
-      </div>
-    </ModalShell>
-  );
-}
-
-// Zoom pincé main — le viewport global a userScalable=false (app.layout.js,
-// pour éviter un zoom accidentel du reste de l'UI), donc le pinch-zoom natif
-// du navigateur ne se déclenche jamais ici : on calcule nous-mêmes la
-// distance entre les deux doigts et on applique un transform scale().
-// Double-tap réinitialise. Un seul doigt (pan/tap pour fermer) reste géré
-// normalement par le onClick du conteneur.
+// Zoom pincé main — le viewport global a userScalable=false (app/layout.js,
+// pour éviter un zoom accidentel du reste de l'UI). Un `touch-action:
+// pinch-zoom` CSS seul ne suffit pas : iOS Safari honore le verrou du
+// viewport meta globalement et ignore ce réglage par élément — donc pas de
+// pinch natif possible ici, on calcule nous-mêmes la distance entre les
+// deux doigts et on applique un transform scale(). Double-tap réinitialise.
 function ZoomablePhoto({ src, alt, onClose }) {
   const [scale, setScale] = useState(1);
   const [origin, setOrigin] = useState({ x: 50, y: 50 });
@@ -140,7 +81,8 @@ function ZoomablePhoto({ src, alt, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-[60] bg-black flex items-center justify-center overflow-hidden"
+      className="fixed inset-0 z-[70] bg-black flex items-center justify-center overflow-hidden"
+      style={{ touchAction: "pinch-zoom" }}
       onClick={() => { if (scale === 1) onClose(); }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -167,60 +109,188 @@ function ZoomablePhoto({ src, alt, onClose }) {
   );
 }
 
-function FicheDetailModal({ fiche, soldProducts, lines, ingredientsById, onClose }) {
+const EMPTY_RECETTE_FORM = { nom: "", famille: "", photoUrl: "", pdfUrl: "" };
+
+function RecetteFormModal({ mode, initial, familles, onClose, onSaved }) {
+  const [form, setForm] = useState(initial || { ...EMPTY_RECETTE_FORM, famille: familles[0]?.nom || "" });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const submit = async () => {
+    if (!form.nom.trim()) { setError("Nom requis"); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/recettes", {
+        method: mode === "create" ? "POST" : "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(mode === "create" ? form : { id: initial.id, ...form }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
+      onSaved();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalShell title={mode === "create" ? "Nouvelle recette" : `Modifier ${initial?.nom || ""}`} onClose={onClose}>
+      <input
+        value={form.nom}
+        onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))}
+        placeholder="Nom"
+        className={inputClass}
+        autoFocus
+      />
+      <select value={form.famille} onChange={(e) => setForm((f) => ({ ...f, famille: e.target.value }))} className={inputClass}>
+        <option value="">Famille…</option>
+        {familles.map((f) => <option key={f.id} value={f.nom}>{f.emoji ? `${f.emoji} ` : ""}{f.nom}</option>)}
+      </select>
+      <input
+        value={form.photoUrl}
+        onChange={(e) => setForm((f) => ({ ...f, photoUrl: e.target.value }))}
+        placeholder="https://..."
+        className={inputClass}
+      />
+      <input
+        value={form.pdfUrl}
+        onChange={(e) => setForm((f) => ({ ...f, pdfUrl: e.target.value }))}
+        placeholder="Lien vers la fiche PDF…"
+        className={inputClass}
+      />
+      {error && <div className="text-xs font-bold text-red-600">{error}</div>}
+      <div className="flex gap-2 pt-1">
+        <button type="button" onClick={onClose} className="flex-1 h-11 rounded-xl text-[#9a7060] font-bold text-sm cursor-pointer">
+          Annuler
+        </button>
+        <button type="button" onClick={submit} disabled={saving} className="flex-1 h-11 rounded-xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-50">
+          {saving ? "…" : "Enregistrer"}
+        </button>
+      </div>
+    </ModalShell>
+  );
+}
+
+function NewCollectionModal({ onClose, onSaved }) {
+  const [nom, setNom] = useState("");
+  const [emoji, setEmoji] = useState("");
+  const [zone, setZone] = useState("Bar");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const submit = async () => {
+    if (!nom.trim()) { setError("Nom requis"); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/recettes/familles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nom, emoji, zone }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
+      onSaved();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalShell title="Nouvelle collection" onClose={onClose}>
+      <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom" className={inputClass} autoFocus />
+      <input value={emoji} onChange={(e) => setEmoji(e.target.value.slice(0, 2))} placeholder="Emoji (optionnel)" className={inputClass} />
+      <select value={zone} onChange={(e) => setZone(e.target.value)} className={inputClass}>
+        {ZONE_OPTIONS.map((z) => <option key={z} value={z}>{z}</option>)}
+      </select>
+      {error && <div className="text-xs font-bold text-red-600">{error}</div>}
+      <div className="flex gap-2 pt-1">
+        <button type="button" onClick={onClose} className="flex-1 h-11 rounded-xl text-[#9a7060] font-bold text-sm cursor-pointer">
+          Annuler
+        </button>
+        <button type="button" onClick={submit} disabled={saving} className="flex-1 h-11 rounded-xl bg-[#5a7828] text-white font-black text-sm cursor-pointer disabled:opacity-50">
+          {saving ? "…" : "Créer"}
+        </button>
+      </div>
+    </ModalShell>
+  );
+}
+
+function RecetteModal({ recette, familles, soldProducts, lines, ingredientsById, onClose, onSaved }) {
   const [zoomed, setZoomed] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const matchedProduct = useMemo(
-    () => soldProducts.find((p) => normalizeName(p.name) === normalizeName(fiche.nom)) || null,
-    [soldProducts, fiche.nom]
+    () => soldProducts.find((p) => normalizeName(p.name) === normalizeName(recette.nom)) || null,
+    [soldProducts, recette.nom]
   );
   const matchedLines = useMemo(
     () => (matchedProduct ? lines.filter((l) => l.soldProductId === matchedProduct.id && l.active) : []),
     [lines, matchedProduct]
   );
 
-  if (zoomed && fiche.photoUrl) {
-    return <ZoomablePhoto src={fiche.photoUrl} alt={fiche.nom} onClose={() => setZoomed(false)} />;
+  if (zoomed && recette.photoUrl) {
+    return <ZoomablePhoto src={recette.photoUrl} alt={recette.nom} onClose={() => setZoomed(false)} />;
+  }
+
+  if (editing) {
+    return (
+      <RecetteFormModal
+        mode="edit"
+        initial={{ id: recette.id, nom: recette.nom, famille: recette.famille, photoUrl: recette.photoUrl, pdfUrl: recette.pdfUrl }}
+        familles={familles}
+        onClose={() => setEditing(false)}
+        onSaved={() => { setEditing(false); onSaved(); onClose(); }}
+      />
+    );
   }
 
   return (
-    <ModalShell title={fiche.nom} onClose={onClose}>
+    <ModalShell title={recette.nom} onClose={onClose}>
       <div>
         <span
           className="text-[10px] font-black px-2 py-1 rounded-lg"
-          style={{ color: "#5a7828", background: "#f0f7e5" }}
+          style={{ color: familleColor(recette.famille), background: `${familleColor(recette.famille)}1a` }}
         >
-          {fiche.famille || "Sans famille"}
+          {recette.famille || "Sans famille"}
         </span>
       </div>
 
-      {fiche.photoUrl ? (
+      {recette.photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={fiche.photoUrl}
-          alt={fiche.nom}
+          src={recette.photoUrl}
+          alt={recette.nom}
           onClick={() => setZoomed(true)}
           className="w-full max-h-72 object-contain rounded-xl bg-white cursor-zoom-in"
         />
-      ) : fiche.pdfUrl ? (
+      ) : recette.pdfUrl ? (
         <div className="space-y-2">
-          {/* L'aperçu iframe est laissé tel quel même si le serveur qui héberge
-              le PDF bloque l'affichage en iframe (X-Frame-Options) — un
-              navigateur ne peut pas détecter fiablement ce blocage en JS pour
-              cacher l'iframe conditionnellement, donc le bouton ci-dessous
-              reste TOUJOURS visible : c'est le vrai fallback. */}
-          <iframe src={fiche.pdfUrl} title={fiche.nom} className="w-full h-64 rounded-xl border border-[#e5d5c5] bg-white" />
           <a
-            href={fiche.pdfUrl}
+            href={recette.pdfUrl}
             target="_blank"
             rel="noreferrer"
             className="block text-center h-11 leading-[44px] rounded-xl bg-[#2c1a10] text-white text-sm font-black"
           >
-            📄 Ouvrir la fiche PDF
+            📄 Voir la fiche PDF
+          </a>
+          {/* L'aperçu iframe reste affiché même si l'hébergeur du PDF bloque
+              l'affichage en iframe (X-Frame-Options) — un navigateur ne peut
+              pas détecter ce blocage en JS pour cacher l'iframe
+              conditionnellement, donc le bouton ci-dessus est le vrai
+              fallback ("📄 Télécharger la fiche" en second recours). */}
+          <iframe src={recette.pdfUrl} title={recette.nom} className="w-full h-64 rounded-xl border border-[#e5d5c5] bg-white" />
+          <a href={recette.pdfUrl} target="_blank" rel="noreferrer" className="block text-center text-xs font-bold text-[#5a7828] underline">
+            📄 Télécharger la fiche
           </a>
         </div>
       ) : (
-        <div className="text-sm text-[#9a7060] text-center py-4">Aucun visuel pour cette fiche</div>
+        <div className="text-sm text-[#9a7060] text-center py-4">Aucun visuel pour cette recette</div>
       )}
 
       <div className="rounded-2xl border border-[#e5d5c5] bg-white p-3.5">
@@ -238,28 +308,43 @@ function FicheDetailModal({ fiche, soldProducts, lines, ingredientsById, onClose
           </div>
         )}
       </div>
+
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className="w-full h-11 rounded-xl bg-[#f0e8dc] text-[#2c1a10] font-black text-sm cursor-pointer"
+      >
+        Modifier
+      </button>
     </ModalShell>
   );
 }
 
-function FicheCard({ fiche, onSelect }) {
+function RecetteCard({ recette, onSelect }) {
   return (
     <button
       type="button"
       onClick={onSelect}
-      className="flex items-center gap-3 rounded-2xl border border-[#e5d5c5] bg-white p-3 text-left cursor-pointer w-full"
+      className="rounded-2xl border border-[#e5d5c5] bg-white overflow-hidden text-left cursor-pointer active:scale-[0.98] transition-transform"
     >
-      {fiche.photoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={fiche.photoUrl} alt="" className="w-11 h-11 rounded-xl object-cover shrink-0" />
+      {recette.photoUrl ? (
+        <div className="w-full aspect-[4/3] bg-[#f0e8dc]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={recette.photoUrl} alt="" className="w-full h-full object-cover" />
+        </div>
       ) : (
-        <div className="w-11 h-11 rounded-xl bg-[#f0e8dc] shrink-0 flex items-center justify-center text-lg">
-          {fiche.pdfUrl ? "📄" : "🖼"}
+        <div className="w-full aspect-[4/3] bg-[#f0e8dc] flex items-center justify-center text-3xl">
+          {recette.pdfUrl ? "📄" : "🖼"}
         </div>
       )}
-      <div className="min-w-0 flex-1">
-        <div className="font-black text-sm text-[#2c1a10] truncate">{fiche.nom}</div>
-        <div className="text-[11px] text-[#9a7060] font-semibold">{fiche.famille || "Sans famille"}</div>
+      <div className="p-2.5">
+        <div className="font-black text-sm text-[#2c1a10] truncate">{recette.nom}</div>
+        <span
+          className="inline-block mt-1 text-[9px] font-black px-1.5 py-0.5 rounded-full"
+          style={{ color: familleColor(recette.famille), background: `${familleColor(recette.famille)}1a` }}
+        >
+          {recette.famille || "Sans famille"}
+        </span>
       </div>
     </button>
   );
@@ -272,14 +357,15 @@ export default function RecettesPage() {
   const [soldProducts, setSoldProducts] = useState([]);
   const [lines, setLines] = useState([]);
   const [ingredientsById, setIngredientsById] = useState({});
-  const [fiches, setFiches] = useState([]);
+  const [recettesList, setRecettesList] = useState([]);
+  const [familles, setFamilles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
-  const [search, setSearch] = useState("");
   const [familyFilter, setFamilyFilter] = useState("Toutes");
-  const [showAddFiche, setShowAddFiche] = useState(false);
-  const [ficheDetail, setFicheDetail] = useState(null);
+  const [showNewCollection, setShowNewCollection] = useState(false);
+  const [showNewRecette, setShowNewRecette] = useState(false);
+  const [recetteDetail, setRecetteDetail] = useState(null);
 
   useEffect(() => {
     if (!isAdmin) router.replace("/home");
@@ -292,14 +378,16 @@ export default function RecettesPage() {
       fetch("/api/recipes/sold-products").then((r) => r.json().then((data) => ({ ok: r.ok, data }))),
       fetch("/api/recipes/lines").then((r) => r.json().then((data) => ({ ok: r.ok, data }))),
       fetch("/api/products").then((r) => r.json()),
-      fetch("/api/fiches").then((r) => r.json()),
+      fetch("/api/recettes").then((r) => r.json()),
+      fetch("/api/recettes/familles").then((r) => r.json()),
     ])
-      .then(([soldProductsRes, linesRes, productsData, fichesData]) => {
+      .then(([soldProductsRes, linesRes, productsData, recettesData, famillesData]) => {
         if (!soldProductsRes.ok) throw new Error(soldProductsRes.data?.error || "Erreur chargement produits");
         if (!linesRes.ok) throw new Error(linesRes.data?.error || "Erreur chargement lignes de recette");
         setSoldProducts(Array.isArray(soldProductsRes.data) ? soldProductsRes.data : []);
         setLines(Array.isArray(linesRes.data) ? linesRes.data : []);
-        setFiches(Array.isArray(fichesData) ? fichesData : []);
+        setRecettesList(Array.isArray(recettesData) ? recettesData : []);
+        setFamilles(Array.isArray(famillesData) ? famillesData : []);
         const ingredients = Array.isArray(productsData) ? productsData : [];
         const map = {};
         for (const ing of ingredients) map[ing.id] = ing.ingredient || ing.name;
@@ -329,62 +417,51 @@ export default function RecettesPage() {
     [lines, selectedId]
   );
   const filteredProducts = useMemo(
-    () => soldProducts.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())),
-    [soldProducts, search]
+    () => soldProducts,
+    [soldProducts]
   );
-  const filteredFiches = useMemo(
-    () => fiches.filter((f) => {
-      if (!normalizeName(f.nom).includes(normalizeName(search))) return false;
-      if (familyFilter !== "Toutes" && f.famille !== familyFilter) return false;
-      return true;
-    }),
-    [fiches, search, familyFilter]
+  const filteredRecettes = useMemo(
+    () => recettesList.filter((r) => familyFilter === "Toutes" || r.famille === familyFilter),
+    [recettesList, familyFilter]
   );
 
   if (!isAdmin) return null;
 
   return (
-    <div className="min-h-dvh px-4 py-4 space-y-4" style={{ background: "#f7efe4" }}>
-      <div className="flex items-center gap-2">
-        {selectedProduct && (
+    <div className="min-h-dvh" style={{ background: "#f7efe4" }}>
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <h1 className="text-2xl font-black text-[#2c1a10]">Recettes</h1>
+        <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => setSelectedId(null)}
-            className="text-xs font-bold text-[#9a7060] underline cursor-pointer"
+            onClick={() => setShowNewCollection(true)}
+            className="px-4 py-2 rounded-xl border border-[#e5d5c5] bg-white text-sm font-black text-[#2c1a10] cursor-pointer"
           >
-            ← Recettes
+            + Collection
           </button>
-        )}
-      </div>
-
-      <div>
-        <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">Recettes</div>
-        <h1 className="text-xl font-black text-[#2c1a10] -mt-0.5">
-          {selectedProduct ? selectedProduct.name : "Fiches techniques"}
-        </h1>
-      </div>
-
-      {loading && <div className="text-center text-sm text-[#9a7060] py-10">Chargement…</div>}
-
-      {!loading && error && (
-        <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-bold text-red-500">
-          {error}
+          <button
+            type="button"
+            onClick={() => setShowNewRecette(true)}
+            className="px-4 py-2 rounded-xl bg-[#2c1a10] text-white text-sm font-black cursor-pointer"
+          >
+            + Recette
+          </button>
         </div>
-      )}
+      </div>
 
-      {!loading && !error && !selectedProduct && (
-        <div className="space-y-4">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher une fiche ou une recette…"
-            className="w-full h-11 px-4 rounded-2xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
-          />
+      <div className="px-4 space-y-4 pb-4">
+        {loading && <div className="text-center text-sm text-[#9a7060] py-10">Chargement…</div>}
 
-          <div>
-            <div className="flex gap-2 overflow-x-auto pb-3">
-              {FAMILLES.map((f) => (
+        {!loading && error && (
+          <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-bold text-red-500">
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && (
+          <>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {["Toutes", ...familles.map((f) => f.nom)].map((f) => (
                 <button
                   key={f}
                   type="button"
@@ -393,112 +470,106 @@ export default function RecettesPage() {
                     familyFilter === f ? "bg-[#2c1a10] text-white" : "bg-white border border-[#e5d5c5] text-[#6b4a3d]"
                   }`}
                 >
-                  {f}
+                  {f === "Toutes" ? f : `${familles.find((x) => x.nom === f)?.emoji || ""} ${f}`}
                 </button>
               ))}
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowAddFiche(true)}
-              className="w-full h-10 mb-3 rounded-xl border border-dashed border-[#c8b4a8] text-[#9a7060] text-xs font-black cursor-pointer"
-            >
-              + Nouvelle fiche
-            </button>
-
-            {filteredFiches.length === 0 ? (
-              <div className="text-center text-sm text-[#9a7060] py-6">Aucune fiche pour cette famille</div>
+            {filteredRecettes.length === 0 ? (
+              <div className="text-center text-sm text-[#9a7060] py-10">Aucune recette pour cette famille</div>
             ) : (
-              <div className="space-y-2">
-                {filteredFiches.map((fiche) => (
-                  <FicheCard key={fiche.id} fiche={fiche} onSelect={() => setFicheDetail(fiche)} />
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {filteredRecettes.map((recette) => (
+                  <RecetteCard key={recette.id} recette={recette} onSelect={() => setRecetteDetail(recette)} />
                 ))}
               </div>
             )}
-          </div>
 
-          <details className="rounded-2xl border border-[#e5d5c5] bg-white overflow-hidden [&::-webkit-details-marker]:hidden">
-            <summary className="p-4 cursor-pointer flex items-center justify-between gap-2 list-none">
-              <span className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">Toutes les recettes</span>
-              <span className="text-xs font-bold text-[#9a7060]">Mapping ingrédients ▾</span>
-            </summary>
-            <div className="px-4 pb-4 pt-1 space-y-2">
-              {soldProducts.length === 0 && (
-                <div className="text-center text-sm text-[#9a7060] py-6">Aucun produit vendu créé pour l&apos;instant</div>
-              )}
-              {soldProducts.length > 0 && filteredProducts.length === 0 && (
-                <div className="text-center text-sm text-[#9a7060] py-6">Aucun résultat</div>
-              )}
-              {filteredProducts.map((product) => {
-                const status = computeStatus(product, lines);
-                return (
-                  <button
-                    key={product.id}
-                    type="button"
-                    onClick={() => setSelectedId(product.id)}
-                    className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[#faf5ef] border border-[#e5d5c5] text-left cursor-pointer"
-                  >
-                    <div>
-                      <div className="font-black text-sm text-[#2c1a10]">{product.name}</div>
-                      <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
-                        {product.productKey}{product.category ? ` · ${product.category}` : ""}
-                        {!product.active && " · archivé"}
-                      </div>
-                    </div>
-                    <span
-                      className="text-[10px] font-black px-2 py-1 rounded-lg shrink-0"
-                      style={{ color: STATUS_COLOR[status], background: `${STATUS_COLOR[status]}1a` }}
+            <details className="rounded-2xl border border-[#e5d5c5] bg-white overflow-hidden [&::-webkit-details-marker]:hidden">
+              <summary className="p-4 cursor-pointer flex items-center justify-between gap-2 list-none">
+                <span className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em]">Toutes les recettes</span>
+                <span className="text-xs font-bold text-[#9a7060]">Mapping ingrédients ▾</span>
+              </summary>
+              <div className="px-4 pb-4 pt-1 space-y-2">
+                {soldProducts.length === 0 && (
+                  <div className="text-center text-sm text-[#9a7060] py-6">Aucun produit vendu créé pour l&apos;instant</div>
+                )}
+                {filteredProducts.map((product) => {
+                  const status = computeStatus(product, lines);
+                  return (
+                    <button
+                      key={product.id}
+                      type="button"
+                      onClick={() => setSelectedId(product.id)}
+                      className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[#faf5ef] border border-[#e5d5c5] text-left cursor-pointer"
                     >
-                      {STATUS_LABEL[status]}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </details>
-        </div>
-      )}
-
-      {!loading && !error && selectedProduct && (
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
-            <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide">Identité</div>
-            <div className="mt-1 text-sm font-bold text-[#2c1a10]">{selectedProduct.productKey}</div>
-            <div className="text-xs text-[#9a7060] mt-0.5">
-              {selectedProduct.category || "Sans catégorie"} · {selectedProduct.active ? "Actif" : "Archivé"}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[#e5d5c5] bg-white p-4">
-            <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-2">Composition</div>
-            {selectedLines.length === 0 ? (
-              <div className="text-sm text-[#9a7060] py-2">Aucune ligne — recette non mappée</div>
-            ) : (
-              <div className="space-y-2">
-                {selectedLines.map((line) => (
-                  <div key={line.id} className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-[#2c1a10]">
-                      {ingredientsById[line.ingredientId] || line.ingredientId}
-                    </span>
-                    <span className="text-xs text-[#9a7060] font-semibold">{line.quantity} {line.unit}</span>
-                  </div>
-                ))}
+                      <div>
+                        <div className="font-black text-sm text-[#2c1a10]">{product.name}</div>
+                        <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
+                          {product.productKey}{product.category ? ` · ${product.category}` : ""}
+                          {!product.active && " · archivé"}
+                        </div>
+                      </div>
+                      <span
+                        className="text-[10px] font-black px-2 py-1 rounded-lg shrink-0"
+                        style={{ color: STATUS_COLOR[status], background: `${STATUS_COLOR[status]}1a` }}
+                      >
+                        {STATUS_LABEL[status]}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-            )}
-          </div>
-        </div>
-      )}
+            </details>
+          </>
+        )}
 
-      {showAddFiche && (
-        <AddFicheModal onClose={() => setShowAddFiche(false)} onSaved={() => { setShowAddFiche(false); loadAll(); }} />
+        {!loading && !error && selectedProduct && (
+          <ModalShell title={selectedProduct.name} onClose={() => setSelectedId(null)}>
+            <div className="text-xs text-[#9a7060] font-semibold">
+              {selectedProduct.productKey} · {selectedProduct.category || "Sans catégorie"} · {selectedProduct.active ? "Actif" : "Archivé"}
+            </div>
+            <div className="rounded-2xl border border-[#e5d5c5] bg-white p-3.5">
+              <div className="text-[10px] font-bold text-[#9a7060] uppercase tracking-wide mb-2">Composition</div>
+              {selectedLines.length === 0 ? (
+                <div className="text-sm text-[#9a7060] py-2">Aucune ligne — recette non mappée</div>
+              ) : (
+                <div className="space-y-2">
+                  {selectedLines.map((line) => (
+                    <div key={line.id} className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-[#2c1a10]">
+                        {ingredientsById[line.ingredientId] || line.ingredientId}
+                      </span>
+                      <span className="text-xs text-[#9a7060] font-semibold">{line.quantity} {line.unit}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </ModalShell>
+        )}
+      </div>
+
+      {showNewCollection && (
+        <NewCollectionModal onClose={() => setShowNewCollection(false)} onSaved={() => { setShowNewCollection(false); loadAll(); }} />
       )}
-      {ficheDetail && (
-        <FicheDetailModal
-          fiche={ficheDetail}
+      {showNewRecette && (
+        <RecetteFormModal
+          mode="create"
+          familles={familles}
+          onClose={() => setShowNewRecette(false)}
+          onSaved={() => { setShowNewRecette(false); loadAll(); }}
+        />
+      )}
+      {recetteDetail && (
+        <RecetteModal
+          recette={recetteDetail}
+          familles={familles}
           soldProducts={soldProducts}
           lines={lines}
           ingredientsById={ingredientsById}
-          onClose={() => setFicheDetail(null)}
+          onClose={() => setRecetteDetail(null)}
+          onSaved={loadAll}
         />
       )}
     </div>

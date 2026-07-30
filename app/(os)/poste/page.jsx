@@ -699,7 +699,7 @@ export default function PostePage() {
 
   useEffect(() => {
     if (poste !== "Bar" && poste !== "Cuisine") return;
-    fetch(`/api/fiches?zone=${poste}`)
+    fetch(`/api/recettes?zone=${poste}`)
       .then((r) => r.json())
       .then((data) => setFiches(Array.isArray(data) ? data : []))
       .catch((error) => console.error("[PostePage] fiches fetch failed", error));
