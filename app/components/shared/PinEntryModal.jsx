@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { verifyStaffPin } from "./staffPin";
 import PinKeypad from "./PinKeypad";
 
@@ -10,6 +11,16 @@ const MAX_ATTEMPTS = 3;
 // Sécurité, ou son équivalent admin). Purely a local, per-device
 // convenience lock — never blocks past 3 attempts server-side, just tells
 // the person to go find another admin.
+//
+// Portalé vers document.body (comme QuickPointageButton) : SplashScreen
+// fait glisser ses 2 phases via un `transform` sur un ancêtre, ce qui crée
+// un containing block CSS pour tout `position: fixed` descendant — sans
+// portail, la modale pouvait se retrouver mal positionnée/inaccessible
+// selon la phase affichée au moment du tap. z-[200] > SplashScreen (z-100)
+// puisque le portail sort de sa stacking context et doit désormais rivaliser
+// directement avec elle. Ne déclenche jamais de navigation : router.push ne
+// vit que dans SplashScreen.proceedWithStaff/submitIdentity, appelés depuis
+// onVerified une fois la modale déjà fermée.
 export default function PinEntryModal({ staffId, staffName, onClose, onVerified }) {
   const [attempts, setAttempts] = useState(0);
   const [error, setError] = useState(null);
@@ -35,8 +46,10 @@ export default function PinEntryModal({ staffId, staffName, onClose, onVerified 
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={onClose}>
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div
         className="relative w-full max-w-xs rounded-3xl bg-[#f7efe4] border border-[#e5d5c5] shadow-xl p-5"
@@ -61,6 +74,7 @@ export default function PinEntryModal({ staffId, staffName, onClose, onVerified 
           Annuler
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

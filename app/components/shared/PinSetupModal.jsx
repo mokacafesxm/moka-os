@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { setStaffPin, verifyStaffPin } from "./staffPin";
 import PinKeypad from "./PinKeypad";
 
@@ -66,8 +67,10 @@ export default function PinSetupModal({ staffId, hasExistingPin, onClose, onSave
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div
         className="relative w-full max-w-xs rounded-3xl bg-[#f7efe4] border border-[#e5d5c5] shadow-xl p-5"
@@ -89,6 +92,7 @@ export default function PinSetupModal({ staffId, hasExistingPin, onClose, onSave
           Annuler
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

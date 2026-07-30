@@ -48,9 +48,10 @@ export default function AdminNav() {
           <button
             type="button"
             onClick={changerSession}
-            className="text-[10px] font-bold text-[#9a7060] underline cursor-pointer"
+            className="flex items-center gap-1.5 rounded-full bg-[#e8336d] text-white px-4 py-2 text-xs font-black cursor-pointer shrink-0 active:scale-[0.98] transition-transform"
           >
-            ← Changer de session
+            <span aria-hidden="true">←</span>
+            Changer de session
           </button>
         </div>
         <div
@@ -108,11 +109,11 @@ export default function AdminNav() {
         <button
           type="button"
           onClick={changerSession}
-          className="mt-auto w-14 shrink-0 pb-2 text-center cursor-pointer"
+          aria-label="Changer de session"
+          title="Changer de session"
+          className="mt-auto w-11 h-11 shrink-0 rounded-full bg-[#e8336d] text-white font-black flex items-center justify-center cursor-pointer active:scale-[0.98] transition-transform"
         >
-          <span className="text-[8px] font-bold text-[#9a7060] underline leading-tight">
-            ← Changer
-          </span>
+          <span aria-hidden="true">←</span>
         </button>
       </div>
     </>

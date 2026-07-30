@@ -5,10 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
 import { removeStaffPin } from "../../components/shared/staffPin";
+import PinSetupModal from "../../components/shared/PinSetupModal";
 
 const TABS = [
   { key: "suppliers", label: "Fournisseurs" },
   { key: "staff", label: "Staff" },
+  { key: "pins", label: "🔐 PINs" },
   { key: "categories", label: "Catégories" },
   { key: "sousCategories", label: "Sous-catégories" },
   { key: "unites", label: "Unités" },
@@ -200,7 +202,6 @@ function StaffSection({ staff, refresh, showToast }) {
   const [form, setForm] = useState(EMPTY_STAFF);
   const [saving, setSaving] = useState(false);
   const [pendingDeactivate, setPendingDeactivate] = useState(null);
-  const [pendingPinReset, setPendingPinReset] = useState(null);
 
   const openCreate = () => { setEditing(null); setForm(EMPTY_STAFF); setShowModal(true); };
   const openEdit = (s) => {
@@ -255,22 +256,6 @@ function StaffSection({ staff, refresh, showToast }) {
     }
   };
 
-  // En cas de staff bloqué (PIN oublié) — repasse hasPin à false, il peut
-  // en recréer un depuis /profil au prochain passage.
-  const resetPin = async (s) => {
-    if (pendingPinReset !== s.id) {
-      setPendingPinReset(s.id);
-      showToast("Cliquez à nouveau pour confirmer");
-      setTimeout(() => setPendingPinReset((cur) => (cur === s.id ? null : cur)), 3000);
-      return;
-    }
-    setPendingPinReset(null);
-    const ok = await removeStaffPin(s.id);
-    if (!ok) { showToast("Erreur lors de la réinitialisation", "error"); return; }
-    showToast("PIN réinitialisé");
-    await refresh();
-  };
-
   return (
     <div className="space-y-3">
       {staff.map((s) => (
@@ -290,23 +275,6 @@ function StaffSection({ staff, refresh, showToast }) {
             </div>
             <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">
               {[s.poste, (s.access || []).join(", ")].filter(Boolean).join(" · ") || "—"}
-            </div>
-            <div className="flex items-center gap-2 mt-1.5">
-              <span
-                className="text-[9px] font-black px-1.5 py-0.5 rounded-full"
-                style={{ color: s.hasPin ? "#5a7828" : "#9a7060", background: s.hasPin ? "#f0f7e5" : "#f0e8dc" }}
-              >
-                {s.hasPin ? "🔐 PIN actif" : "○ Sans PIN"}
-              </span>
-              {s.hasPin && (
-                <button
-                  type="button"
-                  onClick={() => resetPin(s)}
-                  className={`text-[10px] font-black underline cursor-pointer ${pendingPinReset === s.id ? "text-red-600" : "text-[#9a7060]"}`}
-                >
-                  {pendingPinReset === s.id ? "Confirmer ?" : "Réinitialiser PIN"}
-                </button>
-              )}
             </div>
           </div>
           <div className="flex gap-1.5 shrink-0">
@@ -361,6 +329,81 @@ function StaffSection({ staff, refresh, showToast }) {
             {saving ? "Enregistrement…" : "Enregistrer"}
           </button>
         </ModalShell>
+      )}
+    </div>
+  );
+}
+
+// ── B'. PINs de session — vue dédiée (Sprint PIN admin) : consolide en un
+// seul endroit ce qui était auparavant dispersé sur chaque card Staff —
+// badge, réinitialisation, ET définition d'un PIN pour un staff qui a
+// oublié le sien ou n'en a jamais créé un lui-même.
+function PinsSection({ staff, refresh, showToast }) {
+  const [pendingReset, setPendingReset] = useState(null);
+  const [settingPinFor, setSettingPinFor] = useState(null);
+
+  const resetPin = async (s) => {
+    if (pendingReset !== s.id) {
+      setPendingReset(s.id);
+      showToast("Cliquez à nouveau pour confirmer");
+      setTimeout(() => setPendingReset((cur) => (cur === s.id ? null : cur)), 3000);
+      return;
+    }
+    setPendingReset(null);
+    const ok = await removeStaffPin(s.id);
+    if (!ok) { showToast("Erreur lors de la réinitialisation", "error"); return; }
+    showToast("PIN réinitialisé");
+    await refresh();
+  };
+
+  return (
+    <div className="space-y-3">
+      {staff.map((s) => (
+        <div key={s.id} className="rounded-2xl border border-[#e5d5c5] bg-white p-4 flex items-center gap-3">
+          <span className="rounded-full flex items-center justify-center text-sm font-black text-white shrink-0" style={{ width: 40, height: 40, background: "#2c1a10" }}>
+            {initials(s.name)}
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="font-black text-sm text-[#2c1a10]">{s.name}</div>
+            <div className="text-[11px] text-[#9a7060] font-semibold mt-0.5">{s.poste || "—"}</div>
+            <span
+              className="inline-block mt-1.5 text-[9px] font-black px-1.5 py-0.5 rounded-full"
+              style={{ color: s.hasPin ? "#5a7828" : "#9a7060", background: s.hasPin ? "#f0f7e5" : "#f0e8dc" }}
+            >
+              {s.hasPin ? "🔐 PIN actif" : "○ Sans PIN"}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1.5 shrink-0">
+            {s.hasPin && (
+              <button
+                type="button"
+                onClick={() => resetPin(s)}
+                className={`text-[10px] font-black px-2.5 py-1.5 rounded-lg cursor-pointer whitespace-nowrap ${
+                  pendingReset === s.id ? "bg-red-600 text-white" : "bg-[#f0e8dc] text-[#2c1a10]"
+                }`}
+              >
+                {pendingReset === s.id ? "Confirmer ?" : "Réinitialiser"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setSettingPinFor(s)}
+              className="text-[10px] font-black px-2.5 py-1.5 rounded-lg bg-[#5a7828] text-white cursor-pointer whitespace-nowrap"
+            >
+              Définir PIN
+            </button>
+          </div>
+        </div>
+      ))}
+      {staff.length === 0 && <div className="text-center text-sm text-[#9a7060] py-6">Aucun membre</div>}
+
+      {settingPinFor && (
+        <PinSetupModal
+          staffId={settingPinFor.id}
+          hasExistingPin={false}
+          onClose={() => setSettingPinFor(null)}
+          onSaved={async () => { showToast(`PIN défini pour ${settingPinFor.name}`); await refresh(); }}
+        />
       )}
     </div>
   );
@@ -565,6 +608,7 @@ export default function ParametresPage() {
 
       {tab === "suppliers" && <FournisseursSection suppliers={suppliers} refresh={refreshAll} showToast={showToast} />}
       {tab === "staff" && <StaffSection staff={staff} refresh={refreshAll} showToast={showToast} />}
+      {tab === "pins" && <PinsSection staff={staff} refresh={refreshAll} showToast={showToast} />}
       {tab === "categories" && <ReferentielSection type="categories" items={referentiels.categories} categories={referentiels.categories} refresh={refreshAll} showToast={showToast} />}
       {tab === "sousCategories" && <ReferentielSection type="sousCategories" items={referentiels.sousCategories} categories={referentiels.categories} refresh={refreshAll} showToast={showToast} />}
       {tab === "unites" && <ReferentielSection type="unites" items={referentiels.unites} categories={referentiels.categories} refresh={refreshAll} showToast={showToast} />}
