@@ -5,6 +5,7 @@
 // fournisseur (voir FactureScanModal) : trois flux qui ne se touchent pas.
 
 import { useMemo, useState } from "react";
+import { parseJsonResponse } from "../../../lib/http/safe-json";
 
 const CATEGORIES = ["Fournisseur", "Salaires", "Charges", "Recettes", "Autre"];
 const CATEGORIE_COLOR = {
@@ -110,7 +111,7 @@ export default function ScanReleveModal({ onClose, onSaved }) {
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/scan-releve", { method: "POST", body: formData });
-      const data = await res.json().catch(() => ({}));
+      const data = await parseJsonResponse(res);
       if (!res.ok || data.error) throw new Error(data.error || `Erreur ${res.status}`);
 
       setBanque(data.banque || "");
@@ -151,7 +152,7 @@ export default function ScanReleveModal({ onClose, onSaved }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transactions: valid, banque, compte, periode: periodeStr }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = await parseJsonResponse(res);
       if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
       onSaved?.();
     } catch (err) {

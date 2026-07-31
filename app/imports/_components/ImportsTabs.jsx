@@ -18,6 +18,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ImportsClient from "./ImportsClient";
+import { parseJsonResponse } from "../../../lib/http/safe-json";
 
 const TABS = [
   { key: "daily", label: "Quotidien", emoji: "📊" },
@@ -56,7 +57,7 @@ function useUploadFlow(endpoint, onDone) {
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch(endpoint, { method: "POST", body: formData });
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
       setResult(data);
       onDone?.();

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import PreviewPanel from "./PreviewPanel";
 import ScanZPanel from "./ScanZPanel";
+import { parseJsonResponse } from "../../../lib/http/safe-json";
 
 // The file is never persisted server-side (see docs/ARCHITECTURE.md "PR4"
 // "Stateless upload flow") — it's kept only in this component's state and
@@ -15,7 +16,7 @@ async function postFile(url, { file, establishmentKey }) {
   if (establishmentKey) formData.append("establishmentKey", establishmentKey);
 
   const response = await fetch(url, { method: "POST", body: formData });
-  const body = await response.json().catch(() => ({ error: "Réponse invalide du serveur." }));
+  const body = await parseJsonResponse(response);
   if (!response.ok) {
     throw new Error(body.error || `Erreur ${response.status}`);
   }

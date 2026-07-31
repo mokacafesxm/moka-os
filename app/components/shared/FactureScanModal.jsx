@@ -8,6 +8,7 @@
 // déjà mis à jour.
 
 import { useState } from "react";
+import { parseJsonResponse } from "../../../lib/http/safe-json";
 
 const UNITE_OPTIONS = ["kg", "L", "pièce", "boîte", "carton", "g", "mL"];
 
@@ -136,7 +137,7 @@ export default function FactureScanModal({ onClose, onSaved }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ base64, mediaType: "image/jpeg" }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = await parseJsonResponse(res);
       if (!res.ok || data.error) throw new Error(data.error || `Erreur ${res.status}`);
       setFournisseur(data.fournisseur || "");
       setDate(data.date || new Date().toISOString().slice(0, 10));
@@ -180,7 +181,7 @@ export default function FactureScanModal({ onClose, onSaved }) {
           })),
         }),
       });
-      const data = await res.json().catch(() => ({}));
+      const data = await parseJsonResponse(res);
       if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
       onSaved?.();
     } catch (err) {

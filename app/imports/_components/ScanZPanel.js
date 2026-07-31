@@ -8,6 +8,7 @@
 // docs/ARCHITECTURE.md "scan-z secondary source" §0.
 
 import { useState } from "react";
+import { parseJsonResponse } from "../../../lib/http/safe-json";
 
 const BLOCKING_REASON_LABELS = {
   SCANZ_DISABLED: "La source scan-z n'est pas activée sur ce serveur (IMPORTS_SCANZ_ENABLED).",
@@ -31,7 +32,7 @@ async function postScanZ(url, { image, establishmentKey, preflightToken, finalVa
   if (finalValues) formData.append("finalValues", JSON.stringify(finalValues));
 
   const response = await fetch(url, { method: "POST", body: formData });
-  const body = await response.json().catch(() => ({ error: "Réponse invalide du serveur." }));
+  const body = await parseJsonResponse(response);
   if (!response.ok) throw new Error(body.error || `Erreur ${response.status}`);
   return body;
 }

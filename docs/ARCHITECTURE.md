@@ -1614,3 +1614,62 @@ ici. `NOTION_PLANNING_DB_ID`/`NOTION_ASSIGNATIONS_DB_ID` ont été ajoutées au
 même scope (Preview) par cohérence. À vérifier si les fonctionnalités
 Recettes/Planning sont censées fonctionner sur le vrai domaine de
 production.
+
+## Bug — "The string did not match the expected pattern" sur les uploads du module Load (2026-07-31)
+
+**Symptôme rapporté** : l'upload d'un PDF de relevé bancaire ET de deux
+fichiers Excel AddicTill sans rapport (synthèse quotidienne, palmarès
+produits) échouait tous les trois avec le même message d'erreur, testé
+depuis Safari iOS (PWA installée). L'hypothèse de départ — une regex Zod
+(`z.string().regex(...)`) trop stricte en amont de la classification —
+était raisonnable vu le message, mais s'est révélée fausse après audit :
+
+- Aucun `.regex(` n'existe nulle part dans ce dépôt (`lib/importer/**`,
+  `app/api/imports/**`), confirmé par recherche exhaustive.
+- Le message par défaut réel de Zod v4 pour un `.regex()` qui échoue est
+  *"Invalid string: must match pattern ..."* — vérifié empiriquement en
+  exécutant Zod directement — texte différent du message rapporté, ce qui
+  aurait dû suffire à écarter Zod même sans grep.
+- Reproduction directe des 3 fichiers réels du dépôt de tests
+  (`lib/importer/__tests__/fixtures/{bank,pos}/real/`) contre les routes
+  `/api/imports/preflight`, `/api/imports/summary` et `/api/imports/bank`
+  en local ne reproduit PAS ce message — chacun échoue (ou réussit) avec
+  une erreur métier normale et différente (confiance de classification
+  insuffisante, `TOTAL_MISMATCH`, clé API Anthropic absente en local).
+
+**Cause réelle** : *"The string did not match the expected pattern"* est le
+message générique que WebKit/Safari lève nativement (famille DOM Exception
+12) pour un échec de validation de chaîne dans plusieurs API web sans
+rapport entre elles — dont, empiriquement, `Response.json()` quand le corps
+de la réponse n'est pas du JSON. `middleware.js` redirige (308) **toute**
+requête sur le domaine public `mokacafe.co` qui n'est pas `/commander` ou
+listée dans `ALLOWED_PATHS` — y compris chaque POST vers `/api/imports/*` —
+vers `/commander`, dont le corps n'est pas du JSON. Si le raccourci PWA
+installé sur l'iPhone pointe vers `mokacafe.co` (le domaine public,
+naturellement le plus mémorable) plutôt que vers `moka-os.vercel.app` (le
+domaine interne, seul endroit où `/imports` doit être utilisé), **chaque**
+upload — quel que soit le type de fichier — atterrit sur cette redirection
+avant même d'atteindre la moindre validation métier. Le code client faisait
+alors `const data = await res.json();` sans protection, laissant l'exception
+native de Safari remonter telle quelle jusqu'à l'utilisateur.
+
+**Choix structurant** : plutôt que d'assouplir une validation qui n'existe
+pas, `lib/http/safe-json.js` (nouveau) centralise l'analyse de la réponse
+HTTP pour tous les flux d'upload du module Load
+(`ImportsTabs.jsx`/`ImportsClient.js`/`ScanZPanel.js`,
+`FactureScanModal.jsx`, `ScanReleveModal.jsx`) :
+1. `res.redirected` → message spécifique pointant vers la cause la plus
+   probable (mauvais domaine).
+2. `content-type` absent de `application/json` → message générique mais
+   précis (statut HTTP + type reçu), sans jamais tenter `JSON.parse` dessus.
+3. `res.json()` échoue malgré un `content-type` JSON annoncé → message de
+   repli.
+
+Aucune de ces trois branches n'intercepte ou ne modifie une vraie erreur
+métier JSON (`{ success: false, error: "..." }`) — celles-ci continuent de
+remonter inchangées. `/api/imports/*` reste volontairement **hors** de
+`ALLOWED_PATHS` sur le domaine public (c'est la frontière de sécurité
+voulue par `middleware.js` : outils d'admin jamais exposés sur le domaine
+client) — le vrai correctif côté opérationnel est de vérifier que le
+raccourci PWA utilisé pour la gestion quotidienne pointe bien vers
+`moka-os.vercel.app`, pas `mokacafe.co`.
