@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
+import ScanReleveModal from "../../components/shared/ScanReleveModal";
 
 function formatEuros(value) {
   return `${(value || 0).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
@@ -44,6 +45,129 @@ function KpiGrid({ kpis, loading }) {
         </div>
       ))}
     </div>
+  );
+}
+
+// ── B. Finances (scan facture + relevé bancaire, 2026-07-31) ───────────────
+
+const CATEGORIE_COLOR = {
+  Fournisseur: "bg-orange-50 text-orange-700",
+  Salaires: "bg-blue-50 text-blue-700",
+  Charges: "bg-red-50 text-red-700",
+  Recettes: "bg-green-50 text-green-700",
+  Autre: "bg-[#f0e8dc] text-[#9a7060]",
+};
+
+function FinanceKpiGrid({ financier }) {
+  const items = [
+    { label: "Solde estimé", value: financier?.tresorerie },
+    { label: "Dépenses fournisseurs (mois)", value: financier?.depenses_fournisseurs_mois },
+    { label: "Charges fixes (mois)", value: financier?.charges_mois },
+    { label: "Salaires (mois)", value: financier?.salaires_mois },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {items.map((k) => (
+        <div key={k.label} className="rounded-2xl border border-[#e5d5c5] bg-white p-3.5 min-w-0">
+          <div className="text-lg font-black text-[#2c1a10] truncate">
+            {k.value !== null && k.value !== undefined ? formatEuros(k.value) : "—"}
+          </div>
+          <div className="text-[9px] font-bold text-[#9a7060] uppercase tracking-wide mt-1">{k.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Alerte si le prix le plus récent a augmenté de plus de 10% par rapport
+// au précédent enregistré pour ce même ingrédient (liste déjà triée par
+// date décroissante par /api/prix-ingredients).
+function PrixEvolutionSection({ ingredients, selected, onSelect, historique, loading }) {
+  const alerte = useMemo(() => {
+    if (historique.length < 2) return null;
+    const [dernier, precedent] = historique;
+    if (!dernier.prixUnitaire || !precedent.prixUnitaire) return null;
+    const variation = ((dernier.prixUnitaire - precedent.prixUnitaire) / precedent.prixUnitaire) * 100;
+    return variation > 10 ? variation : null;
+  }, [historique]);
+
+  return (
+    <SectionCard title="📈 Évolution des prix ingrédients">
+      <select
+        value={selected}
+        onChange={(e) => onSelect(e.target.value)}
+        className="w-full h-11 px-3.5 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828] mb-3"
+      >
+        <option value="">Choisir un ingrédient…</option>
+        {ingredients.map((nom) => <option key={nom} value={nom}>{nom}</option>)}
+      </select>
+
+      {!selected ? (
+        <div className="text-sm text-[#9a7060] py-2 text-center">Sélectionne un ingrédient pour voir son historique</div>
+      ) : loading ? (
+        <div className="text-sm text-[#9a7060] py-2 text-center">…</div>
+      ) : historique.length === 0 ? (
+        <div className="text-sm text-[#9a7060] py-2 text-center">Aucun prix enregistré pour {selected}</div>
+      ) : (
+        <div className="space-y-2">
+          {alerte && (
+            <div className="rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs font-bold text-red-700">
+              ⚠️ Hausse de {alerte.toFixed(0)}% depuis le dernier prix enregistré
+            </div>
+          )}
+          {historique.map((h) => (
+            <div key={h.id} className="flex items-center justify-between text-sm py-1 border-b border-[#f0e8dc] last:border-0">
+              <span className="text-[#9a7060]">{h.date || "—"} · {h.fournisseur || "—"}</span>
+              <span className="font-black text-[#2c1a10]">{h.prixUnitaire != null ? `${h.prixUnitaire} € / ${h.unite || "?"}` : "—"}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+function DernieresTransactionsSection({ transactions, filter, onFilter }) {
+  const filtered = filter === "Toutes" ? transactions : transactions.filter((t) => t.categorie === filter);
+  return (
+    <SectionCard title="🏦 Dernières transactions">
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {["Toutes", "Fournisseur", "Salaires", "Charges", "Recettes", "Autre"].map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => onFilter(c)}
+            className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer whitespace-nowrap ${
+              filter === c ? "bg-[#2c1a10] text-white" : "bg-white border border-[#e5d5c5] text-[#6b4a3d]"
+            }`}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+      {filtered.length === 0 ? (
+        <div className="text-sm text-[#9a7060] py-2 text-center">Aucune transaction</div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.slice(0, 10).map((t) => (
+            <div key={t.id} className="flex items-center justify-between gap-2 text-sm py-1.5 border-b border-[#f0e8dc] last:border-0">
+              <div className="min-w-0">
+                <div className="font-bold text-[#2c1a10] truncate">{t.libelle}</div>
+                <div className="text-[10px] text-[#9a7060]">{t.date}</div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`text-[9px] font-black px-2 py-1 rounded-full whitespace-nowrap ${CATEGORIE_COLOR[t.categorie] || CATEGORIE_COLOR.Autre}`}>
+                  {t.categorie || "Autre"}
+                </span>
+                <span className={`font-black ${t.type === "Débit" ? "text-red-700" : "text-[#5a7828]"}`}>
+                  {t.type === "Débit" ? "-" : "+"}{formatEuros(t.montant)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </SectionCard>
   );
 }
 
@@ -212,11 +336,24 @@ function MokaAiSection({ context }) {
 export default function RapportsPage() {
   const router = useRouter();
   const { isAdmin } = useStaffContext();
-  const { stockLive, supplierOrders } = useAppContext();
+  const { stockLive, supplierOrders, products } = useAppContext();
 
   const [kpis, setKpis] = useState(null);
   const [heuresStaff, setHeuresStaff] = useState([]);
   const [loadingKpis, setLoadingKpis] = useState(true);
+
+  const [financier, setFinancier] = useState(null);
+  const [showScanReleve, setShowScanReleve] = useState(false);
+  const [prixIngredient, setPrixIngredient] = useState("");
+  const [prixHistorique, setPrixHistorique] = useState([]);
+  const [loadingPrix, setLoadingPrix] = useState(false);
+  const [transactions, setTransactions] = useState([]);
+  const [transactionFilter, setTransactionFilter] = useState("Toutes");
+
+  const refreshFinances = () => {
+    fetch("/api/dashboard").then((r) => r.json()).then((d) => setFinancier(d?.financier || null)).catch(() => {});
+    fetch("/api/banque?limit=50").then((r) => r.json()).then((d) => setTransactions(Array.isArray(d) ? d : [])).catch(() => {});
+  };
 
   useEffect(() => {
     if (!isAdmin) router.replace("/home");
@@ -253,6 +390,29 @@ export default function RapportsPage() {
     return () => { ignore = true; };
   }, [isAdmin]);
 
+  useEffect(() => {
+    if (!isAdmin) return;
+    refreshFinances();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!prixIngredient) { setPrixHistorique([]); return; }
+    let ignore = false;
+    setLoadingPrix(true);
+    fetch(`/api/prix-ingredients?ingredient=${encodeURIComponent(prixIngredient)}`)
+      .then((r) => r.json())
+      .then((d) => { if (!ignore) setPrixHistorique(Array.isArray(d) ? d : []); })
+      .catch(() => { if (!ignore) setPrixHistorique([]); })
+      .finally(() => { if (!ignore) setLoadingPrix(false); });
+    return () => { ignore = true; };
+  }, [prixIngredient]);
+
+  const ingredientNames = useMemo(
+    () => [...new Set((products || []).map((p) => p.name).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr")),
+    [products]
+  );
+
   const aiContext = useMemo(() => ({
     stock: stockLive.slice(0, 40),
     commandesRecentes: supplierOrders.slice(0, 10),
@@ -270,6 +430,34 @@ export default function RapportsPage() {
       </div>
 
       <KpiGrid kpis={kpis} loading={loadingKpis} />
+
+      <SectionCard title="💰 Données financières">
+        <FinanceKpiGrid financier={financier} />
+        <button
+          type="button"
+          onClick={() => setShowScanReleve(true)}
+          className="w-full h-11 mt-3 rounded-xl border border-dashed border-[#c8b4a8] text-[#9a7060] text-xs font-black cursor-pointer"
+        >
+          🏦 Scanner un relevé bancaire
+        </button>
+      </SectionCard>
+
+      <PrixEvolutionSection
+        ingredients={ingredientNames}
+        selected={prixIngredient}
+        onSelect={setPrixIngredient}
+        historique={prixHistorique}
+        loading={loadingPrix}
+      />
+
+      <DernieresTransactionsSection transactions={transactions} filter={transactionFilter} onFilter={setTransactionFilter} />
+
+      {showScanReleve && (
+        <ScanReleveModal
+          onClose={() => setShowScanReleve(false)}
+          onSaved={() => { setShowScanReleve(false); refreshFinances(); }}
+        />
+      )}
 
       <Link
         href="/imports"

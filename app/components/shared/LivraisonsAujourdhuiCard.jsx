@@ -12,6 +12,7 @@
 
 import { useMemo, useState } from "react";
 import ReceiveModal, { parseOrderProducts, getOrderSupplier } from "./ReceiveModal";
+import FactureScanModal from "./FactureScanModal";
 
 const SXM_TZ = "America/Puerto_Rico";
 
@@ -72,9 +73,30 @@ function OrderPickerModal({ orders, onPick, onClose }) {
   );
 }
 
+// Bandeau post-réception optionnel — le stock est déjà mis à jour à ce
+// stade (ReceiveModal a fait son travail), scanner la facture n'ajoute que
+// des prix dans MOKA_Prix_Ingredients, jamais bloquant.
+function PostReceiptPrompt({ onScan, onDismiss }) {
+  return (
+    <div className="rounded-2xl border border-[#e5d5c5] bg-[#f0f7e5] p-3.5 flex items-center justify-between gap-2">
+      <div className="text-xs font-bold text-[#5a7828]">✅ Livraison reçue</div>
+      <div className="flex items-center gap-2 shrink-0">
+        <button type="button" onClick={onScan} className="h-9 px-3 rounded-xl bg-[#2c1a10] text-white text-[11px] font-black cursor-pointer">
+          📸 Scanner la facture (optionnel)
+        </button>
+        <button type="button" onClick={onDismiss} className="h-9 px-2.5 text-[#9a7060] text-[11px] font-bold cursor-pointer">
+          Terminer
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function LivraisonsAujourdhuiCard({ orders, onReceived }) {
   const [receivingOrder, setReceivingOrder] = useState(null);
   const [showPicker, setShowPicker] = useState(false);
+  const [showPostReceipt, setShowPostReceipt] = useState(false);
+  const [showFactureScan, setShowFactureScan] = useState(false);
   const todaySXM = useMemo(() => getSXMDateString(), []);
 
   const today = useMemo(
@@ -88,8 +110,11 @@ export default function LivraisonsAujourdhuiCard({ orders, onReceived }) {
 
   const handleReceived = () => {
     setReceivingOrder(null);
+    setShowPostReceipt(true);
     onReceived?.();
   };
+
+  const dismissPostReceipt = () => setShowPostReceipt(false);
 
   if (fournisseurs.length === 0) {
     return (
@@ -115,6 +140,16 @@ export default function LivraisonsAujourdhuiCard({ orders, onReceived }) {
 
         {receivingOrder && (
           <ReceiveModal order={receivingOrder} onClose={() => setReceivingOrder(null)} onReceived={handleReceived} />
+        )}
+
+        {showPostReceipt && (
+          <PostReceiptPrompt onScan={() => setShowFactureScan(true)} onDismiss={dismissPostReceipt} />
+        )}
+        {showFactureScan && (
+          <FactureScanModal
+            onClose={() => setShowFactureScan(false)}
+            onSaved={() => { setShowFactureScan(false); setShowPostReceipt(false); }}
+          />
         )}
       </>
     );
@@ -144,6 +179,16 @@ export default function LivraisonsAujourdhuiCard({ orders, onReceived }) {
 
       {receivingOrder && (
         <ReceiveModal order={receivingOrder} onClose={() => setReceivingOrder(null)} onReceived={handleReceived} />
+      )}
+
+      {showPostReceipt && (
+        <PostReceiptPrompt onScan={() => setShowFactureScan(true)} onDismiss={dismissPostReceipt} />
+      )}
+      {showFactureScan && (
+        <FactureScanModal
+          onClose={() => setShowFactureScan(false)}
+          onSaved={() => { setShowFactureScan(false); setShowPostReceipt(false); }}
+        />
       )}
     </div>
   );

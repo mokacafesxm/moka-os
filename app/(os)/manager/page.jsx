@@ -571,6 +571,9 @@ export default function ManagerHomePage() {
           <KpiStat label="Marge brute estimée" value={financier.marge_brute} />
           <KpiStat label="Produit star (semaine)" value={financier.produit_star_semaine} format="text" />
           <KpiStat label="Valeur stock théorique" value={financier.valeur_stock} />
+          <KpiStat label="Dépenses fournisseurs (mois)" value={financier.depenses_fournisseurs_mois} />
+          <KpiStat label="Charges fixes (mois)" value={financier.charges_mois} />
+          <KpiStat label="Salaires (mois)" value={financier.salaires_mois} />
         </div>
       </details>
 

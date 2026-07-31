@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
 import ReceiveModal from "../../components/shared/ReceiveModal";
+import FactureScanModal from "../../components/shared/FactureScanModal";
 
 const STATUTS = ["À commander", "Envoyé", "Livraison prévue", "Reçu"];
 
@@ -467,6 +468,8 @@ function HistoriqueTab({ orders, suppliers, onRefresh }) {
   const [receivingOrder, setReceivingOrder] = useState(null);
   const [overrides, setOverrides] = useState({});
   const [toast, setToast] = useState(null);
+  const [showPostReceipt, setShowPostReceipt] = useState(false);
+  const [showFactureScan, setShowFactureScan] = useState(false);
 
   useEffect(() => {
     if (!toast) return;
@@ -510,6 +513,7 @@ function HistoriqueTab({ orders, suppliers, onRefresh }) {
   const handleReceived = () => {
     if (receivingOrder) setOverrides((cur) => ({ ...cur, [receivingOrder.id]: { statut: "Reçu" } }));
     setReceivingOrder(null);
+    setShowPostReceipt(true);
     showToast("Commande marquée comme reçue ✅");
     onRefresh();
   };
@@ -576,6 +580,26 @@ function HistoriqueTab({ orders, suppliers, onRefresh }) {
 
       {receivingOrder && (
         <ReceiveModal order={receivingOrder} onClose={() => setReceivingOrder(null)} onReceived={handleReceived} />
+      )}
+
+      {showPostReceipt && !showFactureScan && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-[#e5d5c5] bg-[#f0f7e5] p-3.5 shadow-lg flex items-center justify-between gap-2">
+          <div className="text-xs font-bold text-[#5a7828]">✅ Livraison reçue</div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button type="button" onClick={() => setShowFactureScan(true)} className="h-9 px-3 rounded-xl bg-[#2c1a10] text-white text-[11px] font-black cursor-pointer">
+              📸 Scanner la facture (optionnel)
+            </button>
+            <button type="button" onClick={() => setShowPostReceipt(false)} className="h-9 px-2.5 text-[#9a7060] text-[11px] font-bold cursor-pointer">
+              Terminer
+            </button>
+          </div>
+        </div>
+      )}
+      {showFactureScan && (
+        <FactureScanModal
+          onClose={() => setShowFactureScan(false)}
+          onSaved={() => { setShowFactureScan(false); setShowPostReceipt(false); showToast("Prix enregistrés ✅"); }}
+        />
       )}
 
       {toast && (
