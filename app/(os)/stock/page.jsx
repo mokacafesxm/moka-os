@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
+import { resolveOperationId, clearOperationId } from "../../../lib/stock/operation-id";
 
 function groupBy(list, key) {
   const groups = {};
@@ -26,6 +27,15 @@ function isCritiqueStatut(s) {
 function isAlerteStatut(s) {
   return String(s || "").toLowerCase().includes("stock bas") || String(s || "").toLowerCase().includes("alerte");
 }
+function isConfigurerStatut(s) {
+  return String(s || "").toLowerCase().includes("configurer");
+}
+function statutBucket(s) {
+  if (isCritiqueStatut(s)) return "Critique";
+  if (isAlerteStatut(s)) return "Bas";
+  if (isConfigurerStatut(s)) return "À configurer";
+  return "OK";
+}
 function statutRank(s) {
   if (isCritiqueStatut(s)) return 0;
   if (isAlerteStatut(s)) return 1;
@@ -37,8 +47,12 @@ function sortByUrgency(items) {
 
 // Une prépa (ex: "Sauce maison — Prépa") vit dans stockLive comme n'importe
 // quel ingrédient brut mais se réapprovisionne en la refaisant (onglet
-// Prépas), jamais en la commandant à un fournisseur — même distinction que
-// Mon Poste (voir poste/page.jsx isPrepStock).
+// Stock Prépas), jamais en la commandant à un fournisseur — même distinction
+// que Mon Poste (voir poste/page.jsx isPrepStock). Audit Prompt 5 (30 jul
+// 2026) : cette détection dépendait de stockLive[i].category, qui venait du
+// champ Categorie propre au Stock — vide sur ~97% des lignes en pratique
+// (voir /api/stock/route.js). category vient maintenant de l'ingrédient lié
+// (fiable), donc cette même fonction redevient correcte sans changement ici.
 function isPrepStockItem(item) {
   const cat = String(item.category || item.categorie || "")
     .normalize("NFD")
@@ -57,17 +71,54 @@ function todaySXM() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Puerto_Rico" }).format(new Date());
 }
 
-// Best-effort : le nom de la recette (Sold Product Catalogue) est censé
-// correspondre au nom du produit préparé, mais rien ne le garantit — beaucoup
-// de prépas n'ont pas encore de recette (voir /recettes). Ne bloque jamais la
-// complétion de la prépa si aucune correspondance/recette n'est trouvée.
+// Best-effort : le nom de la recette (Sold Product Catalogue / Recettes
+// Batch) est censé correspondre au nom du produit préparé, mais rien ne le
+// garantit — beaucoup de prépas n'ont pas encore de recette. Ne bloque
+// jamais la complétion de la prépa si aucune correspondance/recette n'est
+// trouvée.
 function derivePrepProductName(prepName) {
   return String(prepName || "").replace(/^Pr[ée]parer\s+/i, "").trim();
 }
 
-async function deductRecipeIngredients(prepName, quantiteProduite, stockLive) {
+// Cherche d'abord une recette batch dans le NOUVEAU système (Prompt 4,
+// MOKA_Recettes_Batch via /api/recettes/mapped) — c'est la source pensée
+// pour ce cas précis (une prépa -> ses ingrédients bruts + quantité produite
+// par lot). L'ancien système (/api/recipes/lines, voir deductFromLegacyRecipe)
+// reste en repli pour les prépas qui n'ont qu'une recette dans l'ancien
+// système "recettes menu", jamais migrée.
+async function findBatchRecipeForPrep(prepName) {
   const productName = derivePrepProductName(prepName);
-  if (!productName || !(quantiteProduite > 0)) return;
+  if (!productName) return null;
+  const res = await fetch(`/api/recettes/mapped?type=batch`);
+  if (!res.ok) return null;
+  const list = await res.json().catch(() => null);
+  if (!Array.isArray(list)) return null;
+  const norm = (s) => String(s || "").trim().toLowerCase();
+  return list.find((r) => norm(r.nom) === norm(productName)) || null;
+}
+
+async function deductFromBatchRecipe(recipe, producedQty, stockLive) {
+  const batchSize = Number(recipe.quantiteProduite) || 1;
+  const ratio = batchSize > 0 ? producedQty / batchSize : 0;
+  const ingredientLines = (recipe.lignes || []).filter((l) => l.kind === "ingredient");
+  await Promise.all(
+    ingredientLines.map((line) => {
+      const stockRow = stockLive.find((s) => s.ingredientId === line.id);
+      if (!stockRow) return null;
+      const delta = (Number(line.qty) || 0) * ratio;
+      const newQty = Math.max(0, (stockRow.quantiteStock || 0) - delta);
+      return fetch("/api/stock/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: stockRow.id, poidsTotal: newQty, Unite: stockRow.uniteStock, mode: "replace" }),
+      });
+    })
+  );
+}
+
+async function deductFromLegacyRecipe(prepName, producedQty, stockLive) {
+  const productName = derivePrepProductName(prepName);
+  if (!productName) return;
   const soldProductsRes = await fetch("/api/recipes/sold-products");
   if (!soldProductsRes.ok) return;
   const soldProducts = await soldProductsRes.json().catch(() => null);
@@ -83,7 +134,7 @@ async function deductRecipeIngredients(prepName, quantiteProduite, stockLive) {
     activeLines.map((line) => {
       const stockRow = stockLive.find((s) => s.ingredientId === line.ingredientId);
       if (!stockRow) return null;
-      const delta = (Number(line.quantity) || 0) * quantiteProduite;
+      const delta = (Number(line.quantity) || 0) * producedQty;
       const newQty = Math.max(0, (stockRow.quantiteStock || 0) - delta);
       return fetch("/api/stock/update", {
         method: "POST",
@@ -92,6 +143,45 @@ async function deductRecipeIngredients(prepName, quantiteProduite, stockLive) {
       });
     })
   );
+}
+
+async function deductRecipeIngredients(prepName, producedQty, stockLive) {
+  if (!(producedQty > 0)) return;
+  const batchRecipe = await findBatchRecipeForPrep(prepName).catch(() => null);
+  if (batchRecipe) {
+    await deductFromBatchRecipe(batchRecipe, producedQty, stockLive).catch(() => {});
+  } else {
+    await deductFromLegacyRecipe(prepName, producedQty, stockLive).catch(() => {});
+  }
+}
+
+// Ajoute la quantité produite au stock de la prépa elle-même — l'étape qui
+// manquait avant Prompt 5 (la déduction des ingrédients bruts existait déjà,
+// mais rien ne créditait le stock de la prépa terminée). mode "add" est
+// idempotency-guardé côté API (voir lib/stock/apply-addition.js) ; on suit
+// exactement le même pattern client que la réception manuelle rapide
+// (app/(os)/page.js + lib/stock/operation-id.js) pour bénéficier de la même
+// protection contre un double-ajout en cas de retry réseau.
+async function addProducedQtyToPrepStock(prepName, producedQty, prepId, stockLive) {
+  const productName = derivePrepProductName(prepName) || prepName;
+  if (!productName || !(producedQty > 0)) return;
+  const norm = (s) => String(s || "").trim().toLowerCase();
+  const existing = stockLive.find((s) => norm(s.name) === norm(productName));
+  const storage = typeof window !== "undefined" ? window.sessionStorage : null;
+  const operationId = resolveOperationId(prepId, storage) || `${Date.now()}`;
+  const res = await fetch("/api/stock/update", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: existing?.id || null,
+      name: productName,
+      poidsTotal: producedQty,
+      Unite: existing?.uniteStock || "",
+      mode: "add",
+      idempotencyKey: `manual-receipt:${operationId}:${prepId}`,
+    }),
+  }).catch(() => null);
+  if (res?.ok) clearOperationId(prepId, storage);
 }
 
 function StatusBadge({ statut }) {
@@ -159,7 +249,7 @@ function ModalShell({ title, onClose, children }) {
 
 const EMPTY_PRODUCT_FORM = {
   ingredient: "", categorie: "", zoneStockage: "", uniteStock: "",
-  seuilAlerte: "", seuilCritique: "", quantiteActuelle: "",
+  seuilAlerte: "", seuilCritique: "", quantiteActuelle: "", visibleOrderPad: true,
 };
 
 function ProductFormModal({ mode, initial, referentiels, onClose, onSaved }) {
@@ -198,6 +288,11 @@ function ProductFormModal({ mode, initial, referentiels, onClose, onSaved }) {
           });
         }
       } else {
+        // "visibleOrderPad" doit toujours être renvoyé explicitement : le
+        // writer /api/settings/products (mode partial) le remet à true par
+        // défaut si le champ est absent de la requête, ce qui réactiverait
+        // silencieusement un produit désactivé via le badge "Actif" à chaque
+        // simple modification de nom/catégorie/seuils.
         const res = await fetch("/api/settings/products", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -209,6 +304,7 @@ function ProductFormModal({ mode, initial, referentiels, onClose, onSaved }) {
             uniteStock: form.uniteStock,
             seuilAlerte: form.seuilAlerte ? Number(form.seuilAlerte) : undefined,
             seuilCritique: form.seuilCritique ? Number(form.seuilCritique) : undefined,
+            visibleOrderPad: form.visibleOrderPad !== false,
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -278,7 +374,7 @@ function AdjustQuantityModal({ item, onClose, onSaved }) {
       const res = await fetch("/api/stock/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: item.id, poidsTotal: Number(value) || 0, Unite: item.uniteStock, mode: "replace" }),
+        body: JSON.stringify({ id: item.id || undefined, name: item.name, poidsTotal: Number(value) || 0, Unite: item.uniteStock, mode: "replace" }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
@@ -309,22 +405,97 @@ function AdjustQuantityModal({ item, onClose, onSaved }) {
   );
 }
 
-function StockLiveTab({ stockLive, referentiels, onRefresh }) {
+function ActifToggle({ item, onToggled }) {
+  const [busy, setBusy] = useState(false);
+  const active = item.visibleOrderPad !== false;
+
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      await fetch("/api/settings/products", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.ingredientId, visibleOrderPad: !active }),
+      });
+      onToggled();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={busy || !item.ingredientId}
+      title={active ? "Désactiver (masquer sans supprimer)" : "Réactiver"}
+      className={`h-8 px-2.5 rounded-lg text-[10px] font-black cursor-pointer transition-colors disabled:opacity-40 ${
+        active ? "bg-[#f0f7e5] text-[#5a7828] hover:bg-[#e3f0d0]" : "bg-[#f0e8dc] text-[#9a7060] hover:bg-[#e5d5c5]"
+      }`}
+    >
+      {busy ? "…" : active ? "Actif" : "Inactif"}
+    </button>
+  );
+}
+
+// Fusionne le catalogue (MOKA_Ingredients_Master, source des métadonnées :
+// fournisseur, unité de commande, photo, seuils, Actif) avec les niveaux
+// live (MOKA_Stock_Produits_Notion, source de la quantité et du statut) —
+// c'était les deux moitiés d'un même produit, éclatées en deux onglets
+// séparés avant Prompt 5. On part du catalogue (source canonique des
+// produits réels) et on rattache le stock par ingredientId : ça exclut
+// naturellement les lignes Stock orphelines sans relation ingrédient
+// (audit Prompt 5 — une poignée de lignes "NEW ORDER : ..." résiduelles
+// dans MOKA_Stock_Produits_Notion, jamais nettoyées) et couvre aussi un
+// produit tout juste créé dont la ligne Stock n'existe pas encore.
+function mergeCatalogueStock(products, stockLive) {
+  const stockByIngredient = new Map();
+  stockLive.forEach((s) => { if (s.ingredientId) stockByIngredient.set(s.ingredientId, s); });
+
+  return products.map((p) => {
+    const stock = stockByIngredient.get(p.id) || null;
+    return {
+      ingredientId: p.id,
+      id: stock?.id || null,
+      name: p.name,
+      category: p.category || p.categorie || "",
+      zone: p.zone || p.zoneStockage || "",
+      supplier: p.supplier || "",
+      uniteStock: stock?.uniteStock || p.uniteStock || "",
+      uniteCommande: p.uniteCommande || "",
+      photo: p.photo || "",
+      quantiteStock: stock?.quantiteStock ?? 0,
+      statut: stock?.statut || "⚪ À configurer",
+      visibleOrderPad: p.visibleOrderPad !== false,
+      isPrep: isPrepStockItem({ category: p.category || p.categorie }),
+    };
+  });
+}
+
+const STATUS_FILTERS = ["Toutes", "Critique", "Bas", "OK", "À configurer"];
+
+function StockCatalogueTab({ products, stockLive, referentiels, onRefresh }) {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("Toutes");
+  const [statusFilter, setStatusFilter] = useState("Toutes");
+  const [showInactive, setShowInactive] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [adjusting, setAdjusting] = useState(null);
+  const [editing, setEditing] = useState(null);
 
-  const bruts = useMemo(() => stockLive.filter((i) => !isPrepStockItem(i)), [stockLive]);
-  const categories = useMemo(() => ["Toutes", ...new Set(bruts.map((i) => i.category || i.categorie).filter(Boolean))], [bruts]);
+  const merged = useMemo(() => mergeCatalogueStock(products, stockLive), [products, stockLive]);
+  const bruts = useMemo(() => merged.filter((i) => !i.isPrep), [merged]);
+  const categories = useMemo(() => ["Toutes", ...new Set(bruts.map((i) => i.category).filter(Boolean))], [bruts]);
 
   const filtered = useMemo(
     () => bruts.filter((i) => {
+      if (!showInactive && !i.visibleOrderPad) return false;
       if (!i.name.toLowerCase().includes(search.toLowerCase())) return false;
-      if (categoryFilter !== "Toutes" && (i.category || i.categorie) !== categoryFilter) return false;
+      if (categoryFilter !== "Toutes" && i.category !== categoryFilter) return false;
+      if (statusFilter !== "Toutes" && statutBucket(i.statut) !== statusFilter) return false;
       return true;
     }),
-    [bruts, search, categoryFilter]
+    [bruts, search, categoryFilter, statusFilter, showInactive]
   );
 
   const grouped = useMemo(() => {
@@ -335,8 +506,9 @@ function StockLiveTab({ stockLive, referentiels, onRefresh }) {
 
   return (
     <div>
-      <SearchBar value={search} onChange={setSearch} placeholder="Rechercher un produit stock…" />
+      <SearchBar value={search} onChange={setSearch} placeholder="Rechercher un produit…" />
       <FilterPills options={categories} value={categoryFilter} onChange={setCategoryFilter} />
+      <FilterPills options={STATUS_FILTERS} value={statusFilter} onChange={setStatusFilter} />
 
       <div className="flex gap-2 mb-3">
         <button
@@ -344,14 +516,23 @@ function StockLiveTab({ stockLive, referentiels, onRefresh }) {
           onClick={() => setShowAdd(true)}
           className="flex-1 h-10 rounded-xl border border-dashed border-[#c8b4a8] text-[#9a7060] text-xs font-black cursor-pointer"
         >
-          + Ajouter un produit
+          + Nouveau produit
         </button>
         <Link
           href="/parametres?section=categories"
           className="flex-1 h-10 rounded-xl border border-dashed border-[#c8b4a8] text-[#9a7060] text-xs font-black cursor-pointer flex items-center justify-center"
         >
-          + Ajouter une catégorie
+          + Catégorie
         </Link>
+        <button
+          type="button"
+          onClick={() => setShowInactive((v) => !v)}
+          className={`shrink-0 h-10 px-3 rounded-xl text-xs font-black cursor-pointer ${
+            showInactive ? "bg-[#2c1a10] text-white" : "bg-white border border-[#e5d5c5] text-[#6b4a3d]"
+          }`}
+        >
+          Inactifs
+        </button>
       </div>
 
       {Object.entries(grouped).map(([cat, items]) => (
@@ -359,10 +540,21 @@ function StockLiveTab({ stockLive, referentiels, onRefresh }) {
           <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-2">{cat} ({items.length})</div>
           <div className="space-y-2">
             {items.map((i) => (
-              <div key={i.id} className="flex items-center justify-between gap-2 rounded-2xl border border-[#e5d5c5] bg-white p-3.5">
-                <div className="min-w-0">
+              <div
+                key={i.ingredientId}
+                className={`flex items-center gap-3 rounded-2xl border border-[#e5d5c5] bg-white p-3.5 ${!i.visibleOrderPad ? "opacity-50" : ""}`}
+              >
+                {i.photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={i.photo} alt="" className="w-11 h-11 rounded-xl object-cover shrink-0" />
+                ) : (
+                  <div className="w-11 h-11 rounded-xl bg-[#f0e8dc] shrink-0 flex items-center justify-center text-lg">📦</div>
+                )}
+                <div className="min-w-0 flex-1">
                   <div className="font-black text-sm text-[#2c1a10] truncate">{i.name}</div>
-                  <div className="text-[11px] text-[#9a7060]">{i.quantiteStock} {i.uniteStock}</div>
+                  <div className="text-[11px] text-[#9a7060]">
+                    {i.quantiteStock} {i.uniteStock || "—"} · {i.supplier || "Sans fournisseur"}
+                  </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <StatusBadge statut={i.statut} />
@@ -371,8 +563,16 @@ function StockLiveTab({ stockLive, referentiels, onRefresh }) {
                     onClick={() => setAdjusting(i)}
                     className="h-8 px-2.5 rounded-lg bg-[#f0e8dc] text-[#2c1a10] text-[10px] font-black cursor-pointer hover:bg-[#e5d5c5] transition-colors"
                   >
-                    Ajuster
+                    +
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(i)}
+                    className="h-8 px-2.5 rounded-lg bg-[#f0e8dc] text-[#2c1a10] text-[10px] font-black cursor-pointer hover:bg-[#e5d5c5] transition-colors"
+                  >
+                    ✏️
+                  </button>
+                  <ActifToggle item={i} onToggled={onRefresh} />
                 </div>
               </div>
             ))}
@@ -391,6 +591,24 @@ function StockLiveTab({ stockLive, referentiels, onRefresh }) {
       )}
       {adjusting && (
         <AdjustQuantityModal item={adjusting} onClose={() => setAdjusting(null)} onSaved={() => { setAdjusting(null); onRefresh(); }} />
+      )}
+      {editing && (
+        <ProductFormModal
+          mode="edit"
+          initial={{
+            id: editing.ingredientId,
+            ingredient: editing.name,
+            categorie: editing.category || "",
+            zoneStockage: editing.zone || "",
+            uniteStock: editing.uniteStock || "",
+            seuilAlerte: "",
+            seuilCritique: "",
+            visibleOrderPad: editing.visibleOrderPad,
+          }}
+          referentiels={referentiels}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); onRefresh(); }}
+        />
       )}
     </div>
   );
@@ -465,22 +683,29 @@ function AddPrepModal({ referentiels, onClose, onSaved }) {
   );
 }
 
-function PrepasTab({ preps, stockLive, referentiels, onRefresh }) {
+function StockPrepasTab({ products, stockLive, preps, referentiels, onRefresh }) {
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [adjusting, setAdjusting] = useState(null);
   const [completingId, setCompletingId] = useState(null);
   const [qtyDraft, setQtyDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
-  const filtered = useMemo(
+  const merged = useMemo(() => mergeCatalogueStock(products, stockLive), [products, stockLive]);
+  const prepStockItems = useMemo(
+    () => sortByUrgency(merged.filter((i) => i.isPrep && i.name.toLowerCase().includes(search.toLowerCase()))),
+    [merged, search]
+  );
+
+  const filteredPreps = useMemo(
     () => preps.filter((p) => (p.name || "").toLowerCase().includes(search.toLowerCase())),
     [preps, search]
   );
-  const aFaire = useMemo(() => filtered.filter((p) => !isPrepDone(p)), [filtered]);
+  const aFaire = useMemo(() => filteredPreps.filter((p) => !isPrepDone(p)), [filteredPreps]);
   const faitesAujourdhui = useMemo(
-    () => filtered.filter((p) => isPrepDone(p) && (p.dueDate || "").slice(0, 10) === todaySXM()),
-    [filtered]
+    () => filteredPreps.filter((p) => isPrepDone(p) && (p.dueDate || "").slice(0, 10) === todaySXM()),
+    [filteredPreps]
   );
 
   const startComplete = (prep) => {
@@ -501,9 +726,11 @@ function PrepasTab({ preps, stockLive, referentiels, onRefresh }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
       const produced = parseFloat(qtyDraft) || 0;
-      // Best-effort — voir deductRecipeIngredients : n'échoue jamais la
-      // complétion de la prépa si aucune recette ne correspond.
+      // Best-effort — voir deductRecipeIngredients / addProducedQtyToPrepStock :
+      // n'échoue jamais la complétion de la prépa si aucune recette ne
+      // correspond ou si l'ajout au stock échoue.
       await deductRecipeIngredients(prep.name, produced, stockLive).catch(() => {});
+      await addProducedQtyToPrepStock(prep.name, produced, prep.id, stockLive).catch(() => {});
       setCompletingId(null);
       onRefresh();
     } catch (err) {
@@ -516,6 +743,36 @@ function PrepasTab({ preps, stockLive, referentiels, onRefresh }) {
   return (
     <div>
       <SearchBar value={search} onChange={setSearch} placeholder="Rechercher une prépa…" />
+
+      <div className="mb-4">
+        <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-2">
+          Niveaux de stock ({prepStockItems.length})
+        </div>
+        {prepStockItems.length === 0 ? (
+          <div className="text-sm text-[#9a7060] py-2">Aucune prépa suivie en stock</div>
+        ) : (
+          <div className="space-y-2">
+            {prepStockItems.map((i) => (
+              <div key={i.ingredientId} className="flex items-center justify-between gap-2 rounded-2xl border border-[#e5d5c5] bg-white p-3.5">
+                <div className="min-w-0">
+                  <div className="font-black text-sm text-[#2c1a10] truncate">{i.name}</div>
+                  <div className="text-[11px] text-[#9a7060]">{i.quantiteStock} {i.uniteStock || "—"}</div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <StatusBadge statut={i.statut} />
+                  <button
+                    type="button"
+                    onClick={() => setAdjusting(i)}
+                    className="h-8 px-2.5 rounded-lg bg-[#f0e8dc] text-[#2c1a10] text-[10px] font-black cursor-pointer hover:bg-[#e5d5c5] transition-colors"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <button
         type="button"
@@ -609,84 +866,8 @@ function PrepasTab({ preps, stockLive, referentiels, onRefresh }) {
           onSaved={() => { setShowAdd(false); onRefresh(); }}
         />
       )}
-    </div>
-  );
-}
-
-function CatalogueTab({ products, referentiels, onRefresh }) {
-  const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("Toutes");
-  const [zoneFilter, setZoneFilter] = useState("Toutes");
-  const [editing, setEditing] = useState(null);
-
-  const categories = useMemo(() => ["Toutes", ...new Set(products.map((p) => p.category || p.categorie).filter(Boolean))], [products]);
-  const zones = useMemo(() => ["Toutes", ...new Set(products.map((p) => p.zone || p.zoneStockage).filter(Boolean))], [products]);
-
-  const filtered = useMemo(
-    () => products.filter((p) => {
-      if (!(p.name || "").toLowerCase().includes(search.toLowerCase())) return false;
-      if (categoryFilter !== "Toutes" && (p.category || p.categorie) !== categoryFilter) return false;
-      if (zoneFilter !== "Toutes" && (p.zone || p.zoneStockage) !== zoneFilter) return false;
-      return true;
-    }),
-    [products, search, categoryFilter, zoneFilter]
-  );
-  const grouped = useMemo(() => groupBy(filtered, "category"), [filtered]);
-
-  return (
-    <div>
-      <SearchBar value={search} onChange={setSearch} placeholder="Rechercher dans le catalogue…" />
-      <FilterPills options={categories} value={categoryFilter} onChange={setCategoryFilter} />
-      <FilterPills options={zones} value={zoneFilter} onChange={setZoneFilter} />
-
-      {Object.entries(grouped).map(([cat, items]) => (
-        <div key={cat} className="mb-4">
-          <div className="text-[10px] font-black text-[#9a7060] uppercase tracking-[0.3em] mb-2">{cat} ({items.length})</div>
-          <div className="space-y-2">
-            {items.map((p) => (
-              <div key={p.id} className="flex items-center gap-3 rounded-2xl border border-[#e5d5c5] bg-white p-3.5">
-                {p.photo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.photo} alt="" className="w-11 h-11 rounded-xl object-cover shrink-0" />
-                ) : (
-                  <div className="w-11 h-11 rounded-xl bg-[#f0e8dc] shrink-0 flex items-center justify-center text-lg">📦</div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="font-black text-sm text-[#2c1a10] truncate">{p.name}</div>
-                  <div className="text-[11px] text-[#9a7060]">
-                    {p.supplier || "Sans fournisseur"} · {p.uniteCommande || p.unit || "—"}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setEditing(p)}
-                  className="shrink-0 h-9 px-3 rounded-xl bg-[#f0e8dc] text-[#2c1a10] text-xs font-black cursor-pointer hover:bg-[#e5d5c5] transition-colors"
-                >
-                  Modifier
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-      {filtered.length === 0 && <div className="text-center text-sm text-[#9a7060] py-10">Aucun résultat</div>}
-
-      {editing && (
-        <ProductFormModal
-          mode="edit"
-          initial={{
-            id: editing.id,
-            ingredient: editing.name,
-            categorie: editing.category || editing.categorie || "",
-            zoneStockage: editing.zone || editing.zoneStockage || "",
-            uniteStock: editing.uniteStock || "",
-            seuilAlerte: editing.seuilAlerte ?? "",
-            seuilCritique: editing.seuilCritique ?? "",
-          }}
-          referentiels={referentiels}
-          onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); onRefresh(); }}
-        />
+      {adjusting && (
+        <AdjustQuantityModal item={adjusting} onClose={() => setAdjusting(null)} onSaved={() => { setAdjusting(null); onRefresh(); }} />
       )}
     </div>
   );
@@ -699,7 +880,7 @@ export default function StockPage() {
   const { isAdmin } = useStaffContext();
   const { stockLive, products, preps, refreshStock, refreshProducts, refreshPreps } = useAppContext();
 
-  const [tab, setTab] = useState("live");
+  const [tab, setTab] = useState("catalogue");
   const [referentiels, setReferentiels] = useState(EMPTY_REFERENTIELS);
 
   useEffect(() => {
@@ -719,9 +900,8 @@ export default function StockPage() {
   const refreshAll = () => { refreshStock(); refreshProducts(); refreshPreps(); };
 
   const tabs = [
-    { key: "live", label: "📦 Stock Live" },
-    { key: "prepas", label: "🍳 Prépas" },
-    { key: "catalogue", label: "📋 Catalogue" },
+    { key: "catalogue", label: "📦 Stock & Catalogue" },
+    { key: "prepas", label: "🍳 Stock Prépas" },
   ];
 
   return (
@@ -744,9 +924,12 @@ export default function StockPage() {
         ))}
       </div>
 
-      {tab === "live" && <StockLiveTab stockLive={stockLive} referentiels={referentiels} onRefresh={refreshAll} />}
-      {tab === "prepas" && <PrepasTab preps={preps} stockLive={stockLive} referentiels={referentiels} onRefresh={refreshAll} />}
-      {tab === "catalogue" && <CatalogueTab products={products} referentiels={referentiels} onRefresh={refreshAll} />}
+      {tab === "catalogue" && (
+        <StockCatalogueTab products={products} stockLive={stockLive} referentiels={referentiels} onRefresh={refreshAll} />
+      )}
+      {tab === "prepas" && (
+        <StockPrepasTab products={products} stockLive={stockLive} preps={preps} referentiels={referentiels} onRefresh={refreshAll} />
+      )}
     </div>
   );
 }
