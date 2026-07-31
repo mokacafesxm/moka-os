@@ -37,6 +37,9 @@ export const DB = {
   // les prépas de MOKA_Actions_Preparations n'ont pas de catalogue stable
   // (titre libre par tâche) — on mappe donc par nom, pas par relation.
   RECETTES_BATCH: "3ad9512c-f66a-8140-a577-d3018927d7ab",
+  // Scan facture fournisseur (extraction de prix uniquement, jamais le
+  // stock — voir /api/scan-facture) — créée 2026-07-31, même page parente.
+  PRIX_INGREDIENTS: "3ae9512c-f66a-818c-96c6-cf19609e54ac",
 };
 
 export const corsHeaders = {

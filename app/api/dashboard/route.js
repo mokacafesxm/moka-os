@@ -233,6 +233,22 @@ async function getFinancialKpis(todaySXM) {
         return sum + (type === "Débit" ? -montant : montant);
       }, 0);
 
+  // KPIs par catégorie (mois en cours) — scan facture/relevé bancaire
+  // (2026-07-31). Categorie n'est renseignée que sur les lignes venues de
+  // /api/banque (relevé scanné + revu) ; les lignes du simple import
+  // /api/imports/bank n'ont pas de Categorie et sont naturellement ignorées
+  // ici (categorie === ""), pas comptées dans "Autre" à tort.
+  const banqueMoisParCategorie = banquePages.reduce((acc, page) => {
+    const p = page.properties;
+    const date = getDate(p, "Date");
+    if (!date || date < monthStart) return acc;
+    const categorie = getSelect(p, "Categorie");
+    if (!categorie) return acc;
+    const montant = getNumber(p, "Montant") || 0;
+    acc[categorie] = (acc[categorie] || 0) + montant;
+    return acc;
+  }, {});
+
   return {
     ca_jour: caJour,
     ca_semaine: caSemaine,
@@ -242,6 +258,9 @@ async function getFinancialKpis(todaySXM) {
     tresorerie,
     marge_brute: null,
     valeur_stock: null,
+    depenses_fournisseurs_mois: banqueMoisParCategorie["Fournisseur"] || 0,
+    charges_mois: banqueMoisParCategorie["Charges"] || 0,
+    salaires_mois: banqueMoisParCategorie["Salaires"] || 0,
   };
 }
 
