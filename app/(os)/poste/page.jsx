@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
+import { useRealTime } from "../../contexts/RealTimeContext";
 import { parseOrderProducts, getOrderSupplier } from "../../components/shared/ReceiveModal";
 import { getPosteStatus, setPosteStatus } from "../../components/shared/posteStatus";
 import DeclareIncidentModal from "../../components/shared/DeclareIncidentModal";
@@ -17,12 +18,6 @@ const POSTES = [
   { key: "Salle", nom: "Salle", emoji: "🛋" },
   { key: "Plonge", nom: "Plonge", emoji: "🚿" },
 ];
-
-const WORKFLOW_IDS_BY_POSTE = {
-  Bar: { ouverture: "ouverture-bar", fermeture: "fermeture-bar" },
-  Cuisine: { ouverture: "ouverture-cuisine", fermeture: "fermeture-cuisine" },
-  Salle: { ouverture: "ouverture-salle", fermeture: "fermeture-salle" },
-};
 
 const SXM_TZ = "America/Puerto_Rico";
 
@@ -199,14 +194,42 @@ function ResumeTachesCard({ zoneTaches, executions }) {
 }
 
 // Card pleine largeur en haut de Mon Poste (juste sous le header) — statut
-// ouvert/fermé, persisté en localStorage (voir posteStatus.js), déclenché
-// par le workflow correspondant. Repositionnée ici (ex-section 2, au milieu
-// de la page) pour rester la première chose vue en arrivant sur le poste.
-function PosteStatusCard({ poste, status, onRequestFermeture }) {
-  const { ouverture } = WORKFLOW_IDS_BY_POSTE[poste];
-  const isOpen = status?.status === "open";
+// ouvert/fermé, désormais dans Notion (Poste_Status, partagé entre tous les
+// appareils — remplace le localStorage par-appareil de l'ancien
+// posteStatus.js). L'ouverture n'a plus de bouton : elle est déclenchée par
+// le pointage lui-même (voir /api/clock + app/api/_checklist.js) — cette
+// card ne fait qu'en refléter le statut. Repositionnée ici (ex-section 2, au
+// milieu de la page) pour rester la première chose vue en arrivant sur le poste.
+function PosteStatusCard({ poste, status, onRequestFermeture, onClockOut }) {
+  const statut = status?.statut;
 
-  if (isOpen) {
+  if (!statut || statut === "Fermé") {
+    return (
+      <div className="w-full rounded-2xl p-4 border border-[#e5d5c5] bg-white">
+        <span className="text-sm font-bold text-[#9a7060]">
+          {poste} pas encore ouvert — pointez votre arrivée pour l&apos;ouvrir.
+        </span>
+      </div>
+    );
+  }
+
+  if (statut === "Ouverture en cours" || statut === "Fermeture en cours") {
+    return (
+      <Link
+        href="/checklist"
+        className="w-full rounded-2xl p-4 flex items-center justify-between gap-2 cursor-pointer active:scale-[0.99] transition-transform"
+        style={{ background: "#d97706" }}
+      >
+        <span className="font-black text-sm text-white">
+          ⏳ {statut === "Ouverture en cours" ? "Ouverture" : "Fermeture"} en cours
+          {status?.ouvertParNom && statut === "Ouverture en cours" ? ` (${status.ouvertParNom})` : ""}
+        </span>
+        <span className="font-black text-sm text-white shrink-0">Checklist →</span>
+      </Link>
+    );
+  }
+
+  if (statut === "Ouvert") {
     return (
       <button
         type="button"
@@ -215,21 +238,28 @@ function PosteStatusCard({ poste, status, onRequestFermeture }) {
         style={{ background: "#5a7828" }}
       >
         <span className="font-black text-sm text-white">
-          ✅ {poste} ouvert{status?.at ? ` depuis ${formatHeureSXM(status.at)}` : ""}
+          ✅ {poste} ouvert{status?.heureOuverture ? ` depuis ${formatHeureSXM(status.heureOuverture)}` : ""}
+          {status?.ouvertParNom ? ` (${status.ouvertParNom})` : ""}
         </span>
         <span className="font-black text-sm text-white shrink-0">Fermer →</span>
       </button>
     );
   }
 
+  // Clôturé
   return (
-    <Link
-      href={`/workflows/${ouverture}`}
-      className="w-full rounded-2xl p-4 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99] transition-transform"
-      style={{ background: "#2c1a10" }}
-    >
-      <span className="font-black text-sm text-white">🔓 Ouvrir le {poste}</span>
-    </Link>
+    <div className="w-full rounded-2xl p-4 flex items-center justify-between gap-2" style={{ background: "#2c1a10" }}>
+      <span className="font-black text-sm text-white">
+        🔒 {poste} clôturé{status?.heureFermeture ? ` à ${formatHeureSXM(status.heureFermeture)}` : ""}
+      </span>
+      <button
+        type="button"
+        onClick={onClockOut}
+        className="font-black text-xs text-white shrink-0 rounded-full bg-white/15 px-3 py-1.5 cursor-pointer"
+      >
+        Pointer ma sortie
+      </button>
+    </div>
   );
 }
 
@@ -643,6 +673,7 @@ export default function PostePage() {
   const router = useRouter();
   const { poste, setSplashDone, canLivraisons, isAdmin, selectedStaff, selectedStaffName, clockStatuses, clockStatusTimes, clockOut, clockActionFor, hoursWorked } = useStaffContext();
   const { staff, zonesPhysiques, preps, stockLive, supplierOrders, refreshSupplierOrders } = useAppContext();
+  const { subscribe } = useRealTime();
 
   const [now, setNow] = useState(null);
   const [executions, setExecutions] = useState([]);
@@ -650,10 +681,11 @@ export default function PostePage() {
   const [fiches, setFiches] = useState([]);
   const [zoneTaches, setZoneTaches] = useState([]);
   const [toast, setToast] = useState(null);
-  const [posteStatus, setPosteStatusState] = useState(null);
+  const [plongeStatus, setPlongeStatusState] = useState(null); // Plonge uniquement — toggle local, pas de checklist Notion encore
+  const [notionPosteStatus, setNotionPosteStatus] = useState(null); // Bar/Cuisine/Salle — Poste_Status Notion, partagé entre appareils
   const [showIncidentForm, setShowIncidentForm] = useState(false);
   const [blockingTasks, setBlockingTasks] = useState(null);
-  const [pendingAction, setPendingAction] = useState(null); // { type: "clockout" } | { type: "fermeture", href }
+  const [pendingAction, setPendingAction] = useState(null); // { type: "clockout" } | { type: "fermeture" }
   const [ignoringBlock, setIgnoringBlock] = useState(false);
 
   useEffect(() => {
@@ -664,14 +696,28 @@ export default function PostePage() {
 
   const todaySXM = now ? new Intl.DateTimeFormat("en-CA", { timeZone: SXM_TZ }).format(now) : null;
 
-  // Statut ouvert/fermé du poste — lu depuis localStorage au montage (jamais
-  // dans l'initializer de useState, voir StaffContext pour la même précaution
-  // anti-hydratation) ; se rafraîchit aussi au retour d'un workflow puisque
-  // /workflows/[id] → /poste est une vraie navigation qui remonte ce composant.
+  // Plonge — statut local (pas encore de checklist Notion pour ce poste),
+  // lu depuis localStorage au montage (jamais dans l'initializer de
+  // useState, voir StaffContext pour la même précaution anti-hydratation).
   useEffect(() => {
-    if (!poste) return;
-    setPosteStatusState(getPosteStatus(poste));
+    if (poste !== "Plonge") return;
+    setPlongeStatusState(getPosteStatus("Plonge"));
   }, [poste]);
+
+  // Bar/Cuisine/Salle — Poste_Status Notion, partagé entre appareils (voir
+  // /api/poste-status). Rafraîchi au changement de poste et via le même
+  // polling 8s que le reste de l'app (RealTimeContext), pour refléter une
+  // ouverture/fermeture déclenchée depuis un autre appareil.
+  const refreshNotionPosteStatus = useCallback(() => {
+    if (poste !== "Bar" && poste !== "Cuisine" && poste !== "Salle") return;
+    fetch(`/api/poste-status?poste=${poste}`)
+      .then((r) => r.json())
+      .then((data) => setNotionPosteStatus(data))
+      .catch((error) => console.error("[PostePage] poste-status fetch failed", error));
+  }, [poste]);
+
+  useEffect(() => { refreshNotionPosteStatus(); }, [refreshNotionPosteStatus]);
+  useEffect(() => subscribe(refreshNotionPosteStatus), [subscribe, refreshNotionPosteStatus]);
 
   useEffect(() => {
     if (!toast) return;
@@ -798,14 +844,32 @@ export default function PostePage() {
     await clockActionFor(member, action);
   };
 
-  const handleRequestFermeture = async (href) => {
+  // Instancie la checklist QUOTIDIEN-FERMETURE (voir /api/poste-status POST)
+  // puis envoie sur /checklist pour la compléter — jamais de clock-out ici,
+  // c'est une action volontaire distincte (voir PosteStatusCard "Clôturé").
+  const startFermeture = async () => {
+    try {
+      await fetch("/api/poste-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ poste, staffId: selectedStaff?.id || null }),
+      });
+      refreshNotionPosteStatus();
+      router.push("/checklist");
+    } catch (error) {
+      console.error("[PostePage] start fermeture failed", error);
+      setToast({ text: "Erreur lors du démarrage de la fermeture", type: "error" });
+    }
+  };
+
+  const handleRequestFermeture = async () => {
     const blocking = await checkUrgentFermetureTasks();
     if (blocking.length > 0) {
       setBlockingTasks(blocking);
-      setPendingAction({ type: "fermeture", href });
+      setPendingAction({ type: "fermeture" });
       return;
     }
-    router.push(href);
+    await startFermeture();
   };
 
   const closeBlockModal = () => {
@@ -836,13 +900,13 @@ export default function PostePage() {
     setIgnoringBlock(false);
     closeBlockModal();
     if (action?.type === "clockout") await clockOut();
-    else if (action?.type === "fermeture" && action.href) router.push(action.href);
+    else if (action?.type === "fermeture") await startFermeture();
   };
 
   const handleSessionToggle = () => {
-    const next = posteStatus?.status === "open" ? "closed" : "open";
+    const next = plongeStatus?.status === "open" ? "closed" : "open";
     setPosteStatus("Plonge", next);
-    setPosteStatusState(getPosteStatus("Plonge"));
+    setPlongeStatusState(getPosteStatus("Plonge"));
   };
 
   if (!poste) {
@@ -903,8 +967,9 @@ export default function PostePage() {
       {(poste === "Bar" || poste === "Cuisine" || poste === "Salle") && (
         <PosteStatusCard
           poste={poste}
-          status={posteStatus}
-          onRequestFermeture={() => handleRequestFermeture(`/workflows/${WORKFLOW_IDS_BY_POSTE[poste].fermeture}`)}
+          status={notionPosteStatus}
+          onRequestFermeture={handleRequestFermeture}
+          onClockOut={clockOut}
         />
       )}
 
@@ -993,9 +1058,9 @@ export default function PostePage() {
             type="button"
             onClick={handleSessionToggle}
             className="w-full h-12 rounded-2xl text-white text-sm font-black cursor-pointer active:scale-[0.98] transition-all"
-            style={{ background: posteStatus?.status === "open" ? "#b91c1c" : "#5a7828" }}
+            style={{ background: plongeStatus?.status === "open" ? "#b91c1c" : "#5a7828" }}
           >
-            {posteStatus?.status === "open" ? "Terminer ma session" : "▶ Démarrer ma session"}
+            {plongeStatus?.status === "open" ? "Terminer ma session" : "▶ Démarrer ma session"}
           </button>
         </>
       )}

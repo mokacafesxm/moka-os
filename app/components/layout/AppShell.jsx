@@ -6,6 +6,7 @@ import { StaffProvider, useStaffContext } from "../../contexts/StaffContext";
 import NavBottom from "./NavBottom";
 import AdminNav from "./AdminNav";
 import SplashScreen from "./SplashScreen";
+import ChecklistBanner from "../shared/ChecklistBanner";
 
 function ShellChrome({ children }) {
   // splashDone lives in StaffContext (not local state): never persisted, so
@@ -32,6 +33,7 @@ function ShellChrome({ children }) {
         className={`flex-1 pb-24 md:pb-4 ${isAdmin ? "md:pl-16" : "md:pl-20"}`}
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
+        <ChecklistBanner />
         {children}
       </main>
       {isAdmin ? <AdminNav /> : <NavBottom />}

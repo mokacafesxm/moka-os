@@ -40,6 +40,16 @@ export const DB = {
   // Scan facture fournisseur (extraction de prix uniquement, jamais le
   // stock — voir /api/scan-facture) — créée 2026-07-31, même page parente.
   PRIX_INGREDIENTS: "3ae9512c-f66a-818c-96c6-cf19609e54ac",
+  // Checklists opérationnelles par poste (Bar Manager Operating System v1.0)
+  // — créées 2026-08-16, même page parente. Distinctes de TACHES/
+  // EXECUTIONS_TACHES (tâches ad hoc par zone/priorité, déjà en prod sur
+  // /taches) : ces 3 bases couvrent les cadences fixes du doc source
+  // (quotidien ouverture/service/fermeture, hebdo/mensuel/trimestriel/
+  // saisonnier/production) et le statut ouvert/fermé partagé par poste
+  // (POSTE_STATUS remplace le localStorage par-appareil de posteStatus.js).
+  BAR_CHECKLIST_TEMPLATES: "3be9512c-f66a-815b-bbd6-da90b4c78664",
+  BAR_CHECKLIST_INSTANCES: "3be9512c-f66a-81f7-bcfb-c32e3512bb13",
+  POSTE_STATUS: "3be9512c-f66a-81c1-9b53-c6ad36743ef6",
 };
 
 export const corsHeaders = {
