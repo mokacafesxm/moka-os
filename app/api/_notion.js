@@ -50,6 +50,12 @@ export const DB = {
   BAR_CHECKLIST_TEMPLATES: "3be9512c-f66a-815b-bbd6-da90b4c78664",
   BAR_CHECKLIST_INSTANCES: "3be9512c-f66a-81f7-bcfb-c32e3512bb13",
   POSTE_STATUS: "3be9512c-f66a-81c1-9b53-c6ad36743ef6",
+  // Coût matière — mémoire d'apprentissage du matching libellé facture ->
+  // ingrédient, par fournisseur. Créée 2026-08-16, même page parente. Voir
+  // PRIX_INGREDIENTS.Ingredient_Master/Fournisseur_Rel (ajoutés en même
+  // temps) : Ingredient/Fournisseur (texte brut) y restent en LECTURE SEULE
+  // désormais, jamais mis à jour à la main pour changer un rattachement.
+  LIBELLE_FOURNISSEUR_MAPPING: "3be9512c-f66a-8195-848b-c16d4ecf9a72",
 };
 
 export const corsHeaders = {

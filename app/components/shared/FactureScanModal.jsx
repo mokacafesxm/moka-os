@@ -175,6 +175,7 @@ export default function FactureScanModal({ onClose, onSaved }) {
             nom: p.nom,
             fournisseur,
             prix_unitaire: p.prix_unitaire ? Number(p.prix_unitaire) : null,
+            quantite: p.quantite ? Number(p.quantite) : null,
             unite: p.unite,
             date,
             source: "facture",

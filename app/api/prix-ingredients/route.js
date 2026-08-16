@@ -1,6 +1,6 @@
 import {
   DB, corsHeaders, queryDatabase, createPage,
-  getTitle, getText, getNumber, getSelect, getDate,
+  getTitle, getText, getNumber, getSelect, getDate, getRelationIds,
   titleProp, textProp, numberProp, selectProp, dateProp,
 } from "../_notion";
 
@@ -12,12 +12,21 @@ function normalize(page) {
   const p = page.properties;
   return {
     id: page.id,
+    // Ingredient/fournisseur (texte brut) — LECTURE SEULE désormais, jamais
+    // écrits par autre chose que le scan/la saisie d'origine. Le matching
+    // fiable passe par ingredientMasterId/fournisseurRelId ci-dessous (vide
+    // tant que PR2 — matching/apprentissage — n'est pas branché).
     ingredient: getTitle(p, "Ingredient"),
     fournisseur: getText(p, "Fournisseur"),
+    ingredientMasterId: getRelationIds(p, "Ingredient_Master")[0] || null,
+    fournisseurRelId: getRelationIds(p, "Fournisseur_Rel")[0] || null,
     prixUnitaire: getNumber(p, "Prix_Unitaire"),
+    quantite: getNumber(p, "Quantite"),
     unite: getSelect(p, "Unite"),
     date: getDate(p, "Date"),
     source: getSelect(p, "Source"),
+    statutMatching: getSelect(p, "Statut_Matching"),
+    numeroFacture: getText(p, "Numero_Facture"),
     notes: getText(p, "Notes"),
   };
 }
@@ -42,10 +51,17 @@ export async function GET(req) {
   }
 }
 
-// POST { produits: [{ nom, fournisseur, prix_unitaire, unite, date, source, notes }] }
+// POST { produits: [{ nom, fournisseur, prix_unitaire, quantite, unite, date, source, numero_facture, notes }] }
 // Persiste les lignes de prix (édition/vérification côté client déjà faite
 // avant l'appel — voir /api/scan-facture pour l'extraction). N'écrit jamais
 // dans le Stock.
+//
+// Statut_Matching est toujours "À valider" ici : le matching automatique
+// (lookup Libelle_Fournisseur_Mapping, écriture d'Ingredient_Master/
+// Fournisseur_Rel) arrive en PR2, pas encore branché sur cette route. Tant
+// que ce n'est pas le cas, Ingredient/Fournisseur (texte brut) restent les
+// seules valeurs écrites — ne jamais les traiter comme la source de vérité
+// une fois PR2 en place, voir leur description Notion.
 export async function POST(req) {
   try {
     const { produits } = await req.json();
@@ -61,9 +77,12 @@ export async function POST(req) {
         Ingredient: titleProp(nom),
         Fournisseur: textProp(item.fournisseur || ""),
         Prix_Unitaire: numberProp(item.prix_unitaire),
+        Quantite: numberProp(item.quantite),
         Unite: selectProp(item.unite || ""),
         Date: dateProp(item.date || new Date().toISOString().slice(0, 10)),
         Source: selectProp(item.source || "facture"),
+        Statut_Matching: selectProp("À valider"),
+        Numero_Facture: textProp(item.numero_facture || ""),
         Notes: textProp(item.notes || ""),
       });
       created.push(page.id);
