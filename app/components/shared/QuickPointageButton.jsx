@@ -56,7 +56,7 @@ function StatusLine({ status, since }) {
 // action(s) directement, pas de sélection en 2 étapes. `shortcutMember`, s'il
 // est fourni, affiche un raccourci direct pour ce staff-là (déjà en session)
 // à côté du bouton "choisir un autre" plutôt que d'obliger à rouvrir la liste.
-export default function QuickPointageButton({ staff, clockStatuses, clockStatusTimes, onPick, shortcutMember, hoursWorked, className }) {
+export default function QuickPointageButton({ staff, clockStatuses, clockStatusTimes, onPick, onPicked, shortcutMember, hoursWorked, className }) {
   const [open, setOpen] = useState(false);
   const [busyName, setBusyName] = useState(null);
   const [toast, setToast] = useState(null);
@@ -67,9 +67,14 @@ export default function QuickPointageButton({ staff, clockStatuses, clockStatusT
     const name = getName(member);
     setBusyName(name);
     try {
-      await onPick(member, action);
+      const result = await onPick(member, action);
       setToast(`${name} — ${action}`);
       setTimeout(() => setToast(null), 2500);
+      // Optionnel — laisse l'appelant réagir au résultat du pointage (ex.
+      // redirection vers /checklist si l'ouverture du poste vient d'être
+      // déclenchée, voir SplashScreen). Le résultat vient de /api/clock via
+      // StaffContext.clockActionFor, jamais recalculé ici.
+      onPicked?.(member, action, result);
     } catch {
       /* transient — le staff peut réessayer */
     } finally {

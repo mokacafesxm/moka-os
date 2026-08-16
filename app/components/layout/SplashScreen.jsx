@@ -130,6 +130,19 @@ export default function SplashScreen({ onDone }) {
               clockStatuses={clockStatuses}
               clockStatusTimes={clockStatusTimes}
               onPick={clockActionFor}
+              onPicked={(member, action, result) => {
+                // Le pointage vient de déclencher l'ouverture d'un poste
+                // (voir /api/_checklist.js triggerOuvertureIfNeeded) : cette
+                // personne a des tâches à faire tout de suite, on l'y amène
+                // directement plutôt que de la laisser sur l'accueil et
+                // compter sur le bandeau (ChecklistBanner) au prochain poll.
+                // staffId explicite dans l'URL : pas besoin que ce membre
+                // devienne la session active de l'appareil pour voir sa liste.
+                if (result?.checklistTriggered && member?.id) {
+                  onDone(); // referme le splash (sinon il reste affiché plein écran par-dessus /checklist)
+                  router.push(`/checklist?staffId=${member.id}`);
+                }
+              }}
               shortcutMember={selectedStaff}
               hoursWorked={hoursWorked}
             />

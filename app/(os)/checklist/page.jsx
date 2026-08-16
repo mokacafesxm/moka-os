@@ -9,7 +9,7 @@
 // voir /api/checklist-instances.
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 
 function CenteredMessage({ emoji, title, subtitle, children }) {
@@ -37,8 +37,13 @@ function RetourButton({ router }) {
 
 export default function ChecklistPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { selectedStaff } = useStaffContext();
-  const staffId = selectedStaff?.id;
+  // ?staffId= explicite (ex. redirection depuis le pointage "Comptage" sur
+  // l'écran d'accueil, voir SplashScreen) — prioritaire sur la session
+  // active, pour ne jamais avoir besoin d'en ouvrir une séparée juste pour
+  // voir la checklist de la personne qui vient de pointer.
+  const staffId = searchParams.get("staffId") || selectedStaff?.id;
 
   const [items, setItems] = useState(null); // null = chargement
   const [index, setIndex] = useState(0);

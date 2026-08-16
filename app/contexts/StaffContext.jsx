@@ -210,6 +210,7 @@ export function StaffProvider({ children }) {
         }),
       });
       if (!response.ok) throw new Error(`Erreur webhook ${response.status}`);
+      const data = await response.json().catch(() => ({}));
 
       setClockStatuses((prev) => {
         const next = { ...prev, [name]: STATUS_AFTER_ACTION[action] || prev[name] };
@@ -217,6 +218,11 @@ export function StaffProvider({ children }) {
         return next;
       });
       setClockStatusTimes((prev) => ({ ...prev, [name]: new Date().toISOString() }));
+
+      // Remonté à l'appelant (QuickPointageButton -> SplashScreen) pour
+      // rediriger vers /checklist sans redemander à /api/clock ni dupliquer
+      // triggerOuvertureIfNeeded côté client — voir app/api/_checklist.js.
+      return data;
     } catch (error) {
       console.error("[StaffContext] clock action failed", error);
       throw error;
@@ -238,8 +244,8 @@ export function StaffProvider({ children }) {
   // décision revient à l'UI (voir QuickPointageButton), pas à ce helper.
   const clockActionFor = useCallback(async (member, action) => {
     const staffName = member?.name || member?.prenom || member?.nom || "";
-    if (!staffName || !action) return;
-    await sendClockAction(action, staffName);
+    if (!staffName || !action) return null;
+    return sendClockAction(action, staffName);
   }, [sendClockAction]);
 
   // Sprint 13 — Access (multi_select on Staff) gates which features the
