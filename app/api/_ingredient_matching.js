@@ -8,7 +8,18 @@
 // exacte (fournisseur résolu + libellé normalisé) pour ne jamais laisser un
 // coût faux mais silencieux polluer un calcul de marge derrière.
 
-import { DB, queryDatabase, createPage, updatePage, resolveName, getTitle, getRelationIds, titleProp, relationProp } from "./_notion";
+import {
+  DB, queryDatabase, createPage, updatePage, resolveName,
+  getTitle, getRelationIds,
+  titleProp, textProp, numberProp, selectProp, dateProp, relationProp,
+} from "./_notion";
+import { getLastKnownPrice } from "./_ingredient_price";
+
+// Même seuil que l'alerte "Évolution des prix" de /rapports (10%) — pas
+// partagé via un module commun pour éviter de faire dépendre un composant
+// client de ce fichier serveur (createPage/updatePage y importent _notion,
+// qui lit des variables d'env serveur).
+const PRICE_DEVIATION_ALERT_PERCENT = 10;
 
 function normalizeLabel(s) {
   return String(s || "").trim().toLowerCase();
@@ -62,5 +73,49 @@ export async function upsertMapping({ fournisseurId, libelleBrut, ingredientId }
     Fournisseur: relationProp(fournisseurId),
     Ingredient: relationProp(ingredientId),
   });
+  return page.id;
+}
+
+// Écrit une ligne de prix avec matching automatique (voir ci-dessus) ET
+// garde-fou écart de prix : même un ingrédient matché est renvoyé en "À
+// valider" si son prix dévie de plus de PRICE_DEVIATION_ALERT_PERCENT% par
+// rapport au dernier prix fiable connu (Auto-matché/Validé manuellement,
+// jamais une ligne encore "À valider" elle-même) — sert autant un OCR qui a
+// mal lu un chiffre qu'une vraie hausse/baisse fournisseur, dans les deux
+// cas ça mérite un oeil humain avant d'entrer dans un calcul de marge.
+// Utilisée par POST /api/prix-ingredients (flux manuel avec relecture) ET
+// /api/invoice-scan (flux automatique sans relecture) — source unique.
+export async function persistPriceLine(item) {
+  const nom = String(item.nom || "").trim();
+  if (!nom) return null;
+
+  const fournisseurId = await resolveFournisseurId(item.fournisseur);
+  const ingredientId = fournisseurId ? await findMappedIngredientId(fournisseurId, nom) : null;
+
+  let statut = ingredientId ? "Auto-matché" : "À valider";
+
+  if (ingredientId && item.prix_unitaire) {
+    const last = await getLastKnownPrice(ingredientId);
+    if (last?.prixUnitaire) {
+      const variation = Math.abs((Number(item.prix_unitaire) - last.prixUnitaire) / last.prixUnitaire) * 100;
+      if (variation > PRICE_DEVIATION_ALERT_PERCENT) statut = "À valider";
+    }
+  }
+
+  const page = await createPage(DB.PRIX_INGREDIENTS, {
+    Ingredient: titleProp(nom),
+    Fournisseur: textProp(item.fournisseur || ""),
+    Prix_Unitaire: numberProp(item.prix_unitaire),
+    Quantite: numberProp(item.quantite),
+    Unite: selectProp(item.unite || ""),
+    Date: dateProp(item.date || new Date().toISOString().slice(0, 10)),
+    Source: selectProp(item.source || "facture"),
+    Statut_Matching: selectProp(statut),
+    Numero_Facture: textProp(item.numero_facture || ""),
+    Notes: textProp(item.notes || ""),
+    ...(fournisseurId ? { Fournisseur_Rel: relationProp(fournisseurId) } : {}),
+    ...(ingredientId ? { Ingredient_Master: relationProp(ingredientId) } : {}),
+  });
+
   return page.id;
 }

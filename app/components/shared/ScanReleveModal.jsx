@@ -2,7 +2,8 @@
 
 // Scan relevé bancaire — extraction + revue avant écriture dans
 // MOKA_Banque. Totalement indépendant du Stock et du scan facture
-// fournisseur (voir FactureScanModal) : trois flux qui ne se touchent pas.
+// fournisseur (voir InvoiceScanPrompt/_invoice_vision.js) : trois flux qui
+// ne se touchent pas.
 
 import { useMemo, useState } from "react";
 import { parseJsonResponse } from "../../../lib/http/safe-json";

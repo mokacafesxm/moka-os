@@ -127,13 +127,22 @@ function PrixEvolutionSection({ ingredients, selected, onSelect, historique, loa
   );
 }
 
-// File de rattachement manuel — lignes de facture sans correspondance
-// automatique dans Libelle_Fournisseur_Mapping (voir /api/prix-ingredients
-// PATCH). Valider une ligne alimente ce mapping pour la prochaine facture du
-// même fournisseur avec ce même libellé, qui s'auto-matchera ensuite.
-function FactureAValiderRow({ ligne, ingredients, onValidate }) {
+// File de rattachement manuel — deux motifs distincts amènent une ligne ici
+// (voir persistPriceLine côté serveur) :
+//   1. Pas de correspondance dans Libelle_Fournisseur_Mapping (ingredientMasterId
+//      vide) -> rattacher à un ingrédient (alimente le mapping, voir PATCH).
+//   2. Ingrédient déjà matché mais le prix dévie de plus de 10% du dernier
+//      prix connu (ingredientMasterId déjà rempli) -> confirmer ou corriger
+//      la valeur, sans re-choisir l'ingrédient ni retoucher le mapping.
+function FactureAValiderRow({ ligne, ingredients, onValidate, onConfirmPrice }) {
   const [ingredientId, setIngredientId] = useState("");
+  const [prixCorrige, setPrixCorrige] = useState(ligne.prixUnitaire ?? "");
   const [saving, setSaving] = useState(false);
+
+  const dejaMatche = Boolean(ligne.ingredientMasterId);
+  const nomIngredient = dejaMatche
+    ? ingredients.find((i) => i.id === ligne.ingredientMasterId)?.name || ligne.ingredient || "—"
+    : ligne.ingredient || "—";
 
   const validate = async () => {
     if (!ingredientId) return;
@@ -142,41 +151,75 @@ function FactureAValiderRow({ ligne, ingredients, onValidate }) {
     setSaving(false);
   };
 
+  const confirmPrice = async () => {
+    setSaving(true);
+    await onConfirmPrice(ligne.id, prixCorrige === "" ? null : Number(prixCorrige));
+    setSaving(false);
+  };
+
   return (
     <div className="rounded-xl border border-[#e5d5c5] bg-white p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-sm font-black text-[#2c1a10] truncate">{ligne.ingredient || "—"}</div>
+          <div className="text-sm font-black text-[#2c1a10] truncate">{nomIngredient}</div>
           <div className="text-[11px] text-[#9a7060] font-semibold">
             {ligne.fournisseur || "Fournisseur inconnu"} · {ligne.date || "—"}
-            {ligne.prixUnitaire != null ? ` · ${ligne.prixUnitaire} € / ${ligne.unite || "?"}` : ""}
             {ligne.quantite != null ? ` · qté ${ligne.quantite}` : ""}
           </div>
         </div>
+        {dejaMatche && (
+          <span className="shrink-0 text-[9px] font-black px-2 py-1 rounded-full bg-orange-50 text-orange-700">
+            ⚠️ Écart de prix
+          </span>
+        )}
       </div>
-      <div className="flex gap-2">
-        <select
-          value={ingredientId}
-          onChange={(e) => setIngredientId(e.target.value)}
-          className="flex-1 h-10 px-3 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
-        >
-          <option value="">Rattacher à…</option>
-          {ingredients.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
-        </select>
-        <button
-          type="button"
-          onClick={validate}
-          disabled={!ingredientId || saving}
-          className="h-10 px-4 rounded-xl bg-[#5a7828] text-white text-xs font-black cursor-pointer disabled:opacity-40"
-        >
-          {saving ? "…" : "Valider"}
-        </button>
-      </div>
+
+      {dejaMatche ? (
+        <div className="flex gap-2">
+          <div className="flex-1 flex items-center gap-1">
+            <input
+              type="number"
+              step="0.01"
+              value={prixCorrige}
+              onChange={(e) => setPrixCorrige(e.target.value)}
+              className="w-full h-10 px-3 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
+            />
+            <span className="text-xs text-[#9a7060] shrink-0">€ / {ligne.unite || "?"}</span>
+          </div>
+          <button
+            type="button"
+            onClick={confirmPrice}
+            disabled={saving}
+            className="h-10 px-4 rounded-xl bg-[#5a7828] text-white text-xs font-black cursor-pointer disabled:opacity-40"
+          >
+            {saving ? "…" : "Confirmer"}
+          </button>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <select
+            value={ingredientId}
+            onChange={(e) => setIngredientId(e.target.value)}
+            className="flex-1 h-10 px-3 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
+          >
+            <option value="">Rattacher à…</option>
+            {ingredients.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+          </select>
+          <button
+            type="button"
+            onClick={validate}
+            disabled={!ingredientId || saving}
+            className="h-10 px-4 rounded-xl bg-[#5a7828] text-white text-xs font-black cursor-pointer disabled:opacity-40"
+          >
+            {saving ? "…" : "Valider"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-function FacturesAValiderSection({ lignes, ingredients, loading, onValidate }) {
+function FacturesAValiderSection({ lignes, ingredients, loading, onValidate, onConfirmPrice }) {
   return (
     <SectionCard title="🧾 Factures à valider">
       {loading ? (
@@ -186,7 +229,13 @@ function FacturesAValiderSection({ lignes, ingredients, loading, onValidate }) {
       ) : (
         <div className="space-y-2">
           {lignes.map((ligne) => (
-            <FactureAValiderRow key={ligne.id} ligne={ligne} ingredients={ingredients} onValidate={onValidate} />
+            <FactureAValiderRow
+              key={ligne.id}
+              ligne={ligne}
+              ingredients={ingredients}
+              onValidate={onValidate}
+              onConfirmPrice={onConfirmPrice}
+            />
           ))}
         </div>
       )}
@@ -450,6 +499,24 @@ export default function RapportsPage() {
     }
   };
 
+  // Confirme (ou corrige) une ligne déjà matchée mais renvoyée "À valider"
+  // pour écart de prix (>10% du dernier prix connu) — ne touche jamais le
+  // mapping, juste le statut et éventuellement Prix_Unitaire.
+  const confirmPriceFacture = async (id, prixUnitaire) => {
+    try {
+      const res = await fetch("/api/prix-ingredients", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, confirmPrice: true, prixUnitaire }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
+      setFacturesAValider((list) => list.filter((l) => l.id !== id));
+    } catch (error) {
+      console.error("[RapportsPage] confirm price failed", error);
+    }
+  };
+
   useEffect(() => {
     if (!isAdmin) router.replace("/home");
   }, [isAdmin, router]);
@@ -559,6 +626,7 @@ export default function RapportsPage() {
         ingredients={ingredientOptions}
         loading={loadingFactures}
         onValidate={validateFacture}
+        onConfirmPrice={confirmPriceFacture}
       />
 
       <DernieresTransactionsSection transactions={transactions} filter={transactionFilter} onFilter={setTransactionFilter} />

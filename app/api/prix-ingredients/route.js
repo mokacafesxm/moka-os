@@ -1,9 +1,9 @@
 import {
-  DB, corsHeaders, queryDatabase, createPage, getPage, updatePage,
+  DB, corsHeaders, queryDatabase, getPage, updatePage,
   getTitle, getText, getNumber, getSelect, getDate, getRelationIds,
-  titleProp, textProp, numberProp, selectProp, dateProp, relationProp,
+  numberProp, selectProp, relationProp,
 } from "../_notion";
-import { resolveFournisseurId, findMappedIngredientId, upsertMapping } from "../_ingredient_matching";
+import { resolveFournisseurId, upsertMapping, persistPriceLine } from "../_ingredient_matching";
 
 export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
@@ -59,14 +59,13 @@ export async function GET(req) {
 
 // POST { produits: [{ nom, fournisseur, prix_unitaire, quantite, unite, date, source, numero_facture, notes }] }
 // Persiste les lignes de prix (édition/vérification côté client déjà faite
-// avant l'appel — voir /api/scan-facture pour l'extraction). N'écrit jamais
+// avant l'appel — voir /api/scan-facture pour l'extraction manuelle, ou
+// /api/invoice-scan pour le flux automatique sans relecture). N'écrit jamais
 // dans le Stock.
 //
-// Matching à l'écriture (voir _ingredient_matching.js) : si le fournisseur
-// texte résout vers une fiche Suppliers ET qu'une correspondance existe dans
-// Libelle_Fournisseur_Mapping pour ce libellé, la ligne est écrite déjà
-// matchée ("Auto-matché"). Sinon elle atterrit "À valider" — jamais de
-// matching approximatif, un coût faux mais silencieux pollue les marges.
+// Matching + garde-fou écart de prix à l'écriture : voir
+// persistPriceLine dans _ingredient_matching.js (source unique, partagée
+// avec /api/invoice-scan).
 export async function POST(req) {
   try {
     const { produits } = await req.json();
@@ -76,27 +75,8 @@ export async function POST(req) {
 
     const created = [];
     for (const item of produits) {
-      const nom = String(item.nom || "").trim();
-      if (!nom) continue;
-
-      const fournisseurId = await resolveFournisseurId(item.fournisseur);
-      const ingredientId = fournisseurId ? await findMappedIngredientId(fournisseurId, nom) : null;
-
-      const page = await createPage(DB.PRIX_INGREDIENTS, {
-        Ingredient: titleProp(nom),
-        Fournisseur: textProp(item.fournisseur || ""),
-        Prix_Unitaire: numberProp(item.prix_unitaire),
-        Quantite: numberProp(item.quantite),
-        Unite: selectProp(item.unite || ""),
-        Date: dateProp(item.date || new Date().toISOString().slice(0, 10)),
-        Source: selectProp(item.source || "facture"),
-        Statut_Matching: selectProp(ingredientId ? "Auto-matché" : "À valider"),
-        Numero_Facture: textProp(item.numero_facture || ""),
-        Notes: textProp(item.notes || ""),
-        ...(fournisseurId ? { Fournisseur_Rel: relationProp(fournisseurId) } : {}),
-        ...(ingredientId ? { Ingredient_Master: relationProp(ingredientId) } : {}),
-      });
-      created.push(page.id);
+      const id = await persistPriceLine(item);
+      if (id) created.push(id);
     }
 
     return Response.json({ success: true, count: created.length }, { headers: corsHeaders });
@@ -106,15 +86,33 @@ export async function POST(req) {
   }
 }
 
-// PATCH { id, ingredientMasterId } — rattachement manuel depuis la file
-// "Factures à valider" (/rapports). Alimente automatiquement
-// Libelle_Fournisseur_Mapping pour que la prochaine facture du même
-// fournisseur avec ce même libellé s'auto-matche (voir POST ci-dessus).
+// PATCH { id, ingredientMasterId } — rattachement manuel d'une ligne non
+// matchée depuis la file "Factures à valider" (/rapports). Alimente
+// automatiquement Libelle_Fournisseur_Mapping pour que la prochaine facture
+// du même fournisseur avec ce même libellé s'auto-matche (voir POST
+// ci-dessus).
+//
+// PATCH { id, confirmPrice: true, prixUnitaire? } — confirme une ligne déjà
+// matchée mais renvoyée "À valider" pour écart de prix (voir
+// persistPriceLine) : ne touche jamais Ingredient_Master/le mapping, juste
+// le statut (et corrige Prix_Unitaire si l'OCR avait mal lu le chiffre).
 export async function PATCH(req) {
   try {
-    const { id, ingredientMasterId } = await req.json();
-    if (!id || !ingredientMasterId) {
-      return Response.json({ success: false, error: "id and ingredientMasterId required" }, { status: 400, headers: corsHeaders });
+    const { id, ingredientMasterId, confirmPrice, prixUnitaire } = await req.json();
+    if (!id) {
+      return Response.json({ success: false, error: "id required" }, { status: 400, headers: corsHeaders });
+    }
+
+    if (confirmPrice) {
+      await updatePage(id, {
+        Statut_Matching: selectProp("Validé manuellement"),
+        ...(prixUnitaire !== undefined ? { Prix_Unitaire: numberProp(prixUnitaire) } : {}),
+      });
+      return Response.json({ success: true }, { headers: corsHeaders });
+    }
+
+    if (!ingredientMasterId) {
+      return Response.json({ success: false, error: "ingredientMasterId or confirmPrice required" }, { status: 400, headers: corsHeaders });
     }
 
     const page = await getPage(id);

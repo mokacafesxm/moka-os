@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStaffContext } from "../../contexts/StaffContext";
 import { useAppContext } from "../../contexts/AppContext";
-import ReceiveModal from "../../components/shared/ReceiveModal";
-import FactureScanModal from "../../components/shared/FactureScanModal";
+import ReceiveModal, { getOrderSupplier } from "../../components/shared/ReceiveModal";
+import InvoiceScanPrompt from "../../components/shared/InvoiceScanPrompt";
 
 const STATUTS = ["À commander", "Envoyé", "Livraison prévue", "Reçu"];
 
@@ -469,7 +469,7 @@ function HistoriqueTab({ orders, suppliers, onRefresh }) {
   const [overrides, setOverrides] = useState({});
   const [toast, setToast] = useState(null);
   const [showPostReceipt, setShowPostReceipt] = useState(false);
-  const [showFactureScan, setShowFactureScan] = useState(false);
+  const [lastReceivedFournisseur, setLastReceivedFournisseur] = useState("");
 
   useEffect(() => {
     if (!toast) return;
@@ -512,6 +512,9 @@ function HistoriqueTab({ orders, suppliers, onRefresh }) {
   // once every line is confirmed, so this only needs to reflect it locally.
   const handleReceived = () => {
     if (receivingOrder) setOverrides((cur) => ({ ...cur, [receivingOrder.id]: { statut: "Reçu" } }));
+    // Capturé avant de vider receivingOrder — InvoiceScanPrompt en a besoin
+    // pour /api/invoice-scan, rendu après ce reset.
+    setLastReceivedFournisseur(receivingOrder ? (getOrderSupplier(receivingOrder) || receivingOrder.fournisseur || "") : "");
     setReceivingOrder(null);
     setShowPostReceipt(true);
     showToast("Commande marquée comme reçue ✅");
@@ -582,24 +585,10 @@ function HistoriqueTab({ orders, suppliers, onRefresh }) {
         <ReceiveModal order={receivingOrder} onClose={() => setReceivingOrder(null)} onReceived={handleReceived} />
       )}
 
-      {showPostReceipt && !showFactureScan && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-[#e5d5c5] bg-[#f0f7e5] p-3.5 shadow-lg flex items-center justify-between gap-2">
-          <div className="text-xs font-bold text-[#5a7828]">✅ Livraison reçue</div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button type="button" onClick={() => setShowFactureScan(true)} className="h-9 px-3 rounded-xl bg-[#2c1a10] text-white text-[11px] font-black cursor-pointer">
-              📸 Scanner la facture (optionnel)
-            </button>
-            <button type="button" onClick={() => setShowPostReceipt(false)} className="h-9 px-2.5 text-[#9a7060] text-[11px] font-bold cursor-pointer">
-              Terminer
-            </button>
-          </div>
+      {showPostReceipt && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-sm shadow-lg">
+          <InvoiceScanPrompt fournisseur={lastReceivedFournisseur} onDone={() => setShowPostReceipt(false)} />
         </div>
-      )}
-      {showFactureScan && (
-        <FactureScanModal
-          onClose={() => setShowFactureScan(false)}
-          onSaved={() => { setShowFactureScan(false); setShowPostReceipt(false); showToast("Prix enregistrés ✅"); }}
-        />
       )}
 
       {toast && (
