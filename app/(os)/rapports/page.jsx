@@ -127,6 +127,73 @@ function PrixEvolutionSection({ ingredients, selected, onSelect, historique, loa
   );
 }
 
+// File de rattachement manuel — lignes de facture sans correspondance
+// automatique dans Libelle_Fournisseur_Mapping (voir /api/prix-ingredients
+// PATCH). Valider une ligne alimente ce mapping pour la prochaine facture du
+// même fournisseur avec ce même libellé, qui s'auto-matchera ensuite.
+function FactureAValiderRow({ ligne, ingredients, onValidate }) {
+  const [ingredientId, setIngredientId] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const validate = async () => {
+    if (!ingredientId) return;
+    setSaving(true);
+    await onValidate(ligne.id, ingredientId);
+    setSaving(false);
+  };
+
+  return (
+    <div className="rounded-xl border border-[#e5d5c5] bg-white p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-sm font-black text-[#2c1a10] truncate">{ligne.ingredient || "—"}</div>
+          <div className="text-[11px] text-[#9a7060] font-semibold">
+            {ligne.fournisseur || "Fournisseur inconnu"} · {ligne.date || "—"}
+            {ligne.prixUnitaire != null ? ` · ${ligne.prixUnitaire} € / ${ligne.unite || "?"}` : ""}
+            {ligne.quantite != null ? ` · qté ${ligne.quantite}` : ""}
+          </div>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <select
+          value={ingredientId}
+          onChange={(e) => setIngredientId(e.target.value)}
+          className="flex-1 h-10 px-3 rounded-xl border border-[#e5d5c5] bg-white text-sm font-semibold text-[#2c1a10] outline-none focus:border-[#5a7828]"
+        >
+          <option value="">Rattacher à…</option>
+          {ingredients.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+        </select>
+        <button
+          type="button"
+          onClick={validate}
+          disabled={!ingredientId || saving}
+          className="h-10 px-4 rounded-xl bg-[#5a7828] text-white text-xs font-black cursor-pointer disabled:opacity-40"
+        >
+          {saving ? "…" : "Valider"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FacturesAValiderSection({ lignes, ingredients, loading, onValidate }) {
+  return (
+    <SectionCard title="🧾 Factures à valider">
+      {loading ? (
+        <div className="text-sm text-[#9a7060] py-2 text-center">…</div>
+      ) : lignes.length === 0 ? (
+        <div className="text-sm text-[#9a7060] py-2 text-center">Tout est rattaché ✓</div>
+      ) : (
+        <div className="space-y-2">
+          {lignes.map((ligne) => (
+            <FactureAValiderRow key={ligne.id} ligne={ligne} ingredients={ingredients} onValidate={onValidate} />
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
 function DernieresTransactionsSection({ transactions, filter, onFilter }) {
   const filtered = filter === "Toutes" ? transactions : transactions.filter((t) => t.categorie === filter);
   return (
@@ -347,12 +414,40 @@ export default function RapportsPage() {
   const [prixIngredient, setPrixIngredient] = useState("");
   const [prixHistorique, setPrixHistorique] = useState([]);
   const [loadingPrix, setLoadingPrix] = useState(false);
+  const [facturesAValider, setFacturesAValider] = useState([]);
+  const [loadingFactures, setLoadingFactures] = useState(true);
   const [transactions, setTransactions] = useState([]);
   const [transactionFilter, setTransactionFilter] = useState("Toutes");
 
   const refreshFinances = () => {
     fetch("/api/dashboard").then((r) => r.json()).then((d) => setFinancier(d?.financier || null)).catch(() => {});
     fetch("/api/banque?limit=50").then((r) => r.json()).then((d) => setTransactions(Array.isArray(d) ? d : [])).catch(() => {});
+  };
+
+  const refreshFacturesAValider = () => {
+    fetch("/api/prix-ingredients?statut=À valider")
+      .then((r) => r.json())
+      .then((d) => setFacturesAValider(Array.isArray(d) ? d : []))
+      .catch(() => setFacturesAValider([]))
+      .finally(() => setLoadingFactures(false));
+  };
+
+  // Rattache manuellement une ligne à un ingrédient — alimente aussi
+  // Libelle_Fournisseur_Mapping côté serveur (voir PATCH /api/prix-ingredients)
+  // pour que la prochaine facture du même fournisseur/libellé s'auto-matche.
+  const validateFacture = async (id, ingredientMasterId) => {
+    try {
+      const res = await fetch("/api/prix-ingredients", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ingredientMasterId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || `Erreur ${res.status}`);
+      setFacturesAValider((list) => list.filter((l) => l.id !== id));
+    } catch (error) {
+      console.error("[RapportsPage] validate facture failed", error);
+    }
   };
 
   useEffect(() => {
@@ -393,6 +488,7 @@ export default function RapportsPage() {
   useEffect(() => {
     if (!isAdmin) return;
     refreshFinances();
+    refreshFacturesAValider();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin]);
 
@@ -410,6 +506,14 @@ export default function RapportsPage() {
 
   const ingredientNames = useMemo(
     () => [...new Set((products || []).map((p) => p.name).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr")),
+    [products]
+  );
+
+  const ingredientOptions = useMemo(
+    () => (products || [])
+      .filter((p) => p.id && p.name)
+      .map((p) => ({ id: p.id, name: p.name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "fr")),
     [products]
   );
 
@@ -448,6 +552,13 @@ export default function RapportsPage() {
         onSelect={setPrixIngredient}
         historique={prixHistorique}
         loading={loadingPrix}
+      />
+
+      <FacturesAValiderSection
+        lignes={facturesAValider}
+        ingredients={ingredientOptions}
+        loading={loadingFactures}
+        onValidate={validateFacture}
       />
 
       <DernieresTransactionsSection transactions={transactions} filter={transactionFilter} onFilter={setTransactionFilter} />
