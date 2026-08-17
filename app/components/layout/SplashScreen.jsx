@@ -8,6 +8,7 @@ import { useAppContext } from "../../contexts/AppContext";
 import { hasStaffPin } from "../shared/staffPin";
 import PinEntryModal from "../shared/PinEntryModal";
 import QuickPointageButton from "../shared/QuickPointageButton";
+import ChecklistModal from "../shared/ChecklistModal";
 
 const POSTES = [
   { key: "Bar", nom: "Bar", emoji: "☕" },
@@ -42,6 +43,7 @@ export default function SplashScreen({ onDone }) {
   const [selectedPoste, setSelectedPoste] = useState(null);
   const [pinGate, setPinGate] = useState(null); // { member, kind: "staff" | "admin" } — picked but awaiting PIN
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [checklistStaffId, setChecklistStaffId] = useState(null); // pointage vient de déclencher une ouverture
 
   // Sprint 14 — Guillaume/Thibaut n'ont pas de poste opérationnel (exclus de
   // la grille phase 2 ci-dessous) donc jamais de selectedStaff à ce stade :
@@ -136,11 +138,13 @@ export default function SplashScreen({ onDone }) {
                 // personne a des tâches à faire tout de suite, on l'y amène
                 // directement plutôt que de la laisser sur l'accueil et
                 // compter sur le bandeau (ChecklistBanner) au prochain poll.
-                // staffId explicite dans l'URL : pas besoin que ce membre
-                // devienne la session active de l'appareil pour voir sa liste.
+                // Modale par-dessus l'écran d'accueil (pas de router.push) —
+                // une navigation Next.js complète (remontage de page,
+                // contexte) se sentait lente à l'usage ; staffId explicite,
+                // pas besoin que ce membre devienne la session active de
+                // l'appareil pour voir sa liste.
                 if (result?.checklistTriggered && member?.id) {
-                  onDone(); // referme le splash (sinon il reste affiché plein écran par-dessus /checklist)
-                  router.push(`/checklist?staffId=${member.id}`);
+                  setChecklistStaffId(member.id);
                 }
               }}
               shortcutMember={selectedStaff}
@@ -279,6 +283,10 @@ export default function SplashScreen({ onDone }) {
             else proceedWithStaff(member);
           }}
         />
+      )}
+
+      {checklistStaffId && (
+        <ChecklistModal staffId={checklistStaffId} onClose={() => setChecklistStaffId(null)} />
       )}
     </div>
   );
