@@ -56,6 +56,17 @@ export const DB = {
   // temps) : Ingredient/Fournisseur (texte brut) y restent en LECTURE SEULE
   // désormais, jamais mis à jour à la main pour changer un rattachement.
   LIBELLE_FOURNISSEUR_MAPPING: "3be9512c-f66a-8195-848b-c16d4ecf9a72",
+  // Spécial du mois (Bar Manager Operating System v1.0, sections 5-6) —
+  // créées 2026-08-17, même page parente. SAISONNALITE_GENERIQUE est fixe
+  // (12 lignes, une par mois, seedée depuis le doc source) — pas pensée
+  // pour être vide/dynamique. BOISSON_SPECIALE_LIGNES suit exactement le
+  // schéma de RECIPE_LINES (lib/recipes/config.js) — table intermédiaire
+  // ingrédient+quantité, même raison : Notion ne peut pas porter une
+  // quantité sur une relation directe.
+  SAISONNALITE_GENERIQUE: "3bf9512c-f66a-8124-933e-e2280778662e",
+  EVENEMENTS: "3bf9512c-f66a-815e-951c-da05e86e37c3",
+  BOISSON_SPECIALE: "3bf9512c-f66a-818c-8bd3-ebd38d41c22d",
+  BOISSON_SPECIALE_LIGNES: "3bf9512c-f66a-818e-b21d-efc0ba2d7bb8",
 };
 
 export const corsHeaders = {

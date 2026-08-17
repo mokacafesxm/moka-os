@@ -14,6 +14,7 @@ const ADMIN_ITEMS = [
   { key: "equipe", label: "Équipe", icon: "👥", href: "/equipe" },
   { key: "commandes", label: "Commandes", icon: "🛒", href: "/commandes" },
   { key: "recettes", label: "Recettes", icon: "📖", href: "/recettes" },
+  { key: "specials", label: "Spécial du mois", icon: "🍹", href: "/specials" },
   { key: "stock", label: "Stock", icon: "📦", href: "/stock" },
   { key: "rapports", label: "Rapports", icon: "📈", href: "/rapports" },
   { key: "incidents", label: "Incidents", icon: "🚨", href: "/incidents" },
