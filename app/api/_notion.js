@@ -367,3 +367,24 @@ export const dateProp   = (v) => (v ? { date: { start: v } } : { date: null });
 export const relationProp = (...ids) => ({ relation: ids.filter(Boolean).map((id) => ({ id })) });
 export const urlProp    = (v) => ({ url: v || null });
 export const multiSelectProp = (arr) => ({ multi_select: (Array.isArray(arr) ? arr : []).filter(Boolean).map((name) => ({ name: String(name) })) });
+
+// textProp above hard-fails (Notion 400) past 2000 chars — fine for every
+// existing caller (all short fields), but Variantes/Extras JSON blobs and a
+// long Description can exceed that. Mirrors migration-shopify/lib/notion.js'
+// chunkText exactly (1999/chunk), never used there for writes in practice
+// (04-migrate-to-notion.js never hit the limit) but is the first time this
+// app writes rich_text content that actually can.
+function chunkText(str, size = 1999) {
+  const s = String(str ?? "");
+  const chunks = [];
+  for (let i = 0; i < s.length; i += size) chunks.push(s.slice(i, i + size));
+  return chunks.length ? chunks : [""];
+}
+export const richTextProp = (v) => ({ rich_text: chunkText(v).map((chunk) => ({ text: { content: chunk } })) });
+
+// External (Vercel Blob) file reference only — Notion also supports
+// uploader-hosted "file" entries, never written by this app (all photos are
+// re-hosted to Blob first, see lib/blob-upload.js).
+export const filesProp = (url, name = "photo") => ({
+  files: url ? [{ name, type: "external", external: { url } }] : [],
+});

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { verifyAdminBasicAuth } from "./lib/auth/admin-basic-auth";
 
 // Public custom domain must expose ONLY /commander and what it depends on —
 // everything else (the OrderPad, KDS, admin pages/APIs) stays reachable
@@ -12,6 +13,7 @@ const PUBLIC_HOSTS = new Set(["mokacafe.co", "www.mokacafe.co"]);
 // `grep -rn "fetch(" app/commander`) — not a guess.
 const ALLOWED_PATHS = [
   "/commander",
+  "/api/admin-access",
   "/api/account/card",
   "/api/account/card/save",
   "/api/account/card/setup-intent",
@@ -39,8 +41,32 @@ export async function middleware(request) {
   const hostname = (request.headers.get("host") || "").split(":")[0];
 
   // Internal domain (moka-os.vercel.app) and anything else (previews,
-  // localhost during dev, etc.) stay fully unrestricted.
-  if (!PUBLIC_HOSTS.has(hostname)) return NextResponse.next();
+  // localhost during dev, etc.) stay fully unrestricted — EXCEPT the new
+  // backoffice routes below, which get real server-side enforcement rather
+  // than the client-only isAdmin gate every other admin page uses.
+  //
+  // Deliberately an allowlist of prefixes, NOT a blanket "/api/admin" match:
+  // /api/admin/sync-stock already existed (a no-auth backfill endpoint
+  // auto-fired on every admin page load, see app/(os)/page.js) — gating the
+  // whole namespace would have 401'd it. Extend this list as Phase 2 (the
+  // catalogue editor) adds /api/admin/products, /categories, /promos, /upload.
+  const ADMIN_GUARDED_PREFIXES = [
+    "/api/admin/orders",
+    "/api/admin/products",
+    "/api/admin/categories",
+    "/api/admin/promos",
+    "/api/admin/upload",
+  ];
+  if (!PUBLIC_HOSTS.has(hostname)) {
+    const needsAdminAuth = ADMIN_GUARDED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+    if (needsAdminAuth && !verifyAdminBasicAuth(request)) {
+      return new NextResponse("Authentication required", {
+        status: 401,
+        headers: { "WWW-Authenticate": 'Basic realm="MOKA OS Admin"' },
+      });
+    }
+    return NextResponse.next();
+  }
 
   if (isAllowedPath(pathname)) return NextResponse.next();
 

@@ -16,6 +16,7 @@
     "@anthropic-ai/sdk": "^0.104.1",
     "@stripe/react-stripe-js": "^6.7.0",
     "@stripe/stripe-js": "^9.9.0",
+    "@vercel/blob": "^2.8.0",
     "csv-parse": "^7.0.1",
     "exceljs": "^4.4.0",
     "lucide-react": "^1.23.0",

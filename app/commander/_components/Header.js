@@ -1,15 +1,34 @@
 "use client";
 
+import { useRef, useState } from "react";
 import Image from "next/image";
 import { MapPin } from "lucide-react";
 import { MOKA } from "../_lib/theme";
 import { useLocation } from "../_lib/LocationContext";
 import { useCustomer } from "../_lib/CustomerContext";
 import HeaderGreeting from "./HeaderGreeting";
+import HiddenAdminAccessModal from "./HiddenAdminAccessModal";
+
+// Hidden staff entry point: 5 taps on the logo within 3s reveals the PIN
+// modal — no visible affordance, no hint on hover (see cursor-default below),
+// nothing a normal customer would ever notice or stumble into by casual use.
+const TAP_COUNT = 5;
+const TAP_WINDOW_MS = 3000;
 
 export default function Header({ onGoToAccount }) {
   const { openPanel } = useLocation();
   const { customer } = useCustomer();
+  const tapTimes = useRef([]);
+  const [showAdminAccess, setShowAdminAccess] = useState(false);
+
+  function handleLogoTap() {
+    const now = Date.now();
+    tapTimes.current = [...tapTimes.current, now].filter((t) => now - t < TAP_WINDOW_MS);
+    if (tapTimes.current.length >= TAP_COUNT) {
+      tapTimes.current = [];
+      setShowAdminAccess(true);
+    }
+  }
 
   return (
     // pt-safe + this wrapper's own background (not just the page root's) is what
@@ -41,8 +60,12 @@ export default function Header({ onGoToAccount }) {
           above and the promo banner below, then nudged a few px down from
           that strict center for a more balanced look. */}
       <div className="flex justify-center px-4 pt-1.5 pb-2.5">
-        <Image src="/logo-moka.png" alt="MÖKA Drive" width={1930} height={461} priority className="h-7 w-auto" />
+        <button type="button" onClick={handleLogoTap} aria-label="MÖKA" className="cursor-default">
+          <Image src="/logo-moka.png" alt="MÖKA Drive" width={1930} height={461} priority className="h-7 w-auto" />
+        </button>
       </div>
+
+      {showAdminAccess && <HiddenAdminAccessModal onClose={() => setShowAdminAccess(false)} />}
     </div>
   );
 }
